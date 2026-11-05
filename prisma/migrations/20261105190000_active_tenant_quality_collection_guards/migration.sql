@@ -15,7 +15,31 @@ DECLARE
   v_definition text;
   v_anchor integer;
   v_guard text;
+  v_role record;
 BEGIN
+  FOR v_role IN
+    SELECT DISTINCT r.rolname
+      FROM pg_catalog.pg_proc p
+      JOIN pg_catalog.pg_namespace n ON n.oid=p.pronamespace
+      JOIN pg_catalog.pg_roles r ON r.oid=p.proowner
+     WHERE n.nspname='public'
+       AND p.prosecdef
+       AND p.proname = ANY(ARRAY[
+         'tracefab_acknowledge_quality_issue','tracefab_waive_quality_issue',
+         'tracefab_add_data_request_item','tracefab_send_data_request',
+         'tracefab_submit_data_request','tracefab_submit_data_response',
+         'tracefab_review_data_response'
+       ])
+  LOOP
+    IF v_role.rolname = 'tracefab_app' THEN
+      RAISE EXCEPTION 'active_tenant_quality_collection_runtime_owns_definer_function';
+    END IF;
+    EXECUTE format(
+      'GRANT EXECUTE ON FUNCTION public.tracefab_require_active_tenant_for_organization(uuid) TO %I',
+      v_role.rolname
+    );
+  END LOOP;
+
   FOR v_target IN
     SELECT * FROM (VALUES
       ('tracefab_acknowledge_quality_issue', 'PERFORM public.tracefab_require_active_tenant_for_organization(v_issue.owner_organization_id);'),
@@ -67,5 +91,13 @@ BEGIN
   END LOOP;
 END;
 $guard_quality_collection$;
+
+DO $guard_helper_acl$
+BEGIN
+  IF has_function_privilege('tracefab_app', 'public.tracefab_require_active_tenant_for_organization(uuid)', 'EXECUTE') THEN
+    RAISE EXCEPTION 'active_tenant_quality_collection_helper_executable_by_runtime';
+  END IF;
+END;
+$guard_helper_acl$;
 
 COMMIT;
