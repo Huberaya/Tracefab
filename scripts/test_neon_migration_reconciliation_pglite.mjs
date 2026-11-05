@@ -233,8 +233,10 @@ const sourceSystemCheck = await scalar(baseline.db, `
   WHERE conrelid='public.plm_erp_sync_jobs'::regclass
     AND conname='plm_erp_sync_jobs_source_system_check'
 `);
-ok('la contrainte des jobs accepte les types generic_csv et infor_fashion',
-  sourceSystemCheck.includes('generic_csv') && sourceSystemCheck.includes('infor_fashion'), sourceSystemCheck);
+ok('la contrainte des jobs accepte generic_csv, infor_fashion et l alias historique gs1',
+  sourceSystemCheck.includes('generic_csv')
+    && sourceSystemCheck.includes('infor_fashion')
+    && /'gs1'(?:::text)?/.test(sourceSystemCheck), sourceSystemCheck);
 const invitationDef = await scalar(baseline.db,
   "SELECT pg_get_functiondef('public.tracefab_validate_member_invitation_role()'::regprocedure) AS value");
 ok('invitation fournisseur vérifie le rattachement et le statut de relation',
