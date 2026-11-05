@@ -39,9 +39,9 @@ for (const [path, type, roles] of routes) {
 const ingest = read('api/_routes/integrations/ingest.ts');
 check('ingest : cible exclusivement le tenant résolu', /ingestPlmErpData\(tx, targetOrgId/.test(ingest));
 const jobs = read('api/_routes/integrations/jobs.ts');
-check('jobs : filtre les lignes sur le tenant résolu', /where: \\{ brand_organization_id: activeOrgId \\}/.test(jobs));
+check('jobs : filtre les lignes sur le tenant résolu', jobs.includes('where: { brand_organization_id: activeOrgId }'));
 const suppliers = read('api/_routes/suppliers.ts');
-check('fournisseurs : joint la relation sur un seul tenant', /r\.brand_organization_id = \\$\\{tenant\.organizationId\\}::uuid/.test(suppliers));
+check('fournisseurs : joint la relation sur un seul tenant', suppliers.includes('r.brand_organization_id = ${tenant.organizationId}::uuid'));
 const upload = read('api/_routes/supplier/documents/upload-intent.ts');
 check('upload : document et clé de stockage utilisent le fournisseur du tenant', /currentSupplier\(tx, user\.id, tenant\.organizationId\)/.test(upload));
 const usage = read('api/_routes/supplier/storage/usage.ts');
