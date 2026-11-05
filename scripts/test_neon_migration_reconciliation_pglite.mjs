@@ -232,6 +232,52 @@ const activeTenantPolicies = await scalar(baseline.db, `
       OR coalesce(with_check,'') LIKE '%tracefab_in_active_tenant%')
 `);
 ok('les quatre politiques RLS PLM/ERP appliquent le tenant actif', activeTenantPolicies === 4, String(activeTenantPolicies));
+const productTenantPolicies = await scalar(baseline.db, `
+  SELECT count(*)::int AS value FROM pg_policies
+  WHERE schemaname='public'
+    AND (
+      (tablename='tracefab_products' AND policyname IN ('products_select_brand','products_insert_brand','products_update_brand'))
+      OR (tablename='dpp_records' AND policyname='dpp_select_brand')
+      OR (tablename='product_pef_assessments' AND policyname IN ('product_pef_select_org','product_pef_mutate_brand'))
+      OR (tablename='product_green_claims' AND policyname IN ('product_claims_select_org','product_claims_mutate_brand'))
+      OR (tablename='dpp_claims' AND policyname='dpp_claims_private_select')
+      OR (tablename='dpp_lifecycle_events' AND policyname='dpp_events_private_select')
+      OR (tablename='dpp_resolvable_identifiers' AND policyname='dpp_identity_private_select')
+      OR (tablename='product_materials' AND policyname='product_materials_select_authorized')
+    )
+    AND (coalesce(qual,'') LIKE '%tracefab_in_active_tenant%'
+      OR coalesce(with_check,'') LIKE '%tracefab_in_active_tenant%')
+`);
+ok('les 12 politiques produit/DPP/PEF/claims/matières appliquent le tenant actif',
+  productTenantPolicies === 12, String(productTenantPolicies));
+const guardedFunctions = await scalar(baseline.db, `
+  SELECT count(*)::int AS value FROM pg_proc p
+  JOIN pg_namespace n ON n.oid=p.pronamespace
+  WHERE n.nspname='public' AND p.prosecdef
+    AND p.proname IN (
+      'tracefab_add_dpp_claim','tracefab_add_dpp_event','tracefab_add_product_identifier',
+      'tracefab_audit_product_green_claims','tracefab_calculate_product_data_completion',
+      'tracefab_create_dpp_identity','tracefab_link_dpp_claim_evidence',
+      'tracefab_replace_dpp_identity','tracefab_update_product_identifier',
+      'tracefab_add_product_material','tracefab_material_visible_via_product',
+      'tracefab_update_product_material'
+    )
+    AND p.prosrc LIKE '%tracefab_in_active_tenant%'
+`);
+ok('les 12 fonctions SECURITY DEFINER ciblées vérifient le tenant actif',
+  guardedFunctions === 12, String(guardedFunctions));
+const publicDppPolicies = await scalar(baseline.db, `
+  SELECT count(*)::int AS value FROM pg_policies
+  WHERE schemaname='public'
+    AND policyname IN (
+      'products_select_public','dpp_select_public','dpp_events_public_select',
+      'dpp_identity_public_select','product_identifiers_select_public',
+      'product_materials_select_public','product_pef_select_public'
+    )
+    AND coalesce(qual,'') LIKE '%tracefab_public_context%'
+`);
+ok('les 7 politiques publiques de lecture restent présentes et explicites',
+  publicDppPolicies === 7, String(publicDppPolicies));
 const sourceSystemCheck = await scalar(baseline.db, `
   SELECT pg_get_constraintdef(oid) AS value FROM pg_constraint
   WHERE conrelid='public.plm_erp_sync_jobs'::regclass
