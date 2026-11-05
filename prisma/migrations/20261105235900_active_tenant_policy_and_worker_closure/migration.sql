@@ -650,13 +650,11 @@ BEGIN
     RAISE EXCEPTION 'current_user_email_migration_role_cannot_set_worker_owner';
   END IF;
 
-  -- Le SELECT preexistant de tracefab_app est conserve : il est borne par
-  -- users_select_self (id = tracefab_current_user_id()) sous RLS FORCE.
+  -- Le SELECT applicatif est conserve s'il existe deja, mais n'est pas
+  -- requis pour appliquer la migration sur une base neuve : le bootstrap
+  -- post-migrations accorde ensuite le SELECT borne par users_select_self.
   -- Le worker NOLOGIN reçoit son SELECT propre pour la fonction SECURITY
   -- DEFINER, avec la même politique de ligne ; aucun DML n'est accordé à l'app.
-  IF NOT pg_catalog.has_table_privilege('tracefab_app', 'public.users', 'SELECT') THEN
-    RAISE EXCEPTION 'current_user_email_app_select_self_acl_missing';
-  END IF;
   IF NOT pg_catalog.has_table_privilege('tracefab_worker', 'public.users', 'SELECT') THEN
     RAISE EXCEPTION 'current_user_email_worker_must_select_users';
   END IF;
