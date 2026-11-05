@@ -1,7 +1,7 @@
 import type { VercelRequest, VercelResponse } from '../../../_lib/vercel-types.js';
 import { requireClerkUser, isUnauthorized } from '../../../_lib/auth.js';
 import { sqlBusinessError } from '../../../_lib/sql-errors.js';
-import { withTracefabUserContext } from '../../../_lib/context.js';
+import {withTracefabRequestContext} from '../../../_lib/context.js';
 import { isTenantError, requireActiveTenant, requestedTenantId } from '../../../_lib/tenant.js';
 import { csvCell, CATALOG_EXPORT_HEADERS } from '../../../_lib/catalog-importer.js';
 import { json, methodNotAllowed } from '../../../_lib/http.js';
@@ -52,7 +52,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     const { user } = await requireClerkUser(req);
 
-    const rows = await withTracefabUserContext(user.id, user.email, async (tx) => {
+    const rows = await withTracefabRequestContext(req, user, async (tx) => {
       // Locataire actif obligatoire. Un export est une sortie de donnees : le
       // repli sur `{ in: organizationIds }` produisait un CSV melangeant les
       // produits de toutes les organisations du compte, hors du tenant affiche.
@@ -95,7 +95,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         GROUP BY p.id
         ORDER BY p.created_at DESC
       `;
-    }, requestedTenantId(req));
+    });
 
     const content = [CATALOG_EXPORT_HEADERS.join(','), ...rows.map(csvRow)].join('\r\n');
     const filename = `tracefab-product-catalog-${new Date().toISOString().slice(0, 10)}.csv`;

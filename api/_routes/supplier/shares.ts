@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '../../_lib/vercel-types.js';
 import { requireClerkUser, isUnauthorized } from '../../_lib/auth.js';
-import { withTracefabUserContext } from '../../_lib/context.js';
+import {withTracefabRequestContext} from '../../_lib/context.js';
 import { json, methodNotAllowed, readJsonBody } from '../../_lib/http.js';
 import { currentSupplier, requestedOrganizationId } from '../../_lib/supplier-profile.js';
 import { sanitizeSupplierTradeSecrets } from '../../_lib/trade-secret-vault.js';
@@ -21,7 +21,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return json(res, 401, { error: 'unauthorized' });
   }
 
-  return withTracefabUserContext(auth.user.id, auth.user.email, async (tx) => {
+  return withTracefabRequestContext(req, auth.user, async (tx) => {
     const supplier = await currentSupplier(tx, auth.user.id, requestedOrganizationId(req));
     if (!supplier) {
       return json(res, 404, { error: 'supplier_not_found' });

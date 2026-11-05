@@ -1,10 +1,11 @@
 import type { VercelRequest, VercelResponse } from '../../../_lib/vercel-types.js';
 import { requireClerkUser, isUnauthorized } from '../../../_lib/auth.js';
-import { withTracefabUserContext } from '../../../_lib/context.js';
+import {withTracefabRequestContext} from '../../../_lib/context.js';
 import { json, methodNotAllowed, readJsonBody } from '../../../_lib/http.js';
 import { sqlBusinessError } from '../../../_lib/sql-errors.js';
 import { isUuid } from '../../../_lib/data-requests.js';
 import { validateResponseValue } from '../../../_lib/questionnaires.js';
+import { isTenantError, requireActiveTenant, requestedTenantId } from '../../../_lib/tenant.js';
 
 type ResponseBody = {
   value?: unknown;
@@ -68,17 +69,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       : isUuid(body.sourceDocumentId) ? body.sourceDocumentId : null;
     if (body.sourceDocumentId && !sourceDocumentId) return json(res, 400, { error: 'invalid_source_document_id' });
 
-    const response = await withTracefabUserContext(user.id, user.email, async (tx) => {
+    const response = await withTracefabRequestContext(req, user, async (tx) => {
+      const tenant = await requireActiveTenant(tx, req, user.id, { types: ['supplier'] });
       const item = await tx.data_request_items.findUnique({
         where: { id: itemId },
         select: { data_request_id: true, data_type: true, validation_rules: true },
       });
       if (!item) throw new Error('data_request_item_not_found');
+      const request = await tx.data_requests.findUnique({ where: { id: item.data_request_id }, select: { supplier_organization_id: true } });
+      if (!request || request.supplier_organization_id !== tenant.organizationId) throw new Error('data_request_item_not_found');
       const validationError = validateResponseValue(item, body.value);
       if (validationError) throw new Error(validationError);
       if (sourceDocumentId) {
-        const request = await tx.data_requests.findUnique({ where: { id: item.data_request_id }, select: { supplier_organization_id: true } });
-        const document = request ? await tx.documents.findFirst({ where: { id: sourceDocumentId, owner_organization_id: request.supplier_organization_id, status: 'available' }, select: { id: true } }) : null;
+        const document = await tx.documents.findFirst({ where: { id: sourceDocumentId, owner_organization_id: request.supplier_organization_id, status: 'available' }, select: { id: true } });
         if (!document) throw new Error('invalid_source_document_id');
       }
 
@@ -96,6 +99,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return json(res, 201, { response: serializeResponse(response) });
   } catch (error) {
     if (isUnauthorized(error)) return json(res, 401, { error: 'unauthorized' });
+    if (isTenantError(error)) return json(res, error.status, { error: error.message });
     const businessError = sqlBusinessError(error);
     if (businessError) return json(res, businessError.status, { error: businessError.error });
     if (error instanceof Error && (error.message === 'data_request_item_not_found' || error.message === 'data_response_creation_failed')) {

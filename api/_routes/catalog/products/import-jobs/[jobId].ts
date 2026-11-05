@@ -1,7 +1,7 @@
 import type { VercelRequest, VercelResponse } from '../../../../_lib/vercel-types.js';
 import { requireClerkUser, isUnauthorized } from '../../../../_lib/auth.js';
 import { sqlBusinessError } from '../../../../_lib/sql-errors.js';
-import { withTracefabUserContext } from '../../../../_lib/context.js';
+import {withTracefabRequestContext} from '../../../../_lib/context.js';
 import { isUuid } from '../../../../_lib/products.js';
 import { isTenantError, requireActiveTenant, requestedTenantId } from '../../../../_lib/tenant.js';
 import { json, methodNotAllowed } from '../../../../_lib/http.js';
@@ -33,7 +33,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const jobId = routeJobId(req);
     if (!isUuid(jobId)) return json(res, 400, { error: 'invalid_import_job_id' });
     const { user } = await requireClerkUser(req);
-    const job = await withTracefabUserContext(user.id, user.email, async (tx) => {
+    const job = await withTracefabRequestContext(req, user, async (tx) => {
       // Locataire actif obligatoire. `ANY(organizationIds)` couvrait toutes les
       // organisations du compte : le statut d'un job d'import lance depuis un
       // autre tenant etait lisible ici.
@@ -48,7 +48,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         LIMIT 1
       `;
       return rows[0] ?? null;
-    }, requestedTenantId(req));
+    });
     if (!job) return json(res, 404, { error: 'catalog_import_job_not_found' });
     return json(res, 200, {
       job: {

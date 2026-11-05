@@ -41,7 +41,91 @@ function controle(libelle, condition, detail) {
     Number(annonce[1]) === reel,
     `le document annonce ${annonce[1]} migration(s)`,
   );
+  const migrationRls = '20261105130000_active_tenant_product_dpp_pef_rls';
+  const migrationRlsPresente = readdirSync('prisma/migrations').includes(migrationRls);
+  controle(
+    'la migration RLS produits/DPP/PEF est référencée dans le registre',
+    migrationRlsPresente && texte.includes(migrationRls),
+    migrationRlsPresente ? 'migration présente mais absente du registre' : 'migration absente du dépôt',
+  );
+  const migrationClaims = '20261105140000_active_tenant_green_claims_rls';
+  const migrationClaimsPresente = readdirSync('prisma/migrations').includes(migrationClaims);
+  controle(
+    'la migration RLS des allégations vertes est référencée dans le registre',
+    migrationClaimsPresente && texte.includes(migrationClaims),
+    migrationClaimsPresente ? 'migration présente mais absente du registre' : 'migration absente du dépôt',
+  );
   const entete = texte.slice(0, 1000);
+  const migrationDpp = '20261105150000_active_tenant_dpp_claims_identity_rls';
+  const migrationDppPresente = readdirSync('prisma/migrations').includes(migrationDpp);
+  controle(
+    'la migration RLS des claims et identités DPP est référencée dans le registre',
+    migrationDppPresente && texte.includes(migrationDpp),
+    migrationDppPresente ? 'migration présente mais absente du registre' : 'migration absente du dépôt',
+  );
+  const migrationDefiners = '20261105170000_active_tenant_security_definer_guards';
+  const migrationDefinersPresente = readdirSync('prisma/migrations').includes(migrationDefiners);
+  controle(
+    'la migration des 19 fonctions SECURITY DEFINER est référencée dans le registre',
+    migrationDefinersPresente && texte.includes(migrationDefiners),
+    migrationDefinersPresente ? 'migration présente mais absente du registre' : 'migration absente du dépôt',
+  );
+  const migrationTcRegistration = '20261105180000_active_tenant_tc_registration_guard';
+  const migrationTcRegistrationPresente = readdirSync('prisma/migrations').includes(migrationTcRegistration);
+  controle(
+    'la migration de garde du tenant actif sur l’enregistrement TC est référencée dans le registre',
+    migrationTcRegistrationPresente && texte.includes(migrationTcRegistration),
+    migrationTcRegistrationPresente ? 'migration présente mais absente du registre' : 'migration absente du dépôt',
+  );
+  const migrationInviteDocumentPassport = '20261105230000_active_tenant_invite_document_passport_guards';
+  const migrationInviteDocumentPassportPresente = readdirSync('prisma/migrations').includes(migrationInviteDocumentPassport);
+  controle(
+    'la migration des gardes invitations/documents/passeports est référencée dans le registre',
+    migrationInviteDocumentPassportPresente && texte.includes(migrationInviteDocumentPassport),
+    migrationInviteDocumentPassportPresente ? 'migration présente mais absente du registre' : 'migration absente du dépôt',
+  );
+  const migrationSupplierQuality = '20261105240000_active_tenant_supplier_quality_guard';
+  const migrationSupplierQualityPresente = readdirSync('prisma/migrations').includes(migrationSupplierQuality);
+  controle(
+    'la migration du calcul de qualité fournisseur est référencée dans le registre',
+    migrationSupplierQualityPresente && texte.includes(migrationSupplierQuality),
+    migrationSupplierQualityPresente ? 'migration présente mais absente du registre' : 'migration absente du dépôt',
+  );
+  const migrationQualityCap = '20261105220000_active_tenant_quality_cap_guards';
+  const migrationQualityCapPresente = readdirSync('prisma/migrations').includes(migrationQualityCap);
+  controle(
+    'la migration des gardes CAP qualité est référencée dans le registre',
+    migrationQualityCapPresente && texte.includes(migrationQualityCap),
+    migrationQualityCapPresente ? 'migration présente mais absente du registre' : 'migration absente du dépôt',
+  );
+  const migrationSupplierProfilePassport = '20261105210000_active_tenant_supplier_profile_passport_guards';
+  const migrationSupplierProfilePassportPresente = readdirSync('prisma/migrations').includes(migrationSupplierProfilePassport);
+  controle(
+    'la migration des gardes profil/passeport fournisseur est référencée dans le registre',
+    migrationSupplierProfilePassportPresente && texte.includes(migrationSupplierProfilePassport),
+    migrationSupplierProfilePassportPresente ? 'migration présente mais absente du registre' : 'migration absente du dépôt',
+  );
+  const migrationMaterialCertification = '20261105200000_active_tenant_material_certification_guards';
+  const migrationMaterialCertificationPresente = readdirSync('prisma/migrations').includes(migrationMaterialCertification);
+  controle(
+    'la migration des gardes matières/certifications est référencée dans le registre',
+    migrationMaterialCertificationPresente && texte.includes(migrationMaterialCertification),
+    migrationMaterialCertificationPresente ? 'migration présente mais absente du registre' : 'migration absente du dépôt',
+  );
+  const migrationQualityCollection = '20261105190000_active_tenant_quality_collection_guards';
+  const migrationQualityCollectionPresente = readdirSync('prisma/migrations').includes(migrationQualityCollection);
+  controle(
+    'la migration des gardes qualité/collecte est référencée dans le registre',
+    migrationQualityCollectionPresente && texte.includes(migrationQualityCollection),
+    migrationQualityCollectionPresente ? 'migration présente mais absente du registre' : 'migration absente du dépôt',
+  );
+  const migrationMaterials = '20261105160000_active_tenant_product_materials_rls';
+  const migrationMaterialsPresente = readdirSync('prisma/migrations').includes(migrationMaterials);
+  controle(
+    'la migration RLS des compositions produit-matière est référencée dans le registre',
+    migrationMaterialsPresente && texte.includes(migrationMaterials),
+    migrationMaterialsPresente ? 'migration présente mais absente du registre' : 'migration absente du dépôt',
+  );
   const nonVerifie = /Neon de production\s*:\s*non vérifié/i.test(entete);
   let preuveNeon = '';
   try {

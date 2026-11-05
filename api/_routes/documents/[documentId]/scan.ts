@@ -1,9 +1,10 @@
 import { Prisma } from '@prisma/client';
 import type { VercelRequest, VercelResponse } from '../../../_lib/vercel-types.js';
 import { requireClerkUser, isUnauthorized } from '../../../_lib/auth.js';
-import { withTracefabUserContext } from '../../../_lib/context.js';
+import {withTracefabRequestContext} from '../../../_lib/context.js';
 import { json, methodNotAllowed } from '../../../_lib/http.js';
 import { sqlBusinessError } from '../../../_lib/sql-errors.js';
+import { isTenantError, resolveActiveTenant, requestedTenantId } from '../../../_lib/tenant.js';
 import { runDocumentScanFlow } from '../../../_lib/document-scan-flow.js';
 
 /**
@@ -25,11 +26,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (!isUuid(documentId)) return json(res, 400, { error: 'invalid_document_id' });
     const { user } = await requireClerkUser(req);
 
-    const ownerOrganizationId = await withTracefabUserContext(user.id, user.email, async (tx) => {
+    const activeOrganizationId = requestedTenantId(req);
+    const ownerOrganizationId = await withTracefabRequestContext(req, user, async (tx) => {
+      const tenant = await resolveActiveTenant(tx, user.id, activeOrganizationId, {
+        types: ['brand'],
+        roles: ['owner', 'admin', 'manager', 'contributor'],
+      });
       const rows = await tx.$queryRaw<Array<{ owner_organization_id: string }>>`
         SELECT d.owner_organization_id
         FROM documents d
         WHERE d.id = ${documentId}::uuid
+          AND d.owner_organization_id = ${tenant.organizationId}::uuid
           AND tracefab_has_org_role(
             d.owner_organization_id,
             ARRAY['owner', 'admin', 'manager', 'contributor']::membership_role[]
@@ -49,6 +56,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return json(res, 200, result.body);
   } catch (error) {
     if (isUnauthorized(error)) return json(res, 401, { error: 'unauthorized' });
+    if (isTenantError(error)) return json(res, error.status, { error: error.message });
     const businessError = sqlBusinessError(error);
     if (businessError) return json(res, businessError.status, { error: businessError.error });
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') return json(res, 409, { error: 'document_conflict' });

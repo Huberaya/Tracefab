@@ -1,10 +1,10 @@
 import { Prisma } from '@prisma/client';
 import type { VercelRequest, VercelResponse } from '../../_lib/vercel-types.js';
 import { requireClerkUser, isUnauthorized } from '../../_lib/auth.js';
-import { withTracefabUserContext } from '../../_lib/context.js';
+import {withTracefabRequestContext} from '../../_lib/context.js';
 import { json, methodNotAllowed, readJsonBody } from '../../_lib/http.js';
 import { sqlBusinessError } from '../../_lib/sql-errors.js';
-import { activeBrandOrganizationIds, isUuid } from '../../_lib/products.js';
+import { isTenantError, resolveActiveTenant, requestedTenantId } from '../../_lib/tenant.js';
 import { documentMetadata, serializeDocument, DOCUMENT_SELECT } from '../../_lib/documents.js';
 import { presignedUpload, storageObjectKey } from '../../_lib/storage.js';
 import { assertStorageQuotaAvailable } from '../../_lib/cloud-storage/quota-manager.js';
@@ -14,20 +14,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     const { user } = await requireClerkUser(req);
     const body = documentMetadata(await readJsonBody<Record<string, unknown>>(req));
-    const queryOrgId = req.query.organizationId;
-    const requestedId = Array.isArray(queryOrgId) ? queryOrgId[0] : queryOrgId;
-
-    const result = await withTracefabUserContext(user.id, user.email, async (tx) => {
-      const brandIds = await activeBrandOrganizationIds(tx, user.id);
-      let targetOrgId: string | undefined;
-
-      if (requestedId && isUuid(requestedId) && brandIds.includes(requestedId)) {
-        targetOrgId = requestedId;
-      } else if (brandIds.length > 0) {
-        targetOrgId = brandIds[0];
-      }
-
-      if (!targetOrgId) return null;
+    const activeOrganizationId = requestedTenantId(req);
+    const result = await withTracefabRequestContext(req, user, async (tx) => {
+      const tenant = await resolveActiveTenant(tx, user.id, activeOrganizationId, {
+        types: ['brand'],
+        roles: ['owner', 'admin', 'manager', 'contributor'],
+      });
+      const targetOrgId = tenant.organizationId;
 
       // Enforce organization storage quota
       await assertStorageQuotaAvailable(tx, targetOrgId, body.byteSize);
@@ -64,6 +57,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     });
   } catch (error) {
     if (isUnauthorized(error)) return json(res, 401, { error: 'unauthorized' });
+    if (isTenantError(error)) return json(res, error.status, { error: error.message });
     const businessError = sqlBusinessError(error);
     if (businessError) return json(res, businessError.status, { error: businessError.error });
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') return json(res, 409, { error: 'document_already_registered' });

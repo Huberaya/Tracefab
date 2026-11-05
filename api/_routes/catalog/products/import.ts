@@ -3,9 +3,10 @@ import { Prisma } from '@prisma/client';
 import type { VercelRequest, VercelResponse } from '../../../_lib/vercel-types.js';
 import { requireClerkUser, isUnauthorized } from '../../../_lib/auth.js';
 import { withTracefabUserContext } from '../../../_lib/context.js';
-import { activeBrandOrganizationIds, isUuid } from '../../../_lib/products.js';
+import { isUuid } from '../../../_lib/products.js';
 import { json, methodNotAllowed, readJsonBody } from '../../../_lib/http.js';
 import { sqlBusinessError } from '../../../_lib/sql-errors.js';
+import { isTenantError, requestedTenantId, resolveActiveTenant } from '../../../_lib/tenant.js';
 import {
   CATALOG_IMPORT_MAX_BYTES,
   CATALOG_IMPORT_MAX_ROWS,
@@ -98,11 +99,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const sourceSha256 = createHash('sha256').update(body.csvContent, 'utf8').digest('hex');
     const validation = validateCatalogProductCsv(body.csvContent);
 
+    const requestedOrganizationId = requestedTenantId(req) ?? body.brandOrganizationId!;
+    if (requestedOrganizationId !== body.brandOrganizationId) throw new Error('brand_organization_mismatch');
     const result = await withTracefabUserContext(user.id, user.email, async (tx) => {
-      const organizationIds = await activeBrandOrganizationIds(tx, user.id);
-      if (!organizationIds.includes(body.brandOrganizationId!)) return null;
+      const tenant = await resolveActiveTenant(tx, user.id, requestedOrganizationId, { types: ['brand'] });
+      const organizationId = tenant.organizationId;
+      if (organizationId !== body.brandOrganizationId) throw new Error('brand_organization_mismatch');
 
-      const existingReferences = await loadExistingReferences(tx, body.brandOrganizationId!, validation.rows);
+      const existingReferences = await loadExistingReferences(tx, organizationId, validation.rows);
       const duplicateIssues: CatalogImportIssue[] = [];
       const importableRows = validation.rows.filter((row) => {
         if (!existingReferences.has(row.reference.toLocaleLowerCase())) return true;
@@ -127,7 +131,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       if (idempotencyKey) {
         const replay = await tx.$queryRaw<ImportJob[]>`
           SELECT * FROM tracefab_catalog_import_jobs
-          WHERE organization_id = ${body.brandOrganizationId!}::uuid
+          WHERE organization_id = ${organizationId}::uuid
             AND idempotency_key = ${idempotencyKey}
           LIMIT 1
         `;
@@ -139,7 +143,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           organization_id, actor_user_id, import_kind, source_filename, source_sha256,
           idempotency_key, status, total_rows, accepted_rows, rejected_rows, error_rows
         ) VALUES (
-          ${body.brandOrganizationId!}::uuid, ${user.id}::uuid, 'products', ${filename}, ${sourceSha256},
+          ${organizationId}::uuid, ${user.id}::uuid, 'products', ${filename}, ${sourceSha256},
           ${idempotencyKey}, 'processing', ${totalRows}, 0, ${rejectedRows}, ${JSON.stringify(allIssues)}::jsonb
         )
         ON CONFLICT (organization_id, idempotency_key) WHERE idempotency_key IS NOT NULL DO NOTHING
@@ -149,7 +153,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       if (!job && idempotencyKey) {
         const replay = await tx.$queryRaw<ImportJob[]>`
           SELECT * FROM tracefab_catalog_import_jobs
-          WHERE organization_id = ${body.brandOrganizationId!}::uuid
+          WHERE organization_id = ${organizationId}::uuid
             AND idempotency_key = ${idempotencyKey}
           LIMIT 1
         `;
@@ -160,7 +164,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       for (const row of importableRows) {
         const created = await tx.$queryRaw<Array<{ id: string }>>`
           SELECT id FROM tracefab_create_product(
-            ${body.brandOrganizationId!}::uuid,
+            ${organizationId}::uuid,
             ${row.reference}, ${row.name}, ${row.category}, ${row.sku}
           )
         `;
@@ -188,19 +192,21 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       await tx.$executeRaw`
         INSERT INTO audit_logs (organization_id, actor_user_id, action, entity_type, entity_id, metadata)
         VALUES (
-          ${body.brandOrganizationId!}::uuid, ${user.id}::uuid, 'catalog_import_completed',
+          ${organizationId}::uuid, ${user.id}::uuid, 'catalog_import_completed',
           'catalog_import_job', ${job.id}::uuid,
           ${JSON.stringify({ sourceSha256, filename, totalRows, acceptedRows, rejectedRows })}::jsonb
         )
       `;
       return { job: jobPayload(updated[0] ?? job) };
-    });
+    }, requestedOrganizationId);
 
     if (!result) return json(res, 403, { error: 'brand_organization_access_denied' });
     if ('preview' in result) return json(res, 200, result.preview);
     return json(res, 202, { job: result.job });
   } catch (error) {
     if (isUnauthorized(error)) return json(res, 401, { error: 'unauthorized' });
+    if (isTenantError(error)) return json(res, error.status, { error: error.message });
+    if (error instanceof Error && error.message === 'brand_organization_mismatch') return json(res, 404, { error: 'brand_organization_not_found' });
     const businessError = sqlBusinessError(error);
     if (businessError) return json(res, businessError.status, { error: businessError.error });
     if (error instanceof Error && /^(invalid_|catalog_import_)/.test(error.message)) return json(res, 400, { error: error.message });

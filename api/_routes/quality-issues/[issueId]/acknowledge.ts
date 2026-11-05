@@ -1,11 +1,12 @@
 import type { VercelRequest, VercelResponse } from '../../../_lib/vercel-types.js';
 import type { QualityIssueRecord } from '../../../_lib/quality.js';
 import { requireClerkUser, isUnauthorized } from '../../../_lib/auth.js';
-import { withTracefabUserContext } from '../../../_lib/context.js';
+import {withTracefabRequestContext} from '../../../_lib/context.js';
 import { json, methodNotAllowed } from '../../../_lib/http.js';
 import { sqlBusinessError } from '../../../_lib/sql-errors.js';
 import { isUuid } from '../../../_lib/data-requests.js';
 import { serializeQualityIssue } from '../../../_lib/quality.js';
+import { isTenantError, requireActiveTenant, requestedTenantId } from '../../../_lib/tenant.js';
 
 function routeIssueId(req: VercelRequest) {
   const value = req.query.issueId;
@@ -19,7 +20,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const issueId = routeIssueId(req);
     if (!isUuid(issueId)) return json(res, 400, { error: 'invalid_issue_id' });
     const { user } = await requireClerkUser(req);
-    const issue = await withTracefabUserContext(user.id, user.email, async (tx) => {
+    const issue = await withTracefabRequestContext(req, user, async (tx) => {
+      await requireActiveTenant(tx, req, user.id);
       const rows = await tx.$queryRaw<QualityIssueRecord[]>`
         SELECT * FROM tracefab_acknowledge_quality_issue(${issueId}::uuid)
       `;
@@ -29,6 +31,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return json(res, 200, { issue: serializeQualityIssue(issue) });
   } catch (error) {
     if (isUnauthorized(error)) return json(res, 401, { error: 'unauthorized' });
+    if (isTenantError(error)) return json(res, error.status, { error: error.message });
     const businessError = sqlBusinessError(error);
     if (businessError) return json(res, businessError.status, { error: businessError.error });
     if (error instanceof Error && error.message === 'quality_issue_not_found') return json(res, 404, { error: error.message });

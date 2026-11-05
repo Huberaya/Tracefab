@@ -1,5 +1,16 @@
 # P10.5 — Provisionnement : rôles, migrations, clé d'identité
 
+> **Mise à jour 2026-11-04 — document historique, ne pas utiliser seul pour Production Neon.**
+>
+> Ce document consigne un test sur PostgreSQL 17.10 jetable au 31/10. Depuis, une lecture directe de Production et Préproduction a établi un état différent : `neondb_owner` est le propriétaire administrateur existant (non-SUPERUSER, CREATEROLE, BYPASSRLS), `tracefab_migrator` et `tracefab_worker` sont absents, et `20261028120100_worker_identity_not_forgeable` n'est pas appliquée.
+>
+> Les sections 2.1 et 2.2 ci-dessous décrivent l'ancienne stratégie d'élévation et sont **supersédées**. La migration 28120100 est corrigée dans `fix/neon-migration-reconciliation-20261104` pour fonctionner sans SUPERUSER : création du worker en moindre privilège, appartenance `INHERIT TRUE, SET TRUE` sans ADMIN OPTION, CREATE temporaire pour le transfert des fonctions puis retrait de CREATE, appartenance SET conservée pour les migrations suivantes.
+>
+> Le test P10.5 est également modifié pour s'exécuter sans `TF_ALLOW_ELEVATION`. Ne pas lancer la procédure locale de provisionnement `tracefab_migrator` en Production avant revue spécifique : elle transfère la propriété du schéma et ne correspond pas au modèle actuellement observé sur Neon.
+>
+> Le relevé actuel, les 13 migrations en attente, les deux checksums restaurés et le checksum PLM non résolu et la procédure Préproduction → Production sont documentés dans [2026-11-04-neon-migration-reconciliation.md](2026-11-04-neon-migration-reconciliation.md).
+
+
 Date : 2026-10-31 · Branche : `arena/96848462-tracefab`
 
 Procédure exécutable par un opérateur autorisé, et **effectivement exécutée**

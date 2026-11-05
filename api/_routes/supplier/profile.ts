@@ -10,6 +10,7 @@ import {
   profileMutationValues,
   serializeSupplierProfile,
 } from '../../_lib/supplier-profile.js';
+import { isTenantError, resolveActiveTenant } from '../../_lib/tenant.js';
 
 type ProfileBody = Record<string, unknown>;
 
@@ -18,8 +19,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   try {
     const { user } = await requireClerkUser(req);
+    const activeOrganizationId = requestedOrganizationId(req);
     const result = await withTracefabUserContext(user.id, user.email, async (tx) => {
-      const current = await currentSupplier(tx, user.id, requestedOrganizationId(req));
+      const tenant = await resolveActiveTenant(tx, user.id, activeOrganizationId, { types: ['supplier'] });
+      const current = await currentSupplier(tx, user.id, tenant.organizationId);
       if (!current) return null;
       if (req.method === 'GET') return { current };
 
@@ -39,7 +42,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         )
       `;
       return { current: rows[0] ?? null };
-    });
+    }, activeOrganizationId);
 
     if (!result?.current) return json(res, 404, { error: 'supplier_profile_not_found' });
     return json(res, 200, {
@@ -51,6 +54,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     });
   } catch (error) {
     if (isUnauthorized(error)) return json(res, 401, { error: 'unauthorized' });
+    if (isTenantError(error)) return json(res, error.status, { error: error.message });
     const businessError = sqlBusinessError(error);
     if (businessError) return json(res, businessError.status, { error: businessError.error });
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {

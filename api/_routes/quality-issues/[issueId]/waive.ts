@@ -1,11 +1,12 @@
 import type { VercelRequest, VercelResponse } from '../../../_lib/vercel-types.js';
 import type { QualityIssueRecord } from '../../../_lib/quality.js';
 import { requireClerkUser, isUnauthorized } from '../../../_lib/auth.js';
-import { withTracefabUserContext } from '../../../_lib/context.js';
+import {withTracefabRequestContext} from '../../../_lib/context.js';
 import { json, methodNotAllowed, readJsonBody } from '../../../_lib/http.js';
 import { sqlBusinessError } from '../../../_lib/sql-errors.js';
 import { isUuid, requiredString } from '../../../_lib/data-requests.js';
 import { serializeQualityIssue } from '../../../_lib/quality.js';
+import { isTenantError, requireActiveTenant, requestedTenantId } from '../../../_lib/tenant.js';
 
 type WaiveBody = { reason?: string };
 
@@ -23,7 +24,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const { user } = await requireClerkUser(req);
     const body = await readJsonBody<WaiveBody>(req);
     const reason = requiredString(body.reason, 'waiver_reason', 4000);
-    const issue = await withTracefabUserContext(user.id, user.email, async (tx) => {
+    const issue = await withTracefabRequestContext(req, user, async (tx) => {
+      await requireActiveTenant(tx, req, user.id);
       const rows = await tx.$queryRaw<QualityIssueRecord[]>`
         SELECT * FROM tracefab_waive_quality_issue(${issueId}::uuid, ${reason})
       `;
@@ -33,6 +35,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return json(res, 200, { issue: serializeQualityIssue(issue) });
   } catch (error) {
     if (isUnauthorized(error)) return json(res, 401, { error: 'unauthorized' });
+    if (isTenantError(error)) return json(res, error.status, { error: error.message });
     const businessError = sqlBusinessError(error);
     if (businessError) return json(res, businessError.status, { error: businessError.error });
     if (error instanceof Error && /^invalid_/.test(error.message)) return json(res, 400, { error: error.message });

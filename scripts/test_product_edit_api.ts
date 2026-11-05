@@ -20,7 +20,7 @@ let row: any = { id, brand_organization_id: TENANT_A, reference: 'REAL-1', name:
 let writes = 0;
 const handler = createProductHandler({
   requireClerkUser: async () => ({ user: { id: ACTOR_ID, email: 'a@example.test' } }) as any,
-  withTracefabUserContext: async (_id: any, _email: any, cb: any) => cb({
+  withTracefabRequestContext: async (_req: any, _user: any, cb: any) => cb({
     organization_memberships: {
       findMany: async () => [{ organization_id: TENANT_A }],
       // Le locataire actif est verifie par adhesion reelle. Seul TENANT_A est

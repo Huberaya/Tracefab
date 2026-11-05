@@ -225,7 +225,14 @@ const norm = (s) => s.replace(/\s+/g, ' ').trim();
  * detectees.
  */
 const cleDe = (ligne) => {
-  const [genre, objet, detail] = ligne.split('|');
+  const morceaux = ligne.split('|');
+  const [genre, objet, detail] = morceaux;
+  if (genre === 'G' && objet === 'membre') {
+    // Une appartenance est une paire (membre, role accorde), pas seulement
+    // le membre : le meme role peut recevoir plusieurs appartenances.
+    const roleAccorde = morceaux.slice(3).find((x) => x.startsWith('dans='));
+    return `G|membre|${detail}|${roleAccorde ?? 'dans=?'}`;
+  }
   return genre === 'G' ? `G|${objet}|${detail}` : `${genre}|${objet}`;
 };
 /**
@@ -289,7 +296,7 @@ const CHAMPS_DURS = ['existe', 'rls', 'force', 'politiques', 'cmd', 'roles', 'pe
   // G|attributs|role
   'super', 'bypassrls', 'inherit', 'createrole', 'createdb', 'login',
   // G|membre
-  'dans', 'admin', 'herite',
+  'dans', 'admin', 'herite', 'setrole',
   // G|table, G|hors-cible, G|schema
   'app', 'public'];
 const CHAMPS_TEXTE = ['using', 'check']; // rendu d'expression : peut differer sans changer le sens

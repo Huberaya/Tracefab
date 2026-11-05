@@ -101,44 +101,35 @@ const empreinte = (fichier) => createHash('sha256').update(readFileSync(fichier)
 //
 // POURQUOI ELLE EXISTE
 //
-// La migration 20261028120100 cree `tracefab_worker` puis lui transfere la
-// propriete de six fonctions. Sur PostgreSQL 16+, deux impasses mesurees le
-// 30/10/2026 sur un cluster jetable (PG 17.10) :
+// Le runner conserve un mécanisme d'élévation administrative borné à un
+// registre fermé. Il ne sert à AUCUNE migration de la chaîne actuelle :
+// MIGRATIONS_ASSISTEES est vide.
 //
-//   - role ABSENT : la migration le cree, mais un executant CREATEROLE ne
-//     recoit que l'option ADMIN (set_option = false, mesure). Le `GRANT` de la
-//     migration est saute parce que `pg_has_role(...,'MEMBER')` rend deja vrai,
-//     et le `ALTER FUNCTION ... OWNER TO tracefab_worker` echoue en
-//     « must be able to SET ROLE "tracefab_worker" » ;
-//   - role PRESENT : la branche ELSE joue `ALTER ROLE ... NOSUPERUSER`, et
-//     PostgreSQL 16+ exige SUPERUSER pour changer cet attribut
-//     (« Only roles with the SUPERUSER attribute may change the SUPERUSER
-//     attribute »).
+// La migration 20261028120100_worker_identity_not_forgeable est encore
+// absente de Production et Préproduction. Sa version portée par cette branche
+// a été corrigée avant sa première application réelle : elle crée tracefab_worker
+// NOLOGIN, accorde explicitement INHERIT/SET sans ADMIN OPTION et transfère
+// les six fonctions. Elle ne fait aucun ALTER ROLE ... SUPERUSER/NOSUPERUSER.
 //
-// Aucune des deux branches n'est donc jouable par un role non superutilisateur
-// sur PostgreSQL 16+. La migration ne peut pas etre reecrite : elle est deja
-// appliquee en production, et changer son fichier changerait son empreinte.
+// Mesure directe sur Neon (branche de validation, PostgreSQL géré) :
+//   - l'exécutant ne possède pas SUPERUSER, mais CREATEROLE ;
+//   - CREATE ROLE produit une ligne bootstrap grantée par cloud_admin
+//     (ADMIN=true, INHERIT/SET=false) ;
+//   - le GRANT explicite produit une seconde ligne, grantée par l'exécutant
+//     (ADMIN=false, INHERIT/SET=true) ;
+//   - la migration distingue ces deux lignes et s'exécute avec succès ;
+//   - tracefab_app ne devient pas membre de tracefab_worker.
 //
-// Deux autres voies ont ete essayees et mesurées, toutes deux fermees :
-//   - executer la migration par un role administratif distinct : le controle de
-//     propriete de la migration exige `current_user` = proprietaire des
-//     fonctions, donc l'executant doit etre le proprietaire des objets ;
-//   - `SET ROLE` vers le proprietaire depuis un compte superutilisateur : les
-//     controles d'`ALTER ROLE` portent sur `current_user`, qui redevient non
-//     superutilisateur — mesure : trois « permission denied to alter role ».
+// Cette appartenance bootstrap est gérée par Neon et ne peut pas être
+// révoquée par neondb_owner. Elle ne donne aucun droit worker à tracefab_app.
+// Le contrôle de migration vérifie séparément l'octroi explicite et cette
+// ligne fournisseur, au lieu de sélectionner arbitrairement une ligne.
 //
-// CE QUI EST FAIT ICI, ET CE QUI N'EST PAS FAIT
+// Si une migration future exige réellement une élévation, elle devra être
+// déclarée explicitement dans MIGRATIONS_ASSISTEES, testée séparément et
+// protégée par TF_ALLOW_ELEVATION=oui et TF_ADMIN_URL. Sans les deux, le
+// runner refusera l'exécution.
 //
-// L'elevation est TEMPORAIRE, BORNEE A UNE MIGRATION, TRACEE ET REVOQUEE :
-// le role proprietaire recoit SUPERUSER juste avant cette migration, et le
-// perd juste apres, y compris en cas d'echec. Le role de migration n'est
-// jamais superutilisateur en dehors de cette fenetre, et le script refuse de
-// continuer si la revocation n'est pas constatee.
-//
-// Ce n'est pas la solution preferee : c'est la seule qui reste quand on refuse
-// de reecrire une migration deja appliquee. Elle exige un opt-in explicite
-// (`TF_ALLOW_ELEVATION=oui`) et une connexion administrative (`TF_ADMIN_URL`).
-// Sans les deux, le script REFUSE la migration au lieu de la contourner.
 // ---------------------------------------------------------------------------
 const urlAdmin = (process.env.TF_ADMIN_URL || '').trim();
 const elevationAutorisee = process.env.TF_ALLOW_ELEVATION === 'oui';
@@ -158,6 +149,29 @@ const client = new pg.Client({
   application_name: 'tracefab-migration-fidele',
 });
 await client.connect();
+
+// Option réservée aux suites de test sur cluster local : l'administrateur
+// ouvre la connexion, puis endosse le rôle migrateur réel. Cela reproduit
+// l'identité effective utilisée par les déploiements sans exposer le mot de
+// passe du rôle migrateur ni changer les verifieurs partagés du cluster.
+const roleDemande = (process.env.TF_MIGRATION_ROLE || '').trim();
+if (roleDemande) {
+  if (!/^[a-z_][a-z0-9_]*$/.test(roleDemande)) {
+    throw new Error('TF_MIGRATION_ROLE invalide : identifiant PostgreSQL refusé.');
+  }
+  const autorise = (await client.query(
+    "SELECT pg_catalog.pg_has_role(session_user, $1, 'SET') AS ok", [roleDemande],
+  )).rows[0]?.ok;
+  if (autorise !== true) {
+    throw new Error(`SET ROLE refusé pour TF_MIGRATION_ROLE=${roleDemande}.`);
+  }
+  await client.query(`SET ROLE "${roleDemande}"`);
+  const effectif = (await client.query('SELECT current_user AS role')).rows[0].role;
+  if (effectif !== roleDemande) {
+    throw new Error(`SET ROLE non constaté : attendu ${roleDemande}, obtenu ${effectif}.`);
+  }
+  console.log(`role effectif de migration : ${effectif} (SET ROLE explicite)`);
+}
 
 // Le registre est cree a l'identique de ce que pose Prisma.
 await client.query(`
@@ -180,7 +194,7 @@ const { rows: registre } = await client.query(
 const terminees = new Set(
   registre.filter((r) => r.finished_at && !r.rolled_back_at).map((r) => r.migration_name),
 );
-const enEchec = registre.filter((r) => !r.finished_at);
+const enEchec = registre.filter((r) => !r.finished_at && !r.rolled_back_at);
 
 console.log(`cible ${hote} · ${migrationsDisque.length} migration(s) sur disque · ${terminees.size} deja appliquee(s)`);
 if (enEchec.length) {
@@ -213,18 +227,16 @@ if (lireEtatSeulement) {
 }
 
 // ---------------------------------------------------------------------------
-// Rattrapage d'une elevation laissee ouverte.
+// Rattrapage d'une élévation laissée ouverte.
 //
-// L'elevation de 20261028120100 est temporaire ET reverifiee apres coup. Il
-// reste un cas : un processus tue entre `ALTER ROLE ... SUPERUSER` et la
-// revocation (SIGKILL, coupure, OOM). La fenetre est alors ouverte
-// indefiniment, et rien ne la refermerait — c'est exactement ce que la mission
-// interdit de laisser derriere soi.
+// Ce garde-fou générique protège les futures migrations explicitement
+// inscrites dans MIGRATIONS_ASSISTEES, ainsi que les résidus d'une ancienne
+// exécution interrompue. Le registre est vide pour la chaîne actuelle et la
+// migration worker corrigée ne modifie plus l'attribut SUPERUSER.
 //
-// On refuse donc de continuer tant que le role executant est superutilisateur :
-// on le reabaisse d'abord, on le VERIFIE, puis on poursuit. Sans connexion
-// d'administration, on s'arrete : constater sans pouvoir corriger n'autorise
-// pas a continuer.
+// Si un rôle d'exécution non-bootstrap est néanmoins SUPERUSER, le runner le
+// réabaisse avant de poursuivre, vérifie l'attribut et refuse de continuer
+// sans connexion administrative permettant de constater la révocation.
 // ---------------------------------------------------------------------------
 // Un executant DEJA superutilisateur (le compte d'administration du cluster,
 // `postgres`) n'a rien a elever : la migration assistee passe telle quelle. En
@@ -262,8 +274,9 @@ let dejaSuperuser = false;
   }
 }
 
-// Verrou de CLUSTER : la chaine contient un `ALTER ROLE` (20261028120100). Deux
-// applications concurrentes sur le meme serveur se heurtent en `XX000`.
+// Verrou de coordination : la chaîne crée un rôle PostgreSQL partagé par le
+// cluster et transfère des propriétaires de fonctions. Deux applications
+// concurrentes ne doivent pas tenter ces opérations simultanément.
 const verrou = await verrouillerCluster({ urlProprietaire: url });
 
 /**
@@ -378,22 +391,11 @@ for (const nom of enAttente) {
     console.log(`  appliquee  ${nom}`);
     if (eleve) await revoquerElevation('migration assistée terminée');
     if (assisee && assisee.apres) {
-      // Ratrapage des effets de bord, sur la connexion de migration : c'est le
-      // role de migration qui recoit l'appartenance, pas le role applicatif.
-      // Sur la connexion administrative : PostgreSQL exige, pour accorder une
-      // appartenance AVEC l'option SET, de pouvoir soi-meme endosser le role.
-      // Le role de migration vient de creer `tracefab_worker` mais n'a que
-      // l'option ADMIN — mesuré : « permission denied to grant role ». C'est
-      // donc l'administrateur qui pose cette appartenance, une fois.
+      // Ce hook ne concerne que les migrations futures explicitement
+      // inscrites avec une action "apres" dans MIGRATIONS_ASSISTEES. La chaîne
+      // actuelle n'en contient aucune : la migration worker accorde elle-même
+      // son membership INHERIT/SET et ne doit pas être retraitée ici.
       const sqlApres = assisee.apres.replace(/%ROLE%/g, roleExecutant);
-      // `clientAdmin` est NULL quand l'exécutant est DÉJÀ superutilisateur
-      // (`dejaSuperuser`, branche du 02/11) : il n'y a pas de connexion
-      // d'administration séparée. L'exécutant porte alors lui-même le
-      // privilège exigé par « GRANT … WITH ADMIN OPTION, SET TRUE », et le
-      // rattrapage passe par la connexion de migration. Défaut mesuré le
-      // 02/11 : sans ce repli, la chaîne s'arrêtait en
-      // « Cannot read properties of null (reading 'query') » APRÈS le COMMIT de
-      // la migration, donc sur un état mi-ratricapé.
       await (clientAdmin ?? client).query(sqlApres);
       console.log(`             rattrapage — ${sqlApres}`);
     }

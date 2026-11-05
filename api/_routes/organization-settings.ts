@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '../_lib/vercel-types.js';
 import { requireClerkUser, isUnauthorized } from '../_lib/auth.js';
-import { withTracefabUserContext } from '../_lib/context.js';
+import {withTracefabRequestContext} from '../_lib/context.js';
 import { json, methodNotAllowed, readJsonBody } from '../_lib/http.js';
 import { isTenantError, requireActiveTenant, requestedTenantId } from '../_lib/tenant.js';
 
@@ -24,7 +24,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'GET' && req.method !== 'PUT') return methodNotAllowed(res, ['GET', 'PUT']);
   try {
     const { user } = await requireClerkUser(req);
-    const result = await withTracefabUserContext(user.id, user.email, async (tx) => {
+    const result = await withTracefabRequestContext(req, user, async (tx) => {
       const tenant = await requireActiveTenant(tx, req, user.id,
         req.method === 'PUT' ? { roles: ['owner', 'admin'] } : undefined);
       const latest = await tx.audit_logs.findFirst({
@@ -48,7 +48,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         metadata: { source: 'brand_console', trust: 'organization_configuration' },
       } });
       return { settings };
-    }, requestedTenantId(req));
+    });
     return json(res, 200, result);
   } catch (error: unknown) {
     if (isUnauthorized(error)) return json(res, 401, { error: 'unauthorized' });

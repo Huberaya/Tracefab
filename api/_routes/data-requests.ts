@@ -1,7 +1,7 @@
 import { Prisma } from '@prisma/client';
 import type { VercelRequest, VercelResponse } from '../_lib/vercel-types.js';
 import { requireClerkUser, isUnauthorized } from '.././_lib/auth.js';
-import { withTracefabUserContext } from '.././_lib/context.js';
+import {withTracefabRequestContext} from '.././_lib/context.js';
 import { json, methodNotAllowed, readJsonBody } from '.././_lib/http.js';
 import { sqlBusinessError } from '.././_lib/sql-errors.js';
 import { getSchema } from '.././_lib/schema-catalog.js';
@@ -34,7 +34,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     if (req.method === 'GET') {
       const scope = Array.isArray(req.query.scope) ? req.query.scope[0] : req.query.scope;
-      const requests = await withTracefabUserContext(user.id, user.email, async (tx) => {
+      const requests = await withTracefabRequestContext(req, user, async (tx) => {
         // Locataire actif obligatoire. Le repli precedent listait les demandes
         // de toutes les organisations du compte : un administrateur de deux
         // tenants voyait les demandes de collecte de l'autre.
@@ -60,7 +60,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           select: REQUEST_SELECT,
           orderBy: { last_activity_at: 'desc' },
         });
-      }, activeTenantId(req));
+      });
       return json(res, 200, { requests: requests.map(serializeRequest) });
     }
 
@@ -79,7 +79,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const dueAt = parseDate(body.dueAt, 'due_at');
     const idempotencyKey = optionalString(body.idempotencyKey, 'idempotency_key', 200);
 
-    const request = await withTracefabUserContext(user.id, user.email, async (tx) => {
+    const request = await withTracefabRequestContext(req, user, async (tx) => {
       // La demande est creee POUR le locataire actif. Sans cette garde, un corps
       // portant le brandOrganizationId de l'autre tenant du compte deplacement
       // la creation hors du tenant affiche.
@@ -106,7 +106,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       if (!created) throw new Error('data_request_creation_failed');
       await tx.$queryRaw`SELECT id FROM tracefab_bind_schema(${questionnaireKey}, ${questionnaireVersion}, 'data_request', ${id}::uuid)`;
       return created;
-    }, activeTenantId(req));
+    });
 
     return json(res, 201, { request: serializeRequest(request) });
   } catch (error) {

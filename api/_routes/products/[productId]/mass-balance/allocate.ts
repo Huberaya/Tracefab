@@ -4,6 +4,7 @@ import { withTracefabUserContext } from '../../../../_lib/context.js';
 import { json, methodNotAllowed, readJsonBody } from '../../../../_lib/http.js';
 import { sqlBusinessError } from '../../../../_lib/sql-errors.js';
 import { isUuid } from '../../../../_lib/data-requests.js';
+import { isTenantError, requestedTenantId, resolveActiveTenant } from '../../../../_lib/tenant.js';
 import { allocateTcQuantity } from '../../../../_lib/mass-balance/mass-balance-manager.js';
 
 function routeProductId(req: VercelRequest) {
@@ -38,8 +39,27 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return json(res, 400, { error: 'allocated_weight_kg_must_be_positive' });
     }
 
+    const activeOrganizationId = requestedTenantId(req);
     const allocation = await withTracefabUserContext(user.id, user.email, async (tx) => {
-      return await allocateTcQuantity(tx, {
+      const tenant = await resolveActiveTenant(tx, user.id, activeOrganizationId, {
+        types: ['brand', 'supplier'],
+      });
+      const [product, certificate] = await Promise.all([
+        tx.tracefab_products.findFirst({
+          where: { id: productId, brand_organization_id: tenant.organizationId },
+          select: { id: true },
+        }),
+        tx.transaction_certificates.findFirst({
+          where: { id: tcId, seller_organization_id: tenant.organizationId },
+          select: { id: true },
+        }),
+      ]);
+
+      // Le tenant actif doit être soit la marque du produit, soit le fournisseur
+      // vendeur du TC. La fonction SQL vérifie ensuite le rôle métier précis.
+      if (!product && !certificate) return null;
+
+      return allocateTcQuantity(tx, {
         tcId,
         productId,
         allocatedWeightKg,
@@ -47,8 +67,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         orderId,
         notes,
       });
-    });
+    }, activeOrganizationId);
 
+    if (!allocation) return json(res, 404, { error: 'product_or_certificate_not_found' });
     return json(res, 201, {
       message: 'tc_quantity_allocated',
       allocation,
@@ -56,6 +77,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   } catch (err: unknown) {
     if (isUnauthorized(err)) {
       return json(res, 401, { error: 'unauthorized' });
+    }
+    if (isTenantError(err)) {
+      return json(res, err.status, { error: err.message });
     }
     const sqlError = sqlBusinessError(err);
     if (sqlError) {

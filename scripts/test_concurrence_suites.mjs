@@ -63,7 +63,7 @@ async function maintenance() {
 function lancerSuite(chemin) {
   return new Promise((resoudre) => {
     const p = spawn(process.execPath, [join(RACINE, 'scripts', 'run-db-suite.mjs'), join(RACINE, chemin)],
-      { env: process.env, stdio: 'ignore' });
+      { env: process.env, stdio: 'inherit' });
     p.on('exit', (code) => resoudre(code));
   });
 }

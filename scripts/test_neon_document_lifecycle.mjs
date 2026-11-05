@@ -120,6 +120,7 @@ try {
   /* --- 1-2. visibilite des metadonnees selon l'etat --- */
   await app.query(`SELECT set_config('tracefab.user_id', $1, false)`, [userA]);
   await app.query(`SELECT set_config('tracefab.user_email', $1, false)`, [`dl-a-${suffixe}@example.test`]);
+  await app.query(`SELECT set_config('tracefab.active_organization_id', $1, false)`, [orgA]);
   const vuA = await app.query('SELECT id, status FROM documents WHERE id = $1', [docA]);
   if (vuA.rowCount === 1 && vuA.rows[0].status === 'uploaded') {
     ok('le propriétaire lit son document en état uploaded');
@@ -132,6 +133,7 @@ try {
 
   await app.query(`SELECT set_config('tracefab.user_id', $1, false)`, [userB]);
   await app.query(`SELECT set_config('tracefab.user_email', $1, false)`, [`dl-b-${suffixe}@example.test`]);
+  await app.query(`SELECT set_config('tracefab.active_organization_id', $1, false)`, [orgB]);
   const vuB = await app.query('SELECT id FROM documents WHERE id = $1', [docA]);
   if (vuB.rowCount === 0) ok("un autre locataire ne lit pas le document de A");
   else ko('un autre locataire lit le document de A — fuite inter-locataires');
@@ -147,6 +149,7 @@ try {
 
   await app.query(`SELECT set_config('tracefab.user_id', '', false)`);
   await app.query(`SELECT set_config('tracefab.user_email', '', false)`);
+  await app.query(`SELECT set_config('tracefab.active_organization_id', '', false)`);
   await expectError(
     () => app.query(
       `SELECT * FROM tracefab_finalize_document_upload($1::uuid, repeat('a', 64), true, 2048::bigint)`,
@@ -157,6 +160,7 @@ try {
   /* --- 6. verdicts fail-closed --- */
   await app.query(`SELECT set_config('tracefab.user_id', $1, false)`, [userA]);
   await app.query(`SELECT set_config('tracefab.user_email', $1, false)`, [`dl-a-${suffixe}@example.test`]);
+  await app.query(`SELECT set_config('tracefab.active_organization_id', $1, false)`, [orgA]);
 
   const rej = await app.query(
     `SELECT * FROM tracefab_finalize_document_upload($1::uuid, '', false, 2048::bigint)`, [docA]);
@@ -187,6 +191,7 @@ try {
   /* --- 8. sha256 : format hexadecimal strict (non-regression 2C.38) --- */
   await app.query(`SELECT set_config('tracefab.user_id', $1, false)`, [userA]);
   await app.query(`SELECT set_config('tracefab.user_email', $1, false)`, [`dl-a-${suffixe}@example.test`]);
+  await app.query(`SELECT set_config('tracefab.active_organization_id', $1, false)`, [orgA]);
   const docHash = randomUUID();
   await proprio.query(
     `INSERT INTO documents (id, owner_organization_id, storage_bucket, storage_path,
@@ -325,6 +330,7 @@ try {
     `ALTER FUNCTION tracefab_finalize_document_upload(UUID, TEXT, BOOLEAN, BIGINT) OWNER TO tracefab_app`);
   await app.query(`SELECT set_config('tracefab.user_id', '', false)`);
   await app.query(`SELECT set_config('tracefab.user_email', '', false)`);
+  await app.query(`SELECT set_config('tracefab.active_organization_id', '', false)`);
   await expectError(
     () => app.query(
       `SELECT * FROM tracefab_finalize_document_upload($1::uuid, repeat('d', 64), true, 1024::bigint)`,
@@ -359,12 +365,24 @@ try {
   const acl = (await proprio.query(
     `SELECT has_function_privilege('public', 'tracefab_finalize_document_upload(uuid,text,boolean,bigint)', 'EXECUTE') AS pub,
             has_function_privilege('tracefab_app', 'tracefab_finalize_document_upload(uuid,text,boolean,bigint)', 'EXECUTE') AS app,
+            has_table_privilege('tracefab_app', 'documents', 'INSERT') AS app_insert,
+            has_table_privilege('tracefab_app', 'documents', 'UPDATE') AS app_update,
+            has_table_privilege('tracefab_app', 'documents', 'DELETE') AS app_delete,
+            has_column_privilege('tracefab_app', 'documents', 'status', 'UPDATE') AS app_update_status,
+            has_column_privilege('tracefab_app', 'documents', 'metadata', 'UPDATE') AS app_update_metadata,
+            has_column_privilege('tracefab_app', 'documents', 'id', 'INSERT') AS app_insert_id,
             has_table_privilege('tracefab_app', 'documents', 'TRUNCATE') AS app_truncate,
             has_table_privilege(current_user, 'documents', 'TRUNCATE') AS proprio_truncate`)).rows[0];
   if (acl.pub === false) ok('EXECUTE de la finalisation non accorde a PUBLIC');
   else ko('PUBLIC peut executer la finalisation');
   if (acl.app === true) ok('EXECUTE accorde au role applicatif (parcours de scan)');
   else ko('le role applicatif ne peut plus executer la finalisation — parcours de scan casse');
+  if (acl.app_insert === false && acl.app_update === false && acl.app_delete === false
+      && acl.app_update_status === false && acl.app_update_metadata === false && acl.app_insert_id === false) {
+    ok('aucun droit table ou colonne INSERT/UPDATE/DELETE ne subsiste sur documents');
+  } else {
+    ko(`droits directs residuels sur documents : ${JSON.stringify(acl)}`);
+  }
   if (acl.app_truncate === false) ok('le role applicatif ne detient pas TRUNCATE sur documents (voie exploitation fermee)');
   else ko('le role applicatif detient TRUNCATE sur documents — preuve de privilege trafiquee');
   if (acl.proprio_truncate === true) ok('le proprietaire detient TRUNCATE (chemin exploitation utilisable en exploitation)');
@@ -373,6 +391,7 @@ try {
   /* --- les documents de A restent invisibles pour B après finalisation --- */
   await app.query(`SELECT set_config('tracefab.user_id', $1, false)`, [userB]);
   await app.query(`SELECT set_config('tracefab.user_email', $1, false)`, [`dl-b-${suffixe}@example.test`]);
+  await app.query(`SELECT set_config('tracefab.active_organization_id', $1, false)`, [orgB]);
   const cache = await app.query('SELECT id FROM documents WHERE owner_organization_id = $1', [orgA]);
   if (cache.rowCount === 0) ok('aucun document de A visible pour B, tout état confondu');
   else ko(`B voit ${cache.rowCount} document(s) de A`);
@@ -403,6 +422,7 @@ try {
 
   await app.query(`SELECT set_config('tracefab.user_id', $1, false)`, [userA]);
   await app.query(`SELECT set_config('tracefab.user_email', $1, false)`, [`dl-a-${suffixe}@example.test`]);
+  await app.query(`SELECT set_config('tracefab.active_organization_id', $1, false)`, [orgA]);
 
   const bascule = async (doc) => (await app.query(
     'SELECT status FROM tracefab_mark_document_scanning($1::uuid)', [doc])).rows[0]?.status;
@@ -438,6 +458,7 @@ try {
   // Autre locataire : refus.
   await app.query(`SELECT set_config('tracefab.user_id', $1, false)`, [userB]);
   await app.query(`SELECT set_config('tracefab.user_email', $1, false)`, [`dl-b-${suffixe}@example.test`]);
+  await app.query(`SELECT set_config('tracefab.active_organization_id', $1, false)`, [orgB]);
   const docNeuf = randomUUID();
   await proprio.query(
     `INSERT INTO documents (id, owner_organization_id, storage_bucket, storage_path,
@@ -454,7 +475,7 @@ try {
     ko(`bascule acceptee pour un autre locataire — etat ${etat}`);
   } catch (e) {
     const m = String(e.message);
-    if (m.includes('document_not_found') || m.includes('document_scan_role_required')) {
+    if (m.includes('active_tenant_mismatch') || m.includes('document_not_found') || m.includes('document_scan_role_required')) {
       ok('bascule refusee pour un autre locataire');
     } else {
       ko(`bascule pour un autre locataire — erreur inattendue : ${m}`);
@@ -467,6 +488,7 @@ try {
   // Role insuffisant dans la bonne organisation : refus explicite.
   await app.query(`SELECT set_config('tracefab.user_id', $1, false)`, [userViewer]);
   await app.query(`SELECT set_config('tracefab.user_email', $1, false)`, [`dl-v-${suffixe}@example.test`]);
+  await app.query(`SELECT set_config('tracefab.active_organization_id', $1, false)`, [orgA]);
   await expectError(() => bascule(docNeuf), 'document_scan_role_required',
     'bascule refusee pour un membre viewer');
 
@@ -478,6 +500,7 @@ try {
   // Le role applicatif n'a plus aucun droit d'ecriture direct, meme drapeau pose.
   await app.query(`SELECT set_config('tracefab.user_id', $1, false)`, [userA]);
   await app.query(`SELECT set_config('tracefab.user_email', $1, false)`, [`dl-a-${suffixe}@example.test`]);
+  await app.query(`SELECT set_config('tracefab.active_organization_id', $1, false)`, [orgA]);
   await app.query(`SELECT set_config('tracefab.internal_document_update', 'true', false)`);
   await expectError(
     () => app.query(`UPDATE documents SET status = 'available' WHERE id = $1`, [docNeuf]),

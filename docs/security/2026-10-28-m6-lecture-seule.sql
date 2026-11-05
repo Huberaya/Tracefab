@@ -174,14 +174,20 @@ SELECT p.proname,
    AND acl.privilege_type = 'EXECUTE'
  ORDER BY 1;
 
--- Fonctions exécutables par le rôle runtime mais absent du registre
-SELECT p.proname
-  FROM pg_catalog.pg_proc p
-  JOIN pg_catalog.pg_namespace n ON n.oid = p.pronamespace
- WHERE n.nspname = 'public'
-   AND has_function_privilege('tracefab_app', p.oid, 'EXECUTE')
-   AND NOT EXISTS (SELECT 1 FROM public.tracefab_runtime_function_registry r WHERE r.name = p.proname)
- ORDER BY 1;
+-- Le registre runtime est introduit par une migration encore en attente
+-- sur l'etat de production du 04/11/2026. Ne pas le referencer directement :
+-- une relation absente ferait avorter toute la transaction READ ONLY.
+SELECT to_regclass('public.tracefab_runtime_function_registry') AS registre_runtime;
+-- Apres application de la migration du registre, lancer ce controle optionnel :
+-- SELECT p.proname
+--   FROM pg_catalog.pg_proc p
+--   JOIN pg_catalog.pg_namespace n ON n.oid = p.pronamespace
+--  WHERE n.nspname = 'public'
+--    AND has_function_privilege('tracefab_app', p.oid, 'EXECUTE')
+--    AND NOT EXISTS (
+--      SELECT 1 FROM public.tracefab_runtime_function_registry r WHERE r.name = p.proname
+--    )
+--  ORDER BY 1;
 
 -- Privilèges par défaut : ce qu'un futur objet recevra sans attention
 SELECT pg_catalog.pg_get_userbyid(d.defaclrole) AS role_emetteur,
@@ -197,12 +203,26 @@ SELECT pg_catalog.pg_get_userbyid(d.defaclrole) AS role_emetteur,
 -- ----------------------------------------------------------------------------
 -- 5. Contrôles de cohérence attendu/observé (à lire, pas à croire)
 -- ----------------------------------------------------------------------------
--- Le rôle runtime exécute-t-il encore les fonctions du registre ?
-SELECT (SELECT count(*) FROM public.tracefab_runtime_function_registry) AS registre,
-       (SELECT count(*) FROM pg_catalog.pg_proc p
+-- Le role runtime et le registre (eventuellement absent avant migration).
+-- Distinguer EXECUTE explicite, EXECUTE via PUBLIC et privilege effectif.
+SELECT to_regclass('public.tracefab_runtime_function_registry') AS registre_runtime,
+       (SELECT count(DISTINCT p.oid)
+          FROM pg_catalog.pg_proc p
+          JOIN pg_catalog.pg_namespace n ON n.oid = p.pronamespace
+          CROSS JOIN LATERAL pg_catalog.aclexplode(coalesce(p.proacl, pg_catalog.acldefault('f', p.proowner))) acl
+         WHERE n.nspname = 'public'
+           AND acl.grantee = (SELECT oid FROM pg_catalog.pg_roles WHERE rolname = 'tracefab_app')
+           AND acl.privilege_type = 'EXECUTE') AS execute_app_explicite,
+       (SELECT count(DISTINCT p.oid)
+          FROM pg_catalog.pg_proc p
+          JOIN pg_catalog.pg_namespace n ON n.oid = p.pronamespace
+          CROSS JOIN LATERAL pg_catalog.aclexplode(coalesce(p.proacl, pg_catalog.acldefault('f', p.proowner))) acl
+         WHERE n.nspname = 'public' AND acl.grantee = 0 AND acl.privilege_type = 'EXECUTE') AS execute_public,
+       (SELECT count(*)
+          FROM pg_catalog.pg_proc p
           JOIN pg_catalog.pg_namespace n ON n.oid = p.pronamespace
          WHERE n.nspname = 'public'
-           AND has_function_privilege('tracefab_app', p.oid, 'EXECUTE')) AS executables_par_app;
+           AND has_function_privilege('tracefab_app', p.oid, 'EXECUTE')) AS execute_app_effectif;
 
 -- Rôles qui peuvent lire une table sous FORCE RLS sans passer par elle
 SELECT rolname, rolbypassrls, rolsuper
@@ -263,12 +283,14 @@ SELECT current_user AS role_session,
 --    de lecture — les requêtes suivantes seraient alors toutes ignorées. Placé
 --    en dernier, il ne peut donc pas masquer les relevés précédents.
 -- ----------------------------------------------------------------------------
-SELECT count(*)                                     AS migrations_appliquees,
-       max(migration_name)                          AS derniere_par_ordre_alphabetique,
-       max(finished_at)                             AS derniere_execution,
-       count(*) FILTER (WHERE finished_at IS NULL)  AS terminees_sans_horodatage,
-       count(*) FILTER (WHERE rolled_back_at IS NOT NULL) AS annulees,
-       count(*) FILTER (WHERE applied_steps_count = 0)    AS sans_etape
+SELECT count(*) AS lignes_historique,
+       count(*) FILTER (WHERE finished_at IS NOT NULL AND rolled_back_at IS NULL) AS migrations_reussies,
+       max(migration_name) AS derniere_par_ordre_alphabetique,
+       max(finished_at) AS derniere_execution,
+       count(*) FILTER (WHERE finished_at IS NULL AND rolled_back_at IS NULL) AS inachevees_actives,
+       count(*) FILTER (WHERE rolled_back_at IS NOT NULL) AS tentatives_annulees,
+       count(*) FILTER (WHERE finished_at IS NULL AND rolled_back_at IS NOT NULL) AS annulees_sans_fin,
+       count(*) FILTER (WHERE applied_steps_count = 0) AS sans_etape
   FROM public._prisma_migrations;
 
 SELECT migration_name,
@@ -282,8 +304,13 @@ SELECT migration_name,
  ORDER BY started_at DESC
  LIMIT 15;
 
--- Échecs éventuels : une migration commencée et non terminée est un incident.
-SELECT migration_name, started_at, finished_at, applied_steps_count, left(coalesce(logs, ''), 400) AS extrait_journal
+-- Tentatives annulees et migrations encore inachevees : distinguer les deux.
+SELECT migration_name,
+       CASE WHEN rolled_back_at IS NOT NULL THEN 'tentative_annulee'
+            WHEN finished_at IS NULL THEN 'inachevee_active'
+            ELSE 'terminee' END AS statut,
+       started_at, finished_at, rolled_back_at, applied_steps_count,
+       left(coalesce(logs, ''), 400) AS extrait_journal
   FROM public._prisma_migrations
  WHERE finished_at IS NULL OR rolled_back_at IS NOT NULL
  ORDER BY started_at DESC;
@@ -329,7 +356,7 @@ ROLLBACK;
 --   G. Le proprietaire de la base et des tables porte `rolbypassrls` : il
 --      contourne donc la RLS en tant que proprietaire. Ce n'est PAS une posture
 --      sure, et ce n'est pas non plus un attribut a retirer a l'aveugle : la
---      chaine de migrations exige aujourd'hui un proprietaire superutilisateur
---      (mesure du tour 23). Tant que ce n'est pas corrige et valide, l'attribut
---      reste.
+--      chaine de migrations exige aujourd'hui un proprietaire avec BYPASSRLS et
+--      CREATEROLE pour le bootstrap du role worker ; SUPERUSER n'est pas requis.
+--      Tant que ce n'est pas corrige et valide, l'attribut reste.
 -- ============================================================================

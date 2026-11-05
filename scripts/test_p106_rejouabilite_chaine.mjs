@@ -16,19 +16,16 @@
  * La correction vit dans l'OUTIL (`preparerAppartenance`), pas dans la
  * migration publiée. Ce test vérifie les deux :
  *
- *   R1  registre : toute entrée qui accorde une appartenance (`apres`) doit
- *       fournir un bloc `avant`, sinon la chaîne n'est rejouable qu'une fois
- *       par cluster ;
- *   R2  registre : le bloc `avant` ne peut pas révoquer le rôle exécutant
- *       lui-même, et il borne les membres qu'il retire à un motif ;
- *   R3  `preparerAppartenance` est idempotente (deux appels, même état) ;
- *   R4  elle RÉVOQUE un membre `tracefab_*` hors périmètre, et le cluster
- *       revient à l'état attendu ;
- *   R5  elle LÈVE sur un membre étranger au lieu de le retirer en silence ;
- *   R6  la chaîne complète s'applique sur une base VIERGE d'un cluster où elle
- *       s'est déjà appliquée ailleurs — c'est la mesure du défaut D5 ;
- *   R7  la base de travail est détruite, l'appartenance finale est conforme
- *       (exécutant membre, `tracefab_app` membre de rien, aucun `tf_*`).
+ *   R1/R2 le registre d'assistance est fermé : aucune migration actuelle ne
+ *       demande une élévation SUPERUSER ni un bloc de préparation ;
+ *   R3  `preparerAppartenance` reste strictement inerte hors registre et ne
+ *       révoque aucune appartenance cluster-wide ;
+ *   R6  la chaîne complète s'applique sur une base VIERGE d'un cluster déjà
+ *       migré, en endossant le même rôle dédié `tracefab_migrator` ;
+ *   R7  la base de travail est détruite ; le seul membre non-superuser de
+ *       `tracefab_worker` est `tracefab_migrator` (un administrateur SUPERUSER
+ *       préexistant du cluster partagé reste toléré) ; `tracefab_app` reste
+ *       sans appartenance et aucun rôle runtime n'est élevé.
  *
  * Sortie : 0 conforme · 1 régression · 2 non exécuté · 3 refus de cible.
  */
@@ -40,6 +37,7 @@ import { sslDepuisUrl } from './lib/pg-ssl.mjs';
 import { verrouillerCluster } from './lib/ephemeral-db.mjs';
 import { MIGRATIONS_ASSISTEES, exigeAssistance, preparerAppartenance } from './lib/migrations_assistees.mjs';
 import { fonctionsCibles, propriétairesInjoignables } from './lib/preflight_proprietaires.mjs';
+import { ROLE_MIGRATOR } from './lib/tracefab_roles.mjs';
 
 const urlAdmin = (process.env.DATABASE_URL || '').trim();
 if (!urlAdmin) {
@@ -92,100 +90,46 @@ ok(exigeAssistance('ce_nom_n_existe_pas') === false,
   'R2 une migration hors registre n est PAS assistée (pas de bascule silencieuse)');
 
 // ---------------------------------------------------------------------------
-// R3/R4/R5 — comportement de la préparation, sur le cluster réel
+// R3 — aucune migration de la chaîne n'est assistée : le helper doit rester
+// strictement inerte. L'élévation est refusée par défaut et aucune appartenance
+// de rôle n'est retirée implicitement.
 // ---------------------------------------------------------------------------
 const admin = new pg.Client({ connectionString: urlAdmin, ssl: sslDepuisUrl(urlAdmin), application_name: 'tracefab-p106-rejouable' });
 await admin.connect();
 
-const nomAssistee = Object.keys(MIGRATIONS_ASSISTEES).find((n) => MIGRATIONS_ASSISTEES[n].avant);
-console.log('  -- préparation d appartenance');
-let rolesSondes = [];
-try {
-  if (!nomAssistee) {
-    ok(false, 'R3 aucune migration assistée avec bloc « avant » à mesurer');
-  } else {
-    const cible = MIGRATIONS_ASSISTEES[nomAssistee].avant.appartenance;
-    const etat = async () => (await admin.query(
-      `SELECT r.rolname FROM pg_catalog.pg_auth_members m
-         JOIN pg_catalog.pg_roles r ON r.oid = m.member
-         JOIN pg_catalog.pg_roles c ON c.oid = m.roleid
-        WHERE c.rolname = $1 ORDER BY 1`, [cible])).rows.map((r) => r.rolname);
+console.log('  -- assistance administrative : aucune migration assistée');
+ok(Object.keys(MIGRATIONS_ASSISTEES).length === 0,
+  'R3 le registre des migrations assistées reste vide (aucune élévation SUPERUSER)');
+ok(exigeAssistance('20261028120100_worker_identity_not_forgeable') === false,
+  'R3 la migration worker s exécute sans assistance administrative');
 
-    const r3a = await preparerAppartenance(admin, nomAssistee, roleExecutant);
-    const etatA = await etat();
-    const r3b = await preparerAppartenance(admin, nomAssistee, roleExecutant);
-    const etatB = await etat();
-    ok(JSON.stringify(etatA) === JSON.stringify(etatB),
-      'R3 preparerAppartenance est idempotente (second appel sans effet)',
-      `premier=${r3a.revoques.length} révoqué(s) · second=${r3b.revoques.length}`);
-    ok(etatB.every((m) => m === roleExecutant),
-      'R3 après préparation, seul l exécutant peut rester membre (rien d autre n est épargné)',
-      etatB.join(', ') || 'aucun membre');
-
-    // R4 : on pose deux membres `tracefab_*` de sonde, la préparation doit les retirer.
-    // Le motif du registre n accepte que des minuscules et des soulignés :
-    // la sonde doit rester dans le périmètre, sinon elle mesure le refus (R5).
-    const lettres = () => randomBytes(3).toString('hex').replace(/[0-9]/g, (d) => 'abcdefghij'[Number(d)]);
-    for (const suffixe of ['a', 'b']) {
-      const nom = `tracefab_sonde_${suffixe}_${lettres()}`;
-      await admin.query(`CREATE ROLE ${nom}`);
-      await admin.query(`GRANT ${cible} TO ${nom}`);
-      rolesSondes.push(nom);
-    }
-    const avant = await etat();
-    const r4 = await preparerAppartenance(admin, nomAssistee, roleExecutant);
-    const apres = await etat();
-    ok(!apres.some((m) => rolesSondes.includes(m)) && r4.revoques.length >= 2,
-      'R4 les membres tracefab_* hors périmètre sont révoqués (chaîne rejouable)',
-      `avant=${avant.join(',')} · après=${apres.join(',') || 'aucun'}`);
-
-    // R4 bis (P10.7) : un membre SUPERUSER est RETIRÉ sans refus.
-    //
-    // Mesuré le 02/11 : sur un cluster partagé, `apres` avait accordé
-    // `tracefab_worker` à `postgres` lors d'une exécution précédente. La
-    // préparation, qui ne retirait que les rôles `tracefab_*`, refusait alors la
-    // chaîne au rang 61 — pour un rôle dont l'appartenance n'est PAS une
-    // frontière de privilège (il peut tout s'accorder lui-même). Le retirer
-    // n'ôte aucune capacité ; le garder rendait la chaîne non rejouable.
-    const superRole = `p107_super_${randomBytes(3).toString('hex')}`;
-    await admin.query(`CREATE ROLE ${superRole} SUPERUSER`);
-    await admin.query(`GRANT ${cible} TO ${superRole}`);
-    rolesSondes.push(superRole);
-    let refusSuper = null;
-    let revoqueSuper = [];
-    try {
-      revoqueSuper = (await preparerAppartenance(admin, nomAssistee, roleExecutant)).revoques;
-    } catch (e) {
-      refusSuper = e.message;
-    }
-    ok(refusSuper === null && revoqueSuper.includes(superRole),
-      'R4 bis un membre SUPERUSER est retiré sans refus (son appartenance n est pas une frontière)',
-      refusSuper || `révoqué : ${revoqueSuper.join(', ') || 'aucun'}`);
-
-    // R5 : un membre étranger doit FAIRE ÉCHOUER la préparation.
-    const etranger = `p106_etranger_${randomBytes(2).toString('hex')}`;
-    await admin.query(`CREATE ROLE ${etranger}`);
-    await admin.query(`GRANT ${cible} TO ${etranger}`);
-    rolesSondes.push(etranger);
-    let leve = false;
-    let message = '';
-    try {
-      await preparerAppartenance(admin, nomAssistee, roleExecutant);
-    } catch (e) {
-      leve = true;
-      message = (e.message || '').slice(0, 60);
-    }
-    ok(leve, 'R5 un membre étranger fait ÉCHOUER la préparation au lieu d être retiré', message || 'aucune erreur');
-    const toujours = (await etat()).includes(etranger);
-    ok(toujours, 'R5 le membre étranger est CONSERVÉ (on ne révoque pas ce qu on n a pas accordé)', etranger);
-  }
-} finally {
-  // Purge des rôles de sonde : d'abord leurs appartenances, puis le rôle.
-  for (const nom of rolesSondes) {
-    await admin.query(`DROP OWNED BY ${nom}`).catch(() => {});
-    await admin.query(`DROP ROLE IF EXISTS ${nom}`).catch(() => {});
-  }
-}
+const membresAvant = (await admin.query(
+  `SELECT grantor.rolname AS grantor, member.rolname AS member,
+          granted.rolname AS granted, m.admin_option, m.inherit_option, m.set_option
+     FROM pg_catalog.pg_auth_members m
+     JOIN pg_catalog.pg_roles grantor ON grantor.oid=m.grantor
+     JOIN pg_catalog.pg_roles member ON member.oid=m.member
+     JOIN pg_catalog.pg_roles granted ON granted.oid=m.roleid
+    WHERE granted.rolname='tracefab_worker'
+    ORDER BY 1,2,3,4,5,6`,
+)).rows;
+const preparation = await preparerAppartenance(
+  admin, '20261028120100_worker_identity_not_forgeable', ROLE_MIGRATOR,
+);
+const membresApres = (await admin.query(
+  `SELECT grantor.rolname AS grantor, member.rolname AS member,
+          granted.rolname AS granted, m.admin_option, m.inherit_option, m.set_option
+     FROM pg_catalog.pg_auth_members m
+     JOIN pg_catalog.pg_roles grantor ON grantor.oid=m.grantor
+     JOIN pg_catalog.pg_roles member ON member.oid=m.member
+     JOIN pg_catalog.pg_roles granted ON granted.oid=m.roleid
+    WHERE granted.rolname='tracefab_worker'
+    ORDER BY 1,2,3,4,5,6`,
+)).rows;
+ok(preparation.revoques.length === 0
+  && JSON.stringify(membresAvant) === JSON.stringify(membresApres),
+  'R3 preparerAppartenance ne modifie aucune appartenance hors registre',
+  `avant=${membresAvant.length} ligne(s) · après=${membresApres.length} ligne(s)`);
 
 // ---------------------------------------------------------------------------
 // R8 — préflight de PROPRIÉTÉ des fonctions visées (défaut D6, mesuré)
@@ -267,13 +211,68 @@ try {
   ok(bootstrap.status === 0, 'R6 rôle applicatif disponible avant la chaîne',
     (bootstrap.stderr || bootstrap.stdout || '').trim().split('\n').pop() || `code ${bootstrap.status}`);
 
+  // Le rôle migrateur est cluster-wide mais CREATE sur public est propre à
+  // chaque base. Le runner endosse ce rôle via SET ROLE ; on lui accorde donc
+  // le droit minimal sur cette base jetable, sans toucher aux autres bases.
+  const migratorAdmin = new pg.Client({
+    connectionString: urlBase.toString(),
+    ssl: sslDepuisUrl(urlBase.toString()),
+  });
+  await migratorAdmin.connect();
+  try {
+    const roleExists = (await migratorAdmin.query(
+      "SELECT EXISTS (SELECT 1 FROM pg_catalog.pg_roles WHERE rolname = $1) AS ok",
+      [ROLE_MIGRATOR],
+    )).rows[0].ok;
+    const databaseName = decodeURIComponent(urlBase.pathname.slice(1));
+    if (!/^[a-z0-9_]+$/.test(databaseName)) {
+      throw new Error('Nom de base jetable invalide pour le GRANT de migration.');
+    }
+    if (roleExists) {
+      // Le runner endosse tracefab_migrator via SET ROLE. Sur une base
+      // PostgreSQL 17 neuve, public appartient à pg_database_owner : CREATE
+      // seul ne permet pas à la première migration de GRANT USAGE sur le
+      // schéma. On reproduit l'état Neon (le rôle de migration possède public)
+      // uniquement dans cette base jetable.
+      await migratorAdmin.query(`GRANT CREATE ON DATABASE "${databaseName}" TO tracefab_migrator`);
+      await migratorAdmin.query(`ALTER SCHEMA public OWNER TO "${ROLE_MIGRATOR}"`);
+      await migratorAdmin.query('GRANT CREATE ON SCHEMA public TO tracefab_migrator');
+    }
+    const canCreateDb = roleExists && (await migratorAdmin.query(
+      "SELECT has_database_privilege($1, $2, 'CREATE') AS ok",
+      [ROLE_MIGRATOR, databaseName],
+    )).rows[0].ok;
+    const canCreateSchema = roleExists && (await migratorAdmin.query(
+      "SELECT has_schema_privilege($1, 'public', 'CREATE') AS ok",
+      [ROLE_MIGRATOR],
+    )).rows[0].ok;
+    const schemaOwner = (await migratorAdmin.query(
+      "SELECT pg_catalog.pg_get_userbyid(nspowner) AS owner FROM pg_catalog.pg_namespace WHERE nspname='public'",
+    )).rows[0]?.owner;
+    const ownsSchema = schemaOwner === ROLE_MIGRATOR;
+    ok(canCreateDb && canCreateSchema && ownsSchema,
+      'R6 le migrateur possède public et dispose de CREATE sur la base jetable',
+      `database=${canCreateDb} · schemaCreate=${canCreateSchema} · schemaOwner=${schemaOwner} · role=${roleExists}`);
+  } finally {
+    await migratorAdmin.end();
+  }
+
   const chaine = spawnSync(process.execPath, ['scripts/migrer_fidelement.mjs'], {
-    env: { ...process.env, DATABASE_URL: urlBase.toString(), TF_ALLOW_WRITE: 'oui' },
+    env: { ...process.env, DATABASE_URL: urlBase.toString(), TF_ALLOW_WRITE: 'oui', TF_MIGRATION_ROLE: ROLE_MIGRATOR },
     encoding: 'utf8',
+    // La chaîne complète peut produire beaucoup de NOTICE PostgreSQL. Sans
+    // borne explicite, spawnSync coupe à 1 Mio et renvoie status=null, ce qui
+    // masque la vraie erreur derrière une simple assertion R6.
+    maxBuffer: 16 * 1024 * 1024,
   });
   const sortie = `${chaine.stdout || ''}${chaine.stderr || ''}`.trim().split('\n');
-  ok(chaine.status === 0, 'R6 la chaîne s applique sur une base neuve d un cluster déjà migré (défaut D5)',
-    chaine.status === 0 ? sortie.filter((l) => /appliquee\(s\)/.test(l)).pop() : sortie.filter((l) => /ECHEC/.test(l)).slice(-1)[0]);
+  const diagnostic = chaine.status === 0
+    ? sortie.filter((l) => /appliquee\(s\)/.test(l)).pop()
+    : [
+      chaine.error ? `spawn=${chaine.error.code || chaine.error.name}: ${chaine.error.message}` : `code=${chaine.status} signal=${chaine.signal || 'aucun'}`,
+      sortie.filter((l) => /ECHEC|REFUS|ERROR|permission denied|not exist/i.test(l)).slice(-3).join(' | '),
+    ].filter(Boolean).join(' — ').slice(0, 600);
+  ok(chaine.status === 0, 'R6 la chaîne s applique sur une base neuve d un cluster déjà migré (défaut D5)', diagnostic);
 
   const client = new pg.Client({ connectionString: urlBase.toString(), ssl: sslDepuisUrl(urlBase.toString()) });
   await client.connect();
@@ -283,13 +282,15 @@ try {
     ok(appliquees >= 60, 'R6 toutes les migrations sont appliquées', `${appliquees} migration(s)`);
 
     const membres = (await client.query(
-      `SELECT r.rolname FROM pg_catalog.pg_auth_members m
+      `SELECT DISTINCT r.rolname, r.rolsuper FROM pg_catalog.pg_auth_members m
          JOIN pg_catalog.pg_roles r ON r.oid = m.member
          JOIN pg_catalog.pg_roles c ON c.oid = m.roleid
-        WHERE c.rolname = 'tracefab_worker' ORDER BY 1`)).rows.map((r) => r.rolname);
-    ok(membres.length === 1 && membres[0] === roleExecutant,
-      'R7 appartenance finale conforme : seul l exécutant est membre de tracefab_worker',
-      membres.join(', ') || 'aucun');
+        WHERE c.rolname = 'tracefab_worker' ORDER BY 1`)).rows;
+    const membresNonSuper = membres.filter((r) => !r.rolsuper);
+    ok(membresNonSuper.length === 1 && membresNonSuper[0].rolname === ROLE_MIGRATOR
+      && membres.every((r) => r.rolsuper || r.rolname === ROLE_MIGRATOR),
+      'R7 seul le rôle migrateur non-superuser est membre ; tout membre supplémentaire doit être SUPERUSER',
+      membres.map((r) => `${r.rolname}:${r.rolsuper ? 'SUPER' : 'non-super'}`).join(', ') || 'aucun');
 
     const appMembre = (await client.query(
       `SELECT count(*)::int AS n FROM pg_catalog.pg_auth_members m

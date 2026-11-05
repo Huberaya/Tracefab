@@ -79,6 +79,9 @@ jobs:
         # provoquer aucune requete metier.
         run: npm run test:active-tenant
 
+      - name: Contrat des routes sensibles au tenant actif
+        run: npm run test:active-tenant:routes
+
       - name: Commentaires de fin de ligne dans les routes compactees
         # Un commentaire `//` dans une route ecrite sur une ligne met en
         # commentaire tout le handler, sans erreur de compilation.
@@ -187,23 +190,22 @@ jobs:
         run: npm run test:reconciliation-historique
 
       - name: Releve M6 executable et inoffensif
-        # Le script de diagnostic de production doit s executer sur le schema
-        # complet (63 migrations, PGlite) et ne rien modifier. Un releve jamais
-        # execute n est pas un diagnostic.
+        # Le script de diagnostic s’exécute sur les 70 migrations et sur un historique
+        # synthétique calqué sur Neon : 56 réussies, 2 tentatives annulées,
+        # 13 absentes, zéro inachevée. Il vérifie aussi l’innocuité READ ONLY.
         run: npm run test:diagnostic-m6
 
       - name: Correctif supplier_portal — defaut reproduit puis corrige
-        # La production refuse l invitation d un owner portant un relationship_id.
-        # Ce test reproduit le refus sur l etat de production, applique la
-        # migration corrective, verifie la non-regression (owner sans relation
-        # reste refuse) et l idempotence, et controle qu aucun GRANT n est ajoute.
+        # Le catalogue actuel accepte déjà un owner avec relationship_id, mais ne vérifie
+        # pas encore que la relation cible ce fournisseur et n’est pas terminée.
+        # Le test reproduit l’état avant 28140000 puis valide la correction de scope.
         run: npm run test:supplier-invitation-corrective
 
       - name: Divergences d empreinte — effet reel mesure
-        # Trois migrations ont une empreinte de production differente du depot.
-        # Une empreinte ne dit pas si le schema differe : ce test rejoue les deux
-        # versions et compare ce que la base produit reellement (regle d
-        # autorisation, GRANT conditionnel, objets RLS de reference).
+        # Deux fichiers historiques ont été restaurés exactement. Le checksum PLM reste
+        # une variance d'audit épinglée aux deux empreintes exactes. Le test vérifie
+        # que seule cette paire est admise comme non bloquante pour migrate deploy
+        # et que toute modification supplémentaire invalide immédiatement l'exception.
         run: npm run test:divergences-migrations
 
       - name: Migrations hors bande — deux chemins, meme schema
@@ -219,54 +221,23 @@ jobs:
         run: npm run test:migrations:hors-bande
 
       - name: Derive PLM/ERP — politique permissive reproduite puis retiree
-        # La production portait deux politiques supplementaires sur
-        # `plm_erp_sync_jobs` ; PostgreSQL combinant les politiques permissives
-        # par OR, l une d elles elargissait l insertion a `contributor`. Ce test
-        # monte le schema reduit qui reproduit la combinaison, verifie que
-        # `contributor` passe avant et echoue apres, et que `manager` passe dans
-        # les deux cas.
+        # Reproduction synthétique de l’ancien état à quatre politiques permissives.
+        # Le relevé Neon du 04/11 montre désormais deux politiques canoniques en
+        # Production ; ce test vérifie le comportement avant/après sur un fixture.
         run: npm run test:plm-erp-convergence
 
       - name: Derive PLM/ERP — la migration sur la chaine reelle
-        # Le test precedent utilise un schema ecrit a la main. Celui-ci rejoue la
-        # chaine complete, recree la derive sur la vraie table, applique la
-        # migration et verifie que seules les deux politiques canoniques
-        # subsistent, inchangees, avec RLS forcee et rejeu sans erreur.
+        # Le test rejoue la chaîne complète et injecte un état synthétique à quatre
+        # politiques avant d’appliquer la normalisation ; le catalogue réel
+        # Production est déjà à deux politiques canoniques.
         run: npm run test:plm-erp-convergence:chaine
 
-      - name: Deploiement simule — la sequence des onze, son point de rupture
-        # Etablit par deduction que les effets de 20261017120000 sont presents en
-        # production (20261021120000 y est appliquee et EXIGE ses trois fonctions),
-        # puis simule le deploy des onze et l'echec injecte sur le registre.
-        run: npm run test:deploiement-simule
-
-      - name: Matrice des migrations — le decompte est recalcule, pas recopie
-        # Echoue si le depot ne contient plus 65 migrations, si l'arithmetique
-        # (appliquees + annulees + absentes) ne ferme plus, si une migration
-        # citee comme en ecart disparait, ou si un CINQUIEME prefixe
-        # d'horodatage en double apparait. Les quatre paires preexistantes sont
-        # declarees dans le script : c'est la collision non declaree qui a mis
-        # la CI en echec le 28/10.
-        run: npm run matrice:migrations
-
-      - name: Reconciliation de l historique — les deux options, comparees
-        # Option A (deploy direct) et option B (resolve --applied sur preuve,
-        # puis deploy) sont executees sur des bases jetables reproduisant
-        # l'historique ET le catalogue de production. Aucune ne reecrit
-        # l'historique ; la sonde decide, pas l'historique.
+      - name: Reconciliation de l historique — exception PLM bornée, aucun resolve
+        # Vérifie le snapshot 56/13, les cinq migrations hors bande et les deux
+        # tentatives annulées déjà suivies d’une réussite. Le plan accepte uniquement
+        # l'exception PLM documentée, conserve l'avertissement et n'autorise aucun
+        # resolve ni aucune écriture d'historique.
         run: npm run test:reconciliation-options
-
-      - name: Rejeu des migrations — une migration livree est-elle rejouable ?
-        # Mesure, pas supposition : si l'effet d'une migration non rejouable est
-        # deja present en production alors que son historique l'ignore,
-        # `migrate deploy` s'y arrete et rien apres ne passe.
-        run: npm run test:rejeu-migrations
-
-      - name: Sondes d'effet — la sonde distingue, mesure sur la chaine du depot
-        # Les onze migrations dont l'historique de production n'a pas la trace.
-        # Une sonde qui rend la meme valeur dans les deux etats ne vaut rien :
-        # ce test retire chaque migration SEULE et exige que sa sonde change.
-        run: npm run test:sondes-effets
 
       - name: Appartenances de roles — le SENS, pas l'existence
         # `tracefab_app` est-il membre de `neondb_owner`, ou l'inverse ? La seule
@@ -327,21 +298,16 @@ jobs:
         # existe ailleurs dans le depot) et exige `strpos(lower(...))`.
         run: npm run test:motifs-like
 
-      - name: PLM — provenance des quatre politiques, balayage exhaustif
-        # Deux politiques surnumeraires en production, aucune migration ne les
-        # cree. Ce test le PROUVE par balayage de toutes les migrations ET de
-        # l historique (git -S, chaque commit, lignes ajoutees), avec trois
-        # temoins verifiant que le detecteur n est pas casse. Il echoue si une
-        # migration se met a les creer : le probleme deviendrait reproductible.
+      - name: PLM — provenance des politiques historiques, balayage exhaustif
+        # Le catalogue Production ne contient plus que les deux politiques canoniques.
+        # Ce balayage vérifie qu’aucune migration du dépôt ne réintroduit les
+        # anciennes politiques permissives et teste le détecteur sur des témoins.
         run: npm run test:plm-provenance-politiques
 
       - name: PLM sync jobs — contributor refuse, rôles autorisés acceptés
-        # La politique se lit dans le catalogue ; ce qu'elle FAIT se mesure en
-        # essayant d'ecrire. Ce test insere reellement, avec `SET ROLE
-        # tracefab_app` et une identite d'utilisateur, dans quatre etats :
-        # canonique, derive de production (ou contributor REUSSIT — ce qui
-        # prouve que la fuite etait reelle), migration appliquee, puis isolation
-        # avec un uuid d'organisation fourni par le client.
+        # Le test mesure l’insertion sous tracefab_app dans un état canonique et dans
+        # un fixture historique permissif ; le catalogue Production actuel est
+        # déjà canonique, ce n’est pas une lecture d’un défaut encore présent.
         run: npm run test:plm-sync-jobs-acces
 
       - name: PLM — politique partielle vs complete, idempotence, privileGES effectifs
@@ -352,30 +318,28 @@ jobs:
         # gardes fail-closed, et les privileges EFFECTIFS du role applicatif.
         run: npm run test:plm-rls-isolation
 
-      - name: PLM — les 4 politiques de production confrontees aux 2 canoniques
-        # Chaine reelle sur base jetable : etat a 4 politiques reproduit, puis
-        # migration corrective. Puis 6 scenarios de garde (table absente,
-        # canoniques absentes ou alterees) : chacun doit REFUSER *et* laisser
-        # les surnumeraires intactes. Enfin une politique inattendue, qui doit
-        # survivre a la migration.
+      - name: PLM — fixture historique à 4 politiques confronté aux 2 canoniques
+        # Chaîne sur base jetable : état synthétique à quatre politiques, puis
+        # normalisation ; les scénarios fail-closed vérifient que les politiques
+        # inattendues ne sont pas supprimées silencieusement.
         run: npm run test:plm-confrontation
 
       - name: PLM — le releve de production en lecture seule, joue avant d etre colle
         run: npm run test:plm-lecture-seule
 
       - name: PLM — les deux migrations correctives jumelles, comparees par mesure
-        # Deux migrations retirent les memes politiques. Ce job mesure ce que
-        # chacune garantit : les deux corrigent l etat reel et laissent les
-        # canoniques intactes, mais seule 20261028150000 refuse un etat qui
-        # contient une politique inattendue.
+        # Deux migrations successives normalisent les politiques. Le test mesure les
+        # garanties distinctes de chacune et vérifie que les deux politiques
+        # canoniques restent intactes.
         run: npm run test:plm-migrations-jumelles
 
-      - name: Migrations — application UNE PAR UNE, rupture de 20261028120000 mesuree
-        # Etat de production reconstitue (56 migrations), puis les 10 manquantes
-        # appliquees une par une. Mesure la non-rejouabilite du registre, la
-        # dependance de 20261028120100, et ce qu un `deploy` global ferait au
-        # second essai. Aucune connexion : base jetable.
-        run: npm run test:application-une-par-une
+      - name: Neon migrations — baseline 56 + 13 pending, simulation PGlite
+        # Reconstruit les 56 migrations réussies (51 Prisma + 5 hors bande),
+        # applique les 13 absentes, vérifie le worker, les droits, PLM, DPP,
+        # l’identité HMAC et les dépendances. Simulation de schéma uniquement :
+        # la variance checksum est testée séparément avec Prisma CLI sur PostgreSQL
+        # jetable par test:prisma:checksum-deploy ; aucune base réelle n'est touchée.
+        run: npm run test:neon-migration-reconciliation
 
       - name: PLM — garde statique de la migration 20261029160000
         # Ce test existait dans le depot mais n etait cable NULLE PART : il ne
@@ -384,13 +348,13 @@ jobs:
         # s execute vraiment.
         run: npm run test:plm-sync-policy-drift
 
-      - name: Migrations — plan de reconciliation, et autotest de ses controles
-        # Le generateur refuse UPDATE/DELETE sur _prisma_migrations, resolve
-        # --rolled-back, deploy global, et resolve --applied sans preuve. Ses
-        # temoins prouvent que ces refus ne sont pas des controles aveugles.
+      - name: Migrations — plan exécutable, exception checksum PLM bornée
+        # L’autotest vérifie les interdictions (aucun resolve, aucune écriture
+        # d’historique). Le plan accepte uniquement la paire PLM explicitement
+        # documentée ; toute autre divergence de checksum reste bloquante.
         run: |
-          npm run plan:reconciliation
           npm run plan:reconciliation:autotest
+          npm run plan:reconciliation
 
       - name: Confrontation production — le verificateur mord
         # L instrument qui tranchera le BLOCKED de plm_erp_gs1 n a jamais vu la
@@ -408,13 +372,11 @@ jobs:
         # un resultat DIFFERENT, sinon elles ne prouvent rien.
         run: npm run test:runbook-application
 
-      - name: Reprise des migrations — incidents reproduits puis franchis
-        # Sur PostgreSQL 18 (PGlite), meme majeure que Neon : les deux incidents
-        # rapportes (refus de privilege sur public, conflit de signature de
-        # fonction) sont reproduits avec leur code d erreur, le contenu du depot
-        # les franchit, et les rejeux sont idempotents. Conditionne la surete du
-        # plan de reprise, qui re-execute ces migrations.
-        run: npm run test:reprise-migrations
+      - name: Matrice des migrations — snapshot Neon et checksums
+        # Contrôle fail-closed : 69 dossiers = 51 via Prisma, 5 hors bande,
+        # 13 absentes. Un seul écart PLM historique est explicitement épinglé
+        # aux deux empreintes et documenté ; toute autre divergence reste rouge.
+        run: npm run matrice:migrations
 
   # -------------------------------------------------- 2. suite de verification
   verification:
@@ -439,7 +401,7 @@ jobs:
         run: npm run db:generate
 
       - name: Installer Chromium pour Playwright
-        run: npx playwright install --with-deps chromium
+        run: npx playwright install chromium
 
       - name: Compilation complete
         # `build` enchaine deja types, schema, routes, i18n et les tests de
@@ -512,7 +474,13 @@ jobs:
           #     demonstration du mode strict). Trois exigent la base migree et
           #     les deux roles ; la premiere n exige rien et tourne partout.
           #     Cablees une par une dans le job « Base ».
-          scripts=$(node -e "console.log(Object.keys(require('./package.json').scripts).filter(k=>k.startsWith('test:')&&!k.includes('neon')&&!k.includes('staging')&&k!=='test:p2'&&k!=='test:regression'&&k!=='test:audit-script'&&k!=='test:dpp:review-publication'&&k!=='test:dpp:branche'&&k!=='test:dpp:role-applicatif'&&k!=='test:garde-fous:neon'&&!k.startsWith('test:jetables')&&!k.startsWith('test:p105')&&!k.startsWith('test:p106')&&!k.startsWith('test:p107')).join(' '))")
+          #   test:prisma:checksum-deploy — utilise le PostgreSQL jetable pour
+          #     prouver le comportement de migrate deploy sur checksum divergent.
+          #     Exécuté une fois dans le job « Base », pas dans cette boucle.
+          #   test:plm:gs1-repair-postgres — crée sa propre base temporaire
+          #     PostgreSQL pour la correction forward PLM/GS1. Exécuté dans
+          #     le job « Base », pas dans cette boucle sans DATABASE_URL.
+          scripts=$(node -e "console.log(Object.keys(require('./package.json').scripts).filter(k=>k.startsWith('test:')&&!k.includes('neon')&&!k.includes('staging')&&k!=='test:p2'&&k!=='test:regression'&&k!=='test:audit-script'&&k!=='test:dpp:review-publication'&&k!=='test:dpp:branche'&&k!=='test:dpp:role-applicatif'&&k!=='test:garde-fous:neon'&&k!=='test:prisma:checksum-deploy'&&k!=='test:plm:gs1-repair-postgres'&&!k.startsWith('test:jetables')&&!k.startsWith('test:p105')&&!k.startsWith('test:p106')&&!k.startsWith('test:p107')).join(' '))")
           echoues=''
           for s in $scripts; do
             if npm run "$s" --silent >"/tmp/$s.log" 2>&1; then
@@ -564,7 +532,7 @@ jobs:
         run: npm run db:generate
 
       - name: Installer Chromium pour Playwright
-        run: npx playwright install --with-deps chromium
+        run: npx playwright install chromium
 
       - name: Demarrer le serveur de previsualisation
         run: |
@@ -667,6 +635,14 @@ jobs:
       - name: Generer le client Prisma
         run: npm run db:generate
 
+      - name: Prisma deploy — checksum historique divergent et pending
+        # Teste le vrai binaire Prisma sur un schéma temporaire local :
+        # l'entrée déjà appliquée garde son checksum et le pending est appliqué.
+        # Le lanceur refuse toute cible autre que la base jetable du job.
+        run: npm run test:prisma:checksum-deploy
+        env:
+          TF_EXIGER_LOCAL: oui
+
       - name: Préparer le rôle applicatif avant migrations
         # Via le lanceur garde : refuse toute cible non jetable avant CREATE ROLE.
         run: npm run db:prepare-ci-role
@@ -677,6 +653,15 @@ jobs:
         # DATABASE_URL = localhost/tracefab_test, aucun secret. La cible
         # est classee avant le binaire prisma local. Jamais npx.
         run: npm run db:deploy:throwaway
+
+      - name: Correctif PLM/GS1 — validation PostgreSQL jetable
+        # Cette suite crée sa propre base temporaire sur le PostgreSQL local du
+        # job, reproduit le catalogue mesuré, applique la correction forward,
+        # éprouve les refus et vérifie le rejeu idempotent. Elle ne doit pas
+        # tourner dans le job de vérification sans DATABASE_URL.
+        run: npm run test:plm:gs1-repair-postgres
+        env:
+          TF_EXIGER_LOCAL: oui
 
       - name: Privilèges et RLS effectifs — mesurés dans le catalogue
         # Une migration qui contient GRANT ne prouve pas ce que la base accorde.
@@ -771,6 +756,18 @@ jobs:
         # reellement evaluees. Le test echoue s'il ne peut pas s'executer.
         run: npm run test:neon:rls
 
+      - name: Documents et matieres — acces autorises conserves, inter-locataires refuses
+        # Le locataire actif borne la propriete des documents, des matieres, des
+        # fournisseurs, de leurs sites et de leurs certifications. Une suite qui
+        # ne verifierait que le refus laisserait passer une correction qui ferme
+        # aussi l'acces legitime : celle-ci eprouve les deux sens sur PostgreSQL
+        # reel — lecture de ses propres pieces, refus des pieces d'un autre
+        # locataire, partage explicite toujours lisible, composition
+        # produit-matiere du fournisseur preservee, puis refus en ecriture.
+        run: npm run test:neon:document-material-scope
+        env:
+          TF_EXIGER_LOCAL: oui
+
       - name: Registre des fonctions runtime — perimetre et coherence
         # Bloquant. Echoue si (1) une fonction autorisee n'existe pas, (2) le
         # module TypeScript et la base divergent, (3) une fonction executable
@@ -788,6 +785,13 @@ jobs:
         # utilisateurs et adhesions en posant tracefab.worker_context, que les
         # six operations systeme fonctionnent sous identite autorisee, et
         # qu'aucun des deux roles ne peut endosser l'autre.
+        #
+        # ORDRE : cette etape mesure « aucune autre organisation visible » sur
+        # la base du job, donc elle doit rester AVANT les suites qui creent des
+        # organisations sans les detruire (mesure du 05/11 : placee apres
+        # `test:neon:active-tenant`, elle tombe pour une raison qui n'a rien a
+        # voir avec elle). Si une suite est inseree plus haut, verifier qu'elle
+        # nettoie ses fixtures.
         run: npm run test:neon:worker-non-forgeable
 
       - name: Garde-fous de la commande de validation Neon
@@ -1178,7 +1182,7 @@ jobs:
         # or le rattrapage `apres` de l execution precedente en creait un. La
         # chaine passait donc UNE fois par cluster, et toute nouvelle base
         # jetable echouait — en cascade sur trois suites. Ce test cree une
-        # base vierge dans le cluster DEJA migre, applique les 69 migrations,
+        # base vierge dans le cluster DEJA migre, applique les 70 migrations,
         # verifie l appartenance finale, puis detruit la base. Il rougit si
         # une entree du registre accorde une appartenance sans fournir de
         # bloc « avant ».

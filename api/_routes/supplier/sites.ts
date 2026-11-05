@@ -1,7 +1,7 @@
 import { Prisma } from '@prisma/client';
 import type { VercelRequest, VercelResponse } from '../../_lib/vercel-types.js';
 import { requireClerkUser, isUnauthorized } from '../../_lib/auth.js';
-import { withTracefabUserContext } from '../../_lib/context.js';
+import {withTracefabRequestContext} from '../../_lib/context.js';
 import { json, methodNotAllowed, readJsonBody } from '../../_lib/http.js';
 import { sqlBusinessError } from '../../_lib/sql-errors.js';
 import { currentSupplier, requestedOrganizationId } from '../../_lib/supplier-profile.js';
@@ -14,7 +14,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   try {
     const { user } = await requireClerkUser(req);
-    const result = await withTracefabUserContext(user.id, user.email, async (tx) => {
+    const result = await withTracefabRequestContext(req, user, async (tx) => {
       const supplier = await currentSupplier(tx, user.id, requestedOrganizationId(req));
       if (!supplier) return null;
       if (req.method === 'GET') {

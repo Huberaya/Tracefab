@@ -141,6 +141,9 @@ const NE_DOIVENT_PAS = [
   // il n en execute aucun. Le laisser hors des listes ferait croire qu il
   // provisionne.
   ['scripts/test_destructive_suite_routing.mjs', 'test statique — ne provisionne rien'],
+  // Test PGlite en mémoire : il simule les états de migration sans ouvrir de
+  // connexion PostgreSQL ni provisionner un rôle partagé au niveau du cluster.
+  ['scripts/test_divergences_migrations_pglite.mjs', 'PGlite en mémoire — aucun cluster partagé'],
 
   // Cluster prive, cree et detruit par le script lui-meme : rien a serialiser.
   ['scripts/test_routes_sous_role_app.mjs', 'embedded-postgres prive'],
@@ -288,7 +291,7 @@ console.log('\n  E. apres une suite complete, aucun verrou ne reste');
   const suite = join(RACINE, 'scripts', 'test_isolation_lignes_reelles.mjs');
   const code = await new Promise((resoudre) => {
     const p = spawn(process.execPath, [join(RACINE, 'scripts', 'run-db-suite.mjs'), suite],
-      { env: process.env, stdio: 'ignore' });
+      { env: process.env, stdio: 'inherit' });
     p.on('exit', resoudre);
   });
   verifier('la suite verrouillee aboutit', code === 0, `exit=${code}`);

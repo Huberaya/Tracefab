@@ -1,10 +1,11 @@
 import type { VercelRequest, VercelResponse } from '../../../../_lib/vercel-types.js';
 import { requireClerkUser, isUnauthorized } from '../../../../_lib/auth.js';
-import { withTracefabUserContext } from '../../../../_lib/context.js';
+import {withTracefabRequestContext} from '../../../../_lib/context.js';
 import { json, methodNotAllowed, readJsonBody } from '../../../../_lib/http.js';
 import { sqlBusinessError } from '../../../../_lib/sql-errors.js';
 import { isUuid } from '../../../../_lib/data-requests.js';
 import { submitQualityRemediation } from '../../../../_lib/quality-cap/cap-manager.js';
+import { isTenantError, requireActiveTenant, requestedTenantId } from '../../../../_lib/tenant.js';
 
 function routeCapId(req: VercelRequest) {
   const value = req.query.capId;
@@ -35,7 +36,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return json(res, 400, { error: 'response_summary_required' });
     }
 
-    const updatedCap = await withTracefabUserContext(user.id, user.email, async (tx) => {
+    const updatedCap = await withTracefabRequestContext(req, user, async (tx) => {
+      const tenant = await requireActiveTenant(tx, req, user.id, { types: ['supplier'] });
+      const cap = await tx.quality_corrective_action_plans.findFirst({
+        where: { id: capId, supplier_organization_id: tenant.organizationId },
+        select: { id: true },
+      });
+      if (!cap) return null;
       return await submitQualityRemediation(
         tx,
         capId,
@@ -45,6 +52,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       );
     });
 
+    if (!updatedCap) return json(res, 404, { error: 'cap_not_found' });
     return json(res, 200, {
       message: 'remediation_submitted',
       cap: updatedCap,
@@ -53,6 +61,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (isUnauthorized(err)) {
       return json(res, 401, { error: 'unauthorized' });
     }
+    if (isTenantError(err)) return json(res, err.status, { error: err.message });
     const sqlError = sqlBusinessError(err);
     if (sqlError) {
       return json(res, sqlError.status, { error: sqlError.error });

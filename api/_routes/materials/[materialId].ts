@@ -1,7 +1,7 @@
 import { Prisma } from '@prisma/client';
 import type { VercelRequest, VercelResponse } from '../../_lib/vercel-types.js';
 import { requireClerkUser, isUnauthorized } from '../../_lib/auth.js';
-import { withTracefabUserContext } from '../../_lib/context.js';
+import {withTracefabRequestContext} from '../../_lib/context.js';
 import { json, methodNotAllowed, readJsonBody } from '../../_lib/http.js';
 import { sqlBusinessError } from '../../_lib/sql-errors.js';
 import { isUuid } from '../../_lib/products.js';
@@ -72,7 +72,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (!isUuid(materialId)) return json(res, 400, { error: 'invalid_material_id' });
     const { user } = await requireClerkUser(req);
 
-    const material = await withTracefabUserContext(user.id, user.email, async (tx) => {
+    const material = await withTracefabRequestContext(req, user, async (tx) => {
       // Locataire actif obligatoire. `ANY(organizationIds)` couvrait toutes les
       // organisations du compte : la fiche d'une matiere appartenant a l'autre
       // tenant etait lisible et modifiable d'ici. Le partage explicite entre
@@ -117,7 +117,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         )
       `;
       return rows[0] ?? null;
-    }, requestedTenantId(req));
+    });
 
     if (!material) return json(res, 404, { error: 'material_not_found' });
     return json(res, 200, { material: serializedMaterial(material) });

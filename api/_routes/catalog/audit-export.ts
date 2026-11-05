@@ -1,7 +1,7 @@
 import type { VercelRequest, VercelResponse } from '../../_lib/vercel-types.js';
 import { requireClerkUser, isUnauthorized } from '../../_lib/auth.js';
 import { sqlBusinessError } from '../../_lib/sql-errors.js';
-import { withTracefabUserContext } from '../../_lib/context.js';
+import {withTracefabRequestContext} from '../../_lib/context.js';
 import { isTenantError, requireActiveTenant, requestedTenantId } from '../../_lib/tenant.js';
 import { csvCell } from '../../_lib/catalog-importer.js';
 import { json, methodNotAllowed } from '../../_lib/http.js';
@@ -18,7 +18,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'GET') return methodNotAllowed(res, ['GET']);
   try {
     const { user } = await requireClerkUser(req);
-    const result = await withTracefabUserContext(user.id, user.email, async (tx) => {
+    const result = await withTracefabRequestContext(req, user, async (tx) => {
       // Locataire actif obligatoire, et role verifie dans ce locataire.
       // L'export d'audit est la sortie de donnees la plus sensible de la
       // console : le repli precedent exportait produits, points de donnee et
@@ -53,7 +53,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       rows.push(...dataPoints.map((point) => { const product = productById.get(point.product_id); return { recordType: 'DATA_POINT', organizationId: product?.organization_id, productId: point.product_id, productReference: product?.reference, productName: product?.name, productVersion: product?.version, dataKey: point.data_key, dataValue: point.value, dataStatus: point.status, sourceDocumentId: point.source_document_id, recordedAt: point.updated_at }; }));
       rows.push(...auditLogs.map((log) => ({ recordType: 'AUDIT_EVENT', organizationId: log.organization_id, action: log.action, entityType: log.entity_type, entityId: log.entity_id, recordedAt: log.created_at })));
       return { rows };
-    }, requestedTenantId(req));
+    });
     const content = [HEADERS.join(','), ...result.rows.map(row)].join('\r\n');
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');
     res.setHeader('Content-Disposition', `attachment; filename="tracefab-audit-export-${new Date().toISOString().slice(0, 10)}.csv"`);

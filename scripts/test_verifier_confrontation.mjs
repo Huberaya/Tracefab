@@ -64,7 +64,7 @@ const refPath = path.join(tmp, 'referentiel.txt');
 const gen = lancer([`--ecrire-referentiel=${refPath}`]);
 ok('le referentiel se calcule', gen.code === 0, gen.sortie.slice(0, 300));
 const ref = fs.readFileSync(refPath, 'utf8').split('\n').filter(Boolean);
-ok('le referentiel est substantiel (85 faits attendus)', ref.length === 85, `${ref.length}`);
+ok('le referentiel est substantiel (86 faits attendus)', ref.length === 86, `${ref.length}`);
 ok('il porte TOUTES les politiques des quatorze tables (31), pas seulement celles de plm',
   ref.filter((l) => l.startsWith('P|')).length === 31,
   `${ref.filter((l) => l.startsWith('P|')).length}`);
@@ -74,8 +74,8 @@ ok('il porte les quatorze tables et les fonctions des cinq',
 ok('il porte les sept lignes d historique (cinq hors bande + les deux correctives)',
   ref.filter((l) => l.startsWith('H|')).length === 7,
   `${ref.filter((l) => l.startsWith('H|')).length}`);
-ok('il porte les privileges et l heritage des droits (19 faits G)',
-  ref.filter((l) => l.startsWith('G|')).length === 19,
+ok('il porte les privileges et l heritage des droits (20 faits G)',
+  ref.filter((l) => l.startsWith('G|')).length === 20,
   `${ref.filter((l) => l.startsWith('G|')).length}`);
 ok('le role runtime n a ni SUPERUSER ni BYPASSRLS dans le depot',
   ref.some((l) => l.startsWith('G|attributs|tracefab_app|super=false|bypassrls=false')));
@@ -127,11 +127,14 @@ const cas = [
   // `herite=oui` et se faisait refuser comme ligne MAL FORMEE ('dans' sans
   // affectation) : elle ne prouvait donc pas ce qu'elle annoncait.
   ['appartenance de role ajoutee (tracefab_app membre de tracefab_worker)',
-    ecrire('m12.txt', `${ref.join('\n')}\nG|membre|tracefab_app|dans|tracefab_worker|admin=false|herite=false|setrole=true\n`), 1],
+    ecrire('m12.txt', `${ref.join('\n')}\nG|membre|tracefab_app|dans=tracefab_worker|admin=false|herite=false|setrole=true\n`), 1],
   ['appartenance posee dans le sens INVERSE (neondb_owner membre de tracefab_app)',
-    ecrire('m12b.txt', `${ref.join('\n')}\nG|membre|neondb_owner|dans|tracefab_app|admin=false|herite=true|setrole=true\n`), 1],
+    ecrire('m12b.txt', `${ref.join('\n')}\nG|membre|neondb_owner|dans=tracefab_app|admin=false|herite=true|setrole=true\n`), 1],
   ['options d appartenance modifiees (admin et heritage accordes)',
-    ecrire('m12c.txt', `${ref.join('\n')}\nG|membre|tracefab_worker|dans|tracefab_app|admin=true|herite=true|setrole=true\n`), 1],
+    ecrire('m12c.txt', `${ref.join('\n')}\nG|membre|tracefab_worker|dans=tracefab_app|admin=true|herite=true|setrole=true\n`), 1],
+  ['option SET accordee sur une appartenance existante',
+    muter('m12d.txt', (l) => (l.startsWith('G|membre|postgres|dans=tracefab_worker|')
+      ? l.replace('setrole=true', 'setrole=false') : l)), 1],
   ['politique surnumeraire hors perimetre PLM', muter('m13.txt',
     (l) => (l.startsWith('P|green_claims_rules.green_claims_rules_select|')
       ? `${l}\nP|green_claims_rules.politique_fantome|roles=public|cmd=SELECT|permissive=PERMISSIVE|using=(true)|check=(aucun)` : l)), 1],
@@ -219,7 +222,7 @@ ok('un proprietaire de role runtime est refuse',
 
 ok('le perimetre restreint ne desactive pas les onze autres controles de table',
   lancer([muter('m11.txt', (l) => (l.startsWith('T|pef_emission_factors|') ? l.replace('|rls=true|', '|rls=false|') : l)), plmRef, '--perimetre-plm']).code === 1);
-ok('trois faits sur quatre-vingt-cinq est un echec, pas un PASS', rp.code === 1, `code ${rp.code}`);
+ok('trois faits sur quatre-vingt-six est un echec, pas un PASS', rp.code === 1, `code ${rp.code}`);
 ok('les faits manquants sont nommes', /absent/.test(rp.sortie));
 
 /* -------------------------------------------------------------------------

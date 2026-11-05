@@ -5,6 +5,7 @@ import { requireClerkUser, isUnauthorized } from '../../../_lib/auth.js';
 import { withTracefabUserContext } from '../../../_lib/context.js';
 import { json, methodNotAllowed, readJsonBody } from '../../../_lib/http.js';
 import { sqlBusinessError } from '../../../_lib/sql-errors.js';
+import { isTenantError, resolveActiveTenant } from '../../../_lib/tenant.js';
 import { manualInvitationFallbackAllowed, sendSupplierInvitationEmail } from '../../../_lib/email.js';
 
 type InviteSupplierBody = {
@@ -68,14 +69,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const tokenHash = createHash('sha256').update(invitationToken).digest('hex');
 
     const transactionResult = await withTracefabUserContext(user.id, user.email, async (tx): Promise<InvitationTransactionResult> => {
+      const tenant = await resolveActiveTenant(tx, user.id, organizationId, { types: ['brand'], roles: ['owner', 'admin', 'manager'] });
       const brand = await tx.organizations.findUnique({
-        where: { id: organizationId },
+        where: { id: tenant.organizationId },
         select: { legal_name: true, display_name: true },
       });
       const rows = await tx.$queryRaw<InvitationRow[]>`
         SELECT *
         FROM tracefab_invite_supplier(
-          ${organizationId}::uuid,
+          ${tenant.organizationId}::uuid,
           ${email},
           ${legalName},
           ${displayName},
@@ -89,7 +91,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         invitation: row,
         brandName: brand?.display_name || brand?.legal_name || 'A Tracefab organization',
       };
-    });
+    }, organizationId);
 
     const invitation = transactionResult.invitation;
     const delivery = await sendSupplierInvitationEmail({
@@ -125,6 +127,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     });
   } catch (error) {
     if (isUnauthorized(error)) return json(res, 401, { error: 'unauthorized' });
+    if (isTenantError(error)) return json(res, error.status, { error: error.message });
     const businessError = sqlBusinessError(error);
     if (businessError) return json(res, businessError.status, { error: businessError.error });
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {

@@ -1,9 +1,10 @@
 import { Prisma } from '@prisma/client';
 import type { VercelRequest, VercelResponse } from '../../../_lib/vercel-types.js';
 import { requireClerkUser, isUnauthorized } from '../../../_lib/auth.js';
-import { withTracefabUserContext } from '../../../_lib/context.js';
+import {withTracefabRequestContext} from '../../../_lib/context.js';
 import { json, methodNotAllowed, readJsonBody } from '../../../_lib/http.js';
 import { sqlBusinessError } from '../../../_lib/sql-errors.js';
+import { isTenantError, requireActiveTenant, requestedTenantId } from '../../../_lib/tenant.js';
 import {
   profileMutationValues,
   serializeSupplierProfile,
@@ -26,8 +27,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     const { user } = await requireClerkUser(req);
-    const result = await withTracefabUserContext(user.id, user.email, async (tx) => {
-      const current = await tx.suppliers.findUnique({ where: { id: supplierId }, select: SUPPLIER_PROFILE_SELECT });
+    const result = await withTracefabRequestContext(req, user, async (tx) => {
+      const tenant = req.method === 'PATCH' ? await requireActiveTenant(tx, req, user.id, { types: ['supplier'] }) : null;
+      const current = tenant
+        ? await tx.suppliers.findFirst({ where: { id: supplierId, organization_id: tenant.organizationId }, select: SUPPLIER_PROFILE_SELECT })
+        : await tx.suppliers.findUnique({ where: { id: supplierId }, select: SUPPLIER_PROFILE_SELECT });
       if (!current) return null;
       if (req.method === 'GET') return current;
 
@@ -53,6 +57,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return json(res, 200, { profile: serializeSupplierProfile(result) });
   } catch (error) {
     if (isUnauthorized(error)) return json(res, 401, { error: 'unauthorized' });
+    if (isTenantError(error)) return json(res, error.status, { error: error.message });
     const businessError = sqlBusinessError(error);
     if (businessError) return json(res, businessError.status, { error: businessError.error });
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {

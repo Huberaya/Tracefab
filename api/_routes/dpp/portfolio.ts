@@ -1,7 +1,7 @@
 import type { VercelRequest, VercelResponse } from '../../_lib/vercel-types.js';
 import { requireClerkUser, isUnauthorized } from '../../_lib/auth.js';
 import { sqlBusinessError } from '../../_lib/sql-errors.js';
-import { withTracefabUserContext } from '../../_lib/context.js';
+import {withTracefabRequestContext} from '../../_lib/context.js';
 import { json, methodNotAllowed } from '../../_lib/http.js';
 import { isTenantError, requireActiveTenant, requestedTenantId } from '../../_lib/tenant.js';
 import { DPP_REQUIREMENT_LABELS, DPP_STANDARD_REQUIREMENT_KEYS, classifyRequirementPillar } from '../../_lib/dpp.js';
@@ -42,7 +42,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     const auth = await requireClerkUser(req);
 
-    const payload = await withTracefabUserContext(auth.user.id, auth.user.email, async (tx) => {
+    const payload = await withTracefabRequestContext(req, auth.user, async (tx) => {
       // Locataire actif obligatoire. L'agregat de preparation DPP est un chiffre
       // de pilotage : additionner plusieurs tenants produirait un total qu'aucun
       // des tenants ne reconnait.
@@ -172,7 +172,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         gaps: gapList,
         lastComputedAt: lastComputedAt ? lastComputedAt.toISOString() : null,
       };
-    }, requestedTenantId(req));
+    });
 
     if (!payload) {
       return json(res, 200, {

@@ -1,10 +1,11 @@
 import type { VercelRequest, VercelResponse } from '../../../../_lib/vercel-types.js';
 import { requireClerkUser, isUnauthorized } from '../../../../_lib/auth.js';
-import { withTracefabUserContext } from '../../../../_lib/context.js';
+import {withTracefabRequestContext} from '../../../../_lib/context.js';
 import { json, methodNotAllowed, readJsonBody } from '../../../../_lib/http.js';
 import { sqlBusinessError } from '../../../../_lib/sql-errors.js';
 import { isUuid } from '../../../../_lib/data-requests.js';
 import { createQualityCap } from '../../../../_lib/quality-cap/cap-manager.js';
+import { isTenantError, requireActiveTenant, requestedTenantId } from '../../../../_lib/tenant.js';
 
 function routeIssueId(req: VercelRequest) {
   const value = req.query.issueId;
@@ -44,7 +45,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return json(res, 400, { error: 'due_date_required' });
     }
 
-    const cap = await withTracefabUserContext(user.id, user.email, async (tx) => {
+    const cap = await withTracefabRequestContext(req, user, async (tx) => {
+      await requireActiveTenant(tx, req, user.id, { types: ['brand'] });
       return await createQualityCap(tx, {
         qualityIssueId: issueId,
         supplierOrganizationId,
@@ -64,6 +66,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (isUnauthorized(err)) {
       return json(res, 401, { error: 'unauthorized' });
     }
+    if (isTenantError(err)) return json(res, err.status, { error: err.message });
     const sqlError = sqlBusinessError(err);
     if (sqlError) {
       return json(res, sqlError.status, { error: sqlError.error });

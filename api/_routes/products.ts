@@ -1,7 +1,7 @@
 import { Prisma } from '@prisma/client';
 import type { VercelRequest, VercelResponse } from '../_lib/vercel-types.js';
 import { requireClerkUser, isUnauthorized } from '.././_lib/auth.js';
-import { withTracefabUserContext } from '.././_lib/context.js';
+import {withTracefabRequestContext} from '.././_lib/context.js';
 import { json, methodNotAllowed, readJsonBody } from '.././_lib/http.js';
 import { sqlBusinessError } from '.././_lib/sql-errors.js';
 import { isUuid, PRODUCT_SELECT, serializeProduct } from '.././_lib/products.js';
@@ -48,7 +48,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       if (lifecycle !== undefined && lifecycle !== 'active' && lifecycle !== 'archived') {
         return json(res, 400, { error: 'invalid_product_lifecycle' });
       }
-      const result = await withTracefabUserContext(user.id, user.email, async (tx) => {
+      const result = await withTracefabRequestContext(req, user, async (tx) => {
         // Le catalogue actif exclut les archives côté serveur. Le client ne
         // peut donc pas les réintroduire après reconnexion ou changement de tenant.
         const tenant = await requireActiveTenant(tx, req, user.id, { types: ['brand'] });
@@ -77,7 +77,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           for (const entry of entries) if (entry.entity_id && !archivedAt.has(entry.entity_id)) archivedAt.set(entry.entity_id, entry.created_at);
         }
         return { rows, archivedAt };
-      }, requestedTenantId(req));
+      });
 
       const { items, nextCursor } = slicePage(result.rows, page);
       return json(res, 200, {
@@ -98,7 +98,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const reuseSourceProductId = body.reuseSourceProductId == null ? null : body.reuseSourceProductId;
     if (reuseSourceProductId !== null && !isUuid(reuseSourceProductId)) return json(res, 400, { error: 'invalid_reuse_source_product_id' });
 
-    const product = await withTracefabUserContext(user.id, user.email, async (tx) => {
+    const product = await withTracefabRequestContext(req, user, async (tx) => {
       // Le produit est cree DANS le locataire actif, et nulle part ailleurs.
       // Sans cette garde, un corps de requete portant un autre
       // `brandOrganizationId` deplacement la creation hors du tenant affiche.
@@ -152,7 +152,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         } });
       }
       return created;
-    }, requestedTenantId(req));
+    });
 
     return json(res, 201, { product: serializeProduct(product) });
   } catch (error) {
