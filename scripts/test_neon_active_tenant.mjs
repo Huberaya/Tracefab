@@ -335,7 +335,8 @@ try {
              position('PERFORM public.tracefab_require_active_tenant_for_organization(p_supplier_organization_id);'
                in pg_catalog.pg_get_functiondef(p.oid)) as guard_position,
              position('IF NOT tracefab_has_org_role('
-               in pg_catalog.pg_get_functiondef(p.oid)) as role_position
+               in pg_catalog.pg_get_functiondef(p.oid)) as role_position,
+             pg_catalog.pg_get_functiondef(p.oid) as definition
         from pg_catalog.pg_proc p
         join pg_catalog.pg_namespace n on n.oid = p.pronamespace
        where n.nspname = 'public'
@@ -345,6 +346,10 @@ try {
     const definitionsValid = definitions.rows.length === 2
       && definitions.rows.every(row => row.prosecdef && row.guard_position > 0
         && row.role_position > 0 && row.guard_position < row.role_position);
+    for (const row of definitions.rows) {
+      const beginAt = row.definition.indexOf('BEGIN');
+      console.log(`  DIAGNOSTIC ${row.proname}: guard=${row.guard_position}, role=${row.role_position}\\n${row.definition.slice(beginAt, beginAt + 700)}`);
+    }
     ok(
       definitionsValid,
       'les deux fonctions passeport exécutent leur garde avant le contrôle de rôle',
