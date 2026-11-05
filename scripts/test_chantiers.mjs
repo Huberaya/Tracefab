@@ -48,6 +48,13 @@ function controle(libelle, condition, detail) {
     migrationRlsPresente && texte.includes(migrationRls),
     migrationRlsPresente ? 'migration présente mais absente du registre' : 'migration absente du dépôt',
   );
+  const migrationClaims = '20261105140000_active_tenant_green_claims_rls';
+  const migrationClaimsPresente = readdirSync('prisma/migrations').includes(migrationClaims);
+  controle(
+    'la migration RLS des allégations vertes est référencée dans le registre',
+    migrationClaimsPresente && texte.includes(migrationClaims),
+    migrationClaimsPresente ? 'migration présente mais absente du registre' : 'migration absente du dépôt',
+  );
   const entete = texte.slice(0, 1000);
   const nonVerifie = /Neon de production\s*:\s*non vérifié/i.test(entete);
   let preuveNeon = '';
