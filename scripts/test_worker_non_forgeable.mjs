@@ -153,12 +153,26 @@ try {
       'select count(*)::int as n from public.organizations where id = $1::uuid',
       [org],
     );
-    const autres = await app.query(
-      'select count(*)::int as n from public.organizations where id <> $1::uuid',
-      [org],
+    const adhesionsAttendues = await admin.query(
+      `select distinct organization_id::text as id
+         from public.organization_memberships
+        where user_id = $1::uuid and status = 'active'
+        order by organization_id`,
+      [userId],
     );
+    const organisationsVisibles = await app.query(
+      'select id::text as id from public.organizations order by id',
+    );
+    const attendues = new Set(adhesionsAttendues.rows.map((row) => row.id));
+    const visibles = new Set(organisationsVisibles.rows.map((row) => row.id));
+    const inattendues = [...visibles].filter((id) => !attendues.has(id));
+    const manquantes = [...attendues].filter((id) => !visibles.has(id));
     ok(vues.rows[0].n === 1, 'le locataire legitime voit sa propre organisation', email);
-    ok(autres.rows[0].n === 0, 'il ne voit aucune autre organisation');
+    ok(
+      inattendues.length === 0 && manquantes.length === 0,
+      'le compte voit exactement les organisations auxquelles il est membre (sélecteur de tenant)',
+      `visibles=${[...visibles].length}; attendues=${[...attendues].length}; inattendues=${inattendues.length}; manquantes=${manquantes.length}`,
+    );
     await app.query('rollback');
   }
 
