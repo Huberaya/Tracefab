@@ -654,6 +654,7 @@ BEGIN
 
   -- Le runtime reçoit uniquement EXECUTE sur ce helper, jamais SELECT sur users.
   -- L'email est lu sous l'identité worker et sa politique RLS self-only.
+  REVOKE ALL ON FUNCTION public.tracefab_current_user_email() FROM PUBLIC;
   GRANT EXECUTE ON FUNCTION public.tracefab_current_user_email() TO tracefab_app;
 
   SELECT p.proowner, p.prosecdef, p.proconfig,
