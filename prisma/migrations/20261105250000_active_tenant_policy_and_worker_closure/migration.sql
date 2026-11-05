@@ -646,7 +646,7 @@ BEGIN
     RAISE EXCEPTION 'current_user_email_migration_role_cannot_set_worker_owner';
   END IF;
 
-  -- PostgreSQL exige CREATE sur le schema para transferir el propietario.
+  -- PostgreSQL exige CREATE sur le schema pour transférer le propriétaire.
   GRANT CREATE ON SCHEMA public TO tracefab_worker;
   ALTER FUNCTION public.tracefab_current_user_email() SECURITY DEFINER;
   ALTER FUNCTION public.tracefab_current_user_email() OWNER TO tracefab_worker;
