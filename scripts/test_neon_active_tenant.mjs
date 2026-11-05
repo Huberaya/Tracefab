@@ -81,6 +81,8 @@ const prodRecette = randomUUID();
 const dppRecette = randomUUID();
 const pefRecette = randomUUID();
 const greenClaimRecette = randomUUID();
+const dppClaimRecette = randomUUID();
+const dppIdentityRecette = randomUUID();
 
 const proprio = cli(URL_PROPRIO);
 await proprio.connect();
@@ -121,7 +123,28 @@ try {
   await proprio.query(
     'insert into product_green_claims (id, product_id, brand_organization_id, claim_text) values ($1, $2, $3, $4)',
     [greenClaimRecette, prodRecette, orgRecette, 'Synthetic confidential green claim']);
-  ok('fixture : utilisateur multi-org avec produit, DPP, PEF et allégation verte chez B uniquement');
+  await proprio.query(
+    'insert into dpp_claims (id, product_id, owner_organization_id, claim_key, statement) values ($1, $2, $3, $4, $5)',
+    [dppClaimRecette, prodRecette, orgRecette, 'tenant.isolation.claim', 'Synthetic private DPP claim']);
+  await proprio.query(
+    'insert into dpp_resolvable_identifiers (id, product_id, owner_organization_id, public_id, granularity) values ($1, $2, $3, $4, $5)',
+    [dppIdentityRecette, prodRecette, orgRecette, `tf-${suffixe}-private`, 'model']);
+  ok('fixture : utilisateur multi-org avec produit, DPP, PEF, allégation verte, claim et identité chez B uniquement');
+
+  /* -- événement DPP créé par la fonction SECURITY DEFINER sous le tenant B -- */
+  let dppEventRecette = null;
+  {
+    await app.query('begin');
+    await app.query(`select set_config('tracefab.user_id', $1, true)`, [userMulti]);
+    await app.query(`select set_config('tracefab.user_email', $1, true)`, [`mt-${suffixe}@example.test`]);
+    await app.query(`select set_config('tracefab.active_organization_id', $1, true)`, [orgRecette]);
+    const { rows: [event] } = await app.query(
+      `select (tracefab_add_dpp_event($1::uuid, 'passport_created', 'Synthetic private DPP event')).id as id`,
+      [prodRecette]);
+    dppEventRecette = event.id;
+    await app.query('commit');
+    ok('la fonction SECURITY DEFINER crée un événement DPP dans le tenant actif B');
+  }
 
   /* -- 1. hors contexte, aucun locataire --------------------------------- */
   {
@@ -314,8 +337,11 @@ try {
     const directDpp = await app.query('select id from dpp_records where id = $1::uuid', [dppRecette]);
     const directPef = await app.query('select id from product_pef_assessments where id = $1::uuid', [pefRecette]);
     const directGreenClaims = await app.query('select id from product_green_claims where id = $1::uuid', [greenClaimRecette]);
+    const directDppClaims = await app.query('select id from dpp_claims where id = $1::uuid', [dppClaimRecette]);
+    const directDppEvents = await app.query('select id from dpp_lifecycle_events where id = $1::uuid', [dppEventRecette]);
+    const directDppIdentities = await app.query('select id from dpp_resolvable_identifiers where id = $1::uuid', [dppIdentityRecette]);
     await app.query('commit');
-    return { rows, directProducts: directProducts.rows, directDpp: directDpp.rows, directPef: directPef.rows, directGreenClaims: directGreenClaims.rows };
+    return { rows, directProducts: directProducts.rows, directDpp: directDpp.rows, directPef: directPef.rows, directGreenClaims: directGreenClaims.rows, directDppClaims: directDppClaims.rows, directDppEvents: directDppEvents.rows, directDppIdentities: directDppIdentities.rows };
   };
 
   {
@@ -325,17 +351,17 @@ try {
     const fromGinger = await asTenant(orgGinger);
 
     if (fromRecette.rows.length === 1 && fromRecette.rows[0].owner_organization_id === orgRecette
-      && fromRecette.directProducts.length === 1 && fromRecette.directDpp.length === 1 && fromRecette.directPef.length === 1 && fromRecette.directGreenClaims.length === 1) {
+      && fromRecette.directProducts.length === 1 && fromRecette.directDpp.length === 1 && fromRecette.directPef.length === 1 && fromRecette.directGreenClaims.length === 1 && fromRecette.directDppClaims.length === 1 && fromRecette.directDppEvents.length === 1 && fromRecette.directDppIdentities.length === 1) {
       ok('sous le locataire de recette, accessibleProduct rend le produit de recette');
     } else {
       ko(`sous le locataire de recette, attendu 1 ligne, obtenu ${fromRecette.length}`);
     }
 
     if (fromGinger.rows.length === 0 && fromGinger.directProducts.length === 0
-      && fromGinger.directDpp.length === 0 && fromGinger.directPef.length === 0 && fromGinger.directGreenClaims.length === 0) {
-      ok('sous Ginger, la RLS directe bloque produit, DPP, PEF et allégation verte — sans filtre applicatif');
+      && fromGinger.directDpp.length === 0 && fromGinger.directPef.length === 0 && fromGinger.directGreenClaims.length === 0 && fromGinger.directDppClaims.length === 0 && fromGinger.directDppEvents.length === 0 && fromGinger.directDppIdentities.length === 0) {
+      ok('sous Ginger, la RLS directe bloque produit, DPP, PEF, allégation, claim, événement et identité — sans filtre applicatif');
     } else {
-      ko('fuite inter-tenant : produit=' + fromGinger.directProducts.length + ', DPP=' + fromGinger.directDpp.length + ', PEF=' + fromGinger.directPef.length + ', green_claims=' + fromGinger.directGreenClaims.length);
+      ko('fuite inter-tenant : produit=' + fromGinger.directProducts.length + ', DPP=' + fromGinger.directDpp.length + ', PEF=' + fromGinger.directPef.length + ', green_claims=' + fromGinger.directGreenClaims.length + ', dpp_claims=' + fromGinger.directDppClaims.length + ', dpp_events=' + fromGinger.directDppEvents.length + ', dpp_identities=' + fromGinger.directDppIdentities.length);
     }
   }
 
