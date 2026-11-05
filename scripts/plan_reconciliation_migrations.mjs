@@ -130,6 +130,26 @@ const lignesForward = (name) => {
       action: 'APPLIQUER APRÈS LES GARDES PROFIL/PASSEPORT FOURNISSEUR, EN PRÉPRODUCTION PUIS PRODUCTION APRÈS VALIDATION COMPLÈTE',
     };
   }
+  if (name === '20261105230000_active_tenant_invite_document_passport_guards') {
+    return {
+      ...base,
+      effect: 'lier les invitations fournisseur, l’enregistrement des documents, le démarrage des scans et la revue des demandes de passeport au tenant actif',
+      evidence: 'tests de routes et d’intégration : le tenant marque/fournisseur propriétaire est résolu explicitement et armé dans les transactions appelantes',
+      risk: 'CREATE OR REPLACE doit préserver OID, propriétaire et ACL ; les chemins de scan doivent réarmer le tenant à chaque transaction',
+      prerequisite: '20261105220000 terminée ; vérifier invitations, upload, scan et revue de passeport sur PostgreSQL 17',
+      action: 'APPLIQUER APRÈS LES GARDES CAP QUALITÉ, EN PRÉPRODUCTION PUIS PRODUCTION APRÈS VALIDATION COMPLÈTE',
+    };
+  }
+  if (name === '20261105240000_active_tenant_supplier_quality_guard') {
+    return {
+      ...base,
+      effect: 'exiger le tenant fournisseur actif pour calculer et muter les scores/anomalies de qualité fournisseur',
+      evidence: 'test PostgreSQL direct : le calcul passe sous le tenant fournisseur propriétaire et échoue active_tenant_mismatch depuis un autre tenant',
+      risk: 'CREATE OR REPLACE doit préserver OID, propriétaire et ACL ; le helper reste non exécutable par tracefab_app',
+      prerequisite: '20261105230000 terminée ; vérifier le parcours positif test_neon_quality_flow et le refus inter-tenant',
+      action: 'APPLIQUER APRÈS LES GARDES INVITATIONS/DOCUMENTS/PASSEPORTS, EN PRÉPRODUCTION PUIS PRODUCTION APRÈS VALIDATION COMPLÈTE',
+    };
+  }
   if (name === '20261105210000_active_tenant_supplier_profile_passport_guards') {
     return {
       ...base,
@@ -229,7 +249,7 @@ const lines = [
 const errors = [];
 const warnings = [];
 const phases = [
-  { label: 'PREPRODUCTION', command: 'npx prisma migrate deploy', gate: '13 migrations historiques pending + 13 corrections forward ordonnées (PLM/GS1, graphe, tenant actif PLM/ERP, RLS produits/DPP/PEF, allégations vertes, claims/identités DPP, compositions produit-matière, 19 fonctions SECURITY DEFINER puis enregistrement TC) ; 1 variance checksum documentée et éprouvée par test Prisma ; aucun resolve' },
+  { label: 'PREPRODUCTION', command: 'npx prisma migrate deploy', gate: '13 migrations historiques pending + 15 corrections forward ordonnées (PLM/GS1, graphe, tenant actif PLM/ERP, RLS produits/DPP/PEF, allégations vertes, claims/identités DPP, compositions produit-matière, 19 fonctions SECURITY DEFINER puis enregistrement TC) ; 1 variance checksum documentée et éprouvée par test Prisma ; aucun resolve' },
   { label: 'PRODUCTION', command: 'npx prisma migrate deploy', gate: 'Préproduction validée et catalogue vérifié' },
 ];
 function violationsFor(planLines, phaseList = phases) {
@@ -266,8 +286,10 @@ if (JSON.stringify(newNames) !== JSON.stringify([
   '20261105200000_active_tenant_material_certification_guards',
   '20261105210000_active_tenant_supplier_profile_passport_guards',
   '20261105220000_active_tenant_quality_cap_guards',
+  '20261105230000_active_tenant_invite_document_passport_guards',
+  '20261105240000_active_tenant_supplier_quality_guard',
 ])) {
-  errors.push(`les treize corrections forward PLM/GS1, graphe, tenant actif, RLS produits/DPP/PEF, allégations vertes, claims/identités DPP, compositions produit-matière, gardes SECURITY DEFINER, enregistrement TC, qualité/collecte, matières/certifications, profil fournisseur et CAP qualité sont attendues, obtenu ${JSON.stringify(newNames)}`);
+  errors.push(`les quinze corrections forward PLM/GS1, graphe, tenant actif, RLS produits/DPP/PEF, allégations vertes, claims/identités DPP, compositions produit-matière, gardes SECURITY DEFINER, enregistrement TC, qualité/collecte, matières/certifications, profil fournisseur, CAP qualité, invitations/documents/passeports et qualité fournisseur sont attendues, obtenu ${JSON.stringify(newNames)}`);
 }
 if (ROLLED_BACK_ATTEMPTS.length !== 2) errors.push('le snapshot doit conserver deux tentatives annulees');
 for (const name of outOfBand) {
@@ -378,4 +400,4 @@ if (errors.length) {
   for (const error of errors) console.error(`  - ${error}`);
   process.exit(1);
 }
-console.log('\nPlan cohérent : 51 via Prisma + 5 hors bande, 13 migrations historiques en attente + 13 corrections forward PLM/GS1, graphe, tenant actif, RLS produits/DPP/PEF, allégations vertes, claims/identités DPP, compositions produit-matière, gardes SECURITY DEFINER puis enregistrement TC, 1 écart historique documenté, aucun resolve ni changement de checksum.');
+console.log('\nPlan cohérent : 51 via Prisma + 5 hors bande, 13 migrations historiques en attente + 15 corrections forward PLM/GS1, graphe, tenant actif, RLS produits/DPP/PEF, allégations vertes, claims/identités DPP, compositions produit-matière, gardes SECURITY DEFINER, TC, qualité/collecte, matières/certifications, profil fournisseur, CAP, invitations/documents/passeports et qualité fournisseur, 1 écart historique documenté, aucun resolve ni changement de checksum.');
