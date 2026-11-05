@@ -6,6 +6,10 @@ type SqlErrorDefinition = {
 const DEFINITIONS: Record<string, SqlErrorDefinition> = {
   authentication_required: { status: 401 },
   active_tenant_mismatch: { status: 403 },
+  // Invariants de privilèges de la migration de garde SECURITY DEFINER :
+  // conflit de configuration du schéma, sans détail SQL exposé au client.
+  active_tenant_guard_helpers_executable_by_runtime: { status: 409 },
+  active_tenant_guard_runtime_role_owns_definer_function: { status: 409 },
   brand_admin_role_required: { status: 403 },
   brand_organization_required: { status: 400 },
   valid_supplier_email_required: { status: 400 },
