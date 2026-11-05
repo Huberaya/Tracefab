@@ -176,8 +176,35 @@ Dépôt `Huberaya/Tracefab`, branche `arena/8cb8c0b6-tracefab`, PR **#112** (bro
 | CI | Parcours — navigateur reel | **pass** | 1m36 | `actions/runs/42089935305/job/127468056852` |
 | Intégration migrations 34/36/41 | Chaîne 34/36/41 sur Postgres 17 jetable | **pass** | 1m29 | `actions/runs/42089935132/job/127465002427` |
 
-SHA mesuré : `e7f11f5`. Les cinq jobs sont verts sur ce SHA, sans `continue-on-error`,
-sans étape désactivée, sans exclusion de fichier.
+SHA mesuré : `e7f11f5`, puis `c928bf0` (delta documentaire) : les cinq jobs y sont également verts.
+Sans `continue-on-error`, sans étape désactivée, sans exclusion de fichier.
+
+### Intégration de la tête de la PR #111
+
+La PR #111 a avancé de six commits après la base de cette branche (`3d1eb1c` → `cff19e1`).
+Ils ont été fusionnés (commit de fusion `8f89e14`) plutôt que laissés divergents : deux fichiers se
+recoupaient. Résolution, mesurée et non choisie par préférence :
+
+- `api/_lib/sql-errors.ts` — le bloc de #111 est un **sous-ensemble strict** du nôtre (contrôle :
+  « codes de #111 absents de mon bloc : aucun »), aucun doublon après fusion, 282 codes mappés.
+- `scripts/test_neon_active_tenant.mjs` — #111 a fait évoluer les **mêmes** fixtures en six
+  commits (seau privé canonique, certification rattachée au produit de sa marque, sujet de la
+  fixture qualité, fixtures de collecte). Sa version est la plus récente et conserve les
+  55 appels `assertTenantGuard` attendus par le contrat de route. C'est elle qui est retenue, et
+  `test:neon:active-tenant` passe sur la chaîne à 88 migrations.
+
+Après fusion : chaîne 88 migrations appliquée sur base vierge, `tsc` racine et `api:typecheck`
+verts, 128 des 149 suites npm vertes en local ; les 21 restantes sont les suites navigateur, dont
+l'échec local est un binaire Chromium absent (`browserType.launch: Executable doesn't exist`),
+et que la CI exécute avec ses propres navigateurs.
+
+### Ordre des étapes — une contrainte mesurée
+
+`test:neon:worker-non-forgeable` mesure « aucune autre organisation visible » **sur la base du
+job**. Exécutée après `test:neon:active-tenant` (qui laisse ses organisations), elle tombe pour une
+raison qui n'a rien à voir avec elle : mesuré, base fraîche → vert, même base après
+`test:neon:active-tenant` → rouge. La CI la place déjà avant (étape 20 contre 38) ; la contrainte
+est désormais écrite dans le workflow pour qu'une insertion future ne la casse pas par accident.
 
 Quatre échecs ont été rencontrés puis corrigés, chacun avec sa cause mesurée :
 

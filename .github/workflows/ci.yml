@@ -785,6 +785,13 @@ jobs:
         # utilisateurs et adhesions en posant tracefab.worker_context, que les
         # six operations systeme fonctionnent sous identite autorisee, et
         # qu'aucun des deux roles ne peut endosser l'autre.
+        #
+        # ORDRE : cette etape mesure « aucune autre organisation visible » sur
+        # la base du job, donc elle doit rester AVANT les suites qui creent des
+        # organisations sans les detruire (mesure du 05/11 : placee apres
+        # `test:neon:active-tenant`, elle tombe pour une raison qui n'a rien a
+        # voir avec elle). Si une suite est inseree plus haut, verifier qu'elle
+        # nettoie ses fixtures.
         run: npm run test:neon:worker-non-forgeable
 
       - name: Garde-fous de la commande de validation Neon
