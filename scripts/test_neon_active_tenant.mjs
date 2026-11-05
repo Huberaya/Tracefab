@@ -85,6 +85,12 @@ const dppClaimRecette = randomUUID();
 const dppIdentityRecette = randomUUID();
 const materialRecette = randomUUID();
 const tcRecette = randomUUID();
+const issueRecette = randomUUID();
+const requestBrandB = randomUUID();
+const requestSupplierB = randomUUID();
+const itemBrandB = randomUUID();
+const itemSupplierB = randomUUID();
+const responseBrandB = randomUUID();
 let linkRecette = null;
 
 const proprio = cli(URL_PROPRIO);
@@ -163,6 +169,28 @@ try {
        certified_material_name, total_certified_weight_kg, issue_date, created_by)
      values ($1, $2, 'gots', 'Synthetic test issuer', $3, $4, 'Synthetic cotton', 100, CURRENT_DATE, $5)`,
     [tcRecette, `MT-${suffixe}`, orgRecette, orgGinger, userMulti]);
+  await proprio.query(
+    `insert into data_quality_issues
+      (id, owner_organization_id, rule_key, rule_version, severity, message)
+     values ($1, $2, 'tenant.guard.fixture', '1', 'blocking', 'Synthetic tenant guard issue')`,
+    [issueRecette, orgRecette]);
+  await proprio.query(
+    `insert into data_requests
+      (id, brand_organization_id, supplier_organization_id, title, questionnaire_key, questionnaire_version, status, created_by)
+     values
+      ($1, $3, $4, 'Synthetic brand request', 'tenant_guard', '1', 'in_progress', $5),
+      ($2, $4, $3, 'Synthetic supplier request', 'tenant_guard', '1', 'sent', $5)`,
+    [requestBrandB, requestSupplierB, orgRecette, orgGinger, userMulti]);
+  await proprio.query(
+    `insert into data_request_items (id, data_request_id, field_key, label, data_type, required, evidence_required)
+     values
+      ($1, $3, 'brand_field', 'Brand field', 'text', false, false),
+      ($2, $4, 'supplier_field', 'Supplier field', 'text', false, false)`,
+    [itemBrandB, itemSupplierB, requestBrandB, requestSupplierB]);
+  await proprio.query(
+    `insert into data_responses (id, data_request_item_id, value, data_type, status, responded_by, response_version, is_current)
+     values ($1, $2, '{"synthetic":"response"}'::jsonb, 'text', 'declared', $3, 1, true)`,
+    [responseBrandB, itemBrandB, userMulti]);
   ok('fixture : utilisateur multi-org avec produit, DPP, PEF, claims, identité et composition chez B uniquement');
 
   /* -- événement DPP créé par la fonction SECURITY DEFINER sous le tenant B -- */
@@ -196,6 +224,28 @@ try {
       else ko(`${label} : attendu active_tenant_mismatch, obtenu ${error.message}`);
     }
   };
+
+  await assertTenantGuard('tracefab_acknowledge_quality_issue',
+    'select tracefab_acknowledge_quality_issue($1::uuid)', [issueRecette]);
+  await assertTenantGuard('tracefab_waive_quality_issue',
+    'select tracefab_waive_quality_issue($1::uuid, $2::text)', [issueRecette, 'Synthetic tenant mismatch test']);
+  await assertTenantGuard('tracefab_add_data_request_item',
+    `select tracefab_add_data_request_item(
+      $1::uuid, 'negative_field', 'Negative field', 'text'::data_type,
+      false, false, null, '{}'::jsonb, '{}'::text[]
+    )`, [requestBrandB]);
+  await assertTenantGuard('tracefab_send_data_request',
+    'select tracefab_send_data_request($1::uuid)', [requestBrandB]);
+  await assertTenantGuard('tracefab_submit_data_request',
+    'select tracefab_submit_data_request($1::uuid)', [requestSupplierB]);
+  await assertTenantGuard('tracefab_submit_data_response',
+    `select tracefab_submit_data_response(
+      $1::uuid, '{"synthetic":"negative"}'::jsonb, null::uuid
+    )`, [itemSupplierB]);
+  await assertTenantGuard('tracefab_review_data_response',
+    `select tracefab_review_data_response(
+      $1::uuid, 'verified_by_reviewer'::data_value_status, 'Negative tenant test'
+    )`, [responseBrandB]);
 
   /* -- Enregistrement TC : le SQL direct doit aussi exiger une partie active -- */
   {
