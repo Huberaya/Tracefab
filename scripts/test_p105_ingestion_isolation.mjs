@@ -69,6 +69,9 @@ console.log(`  locataires : A=${A.legal_name} · B=${B.legal_name}`);
 // Clé de test, posée puis retirée.
 const secret = randomBytes(32);
 const VERSION = 99011;
+if (jobsFixture.length) await admin.query('DELETE FROM plm_erp_sync_jobs WHERE id = ANY($1::uuid[])', [jobsFixture.map((x) => x.id)]);
+if (integrationsFixture.length) await admin.query('DELETE FROM plm_erp_integrations WHERE id = ANY($1::uuid[])', [integrationsFixture.map((x) => x.id)]);
+if (membershipAjoutee) await admin.query('DELETE FROM organization_memberships WHERE organization_id = $1 AND user_id = $2', [B.id, A.user_id]);
 await admin.query('DELETE FROM public.tracefab_identity_cles WHERE version = $1', [VERSION]);
 await admin.query('INSERT INTO public.tracefab_identity_cles (version, secret, actif) VALUES ($1, $2, true)', [VERSION, secret]);
 
@@ -83,7 +86,7 @@ const jeton = (userId, orgId, exp) => {
 const MAINTENANT = Math.floor(Date.now() / 1000);
 
 /** Rejoue un appel d'ingestion, puis annule tout. */
-async function appeler({ gucs = {}, reference, updateFirstNode = false }) {
+async function appeler({ gucs = {}, reference, updateFirstNode = false, organizationId = null }) {
   await app.query('BEGIN');
   try {
     for (const [cle, valeur] of Object.entries(gucs)) {
@@ -96,7 +99,7 @@ async function appeler({ gucs = {}, reference, updateFirstNode = false }) {
     try {
       resultat = (await app.query(
         `SELECT public.tracefab_ingest_plm_erp_payload($1::uuid,'generic_csv',$2::jsonb,NULL::uuid) AS s`,
-        [gucs['tracefab.active_organization_id'] ?? null,
+        [organizationId ?? gucs['tracefab.active_organization_id'] ?? null,
           JSON.stringify({
             products: [{
               reference,
@@ -153,6 +156,42 @@ ok(!m1.erreur && m1.lignes === 1 && m1.nodeUpdateOk === true,
 const m2 = await appeler({ gucs: { 'tracefab.user_id': A.user_id, 'tracefab.active_organization_id': B.id }, reference: 'P105-M2' });
 ok(/brand_product_role_required/.test(String(m2.erreur)), 'M2 identité de A sur B : refusé', m2.erreur || 'ACCEPTÉ');
 
+// Même utilisateur membre de A et B : l'appartenance à B ne doit pas
+// autoriser une opération B lorsque le tenant actif et le jeton désignent A.
+const membershipCheck = await admin.query(
+  'SELECT id FROM organization_memberships WHERE organization_id = $1 AND user_id = $2',
+  [B.id, A.user_id],
+);
+let membershipAjoutee = false;
+if (membershipCheck.rowCount === 0) {
+  const inserted = await admin.query(
+    `INSERT INTO organization_memberships (organization_id, user_id, role, status)
+     SELECT $1, $2, 'admin', 'active'
+      WHERE NOT EXISTS (SELECT 1 FROM organization_memberships WHERE organization_id = $1 AND user_id = $2)`,
+    [B.id, A.user_id],
+  );
+  membershipAjoutee = inserted.rowCount === 1;
+}
+ok(true, 'fixture : même utilisateur membre actif des deux marques');
+const stamp = Date.now();
+const integrationsFixture = (await admin.query(
+  `INSERT INTO plm_erp_integrations (organization_id, system_type, name)
+   VALUES ($1, 'generic_csv', $2), ($3, 'generic_csv', $4)
+   RETURNING id, organization_id`,
+  [A.id, 'P105 tenant A ' + stamp, B.id, 'P105 tenant B ' + stamp],
+)).rows;
+const integrationA = integrationsFixture.find((x) => x.organization_id === A.id)?.id;
+const integrationB = integrationsFixture.find((x) => x.organization_id === B.id)?.id;
+const jobsFixture = (await admin.query(
+  `INSERT INTO plm_erp_sync_jobs
+     (brand_organization_id, source_system, job_reference, created_by, integration_id)
+   VALUES ($1, 'generic_csv', $2, $3, $4), ($5, 'generic_csv', $6, $3, $7)
+   RETURNING id, brand_organization_id`,
+  [A.id, 'P105-TENANT-A-' + stamp, A.user_id, integrationA, B.id, 'P105-TENANT-B-' + stamp, integrationB],
+)).rows;
+const jobA = jobsFixture.find((x) => x.brand_organization_id === A.id)?.id;
+const jobB = jobsFixture.find((x) => x.brand_organization_id === B.id)?.id;
+
 // ---------------------------------------------------------------------------
 // M3 — identité FORGÉE du propriétaire de B (sans jeton, mode permissif)
 // ---------------------------------------------------------------------------
@@ -199,6 +238,47 @@ try {
     reference: 'P105-M3O',
   });
   ok(Boolean(m3o.erreur) && m3o.lignes === 0, 'jeton émis pour une AUTRE organisation : refusé', m3o.erreur || `${m3o.lignes} ligne(s)`);
+
+  // Même utilisateur, membre des deux marques, mais tenant actif A : la
+  // fonction SECURITY DEFINER doit refuser explicitement une cible B.
+  const jetonA = jeton(A.user_id, A.id, MAINTENANT + 60);
+  const tenantPositif = await appeler({
+    gucs: { 'tracefab.identity': jetonA, 'tracefab.user_id': A.user_id, 'tracefab.active_organization_id': A.id },
+    organizationId: A.id,
+    reference: 'P105-TENANT-POS',
+  });
+  ok(!tenantPositif.erreur && tenantPositif.lignes === 1,
+    'tenant actif A : ingestion A autorisée', tenantPositif.erreur || tenantPositif.lignes + ' ligne(s)');
+
+  const tenantNegatif = await appeler({
+    gucs: { 'tracefab.identity': jetonA, 'tracefab.user_id': A.user_id, 'tracefab.active_organization_id': A.id },
+    organizationId: B.id,
+    reference: 'P105-TENANT-NEG',
+  });
+  ok(/active_tenant_mismatch/.test(String(tenantNegatif.erreur)) && tenantNegatif.lignes === 0,
+    'même utilisateur membre de A et B : ingestion directe de B depuis le tenant A refusée',
+    tenantNegatif.erreur || tenantNegatif.lignes + ' ligne(s)');
+
+  // Lecture directe des deux tables PLM/ERP, sans filtre applicatif :
+  // l'utilisateur A est membre de B, mais la RLS ne doit exposer que A.
+  await app.query('BEGIN');
+  try {
+    await app.query('SELECT set_config($1,$2,true)', ['tracefab.identity', jetonA]);
+    await app.query('SELECT set_config($1,$2,true)', ['tracefab.user_id', A.user_id]);
+    await app.query('SELECT set_config($1,$2,true)', ['tracefab.active_organization_id', A.id]);
+    const visible = {
+      integrationA: (await app.query('SELECT count(*)::int n FROM plm_erp_integrations WHERE id=$1', [integrationA])).rows[0].n,
+      integrationB: (await app.query('SELECT count(*)::int n FROM plm_erp_integrations WHERE id=$1', [integrationB])).rows[0].n,
+      jobA: (await app.query('SELECT count(*)::int n FROM plm_erp_sync_jobs WHERE id=$1', [jobA])).rows[0].n,
+      jobB: (await app.query('SELECT count(*)::int n FROM plm_erp_sync_jobs WHERE id=$1', [jobB])).rows[0].n,
+    };
+    ok(visible.integrationA === 1 && visible.integrationB === 0,
+      'RLS PLM integrations : A visible, B invisible malgré l adhésion B', JSON.stringify(visible));
+    ok(visible.jobA === 1 && visible.jobB === 0,
+      'RLS PLM sync jobs : A visible, B invisible malgré l adhésion B', JSON.stringify(visible));
+  } finally {
+    await app.query('ROLLBACK').catch(() => {});
+  }
 } finally {
   await admin.query('UPDATE public.tracefab_identity_politique SET strict = $1, modifie_le = now() WHERE singleton', [strictAvant]);
 }
