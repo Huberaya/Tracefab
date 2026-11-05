@@ -229,10 +229,29 @@ try {
     [prodRecette]);
   await assertTenantGuard('tracefab_create_product',
     'select tracefab_create_product($1::uuid, $2, $3, $4, $5)',
-    [orgRecette, 'NEGATIVE-TENANT', 'Synthetic negative product', 'tshirt', null]);
+    [orgRecette, 'NEGATIVE-TENANT', 'Synthetic negative product', null, null]);
   await assertTenantGuard('tracefab_bind_schema',
     'select tracefab_bind_schema($1, $2, $3, $4::uuid)',
     ['tenant-negative-schema', '1', 'product', prodRecette]);
+
+  await assertTenantGuard('tracefab_create_data_request',
+    'select tracefab_create_data_request($1::uuid, $2::uuid, null::uuid, $3, $4, $5, null::date, null::text)',
+    [orgRecette, orgGinger, 'Synthetic negative request', 'textile_supplier_questionnaire', '1']);
+  await assertTenantGuard('tracefab_create_supply_chain_node',
+    `select tracefab_create_supply_chain_node($1::uuid, null::node_type, null::text, null::uuid, null::uuid, null::uuid, null::uuid, null::text, '{}'::jsonb, null::uuid, null::date)`,
+    [prodRecette]);
+  await assertTenantGuard('tracefab_update_supply_chain_node',
+    `select tracefab_update_supply_chain_node($1::uuid, $2::uuid, null::text, '{}'::jsonb, null::uuid, null::date)`,
+    [prodRecette, randomUUID()]);
+  await assertTenantGuard('tracefab_delete_supply_chain_node',
+    'select tracefab_delete_supply_chain_node($1::uuid, $2::uuid)',
+    [prodRecette, randomUUID()]);
+  await assertTenantGuard('tracefab_add_supply_chain_link',
+    `select tracefab_add_supply_chain_link($1::uuid, $2::uuid, $3::uuid, null::supply_chain_link_type, null::integer, null::date, null::date, null::uuid, '{}'::jsonb)`,
+    [prodRecette, randomUUID(), randomUUID()]);
+  await assertTenantGuard('tracefab_delete_supply_chain_link',
+    'select tracefab_delete_supply_chain_link($1::uuid, $2::uuid)',
+    [prodRecette, randomUUID()]);
 
   /* -- 1. hors contexte, aucun locataire --------------------------------- */
   {
