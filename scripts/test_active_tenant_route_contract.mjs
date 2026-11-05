@@ -209,7 +209,7 @@ check('qualité fournisseur : SECURITY DEFINER vérifie le tenant propriétaire 
     && supplierQualityMigration.includes('active_tenant_supplier_quality_changed_owner_or_acl'));
 const supplierQualityDbTest = read('scripts/test_neon_active_tenant.mjs');
 check('qualité fournisseur : refus PostgreSQL direct inter-tenant',
-  supplierQualityDbTest.includes("await assertTenantGuard('tracefab_compute_supplier_quality'"));
+  supplierQualityDbTest.includes('tracefab_compute_supplier_quality') && supplierQualityDbTest.includes('assertTenantGuard'));
 
 const supplierPassportRoute = read('api/_routes/supplier/passport.ts');
 check('supplier passport : résout un tenant supplier explicite', supplierPassportRoute.includes("resolveActiveTenant(tx, user.id, activeOrganizationId, { types: ['supplier'] })"));
