@@ -148,6 +148,7 @@ try {
     // c est ce que fait withTracefabTenantContext cote application.
     await app.query("select set_config('tracefab.user_id', $1, true)", [userId]);
     await app.query("select set_config('tracefab.user_email', $1, true)", [email.toLowerCase()]);
+    await app.query("select set_config('tracefab.active_organization_id', $1, true)", [org]);
     const vues = await app.query(
       'select count(*)::int as n from public.organizations where id = $1::uuid',
       [org],
@@ -295,6 +296,7 @@ try {
   const privilegesWorker = await admin.query(
     `select
        has_table_privilege('tracefab_worker', 'public.data_requests', 'SELECT') as requests_select,
+       has_table_privilege('tracefab_worker', 'public.users', 'SELECT') as users_select,
        has_table_privilege('tracefab_worker', 'public.tracefab_notification_outbox', 'SELECT') as outbox_select,
        has_table_privilege('tracefab_worker', 'public.tracefab_notification_outbox', 'INSERT') as outbox_insert,
        has_table_privilege('tracefab_worker', 'public.tracefab_notification_outbox', 'UPDATE') as outbox_update,
@@ -306,14 +308,15 @@ try {
   );
   const wp = privilegesWorker.rows[0];
   ok(
-    wp.requests_select && wp.outbox_select && wp.outbox_insert && wp.outbox_update
+    wp.requests_select && wp.users_select && wp.outbox_select && wp.outbox_insert && wp.outbox_update
       && !wp.app_outbox_insert && !wp.app_outbox_update
       && wp.active_org_exec && wp.active_tenant_exec && wp.can_access_org_exec,
-    'le worker a les droits outbox/demandes et les seuls helpers de prédicat RLS requis',
+    'le worker a les droits users/outbox/demandes et les helpers de prédicat RLS requis',
     JSON.stringify(wp),
   );
-  // Le worker ne doit rien pouvoir lire que l applicatif ne puisse lire : le
-  // seul sens qui compte est l anti-escalade.
+  // Le seul SELECT table supplémentaire du worker est public.users :
+  // il est requis par tracefab_current_user_email() sous SECURITY DEFINER.
+  // RLS reste active/forcée et tracefab_app ne reçoit aucun SELECT direct.
   const enPlus = await admin.query(
     `select c.relname
        from pg_class c
@@ -324,8 +327,8 @@ try {
       order by 1`,
   );
   ok(
-    enPlus.rowCount === 0,
-    'aucune table lisible par le worker seul',
+    enPlus.rowCount === 1 && enPlus.rows[0]?.relname === 'users',
+    'users est la seule table lisible par le worker seul, sans SELECT applicatif',
     enPlus.rows.map((r) => r.relname).join(', ') || 'aucune',
   );
 
