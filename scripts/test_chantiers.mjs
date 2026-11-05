@@ -56,6 +56,13 @@ function controle(libelle, condition, detail) {
     migrationClaimsPresente ? 'migration présente mais absente du registre' : 'migration absente du dépôt',
   );
   const entete = texte.slice(0, 1000);
+  const migrationDpp = '20261105150000_active_tenant_dpp_claims_identity_rls';
+  const migrationDppPresente = readdirSync('prisma/migrations').includes(migrationDpp);
+  controle(
+    'la migration RLS des claims et identités DPP est référencée dans le registre',
+    migrationDppPresente && texte.includes(migrationDpp),
+    migrationDppPresente ? 'migration présente mais absente du registre' : 'migration absente du dépôt',
+  );
   const nonVerifie = /Neon de production\s*:\s*non vérifié/i.test(entete);
   let preuveNeon = '';
   try {
