@@ -321,13 +321,13 @@ try {
               tracefab_in_active_tenant($2::uuid) as ginger_active`,
       [orgSupplier, orgGinger],
     );
-    ok(
-      state.rows[0]?.active === orgGinger
+    if (state.rows[0]?.active === orgGinger
         && state.rows[0]?.supplier_active === false
-        && state.rows[0]?.ginger_active === true,
-      'contexte actif Ginger refuse explicitement le tenant fournisseur',
-      JSON.stringify(state.rows[0]),
-    );
+        && state.rows[0]?.ginger_active === true) {
+      ok('contexte actif Ginger refuse explicitement le tenant fournisseur');
+    } else {
+      ko(`contexte tenant incohérent : ${JSON.stringify(state.rows[0])}`);
+    }
     await app.query('rollback');
 
     const definitions = await proprio.query(`
@@ -350,11 +350,11 @@ try {
       const beginAt = row.definition.indexOf('BEGIN');
       console.log(`  DIAGNOSTIC ${row.proname}: guard=${row.guard_position}, role=${row.role_position}\\n${row.definition.slice(beginAt, beginAt + 700)}`);
     }
-    ok(
-      definitionsValid,
-      'les deux fonctions passeport exécutent leur garde avant le contrôle de rôle',
-      JSON.stringify(definitions.rows),
-    );
+    if (definitionsValid) {
+      ok('les deux fonctions passeport exposent leur garde avant le contrôle de rôle');
+    } else {
+      ko(`garde absente ou mal placée dans les fonctions passeport : ${JSON.stringify(definitions.rows)}`);
+    }
 
     await proprio.query('begin');
     await proprio.query(`select set_config('tracefab.active_organization_id', $1, true)`, [orgGinger]);
