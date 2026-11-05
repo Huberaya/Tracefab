@@ -77,6 +77,20 @@ function controle(libelle, condition, detail) {
     migrationTcRegistrationPresente && texte.includes(migrationTcRegistration),
     migrationTcRegistrationPresente ? 'migration présente mais absente du registre' : 'migration absente du dépôt',
   );
+  const migrationInviteDocumentPassport = '20261105230000_active_tenant_invite_document_passport_guards';
+  const migrationInviteDocumentPassportPresente = readdirSync('prisma/migrations').includes(migrationInviteDocumentPassport);
+  controle(
+    'la migration des gardes invitations/documents/passeports est référencée dans le registre',
+    migrationInviteDocumentPassportPresente && texte.includes(migrationInviteDocumentPassport),
+    migrationInviteDocumentPassportPresente ? 'migration présente mais absente du registre' : 'migration absente du dépôt',
+  );
+  const migrationSupplierQuality = '20261105240000_active_tenant_supplier_quality_guard';
+  const migrationSupplierQualityPresente = readdirSync('prisma/migrations').includes(migrationSupplierQuality);
+  controle(
+    'la migration du calcul de qualité fournisseur est référencée dans le registre',
+    migrationSupplierQualityPresente && texte.includes(migrationSupplierQuality),
+    migrationSupplierQualityPresente ? 'migration présente mais absente du registre' : 'migration absente du dépôt',
+  );
   const migrationQualityCap = '20261105220000_active_tenant_quality_cap_guards';
   const migrationQualityCapPresente = readdirSync('prisma/migrations').includes(migrationQualityCap);
   controle(

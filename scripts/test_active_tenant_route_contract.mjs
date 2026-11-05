@@ -197,6 +197,20 @@ const scanFlow = read('api/_lib/document-scan-flow.ts');
 check('scan documentaire : les trois transactions réarment le tenant propriétaire',
   (scanFlow.split('ownerOrganizationId);').length - 1) === 3);
 
+const supplierQualityRoute = read('api/_routes/supplier/quality.ts');
+check('qualité fournisseur : résout et arme le tenant supplier actif',
+  supplierQualityRoute.includes("resolveActiveTenant(tx, user.id, activeOrganizationId, { types: ['supplier'] })")
+    && supplierQualityRoute.includes('}, activeOrganizationId)')
+    && supplierQualityRoute.includes('isTenantError(error)'));
+const supplierQualityMigration = read('prisma/migrations/20261105240000_active_tenant_supplier_quality_guard/migration.sql');
+check('qualité fournisseur : SECURITY DEFINER vérifie le tenant propriétaire et préserve OID/ACL',
+  supplierQualityMigration.includes('tracefab_compute_supplier_quality')
+    && supplierQualityMigration.includes('tracefab_require_active_tenant_for_organization(v_owner_organization_id)')
+    && supplierQualityMigration.includes('active_tenant_supplier_quality_changed_owner_or_acl'));
+const supplierQualityDbTest = read('scripts/test_neon_active_tenant.mjs');
+check('qualité fournisseur : refus PostgreSQL direct inter-tenant',
+  supplierQualityDbTest.includes("await assertTenantGuard('tracefab_compute_supplier_quality'"));
+
 const supplierPassportRoute = read('api/_routes/supplier/passport.ts');
 check('supplier passport : résout un tenant supplier explicite', supplierPassportRoute.includes("resolveActiveTenant(tx, user.id, activeOrganizationId, { types: ['supplier'] })"));
 check('supplier passport : arme le tenant dans le contexte SQL', supplierPassportRoute.includes('}, activeOrganizationId)'));
