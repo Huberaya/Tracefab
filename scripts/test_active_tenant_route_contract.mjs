@@ -56,6 +56,19 @@ check('schema-bindings : le tenant est armé dans la transaction', schemaBinding
 check('schema-bindings : le sujet est borné au tenant avant lecture/écriture', schemaBindings.includes('subjectBelongsToTenant'));
 check('schema-bindings : les erreurs tenant sont traitées', schemaBindings.includes('isTenantError(error)'));
 
+
+const catalogImport = read('api/_routes/catalog/products/import.ts');
+check('catalog import : refuse le repli sur l’union des marques', !catalogImport.includes('activeBrandOrganizationIds'));
+check('catalog import : résout explicitement le tenant brand du CSV', catalogImport.includes("resolveActiveTenant(tx, user.id, requestedOrganizationId, { types: ['brand'] })"));
+check('catalog import : arme le tenant dans le contexte SQL', catalogImport.includes('}, requestedOrganizationId)'));
+check('catalog import : traite les erreurs tenant', catalogImport.includes('isTenantError(error)'));
+
+const massBalance = read('api/_routes/products/[productId]/mass-balance.ts');
+check('mass-balance : exige un tenant brand actif', (massBalance.match(/resolveActiveTenant\(tx, user\.id, activeOrganizationId, \{ types: \['brand'\] \}\)/g) || []).length === 2);
+check('mass-balance : borne le produit au tenant avant lecture et écriture', (massBalance.match(/brand_organization_id: tenant\.organizationId/g) || []).length === 2);
+check('mass-balance : arme le tenant dans les deux transactions', (massBalance.match(/\}, activeOrganizationId\)/g) || []).length === 2);
+check('mass-balance : traite les erreurs tenant', massBalance.includes('isTenantError(err)'));
+
 const definerMigration = read('prisma/migrations/20261105170000_active_tenant_security_definer_guards/migration.sql');
 const definerGuards = [
   ['tracefab_add_supply_chain_link', 'tracefab_require_active_tenant_for_product'],
