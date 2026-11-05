@@ -736,9 +736,29 @@ try {
     const directDppEvents = await app.query('select id from dpp_lifecycle_events where id = $1::uuid', [dppEventRecette]);
     const directDppIdentities = await app.query('select id from dpp_resolvable_identifiers where id = $1::uuid', [dppIdentityRecette]);
     const directProductMaterials = await app.query('select material_id from product_materials where product_id = $1::uuid and material_id = $2::uuid', [prodRecette, materialRecette]);
+    const directDocuments = await app.query('select id from documents where id = $1::uuid', [documentRecette]);
+    const directCertifications = await app.query('select id from certifications where id = $1::uuid', [certificationRecette]);
+    const directQualityIssues = await app.query('select id from data_quality_issues where id = $1::uuid', [issueRecette]);
+    const directBrandRequests = await app.query('select id from data_requests where id = $1::uuid', [requestBrandB]);
+    const directBrandRequestItems = await app.query('select id from data_request_items where id = $1::uuid', [itemBrandB]);
+    const directBrandResponses = await app.query('select id from data_responses where id = $1::uuid', [responseBrandB]);
+    const directBrandSupplierRelationship = await app.query('select id from brand_supplier_relationships where id = $1::uuid', [relationshipRecetteSupplier]);
+    const directTransactionCertificate = await app.query('select id from transaction_certificates where id = $1::uuid', [tcRecette]);
+    const directMaterials = await app.query('select id from materials where id = $1::uuid', [materialRecette]);
+    const directPassportAccessRequests = await app.query('select id from supplier_passport_access_requests where id = $1::uuid', [accessRequestRecette]);
     const materialVisible = await app.query('select tracefab_material_visible_via_product($1::uuid) as visible', [materialRecette]);
     await app.query('commit');
-    return { rows, directProducts: directProducts.rows, directDpp: directDpp.rows, directPef: directPef.rows, directGreenClaims: directGreenClaims.rows, directDppClaims: directDppClaims.rows, directDppEvents: directDppEvents.rows, directDppIdentities: directDppIdentities.rows, directProductMaterials: directProductMaterials.rows, materialVisible: materialVisible.rows };
+    return {
+      rows, directProducts: directProducts.rows, directDpp: directDpp.rows, directPef: directPef.rows,
+      directGreenClaims: directGreenClaims.rows, directDppClaims: directDppClaims.rows,
+      directDppEvents: directDppEvents.rows, directDppIdentities: directDppIdentities.rows,
+      directProductMaterials: directProductMaterials.rows, directDocuments: directDocuments.rows,
+      directCertifications: directCertifications.rows, directQualityIssues: directQualityIssues.rows,
+      directBrandRequests: directBrandRequests.rows, directBrandRequestItems: directBrandRequestItems.rows,
+      directBrandResponses: directBrandResponses.rows, directBrandSupplierRelationship: directBrandSupplierRelationship.rows,
+      directTransactionCertificate: directTransactionCertificate.rows, directMaterials: directMaterials.rows,
+      directPassportAccessRequests: directPassportAccessRequests.rows, materialVisible: materialVisible.rows
+    };
   };
 
   {
@@ -748,14 +768,24 @@ try {
     const fromGinger = await asTenant(orgGinger);
 
     if (fromRecette.rows.length === 1 && fromRecette.rows[0].owner_organization_id === orgRecette
-      && fromRecette.directProducts.length === 1 && fromRecette.directDpp.length === 1 && fromRecette.directPef.length === 1 && fromRecette.directGreenClaims.length === 1 && fromRecette.directDppClaims.length === 1 && fromRecette.directDppEvents.length === 1 && fromRecette.directDppIdentities.length === 1 && fromRecette.directProductMaterials.length === 1 && fromRecette.materialVisible[0]?.visible === true) {
+      && fromRecette.directProducts.length === 1 && fromRecette.directDpp.length === 1 && fromRecette.directPef.length === 1 && fromRecette.directGreenClaims.length === 1 && fromRecette.directDppClaims.length === 1 && fromRecette.directDppEvents.length === 1 && fromRecette.directDppIdentities.length === 1 && fromRecette.directProductMaterials.length === 1
+      && fromRecette.directDocuments.length === 1 && fromRecette.directCertifications.length === 1 && fromRecette.directQualityIssues.length === 1
+      && fromRecette.directBrandRequests.length === 1 && fromRecette.directBrandRequestItems.length === 1 && fromRecette.directBrandResponses.length === 1
+      && fromRecette.directBrandSupplierRelationship.length === 1 && fromRecette.directTransactionCertificate.length === 1
+      && fromRecette.directMaterials.length === 1 && fromRecette.directPassportAccessRequests.length === 0
+      && fromRecette.materialVisible[0]?.visible === true) {
       ok('sous le locataire de recette, accessibleProduct rend le produit de recette');
     } else {
       ko(`sous le locataire de recette, attendu 1 ligne, obtenu ${fromRecette.length}`);
     }
 
     if (fromGinger.rows.length === 0 && fromGinger.directProducts.length === 0
-      && fromGinger.directDpp.length === 0 && fromGinger.directPef.length === 0 && fromGinger.directGreenClaims.length === 0 && fromGinger.directDppClaims.length === 0 && fromGinger.directDppEvents.length === 0 && fromGinger.directDppIdentities.length === 0 && fromGinger.directProductMaterials.length === 0 && fromGinger.materialVisible[0]?.visible === false) {
+      && fromGinger.directDpp.length === 0 && fromGinger.directPef.length === 0 && fromGinger.directGreenClaims.length === 0 && fromGinger.directDppClaims.length === 0 && fromGinger.directDppEvents.length === 0 && fromGinger.directDppIdentities.length === 0 && fromGinger.directProductMaterials.length === 0
+      && fromGinger.directDocuments.length === 0 && fromGinger.directCertifications.length === 0 && fromGinger.directQualityIssues.length === 0
+      && fromGinger.directBrandRequests.length === 0 && fromGinger.directBrandRequestItems.length === 0 && fromGinger.directBrandResponses.length === 0
+      && fromGinger.directBrandSupplierRelationship.length === 0 && fromGinger.directTransactionCertificate.length === 1
+      && fromGinger.directMaterials.length === 0 && fromGinger.directPassportAccessRequests.length === 1
+      && fromGinger.materialVisible[0]?.visible === false) {
       ok('sous Ginger, la RLS directe bloque produit, DPP, PEF, claims, événements, identités et composition — sans filtre applicatif');
     } else {
       ko('fuite inter-tenant : produit=' + fromGinger.directProducts.length + ', DPP=' + fromGinger.directDpp.length + ', PEF=' + fromGinger.directPef.length + ', green_claims=' + fromGinger.directGreenClaims.length + ', dpp_claims=' + fromGinger.directDppClaims.length + ', dpp_events=' + fromGinger.directDppEvents.length + ', dpp_identities=' + fromGinger.directDppIdentities.length);
