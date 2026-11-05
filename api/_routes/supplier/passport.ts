@@ -3,6 +3,7 @@ import { requireClerkUser, isUnauthorized } from '../../_lib/auth.js';
 import { withTracefabUserContext } from '../../_lib/context.js';
 import { json, methodNotAllowed, readJsonBody } from '../../_lib/http.js';
 import { sqlBusinessError } from '../../_lib/sql-errors.js';
+import { isTenantError, resolveActiveTenant, requestedTenantId } from '../../_lib/tenant.js';
 import { getOrCreateSupplierPassport, updateSupplierPassport } from '../../_lib/supplier-passport/passport-manager.js';
 import type { TradeSecretMode } from '../../_lib/supplier-passport/types.js';
 
@@ -13,29 +14,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   try {
     const { user } = await requireClerkUser(req);
-    const orgIdQuery = typeof req.query.organizationId === 'string' ? req.query.organizationId : undefined;
+    const activeOrganizationId = requestedTenantId(req);
 
     const result = await withTracefabUserContext(user.id, user.email, async (tx) => {
-      // Find the user's supplier organization
-      let supplierOrgId = orgIdQuery;
-      if (!supplierOrgId) {
-        const membership = await tx.organization_memberships.findFirst({
-          where: {
-            user_id: user.id,
-            status: 'active',
-            organizations: { type: 'supplier' },
-          },
-          select: { organization_id: true },
-        });
-        supplierOrgId = membership?.organization_id;
-      }
-
-      if (!supplierOrgId) {
-        throw new Error('supplier_organization_not_found');
-      }
+      const tenant = await resolveActiveTenant(tx, user.id, activeOrganizationId, { types: ['supplier'] });
 
       if (req.method === 'GET') {
-        return await getOrCreateSupplierPassport(tx, supplierOrgId);
+        return await getOrCreateSupplierPassport(tx, tenant.organizationId);
       }
 
       // PATCH
@@ -47,13 +32,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         ? (body.disclosedSections as any)
         : undefined;
 
-      return await updateSupplierPassport(tx, supplierOrgId, {
+      return await updateSupplierPassport(tx, tenant.organizationId, {
         headline,
         tradeSecretMode,
         isPublic,
         disclosedSections,
       });
-    });
+    }, activeOrganizationId);
 
     return json(res, 200, {
       passport: result,
@@ -63,6 +48,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (isUnauthorized(err)) {
       return json(res, 401, { error: 'unauthorized' });
     }
+    if (isTenantError(err)) return json(res, err.status, { error: err.message });
     const sqlError = sqlBusinessError(err);
     if (sqlError) {
       return json(res, sqlError.status, { error: sqlError.error });

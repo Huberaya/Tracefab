@@ -177,6 +177,13 @@ for (const path of [
       && src.includes('requestedTenantId(req)')
       && src.includes('isTenantError(error)'));
 }
+const supplierPassportRoute = read('api/_routes/supplier/passport.ts');
+check('supplier passport : résout un tenant supplier explicite', supplierPassportRoute.includes("resolveActiveTenant(tx, user.id, activeOrganizationId, { types: ['supplier'] })"));
+check('supplier passport : arme le tenant dans le contexte SQL', supplierPassportRoute.includes('}, activeOrganizationId)'));
+check('supplier passport : traite les erreurs tenant', supplierPassportRoute.includes('isTenantError(err)'));
+const universalPassportTest = read('scripts/test_neon_universal_passport.mjs');
+check('passeport universel : le parcours positif arme puis efface le tenant actif', (universalPassportTest.match(/set_config\\('tracefab\\.active_organization_id'/g) || []).length === 3);
+
 const supplierProfileDbTest = read('scripts/test_neon_active_tenant.mjs');
 for (const fn of [
   'tracefab_update_supplier_profile','tracefab_submit_supplier_profile',
