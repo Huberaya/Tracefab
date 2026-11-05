@@ -77,6 +77,8 @@ const suffixe = randomUUID().slice(0, 8);
 const userMulti = randomUUID();
 const orgGinger = randomUUID();
 const orgRecette = randomUUID();
+const orgSupplier = randomUUID();
+const supplierRecette = randomUUID();
 const prodRecette = randomUUID();
 const dppRecette = randomUUID();
 const pefRecette = randomUUID();
@@ -131,13 +133,17 @@ try {
     [userMulti, `mt_${suffixe}`, `mt-${suffixe}@example.test`]);
   await proprio.query(
     `insert into organizations (id, type, legal_name, display_name, status, created_by) values
-       ($1, 'brand', 'Ginger', 'Ginger', 'active', $3),
-       ($2, 'brand', 'Tracefab Recette Production', 'Tracefab Recette Production', 'active', $3)`,
-    [orgGinger, orgRecette, userMulti]);
+       ($1, 'brand', 'Ginger', 'Ginger', 'active', $4),
+       ($2, 'brand', 'Tracefab Recette Production', 'Tracefab Recette Production', 'active', $4),
+       ($3, 'supplier', 'Synthetic Supplier', 'Synthetic Supplier', 'active', $4)`,
+    [orgGinger, orgRecette, orgSupplier, userMulti]);
   await proprio.query(
     `insert into organization_memberships (organization_id, user_id, role, status) values
-       ($1, $3, 'admin', 'active'), ($2, $3, 'admin', 'active')`,
-    [orgGinger, orgRecette, userMulti]);
+       ($1, $4, 'admin', 'active'), ($2, $4, 'admin', 'active'), ($3, $4, 'admin', 'active')`,
+    [orgGinger, orgRecette, orgSupplier, userMulti]);
+  await proprio.query(
+    'insert into suppliers (id, organization_id) values ($1, $2)',
+    [supplierRecette, orgSupplier]);
   // Brouillon, sans public_slug : la lecture publique ne peut rien expliquer.
   await proprio.query(
     `insert into tracefab_products (id, brand_organization_id, reference, name, status, version, created_by)
@@ -230,6 +236,19 @@ try {
       else ko(`${label} : attendu active_tenant_mismatch, obtenu ${error.message}`);
     }
   };
+
+  await assertTenantGuard('tracefab_update_supplier_profile',
+    `select tracefab_update_supplier_profile(
+      $1::uuid, 'Synthetic profile', 'Synthetic contact', 'supplier@example.test',
+      null::text, null::text, null::integer, ARRAY['textile']::text[]
+    )`, [supplierRecette]);
+  await assertTenantGuard('tracefab_submit_supplier_profile',
+    'select tracefab_submit_supplier_profile($1::uuid)', [supplierRecette]);
+  await assertTenantGuard('tracefab_get_or_create_supplier_passport',
+    'select tracefab_get_or_create_supplier_passport($1::uuid)', [orgSupplier]);
+  await assertTenantGuard('tracefab_update_supplier_passport',
+    `select tracefab_update_supplier_passport($1::uuid, 'Synthetic', null::text, null::jsonb, false)`,
+    [orgSupplier]);
 
   await assertTenantGuard('tracefab_create_material',
     `select tracefab_create_material(
