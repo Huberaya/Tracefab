@@ -471,8 +471,20 @@ BEGIN
       );
       v_using := pg_catalog.regexp_replace(
         v_using,
-        'tracefab_(is_org_member|has_org_role|can_access_org)\(([^()]*)\)',
-        '(tracefab_in_active_tenant(\2) AND tracefab_\1(\2))',
+        'tracefab_is_org_member\(([^()]*)\)',
+        '(tracefab_in_active_tenant(\1) AND tracefab_is_org_member(\1))',
+        'g'
+      );
+      v_using := pg_catalog.regexp_replace(
+        v_using,
+        'tracefab_can_access_org\(([^()]*)\)',
+        '(tracefab_in_active_tenant(\1) AND tracefab_can_access_org(\1))',
+        'g'
+      );
+      v_using := pg_catalog.regexp_replace(
+        v_using,
+        'tracefab_has_org_role\(([^,()]*)\s*,\s*([^()]*)\)',
+        '(tracefab_in_active_tenant(\1) AND tracefab_has_org_role(\1, \2))',
         'g'
       );
       v_after := pg_catalog.regexp_count(v_using, 'tracefab_in_active_tenant\(')
@@ -491,8 +503,20 @@ BEGIN
       );
       v_check := pg_catalog.regexp_replace(
         v_check,
-        'tracefab_(is_org_member|has_org_role|can_access_org)\(([^()]*)\)',
-        '(tracefab_in_active_tenant(\2) AND tracefab_\1(\2))',
+        'tracefab_is_org_member\(([^()]*)\)',
+        '(tracefab_in_active_tenant(\1) AND tracefab_is_org_member(\1))',
+        'g'
+      );
+      v_check := pg_catalog.regexp_replace(
+        v_check,
+        'tracefab_can_access_org\(([^()]*)\)',
+        '(tracefab_in_active_tenant(\1) AND tracefab_can_access_org(\1))',
+        'g'
+      );
+      v_check := pg_catalog.regexp_replace(
+        v_check,
+        'tracefab_has_org_role\(([^,()]*)\s*,\s*([^()]*)\)',
+        '(tracefab_in_active_tenant(\1) AND tracefab_has_org_role(\1, \2))',
         'g'
       );
       v_after := pg_catalog.regexp_count(v_check, 'tracefab_in_active_tenant\(')
