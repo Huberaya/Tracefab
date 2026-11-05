@@ -141,6 +141,13 @@ function assert(condition, message) {
 
 try {
   await main();
+} catch (error) {
+  // Une suite qui echoue sans nommer son echec coute une investigation
+  // complete : le journal du job est heberge hors de l'API GitHub et n'est pas
+  // lisible depuis la session de travail. La ligne `::error::` ci-dessous
+  // devient une annotation du check, donc lisible. L'echec reste un echec.
+  console.log(`::error::test:neon:quality — ${String(error?.message ?? error).replace(/\n/g, ' | ')}`);
+  throw error;
 } finally {
   try {
     await prisma.organizations.deleteMany({ where: { id: { in: [brandOrganization, supplierOrganization] } } });
