@@ -110,7 +110,7 @@ jobs:
         shell: bash
         run: |
           git reset --hard "$GITHUB_SHA"
-          node scripts/run-db-suite.mjs --verrou-cluster scripts/reinitialiser_base_jetable.mjs
+          node scripts/run-db-suite.mjs scripts/reinitialiser_base_jetable.mjs
           node scripts/run-db-suite.mjs --verrou-cluster scripts/prepare_ci_db_role.mjs
           node scripts/db-deploy-throwaway.mjs
 
