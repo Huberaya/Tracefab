@@ -90,7 +90,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const sourceSha256 = createHash('sha256').update(body.csvContent, 'utf8').digest('hex');
     const validation = validateSupplierCsv(body.csvContent);
 
-    const activeOrganizationId = targetOrgId;
+    const activeOrganizationId = body.brandOrganizationId!;
     const result = await withTracefabUserContext(user.id, user.email, async (tx) => {
       const tenant = await resolveActiveTenant(tx, user.id, activeOrganizationId, { types: ['brand'], roles: ['owner', 'admin', 'manager'] });
       const targetOrgId = tenant.organizationId;
