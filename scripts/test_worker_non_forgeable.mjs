@@ -216,17 +216,54 @@ try {
   // --- 7. Aucun elargissement de privilege ---------------------------------
   console.log('\n7. Aucun elargissement');
   const worker = await admin.query(
-    "select rolcanlogin, rolbypassrls, rolsuper, rolcreaterole, rolcreatedb from pg_roles where rolname = 'tracefab_worker'",
+    "select rolcanlogin, rolinherit, rolbypassrls, rolsuper, rolcreaterole, rolcreatedb from pg_roles where rolname = 'tracefab_worker'",
   );
   const w = worker.rows[0];
   ok(!!w, 'le role tracefab_worker existe');
   if (w) {
     ok(
-      !w.rolbypassrls && !w.rolsuper && !w.rolcreaterole && !w.rolcreatedb,
-      'tracefab_worker ne porte aucun attribut privilegie',
-      `bypassrls=${w.rolbypassrls} super=${w.rolsuper}`,
+      !w.rolcanlogin && !w.rolinherit && !w.rolbypassrls && !w.rolsuper && !w.rolcreaterole && !w.rolcreatedb,
+      'tracefab_worker est NOLOGIN, NOINHERIT, NOBYPASSRLS et sans attribut privilegie',
+      `login=${w.rolcanlogin} inherit=${w.rolinherit} bypassrls=${w.rolbypassrls} super=${w.rolsuper}`,
     );
   }
+
+  const fonctionsWorker = await admin.query(
+    `select p.proname, pg_get_userbyid(p.proowner) as owner,
+            has_function_privilege('tracefab_app', p.oid, 'EXECUTE') as app_exec,
+            has_function_privilege('public', p.oid, 'EXECUTE') as public_exec
+       from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+      where n.nspname = 'public'
+        and p.proname in (
+          'tracefab_claim_notification_outbox',
+          'tracefab_complete_notification_outbox',
+          'tracefab_enqueue_due_data_request_reminders'
+        )
+      order by p.proname`,
+  );
+  ok(
+    fonctionsWorker.rowCount === 3
+      && fonctionsWorker.rows.every((f) => f.owner === 'tracefab_worker' && f.app_exec && !f.public_exec),
+    'les trois operations globales de notification sont possedees par tracefab_worker et fermees a PUBLIC',
+    fonctionsWorker.rows.map((f) => `${f.proname}:${f.owner}/app=${f.app_exec}/public=${f.public_exec}`).join(', '),
+  );
+
+  const privilegesWorker = await admin.query(
+    `select
+       has_table_privilege('tracefab_worker', 'public.data_requests', 'SELECT') as requests_select,
+       has_table_privilege('tracefab_worker', 'public.tracefab_notification_outbox', 'SELECT') as outbox_select,
+       has_table_privilege('tracefab_worker', 'public.tracefab_notification_outbox', 'INSERT') as outbox_insert,
+       has_table_privilege('tracefab_worker', 'public.tracefab_notification_outbox', 'UPDATE') as outbox_update,
+       has_table_privilege('tracefab_app', 'public.tracefab_notification_outbox', 'INSERT') as app_outbox_insert,
+       has_table_privilege('tracefab_app', 'public.tracefab_notification_outbox', 'UPDATE') as app_outbox_update`,
+  );
+  const wp = privilegesWorker.rows[0];
+  ok(
+    wp.requests_select && wp.outbox_select && wp.outbox_insert && wp.outbox_update
+      && !wp.app_outbox_insert && !wp.app_outbox_update,
+    'le worker dispose uniquement des droits de lecture des demandes et de claim/écriture outbox',
+    JSON.stringify(wp),
+  );
   // Le worker ne doit rien pouvoir lire que l applicatif ne puisse lire : le
   // seul sens qui compte est l anti-escalade.
   const enPlus = await admin.query(
