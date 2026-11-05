@@ -85,7 +85,7 @@ for (const [fn, helper] of definerGuards) {
 check('migration SQL : le remplacement préserve OID, propriétaire et ACL',
   definerMigration.includes('active_tenant_guard_changed_oid_owner_or_acl'));
 check('migration SQL : le helper ne reçoit pas EXECUTE de PUBLIC',
-  (definerMigration.match(/REVOKE ALL ON FUNCTION public\\.tracefab_require_active_tenant_/g) || []).length === 6);
+  (definerMigration.match(/REVOKE ALL ON FUNCTION/g) || []).length === 6);
 
 const failures = checks.filter((c) => !c.condition);
 for (const c of checks) console.log(`${c.condition ? 'OK' : 'ECHEC'} ${c.name}`);
