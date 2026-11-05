@@ -271,9 +271,9 @@ BEGIN
     END IF;
 
     v_definition :=
-      pg_catalog.substring(v_definition FROM 1 FOR v_begin - 1)
+      pg_catalog.substr(v_definition, 1, v_begin - 1)
       || 'BEGIN' || E'\n  ' || v_target.guard_sql || E'\n'
-      || pg_catalog.substring(v_definition FROM v_begin + 5);
+      || pg_catalog.substr(v_definition, v_begin + 5);
 
     EXECUTE v_definition;
 
