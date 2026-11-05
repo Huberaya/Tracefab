@@ -302,6 +302,55 @@ check('migration SQL : refuse un propriétaire de fonction appelante égal au ru
 check('migration SQL : postcondition vérifie l’absence d’EXECUTE effectif du runtime',
   definerMigration.includes("active_tenant_guard_helpers_executable_by_runtime"));
 
+
+const policyWorkerMigration = read('prisma/migrations/20261105250000_active_tenant_policy_and_worker_closure/migration.sql');
+for (const fn of [
+  'tracefab_apply_document_ai_verification',
+  'tracefab_finalize_document_upload',
+  'tracefab_enqueue_manual_data_request_reminder',
+  'tracefab_claim_notification_outbox',
+  'tracefab_complete_notification_outbox',
+  'tracefab_enqueue_due_data_request_reminders',
+]) {
+  check(`migration SQL : ${fn} est explicitement protégée ou reclassée worker`,
+    policyWorkerMigration.includes(fn));
+}
+check('migration SQL : les politiques membership/role sont toutes bornées au tenant actif',
+  policyWorkerMigration.includes('active_tenant_policy_inventory')
+    && policyWorkerMigration.includes('tracefab_in_active_tenant'));
+check('migration SQL : les partages exigent le tenant grantee actif',
+  policyWorkerMigration.includes('s.grantee_organization_id = public.tracefab_active_organization_id()'));
+check('migration SQL : les fonctions de notification ne sont plus possédées par neondb_owner',
+  policyWorkerMigration.includes('ALTER FUNCTION %s OWNER TO tracefab_worker'));
+check('PostgreSQL : inventaire RLS exhaustif et exceptions classifiées',
+  read('scripts/test_neon_active_tenant.mjs').includes('inventaire exhaustif des politiques RLS'));
+for (const [path] of [
+  ['api/_routes/documents/[documentId]/download.ts'],
+  ['api/_routes/documents/[documentId]/security-report.ts'],
+  ['api/_routes/documents/[documentId]/verification-report.ts'],
+  ['api/_routes/documents/[documentId]/verify-ai.ts'],
+]) {
+  const src = read(path);
+  check(`${path}: accès documentaire borné au tenant`,
+    src.includes('withTracefabTenantContext') && src.includes('documentAccessibleFromTenant'));
+}
+check('context.ts : withTracefabTenantContext résout et arme le tenant avant les requêtes métier',
+  read('api/_lib/context.ts').includes('export async function withTracefabTenantContext'));
+check('documents.ts : le contrôle d’accès documentaire reçoit un ActiveTenant',
+  read('api/_lib/documents.ts').includes('documentAccessibleFromTenant')
+    && read('api/_lib/documents.ts').includes('tenant.organizationId'));
+for (const fn of [
+  'tracefab_apply_document_ai_verification',
+  'tracefab_finalize_document_upload',
+  'tracefab_enqueue_manual_data_request_reminder',
+]) {
+  check(`PostgreSQL : refus négatif direct multi-tenant pour ${fn}`,
+    read('scripts/test_neon_active_tenant.mjs').includes(`assertTenantGuard('${fn}'`));
+}
+check('worker : les trois fonctions globales sont testées sous tracefab_worker',
+  ['tracefab_claim_notification_outbox','tracefab_complete_notification_outbox','tracefab_enqueue_due_data_request_reminders']
+    .every((fn) => read('scripts/test_worker_non_forgeable.mjs').includes(fn)));
+
 const failures = checks.filter((c) => !c.condition);
 for (const c of checks) console.log(`${c.condition ? 'OK' : 'ECHEC'} ${c.name}`);
 console.log(`\n${checks.length - failures.length}/${checks.length} contrôles réussis`);
