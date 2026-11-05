@@ -63,13 +63,12 @@ export const APP_ROLE = 'tracefab_app';
 //   supplier_sites                api/_routes/supplier/sites/[siteId].ts:32            (supplier_sites.create, supplier_sites.update)
 //   tracefab_catalog_import_jobs  api/_routes/catalog/products/import.ts:138           (insert, update)
 //   tracefab_products             api/_lib/bulk-operations/bulk-importer.ts:97         (tracefab_products.create, tracefab_products.update)
-//   users                         RETIREE le 28/10/2026 — les ecritures passent
-//                                 desormais par tracefab_upsert_clerk_user et
-//                                 tracefab_ensure_clerk_user, possedees par
-//                                 tracefab_worker et declarees au registre
-//                                 runtime. Aucune ecriture directe ne subsiste
-//                                 dans api/ (verifie par
-//                                 test:tables-ecriture-directe).
+//   users                         RETIREE le 28/10/2026 — lecture et ecriture
+//                                 directes interdites a tracefab_app.
+//                                 L'email et les operations Clerk passent par
+//                                 des fonctions SECURITY DEFINER possedees par
+//                                 tracefab_worker ; aucune requete directe sur
+//                                 users ne subsiste dans api/.
 //   documents                     RETIREE le 28/10/2026 — la bascule
 //                                 `uploaded -> scanning` passait par un UPDATE
 //                                 brut sous tracefab_app, qui pouvait poser
@@ -135,6 +134,7 @@ export const TABLES_FERMEES_PAR_CONCEPTION = [
   '_prisma_migrations',                  // registre Prisma : owner-only
   'tracefab_identity_cles',              // cle HMAC (20261031120000)
   'tracefab_runtime_function_registry',  // registre des droits du runtime
+  'users',                               // acces exclusivement via fonctions SECURITY DEFINER worker
 ];
 
 /**
@@ -147,7 +147,7 @@ export const TABLES_FERMEES_PAR_CONCEPTION = [
  * protections, ou — pire — passerait une table reellement fermee pour une
  * table simplement vide.
  */
-export const TABLES_SANS_PRIVILEGE_RUNTIME = ['tracefab_identity_cles'];
+export const TABLES_SANS_PRIVILEGE_RUNTIME = ['tracefab_identity_cles', 'users'];
 
 /**
  * Colonnes calculees, hors de portee du role runtime quel que soit le chemin.
@@ -489,9 +489,17 @@ export async function ensureAppRole(db, password, { role = APP_ROLE } = {}) {
     `GRANT CONNECT ON DATABASE "${base}" TO ${APP_ROLE}`,
     `GRANT USAGE ON SCHEMA public TO ${APP_ROLE}`,
     // LECTURE sur toutes les tables : le client Prisma lit directement, et la
-    // RLS — activee et forcee sur les 50 tables — filtre ce qui est visible.
-    // La lecture large est donc contenue ; l'ecriture large ne l'etait pas.
+    // RLS — activee et forcee sur les tables metier — filtre ce qui est visible.
+    // La lecture large reste contenue par RLS ; users est l'exception fermee.
     `GRANT SELECT ON ALL TABLES IN SCHEMA public TO ${APP_ROLE}`,
+    // Exception stricte : users n'est jamais lisible directement par le runtime.
+    // L'identite et les operations Clerk passent par les fonctions SECURITY
+    // DEFINER possedees par tracefab_worker ; le seed ne doit pas reouvrir cet ACL.
+    `DO $bootstrap_users$ BEGIN
+       IF to_regclass('public.users') IS NOT NULL THEN
+         EXECUTE 'REVOKE ALL PRIVILEGES ON TABLE public.users FROM ${APP_ROLE}';
+       END IF;
+     END $bootstrap_users$;`,
     // Re-bootstrap must not restore runtime access to Prisma's control-plane ledger.
     `DO $bootstrap$ BEGIN
        IF to_regclass('public._prisma_migrations') IS NOT NULL THEN
