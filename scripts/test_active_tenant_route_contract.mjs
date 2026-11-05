@@ -69,6 +69,13 @@ check('mass-balance : borne le produit au tenant avant lecture et écriture', (m
 check('mass-balance : arme le tenant dans les deux transactions', (massBalance.match(/\}, activeOrganizationId\)/g) || []).length === 2);
 check('mass-balance : traite les erreurs tenant', massBalance.includes('isTenantError(err)'));
 
+
+const massBalanceAllocate = read('api/_routes/products/[productId]/mass-balance/allocate.ts');
+check('allocation TC : résout un tenant brand ou supplier explicite', massBalanceAllocate.includes("types: ['brand', 'supplier']"));
+check('allocation TC : arme le tenant dans le contexte SQL', massBalanceAllocate.includes('}, activeOrganizationId)'));
+check('allocation TC : exige un lien actif au produit ou au TC vendeur', massBalanceAllocate.includes('if (!product && !certificate) return null'));
+check('allocation TC : traite les erreurs tenant', massBalanceAllocate.includes('isTenantError(err)'));
+
 const definerMigration = read('prisma/migrations/20261105170000_active_tenant_security_definer_guards/migration.sql');
 const definerGuards = [
   ['tracefab_add_supply_chain_link', 'tracefab_require_active_tenant_for_product'],
