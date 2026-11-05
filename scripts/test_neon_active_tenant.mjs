@@ -151,7 +151,7 @@ try {
   await proprio.query(
     `insert into documents
       (id, owner_organization_id, storage_bucket, storage_path, original_filename, content_type, byte_size, uploaded_by)
-     values ($1, $2, 'private', $3, 'tenant-guard.pdf', 'application/pdf', 128, $4)`,
+     values ($1, $2, 'tracefab-private', $3, 'tenant-guard.pdf', 'application/pdf', 128, $4)`,
     [documentRecette, orgRecette, `${orgRecette}/tenant-guard.pdf`, userMulti]);
   await proprio.query(
     `insert into supplier_universal_passports
