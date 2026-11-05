@@ -240,17 +240,6 @@ try {
     ok('la fonction SECURITY DEFINER crée un événement DPP dans le tenant actif B');
   }
 
-  await assertTenantGuard(
-    'tracefab_compute_supplier_quality',
-    `SELECT * FROM tracefab_compute_supplier_quality($1::uuid, 'active_tenant_test_v1')`,
-    [supplierRecette],
-  );
-  await assertTenantGuard(
-    'tracefab_review_passport_access',
-    `SELECT * FROM tracefab_review_passport_access($1::uuid, 'approved')`,
-    [accessRequestRecette],
-  );
-
   /* -- les fonctions SECURITY DEFINER refusent le produit d'un autre tenant -- */
   const assertTenantGuard = async (label, query, params) => {
     await app.query('begin');
@@ -267,6 +256,17 @@ try {
       else ko(`${label} : attendu active_tenant_mismatch, obtenu ${error.message}`);
     }
   };
+
+  await assertTenantGuard(
+    'tracefab_compute_supplier_quality',
+    `SELECT * FROM tracefab_compute_supplier_quality($1::uuid, 'active_tenant_test_v1')`,
+    [supplierRecette],
+  );
+  await assertTenantGuard(
+    'tracefab_review_passport_access',
+    `SELECT * FROM tracefab_review_passport_access($1::uuid, 'approved')`,
+    [accessRequestRecette],
+  );
 
   /* -- CAP : création marque autorisée, soumission fournisseur/revue marque bornées -- */
   {
