@@ -4,7 +4,7 @@
  *
  * Baseline : les 56 migrations qui ont une ligne terminée dans Production et
  * Préproduction (dont les 5 exécutées hors bande). Cible : les 13 migrations
- * historiques absentes, puis les huit corrections forward post-snapshot. Les deux
+ * historiques absentes, puis les quinze corrections forward post-snapshot. Les deux
  * tentatives rolled_back ont aussi une ligne réussie et font partie du baseline.
  *
  * IMPORTANT : le SQL PLM utilisé ici est celui du dépôt courant. Son checksum
@@ -82,14 +82,14 @@ async function scalar(db, sql, params = []) {
 }
 
 console.log(`\n  1. Snapshot Neon ${SNAPSHOT_DATE} — cohérence des catégories`);
-ok('77 dossiers de migration dans le dépôt', dossiers.length === 77, String(dossiers.length));
+ok('84 dossiers de migration dans le dépôt', dossiers.length === 84, String(dossiers.length));
 ok('56 migrations terminées dans les deux bases', baselineNames.length === 56);
 ok('13 migrations réellement en attente', pendingNames.length === 13);
 ok('5 migrations hors bande incluses dans le baseline', outOfBandNames.length === 5);
 ok('les 2 tentatives annulées ont aussi une ligne réussie',
   ROLLED_BACK_ATTEMPTS.length === 2 && ROLLED_BACK_ATTEMPTS.every((x) => PRODUCTION_APPLIED[x.name]));
 ok('aucun nom annulé n’est classé pending', ROLLED_BACK_ATTEMPTS.every((x) => !ECARTS[x.name]));
-ok('les huit corrections forward sont postérieures au snapshot et ordonnées',
+ok('les quinze corrections forward sont postérieures au snapshot et ordonnées',
   JSON.stringify(newNames) === JSON.stringify([
     '20261104090000_plm_integrations_and_gs1_constraints',
     '20261104100000_supply_chain_status_enum_casts',
@@ -99,6 +99,13 @@ ok('les huit corrections forward sont postérieures au snapshot et ordonnées',
     '20261105150000_active_tenant_dpp_claims_identity_rls',
     '20261105160000_active_tenant_product_materials_rls',
     '20261105170000_active_tenant_security_definer_guards',
+    '20261105180000_active_tenant_tc_registration_guard',
+    '20261105190000_active_tenant_quality_collection_guards',
+    '20261105200000_active_tenant_material_certification_guards',
+    '20261105210000_active_tenant_supplier_profile_passport_guards',
+    '20261105220000_active_tenant_quality_cap_guards',
+    '20261105230000_active_tenant_invite_document_passport_guards',
+    '20261105240000_active_tenant_supplier_quality_guard',
   ]), JSON.stringify(newNames));
 ok('les quatre fonctions create/update des noeuds et liens castent leur enum',
   ['tracefab_create_supply_chain_node', 'tracefab_update_supply_chain_node', 'tracefab_add_supply_chain_link', 'tracefab_update_supply_chain_link']
