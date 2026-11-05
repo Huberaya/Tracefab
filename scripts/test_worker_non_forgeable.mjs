@@ -147,33 +147,27 @@ try {
   // --- 4. Les six operations worker sous le role applicatif ----------------
   console.log('\n4. Operations systeme sous identite autorisee');
   // La sixieme fonction worker est appelee par le webhook Clerk pour resoudre
-  // l'organisation depuis son identifiant fournisseur. On la teste sur une
-  // ligne synthetique, puis on nettoie la fixture meme si l'assertion echoue.
-  const clerkOrgProbeId = randomUUID();
-  const clerkOrgProbeKey = `org_worker_probe_${clerkOrgProbeId}`;
-  if (tenant.rows[0]?.user_id) {
-    await admin.query(
-      `INSERT INTO public.organizations
-        (id, type, legal_name, display_name, status, created_by, clerk_organization_id)
-       VALUES ($1, 'brand', 'Worker probe', 'Worker probe', 'active', $2, $3)`,
-      [clerkOrgProbeId, tenant.rows[0].user_id, clerkOrgProbeKey],
-    );
-  }
+  // l'organisation depuis son identifiant fournisseur. La fixture est creee
+  // par la fonction de synchronisation dans la MEME transaction, puis annulee.
+  const clerkOrgProbeKey = `org_worker_probe_${randomUUID()}`;
   try {
     await app.query('begin');
-    if (tenant.rows[0]?.user_id) {
-      const resolved = await app.query(
-        'SELECT tracefab_clerk_organization_uuid($1) AS id',
-        [clerkOrgProbeKey],
-      );
-      ok(
-        resolved.rows[0]?.id === clerkOrgProbeId,
-        'tracefab_clerk_organization_uuid resout une organisation via l identite worker',
-        String(resolved.rows[0]?.id),
-      );
-    } else {
-      ok(false, 'tracefab_clerk_organization_uuid exige une fixture avec utilisateur actif');
-    }
+    const synced = await app.query(
+      `SELECT (tracefab_sync_clerk_organization(
+        $1, 'Worker probe', 'Worker probe', 'brand'::organization_type
+      )).id AS id`,
+      [clerkOrgProbeKey],
+    );
+    const expectedOrgId = synced.rows[0]?.id;
+    const resolved = await app.query(
+      'SELECT tracefab_clerk_organization_uuid($1) AS id',
+      [clerkOrgProbeKey],
+    );
+    ok(
+      Boolean(expectedOrgId) && resolved.rows[0]?.id === expectedOrgId,
+      'tracefab_clerk_organization_uuid resout une organisation via l identite worker',
+      String(resolved.rows[0]?.id),
+    );
     const upsert = await app.query(
       "select * from tracefab_upsert_clerk_user('t_worker_check', 'Controle@Example.FR', 'Controle')",
     );
@@ -199,9 +193,6 @@ try {
     ok(inconnue.rows[0].r === false, 'tracefab_archive_clerk_organization rend false si inconnue');
   } finally {
     await app.query('rollback').catch(() => {});
-    if (tenant.rows[0]?.user_id) {
-      await admin.query('DELETE FROM public.organizations WHERE id = $1', [clerkOrgProbeId]);
-    }
   }
   console.log('  info      transaction annulee : aucune donnee conservee');
   // Controle de parametres : hors transaction, parce qu'une erreur volontaire
