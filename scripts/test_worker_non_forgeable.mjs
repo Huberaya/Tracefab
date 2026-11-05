@@ -99,14 +99,21 @@ try {
 
   const TABLES_SENSIBLES = ['public.organizations', 'public.users', 'public.organization_memberships'];
 
-  // tracefab_app conserve SELECT sur users : les lectures métier existantes
-  // sont protégées par users_select_self. On vérifie la visibilité des lignes,
-  // pas l'absence du privilège relationnel.
+  // Selon l'historique de provisioning, le SELECT applicatif peut être
+  // absent (état minimal) ou préexister. Dans les deux cas, la RLS reste la
+  // frontière : si le SELECT existe, il ne révèle que la ligne propre.
   const appUsersSelect = await admin.query(
     `select has_table_privilege('tracefab_app', 'public.users', 'SELECT') as allowed`,
   );
-  ok(appUsersSelect.rows[0]?.allowed === true,
-    'tracefab_app dispose du SELECT relationnel, filtré par users_select_self');
+  const appPeutLireUsers = appUsersSelect.rows[0]?.allowed === true;
+  ok(
+    typeof appUsersSelect.rows[0]?.allowed === 'boolean',
+    'état ACL users déterminé sans ambiguïté',
+    JSON.stringify(appUsersSelect.rows[0]),
+  );
+  if (!appPeutLireUsers) {
+    ok(true, 'tracefab_app n’a aucun SELECT direct sur users (moindre privilège)');
+  }
 
   // --- 1. Sans contexte -----------------------------------------------------
   console.log('1. Sans contexte arme');
@@ -154,13 +161,23 @@ try {
       'select count(*)::int as n from public.organizations where id = $1::uuid',
       [org],
     );
-    const utilisateursVisibles = await app.query(
-      'select id::text as id from public.users order by id',
+    if (appPeutLireUsers) {
+      const utilisateursVisibles = await app.query(
+        'select id::text as id from public.users order by id',
+      );
+      ok(
+        utilisateursVisibles.rows.length === 1 && utilisateursVisibles.rows[0]?.id === userId,
+        'users_select_self limite le SELECT applicatif à sa propre identité',
+        `visibles=${utilisateursVisibles.rows.length}; identité=${userId}`,
+      );
+    }
+    const emailResolue = await app.query(
+      'select public.tracefab_current_user_email() as email',
     );
     ok(
-      utilisateursVisibles.rows.length === 1 && utilisateursVisibles.rows[0]?.id === userId,
-      'users_select_self limite le SELECT applicatif à sa propre identité',
-      `visibles=${utilisateursVisibles.rows.length}; identité=${userId}`,
+      emailResolue.rows[0]?.email?.toLowerCase() === email.toLowerCase(),
+      'le resolver email lit users via SECURITY DEFINER worker sans SELECT applicatif',
+      emailResolue.rows[0]?.email ?? 'aucun email',
     );
     const adhesionsAttendues = await admin.query(
       `select distinct organization_id::text as id
