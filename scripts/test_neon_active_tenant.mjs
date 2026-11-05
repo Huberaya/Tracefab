@@ -94,6 +94,7 @@ const requestSupplierB = randomUUID();
 const itemBrandB = randomUUID();
 const itemSupplierB = randomUUID();
 const responseBrandB = randomUUID();
+let capRecette = null;
 let linkRecette = null;
 
 const proprio = cli(URL_PROPRIO);
@@ -236,6 +237,36 @@ try {
       else ko(`${label} : attendu active_tenant_mismatch, obtenu ${error.message}`);
     }
   };
+
+  /* -- CAP : création marque autorisée, soumission fournisseur/revue marque bornées -- */
+  {
+    await app.query('begin');
+    await app.query(`select set_config('tracefab.user_id', $1, true)`, [userMulti]);
+    await app.query(`select set_config('tracefab.user_email', $1, true)`, [`mt-${suffixe}@example.test`]);
+    await app.query(`select set_config('tracefab.active_organization_id', $1, true)`, [orgRecette]);
+    const { rows: [cap] } = await app.query(
+      `select (tracefab_create_quality_cap(
+        $1::uuid, $2::uuid, 'Synthetic CAP', 'Synthetic instructions',
+        CURRENT_DATE + 10, 'high'
+      )).id as id`,
+      [issueRecette, orgSupplier]);
+    capRecette = cap.id;
+    await app.query('commit');
+    ok('tracefab_create_quality_cap accepte la marque active propriétaire de l’anomalie');
+  }
+  await assertTenantGuard('tracefab_create_quality_cap',
+    `select tracefab_create_quality_cap(
+      $1::uuid, $2::uuid, 'Negative CAP', 'Synthetic instructions',
+      CURRENT_DATE + 10, 'high'
+    )`, [issueRecette, orgSupplier]);
+  await assertTenantGuard('tracefab_submit_quality_remediation',
+    `select tracefab_submit_quality_remediation(
+      $1::uuid, 'Synthetic supplier remediation', null::uuid, null::text
+    )`, [capRecette]);
+  await assertTenantGuard('tracefab_review_quality_remediation',
+    `select tracefab_review_quality_remediation(
+      $1::uuid, 'approved', 'Synthetic review'
+    )`, [capRecette]);
 
   await assertTenantGuard('tracefab_update_supplier_profile',
     `select tracefab_update_supplier_profile(
