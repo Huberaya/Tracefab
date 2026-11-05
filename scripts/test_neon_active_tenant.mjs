@@ -1081,6 +1081,23 @@ try {
       unresolved.push('tracefab_public_context doit rester SECURITY INVOKER');
     }
 
+    const emailHelper = await proprio.query(`
+      select r.rolname as owner, p.prosecdef,
+             pg_catalog.has_function_privilege('tracefab_app', p.oid, 'EXECUTE') as app_exec,
+             pg_catalog.has_function_privilege('public', p.oid, 'EXECUTE') as public_exec
+        from pg_catalog.pg_proc p
+        join pg_catalog.pg_namespace n on n.oid = p.pronamespace
+        join pg_catalog.pg_roles r on r.oid = p.proowner
+       where n.nspname = 'public' and p.proname = 'tracefab_current_user_email'
+    `);
+    if (emailHelper.rows.length !== 1
+        || emailHelper.rows[0].owner !== 'tracefab_worker'
+        || emailHelper.rows[0].prosecdef !== true
+        || emailHelper.rows[0].app_exec !== true
+        || emailHelper.rows[0].public_exec !== false) {
+      unresolved.push(`tracefab_current_user_email doit être SECURITY DEFINER sous tracefab_worker : ${JSON.stringify(emailHelper.rows)}`);
+    }
+
     console.log(`  info      inventaire RLS PostgreSQL: ${JSON.stringify(counts)}`);
     if (unresolved.length === 0) {
       ok('chaque politique RLS est classifiée : tenant actif, partage, worker, public, compte, personnel, référence ou système');
