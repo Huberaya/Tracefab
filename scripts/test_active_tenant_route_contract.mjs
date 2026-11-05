@@ -76,6 +76,21 @@ check('allocation TC : arme le tenant dans le contexte SQL', massBalanceAllocate
 check('allocation TC : exige un lien actif au produit ou au TC vendeur', massBalanceAllocate.includes('if (!product && !certificate) return null'));
 check('allocation TC : traite les erreurs tenant', massBalanceAllocate.includes('isTenantError(err)'));
 
+const tcRegistrationRoute = read('api/_routes/mass-balance/certificates.ts');
+check('certificats TC : la route exige que le tenant actif soit vendeur ou acheteur',
+  tcRegistrationRoute.includes("sellerOrganizationId !== tenant.organizationId && buyerOrganizationId !== tenant.organizationId"));
+const tcRegistrationMigration = read('prisma/migrations/20261105180000_active_tenant_tc_registration_guard/migration.sql');
+check('certificats TC : la fonction SECURITY DEFINER vérifie elle-même le tenant actif',
+  tcRegistrationMigration.includes('tracefab_register_transaction_certificate')
+    && tcRegistrationMigration.includes('tracefab_in_active_tenant(p_seller_organization_id)')
+    && tcRegistrationMigration.includes('tracefab_in_active_tenant(p_buyer_organization_id)'));
+check('certificats TC : la migration préserve OID, propriétaire et ACL',
+  tcRegistrationMigration.includes('active_tenant_tc_registration_changed_oid_owner_or_acl'));
+const activeTenantDbTest = read('scripts/test_neon_active_tenant.mjs');
+check('certificats TC : test PostgreSQL positif et refus direct inter-tenant',
+  activeTenantDbTest.includes('tracefab_register_transaction_certificate accepte un appel direct')
+    && activeTenantDbTest.includes("await assertTenantGuard('tracefab_register_transaction_certificate'"));
+
 const definerMigration = read('prisma/migrations/20261105170000_active_tenant_security_definer_guards/migration.sql');
 const definerGuards = [
   ['tracefab_add_supply_chain_link', 'tracefab_require_active_tenant_for_product'],
