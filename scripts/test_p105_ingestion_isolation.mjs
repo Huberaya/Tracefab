@@ -159,10 +159,11 @@ ok(/brand_product_role_required/.test(String(m2.erreur)), 'M2 identité de A sur
 // Même utilisateur membre de A et B : l'appartenance à B ne doit pas
 // autoriser une opération B lorsque le tenant actif et le jeton désignent A.
 const membershipCheck = await admin.query(
-  'SELECT id FROM organization_memberships WHERE organization_id = $1 AND user_id = $2',
+  'SELECT id, role, status FROM organization_memberships WHERE organization_id = $1 AND user_id = $2 ORDER BY created_at DESC LIMIT 1',
   [B.id, A.user_id],
 );
 let membershipAjoutee = false;
+let membershipOriginal = null;
 if (membershipCheck.rowCount === 0) {
   const inserted = await admin.query(
     `INSERT INTO organization_memberships (organization_id, user_id, role, status)
@@ -171,6 +172,15 @@ if (membershipCheck.rowCount === 0) {
     [B.id, A.user_id],
   );
   membershipAjoutee = inserted.rowCount === 1;
+} else {
+  const currentMembership = membershipCheck.rows[0];
+  if (currentMembership.status !== 'active' || !['owner', 'admin', 'manager'].includes(currentMembership.role)) {
+    membershipOriginal = { id: currentMembership.id, role: currentMembership.role, status: currentMembership.status };
+    await admin.query(
+      "UPDATE organization_memberships SET role = 'admin', status = 'active' WHERE id = $1",
+      [currentMembership.id],
+    );
+  }
 }
 ok(true, 'fixture : même utilisateur membre actif des deux marques');
 const stamp = Date.now();
@@ -302,6 +312,11 @@ if (membershipAjoutee) {
   await admin.query(
     'DELETE FROM organization_memberships WHERE organization_id = $1 AND user_id = $2',
     [B.id, A.user_id],
+  );
+} else if (membershipOriginal) {
+  await admin.query(
+    'UPDATE organization_memberships SET role = $2, status = $3 WHERE id = $1',
+    [membershipOriginal.id, membershipOriginal.role, membershipOriginal.status],
   );
 }
 await admin.query('DELETE FROM public.tracefab_identity_cles WHERE version = $1', [VERSION]);
