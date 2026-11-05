@@ -4,7 +4,7 @@
  *
  * Baseline : les 56 migrations qui ont une ligne terminée dans Production et
  * Préproduction (dont les 5 exécutées hors bande). Cible : les 13 migrations
- * historiques absentes, puis les sept corrections forward post-snapshot. Les deux
+ * historiques absentes, puis les huit corrections forward post-snapshot. Les deux
  * tentatives rolled_back ont aussi une ligne réussie et font partie du baseline.
  *
  * IMPORTANT : le SQL PLM utilisé ici est celui du dépôt courant. Son checksum
@@ -82,14 +82,14 @@ async function scalar(db, sql, params = []) {
 }
 
 console.log(`\n  1. Snapshot Neon ${SNAPSHOT_DATE} — cohérence des catégories`);
-ok('76 dossiers de migration dans le dépôt', dossiers.length === 76, String(dossiers.length));
+ok('77 dossiers de migration dans le dépôt', dossiers.length === 77, String(dossiers.length));
 ok('56 migrations terminées dans les deux bases', baselineNames.length === 56);
 ok('13 migrations réellement en attente', pendingNames.length === 13);
 ok('5 migrations hors bande incluses dans le baseline', outOfBandNames.length === 5);
 ok('les 2 tentatives annulées ont aussi une ligne réussie',
   ROLLED_BACK_ATTEMPTS.length === 2 && ROLLED_BACK_ATTEMPTS.every((x) => PRODUCTION_APPLIED[x.name]));
 ok('aucun nom annulé n’est classé pending', ROLLED_BACK_ATTEMPTS.every((x) => !ECARTS[x.name]));
-ok('les sept corrections forward sont postérieures au snapshot et ordonnées',
+ok('les huit corrections forward sont postérieures au snapshot et ordonnées',
   JSON.stringify(newNames) === JSON.stringify([
     '20261104090000_plm_integrations_and_gs1_constraints',
     '20261104100000_supply_chain_status_enum_casts',
@@ -98,6 +98,7 @@ ok('les sept corrections forward sont postérieures au snapshot et ordonnées',
     '20261105140000_active_tenant_green_claims_rls',
     '20261105150000_active_tenant_dpp_claims_identity_rls',
     '20261105160000_active_tenant_product_materials_rls',
+    '20261105170000_active_tenant_security_definer_guards',
   ]), JSON.stringify(newNames));
 ok('les quatre fonctions create/update des noeuds et liens castent leur enum',
   ['tracefab_create_supply_chain_node', 'tracefab_update_supply_chain_node', 'tracefab_add_supply_chain_link', 'tracefab_update_supply_chain_link']
@@ -170,7 +171,7 @@ for (const name of newNames) {
   forwardResults.push({ name, ...result });
   console.log(`  ${result.ok ? 'ok   ' : 'ECHEC'} ${name}${result.ok ? '' : ` — ${result.message}`}`);
 }
-ok('les sept corrections forward post-snapshot s’appliquent', forwardResults.length === 7 && forwardResults.every((r) => r.ok),
+ok('les huit corrections forward post-snapshot s’appliquent', forwardResults.length === 8 && forwardResults.every((r) => r.ok),
   JSON.stringify(forwardResults.filter((r) => !r.ok)));
 const repairedPlmChecks = await scalar(baseline.db, `
   SELECT count(*)::int AS value FROM pg_constraint
@@ -188,7 +189,7 @@ ok('les quatre CHECK PLM sont présents et validés', repairedPlmChecks === 4, S
 ok('la contrainte GS1 accepte désormais GPC', repairedIdentifierCheck.includes('gpc'), repairedIdentifierCheck);
 const forwardReplay = [];
 for (const name of newNames) forwardReplay.push({ name, ...(await jouer(baseline.db, name)) });
-ok('les sept corrections forward sont idempotentes', forwardReplay.length === 7 && forwardReplay.every((r) => r.ok),
+ok('les huit corrections forward sont idempotentes', forwardReplay.length === 8 && forwardReplay.every((r) => r.ok),
   JSON.stringify(forwardReplay.filter((r) => !r.ok)));
 
 console.log('\n  5. Contrôles du catalogue après application');
@@ -265,6 +266,38 @@ const guardedFunctions = await scalar(baseline.db, `
 `);
 ok('les 11 fonctions SECURITY DEFINER exposées ciblées vérifient le tenant actif',
   guardedFunctions === 11, String(guardedFunctions));
+const definerTenantGuards = await scalar(baseline.db, `
+  SELECT count(*)::int AS value FROM pg_proc p
+  JOIN pg_namespace n ON n.oid=p.pronamespace
+  WHERE n.nspname='public' AND p.prosecdef
+    AND p.proname IN (
+      'tracefab_add_supply_chain_link','tracefab_create_supply_chain_node',
+      'tracefab_update_supply_chain_node','tracefab_delete_supply_chain_node',
+      'tracefab_update_supply_chain_link','tracefab_delete_supply_chain_link',
+      'tracefab_allocate_tc_quantity','tracefab_calculate_product_pef',
+      'tracefab_compute_dpp_readiness','tracefab_compute_product_quality',
+      'tracefab_create_data_request','tracefab_create_product',
+      'tracefab_reconcile_mass_balance','tracefab_set_dpp_publication',
+      'tracefab_start_product_revision','tracefab_update_product_data',
+      'tracefab_bind_schema','tracefab_get_product_traceability',
+      'tracefab_mark_dpp_ready_to_publish'
+    )
+    AND p.prosrc LIKE '%tracefab_require_active_tenant_%'
+`);
+ok('les 19 fonctions SECURITY DEFINER exposées vérifient le tenant actif',
+  definerTenantGuards === 19, String(definerTenantGuards));
+const helperExecute = await scalar(baseline.db, `
+  SELECT (
+    NOT has_function_privilege('tracefab_app','public.tracefab_require_active_tenant_for_organization(uuid)','EXECUTE')
+    AND NOT has_function_privilege('tracefab_app','public.tracefab_require_active_tenant_for_product(uuid)','EXECUTE')
+    AND NOT has_function_privilege('tracefab_app','public.tracefab_require_active_tenant_for_dpp_record(uuid)','EXECUTE')
+    AND NOT has_function_privilege('tracefab_app','public.tracefab_require_active_tenant_for_supply_chain_link(uuid)','EXECUTE')
+    AND NOT has_function_privilege('tracefab_app','public.tracefab_require_active_tenant_for_tc_allocation(uuid,uuid)','EXECUTE')
+    AND NOT has_function_privilege('tracefab_app','public.tracefab_require_active_tenant_for_schema_subject(text,uuid)','EXECUTE')
+  )::int AS value
+`);
+ok('tracefab_app ne peut pas appeler directement les six helpers de garde',
+  helperExecute === 1, String(helperExecute));
 const completionGuard = await scalar(baseline.db, `
   SELECT (NOT has_function_privilege(
     'tracefab_app',
