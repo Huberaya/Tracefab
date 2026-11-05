@@ -645,17 +645,19 @@ BEGIN
     RAISE EXCEPTION 'current_user_email_migration_role_cannot_set_worker_owner';
   END IF;
 
+  -- Retirer PUBLIC tant que le role de migration est encore proprietaire :
+  -- l'owner worker ne doit jamais heriter du EXECUTE public par defaut.
+  REVOKE ALL ON FUNCTION public.tracefab_current_user_email() FROM PUBLIC;
+  GRANT EXECUTE ON FUNCTION public.tracefab_current_user_email() TO tracefab_app;
+  ALTER DEFAULT PRIVILEGES FOR ROLE tracefab_worker IN SCHEMA public
+    REVOKE EXECUTE ON FUNCTIONS FROM PUBLIC;
+
   -- PostgreSQL exige CREATE sur le schema pour transférer le propriétaire.
   GRANT CREATE ON SCHEMA public TO tracefab_worker;
   ALTER FUNCTION public.tracefab_current_user_email() SECURITY DEFINER;
   ALTER FUNCTION public.tracefab_current_user_email() OWNER TO tracefab_worker;
   ALTER FUNCTION public.tracefab_current_user_email() SET search_path = pg_catalog, public;
   REVOKE CREATE ON SCHEMA public FROM tracefab_worker;
-
-  -- Le runtime reçoit uniquement EXECUTE sur ce helper, jamais SELECT sur users.
-  -- L'email est lu sous l'identité worker et sa politique RLS self-only.
-  REVOKE ALL ON FUNCTION public.tracefab_current_user_email() FROM PUBLIC;
-  GRANT EXECUTE ON FUNCTION public.tracefab_current_user_email() TO tracefab_app;
 
   SELECT p.proowner, p.prosecdef, p.proconfig,
          pg_catalog.has_function_privilege('tracefab_app', p.oid, 'EXECUTE'),
