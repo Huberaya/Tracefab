@@ -2,6 +2,7 @@ import type { VercelRequest, VercelResponse } from './_lib/vercel-types.js';
 import { json } from './_lib/http.js';
 import { correlationId, reportError } from './_lib/error-reporting.js';
 import { applyHeaders, evaluate } from './_lib/rate-limit.js';
+import { isTenantError } from './_lib/tenant.js';
 
 type RouteHandler = (req: VercelRequest, res: VercelResponse) => unknown;
 type Route = { pattern: RegExp; params: string[]; load: () => Promise<{ default: RouteHandler }> };
@@ -237,6 +238,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
       return await module.default(req, res);
     } catch (error) {
+      // Un locataire absent, mal forme ou non membre est une erreur CLIENT,
+      // pas un incident runtime : le statut 400/404 et le code ferme doivent
+      // parvenir a l'appelant sans encombrer le collecteur d'erreurs. Les
+      // routes qui gerent deja `TenantError` localement repondent avant ici.
+      if (isTenantError(error)) {
+        if (res.headersSent || res.writableEnded) return undefined;
+        return json(res, error.status, { error: error.message });
+      }
       await reportError(error, {
         route: route.pattern.source,
         method: req.method,

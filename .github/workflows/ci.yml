@@ -78,6 +78,25 @@ jobs:
         # fail-closed. Un locataire absent, mal forme ou non adherent ne doit
         # provoquer aucune requete metier.
         run: npm run test:active-tenant
+      - name: Routes métier — tenant actif obligatoire
+        # Vérifie que les routes catalogue, intégrations, documents et portail fournisseur
+        # utilisent le tenant explicite, sans repli sur la première adhésion.
+        run: npm run test:active-tenant-routes
+      - name: Cartographie exhaustive des routes et du tenant actif
+        # Les 138 entrees du routeur sont classees ; toute route metier sans
+        # controle de tenant actif, toute autorisation documentaire fondee sur
+        # l'union des adhesions et toute matrice perimee font echouer le socle.
+        run: npm run test:tenant:matrix
+      - name: Matrice d'autorisation formelle
+        # Les 10 scenarios (proprietaire, tenant actif, fournisseur, marque,
+        # relation, ressource, permission, action) doivent rester decrits ET
+        # executes par la suite PostgreSQL jetable.
+        run: npm run test:tenant:autorisations
+      - name: Isolation globale — preuve PostgreSQL jetable
+        # Chaine complete des migrations sur PGlite, fixtures multi-tenant
+        # reelles, gardes d'autorisation executes avec le role applicatif :
+        # 61 controles positifs et negatifs, dont la mesure de la fuite RLS.
+        run: npm run test:isolation:globale
 
       - name: Commentaires de fin de ligne dans les routes compactees
         # Un commentaire `//` dans une route ecrite sur une ligne met en

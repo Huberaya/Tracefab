@@ -1,0 +1,978 @@
+{
+  "generePar": "npm run test:tenant:matrix -- --ecrire",
+  "source": "api/index.ts (registre complet des handlers)",
+  "routes": 138,
+  "comptes": {
+    "tenant-valide-explicite": 102,
+    "public-ou-worker": 25,
+    "compte-ou-calcul": 11
+  },
+  "matrice": [
+    {
+      "route": "catalog/audit-export",
+      "pattern": "/^catalog\\/audit\\-export$/",
+      "authentifiee": true,
+      "classe": "tenant-valide-explicite",
+      "justification": "requireActiveTenant : résolution et validation du tenant demandé"
+    },
+    {
+      "route": "catalog/certification-standards",
+      "pattern": "/^catalog\\/certification\\-standards$/",
+      "authentifiee": false,
+      "classe": "public-ou-worker",
+      "justification": "static"
+    },
+    {
+      "route": "catalog/export/audit-dossier",
+      "pattern": "/^catalog\\/export\\/audit\\-dossier$/",
+      "authentifiee": true,
+      "classe": "tenant-valide-explicite",
+      "justification": "withTracefabTenantContext : validation de l’adhésion active dans la transaction"
+    },
+    {
+      "route": "catalog/export/products",
+      "pattern": "/^catalog\\/export\\/products$/",
+      "authentifiee": true,
+      "classe": "tenant-valide-explicite",
+      "justification": "withTracefabTenantContext : validation de l’adhésion active dans la transaction"
+    },
+    {
+      "route": "catalog/export/suppliers",
+      "pattern": "/^catalog\\/export\\/suppliers$/",
+      "authentifiee": true,
+      "classe": "tenant-valide-explicite",
+      "justification": "withTracefabTenantContext : validation de l’adhésion active dans la transaction"
+    },
+    {
+      "route": "catalog/import/products",
+      "pattern": "/^catalog\\/import\\/products$/",
+      "authentifiee": true,
+      "classe": "tenant-valide-explicite",
+      "justification": "withTracefabTenantContext : validation de l’adhésion active dans la transaction"
+    },
+    {
+      "route": "catalog/import/suppliers",
+      "pattern": "/^catalog\\/import\\/suppliers$/",
+      "authentifiee": true,
+      "classe": "tenant-valide-explicite",
+      "justification": "withTracefabTenantContext : validation de l’adhésion active dans la transaction"
+    },
+    {
+      "route": "catalog/products/export",
+      "pattern": "/^catalog\\/products\\/export$/",
+      "authentifiee": true,
+      "classe": "tenant-valide-explicite",
+      "justification": "requireActiveTenant : résolution et validation du tenant demandé"
+    },
+    {
+      "route": "catalog/products/import",
+      "pattern": "/^catalog\\/products\\/import$/",
+      "authentifiee": true,
+      "classe": "tenant-valide-explicite",
+      "justification": "withTracefabTenantContext : validation de l’adhésion active dans la transaction"
+    },
+    {
+      "route": "catalog/products/import-jobs/[jobId]",
+      "pattern": "/^catalog\\/products\\/import\\-jobs\\/([^\\/]+)$/",
+      "authentifiee": true,
+      "classe": "tenant-valide-explicite",
+      "justification": "requireActiveTenant : résolution et validation du tenant demandé"
+    },
+    {
+      "route": "catalog/questionnaires",
+      "pattern": "/^catalog\\/questionnaires$/",
+      "authentifiee": false,
+      "classe": "public-ou-worker",
+      "justification": "static"
+    },
+    {
+      "route": "catalog/schemas",
+      "pattern": "/^catalog\\/schemas$/",
+      "authentifiee": false,
+      "classe": "public-ou-worker",
+      "justification": "static"
+    },
+    {
+      "route": "catalog/suppliers/import",
+      "pattern": "/^catalog\\/suppliers\\/import$/",
+      "authentifiee": true,
+      "classe": "tenant-valide-explicite",
+      "justification": "withTracefabTenantContext : validation de l’adhésion active dans la transaction"
+    },
+    {
+      "route": "clerk-proxy",
+      "pattern": "/^__clerk$/",
+      "authentifiee": false,
+      "classe": "public-ou-worker",
+      "justification": "static"
+    },
+    {
+      "route": "clerk-proxy",
+      "pattern": "/^__clerk\\/(.+)$/",
+      "authentifiee": false,
+      "classe": "public-ou-worker",
+      "justification": "static"
+    },
+    {
+      "route": "config",
+      "pattern": "/^config$/",
+      "authentifiee": false,
+      "classe": "public-ou-worker",
+      "justification": "static"
+    },
+    {
+      "route": "data-request-items/[itemId]/response",
+      "pattern": "/^data\\-request\\-items\\/([^\\/]+)\\/response$/",
+      "authentifiee": true,
+      "classe": "tenant-valide-explicite",
+      "justification": "withTracefabTenantContext : validation de l’adhésion active dans la transaction"
+    },
+    {
+      "route": "data-requests",
+      "pattern": "/^data\\-requests$/",
+      "authentifiee": true,
+      "classe": "tenant-valide-explicite",
+      "justification": "requireActiveTenant : résolution et validation du tenant demandé"
+    },
+    {
+      "route": "data-requests/[requestId]",
+      "pattern": "/^data\\-requests\\/([^\\/]+)$/",
+      "authentifiee": true,
+      "classe": "tenant-valide-explicite",
+      "justification": "withTracefabTenantContext : validation de l’adhésion active dans la transaction"
+    },
+    {
+      "route": "data-requests/[requestId]/items",
+      "pattern": "/^data\\-requests\\/([^\\/]+)\\/items$/",
+      "authentifiee": true,
+      "classe": "tenant-valide-explicite",
+      "justification": "withTracefabTenantContext : validation de l’adhésion active dans la transaction"
+    },
+    {
+      "route": "data-requests/[requestId]/items/from-template",
+      "pattern": "/^data\\-requests\\/([^\\/]+)\\/items\\/from\\-template$/",
+      "authentifiee": true,
+      "classe": "tenant-valide-explicite",
+      "justification": "withTracefabTenantContext : validation de l’adhésion active dans la transaction"
+    },
+    {
+      "route": "data-requests/[requestId]/remind",
+      "pattern": "/^data\\-requests\\/([^\\/]+)\\/remind$/",
+      "authentifiee": true,
+      "classe": "tenant-valide-explicite",
+      "justification": "requireActiveTenant : résolution et validation du tenant demandé"
+    },
+    {
+      "route": "data-requests/[requestId]/send",
+      "pattern": "/^data\\-requests\\/([^\\/]+)\\/send$/",
+      "authentifiee": true,
+      "classe": "tenant-valide-explicite",
+      "justification": "withTracefabTenantContext : validation de l’adhésion active dans la transaction"
+    },
+    {
+      "route": "data-requests/[requestId]/submit",
+      "pattern": "/^data\\-requests\\/([^\\/]+)\\/submit$/",
+      "authentifiee": true,
+      "classe": "tenant-valide-explicite",
+      "justification": "withTracefabTenantContext : validation de l’adhésion active dans la transaction"
+    },
+    {
+      "route": "data-responses/[responseId]/review",
+      "pattern": "/^data\\-responses\\/([^\\/]+)\\/review$/",
+      "authentifiee": true,
+      "classe": "tenant-valide-explicite",
+      "justification": "withTracefabTenantContext : validation de l’adhésion active dans la transaction"
+    },
+    {
+      "route": "documents",
+      "pattern": "/^documents$/",
+      "authentifiee": true,
+      "classe": "tenant-valide-explicite",
+      "justification": "requireActiveTenant : résolution et validation du tenant demandé"
+    },
+    {
+      "route": "documents/[documentId]/download",
+      "pattern": "/^documents\\/([^\\/]+)\\/download$/",
+      "authentifiee": true,
+      "classe": "tenant-valide-explicite",
+      "justification": "withTracefabTenantContext : validation de l’adhésion active dans la transaction"
+    },
+    {
+      "route": "documents/[documentId]/scan",
+      "pattern": "/^documents\\/([^\\/]+)\\/scan$/",
+      "authentifiee": true,
+      "classe": "tenant-valide-explicite",
+      "justification": "withTracefabTenantContext : validation de l’adhésion active dans la transaction"
+    },
+    {
+      "route": "documents/[documentId]/security-report",
+      "pattern": "/^documents\\/([^\\/]+)\\/security\\-report$/",
+      "authentifiee": true,
+      "classe": "tenant-valide-explicite",
+      "justification": "withTracefabTenantContext : validation de l’adhésion active dans la transaction"
+    },
+    {
+      "route": "documents/[documentId]/verification-report",
+      "pattern": "/^documents\\/([^\\/]+)\\/verification\\-report$/",
+      "authentifiee": true,
+      "classe": "tenant-valide-explicite",
+      "justification": "withTracefabTenantContext : validation de l’adhésion active dans la transaction"
+    },
+    {
+      "route": "documents/[documentId]/verify-ai",
+      "pattern": "/^documents\\/([^\\/]+)\\/verify\\-ai$/",
+      "authentifiee": true,
+      "classe": "tenant-valide-explicite",
+      "justification": "withTracefabTenantContext : validation de l’adhésion active dans la transaction"
+    },
+    {
+      "route": "documents/upload-intent",
+      "pattern": "/^documents\\/upload\\-intent$/",
+      "authentifiee": true,
+      "classe": "tenant-valide-explicite",
+      "justification": "withTracefabTenantContext : validation de l’adhésion active dans la transaction"
+    },
+    {
+      "route": "dpp/[gtin]",
+      "pattern": "/^dpp\\/([^\\/]+)$/",
+      "authentifiee": false,
+      "classe": "public-ou-worker",
+      "justification": "public-read (contexte public transactionnel explicite)"
+    },
+    {
+      "route": "dpp/[gtin]/apple-wallet",
+      "pattern": "/^dpp\\/([^\\/]+)\\/apple\\-wallet$/",
+      "authentifiee": false,
+      "classe": "public-ou-worker",
+      "justification": "public-read (contexte public transactionnel explicite)"
+    },
+    {
+      "route": "dpp/[gtin]/google-wallet",
+      "pattern": "/^dpp\\/([^\\/]+)\\/google\\-wallet$/",
+      "authentifiee": false,
+      "classe": "public-ou-worker",
+      "justification": "public-read (contexte public transactionnel explicite)"
+    },
+    {
+      "route": "dpp/portfolio",
+      "pattern": "/^dpp\\/portfolio$/",
+      "authentifiee": true,
+      "classe": "tenant-valide-explicite",
+      "justification": "requireActiveTenant : résolution et validation du tenant demandé"
+    },
+    {
+      "route": "dpp/validate",
+      "pattern": "/^dpp\\/validate$/",
+      "authentifiee": true,
+      "classe": "compte-ou-calcul",
+      "justification": "calcul pur sur le corps de la requête, aucune lecture de tenant"
+    },
+    {
+      "route": "green-claims/rules",
+      "pattern": "/^green\\-claims\\/rules$/",
+      "authentifiee": false,
+      "classe": "public-ou-worker",
+      "justification": "public-reference"
+    },
+    {
+      "route": "gs1/digital-link/[gtin]",
+      "pattern": "/^gs1\\/digital\\-link\\/([^\\/]+)$/",
+      "authentifiee": false,
+      "classe": "public-ou-worker",
+      "justification": "public-read (contexte public transactionnel explicite)"
+    },
+    {
+      "route": "health",
+      "pattern": "/^health$/",
+      "authentifiee": false,
+      "classe": "public-ou-worker",
+      "justification": "health"
+    },
+    {
+      "route": "integrations",
+      "pattern": "/^integrations$/",
+      "authentifiee": true,
+      "classe": "tenant-valide-explicite",
+      "justification": "withTracefabTenantContext : validation de l’adhésion active dans la transaction"
+    },
+    {
+      "route": "integrations/ingest",
+      "pattern": "/^integrations\\/ingest$/",
+      "authentifiee": true,
+      "classe": "tenant-valide-explicite",
+      "justification": "withTracefabTenantContext : validation de l’adhésion active dans la transaction"
+    },
+    {
+      "route": "integrations/jobs",
+      "pattern": "/^integrations\\/jobs$/",
+      "authentifiee": true,
+      "classe": "tenant-valide-explicite",
+      "justification": "withTracefabTenantContext : validation de l’adhésion active dans la transaction"
+    },
+    {
+      "route": "integrations/plm",
+      "pattern": "/^integrations\\/plm$/",
+      "authentifiee": true,
+      "classe": "tenant-valide-explicite",
+      "justification": "withTracefabTenantContext : validation de l’adhésion active dans la transaction"
+    },
+    {
+      "route": "internal/notification-outbox/health",
+      "pattern": "/^internal\\/notification\\-outbox\\/health$/",
+      "authentifiee": false,
+      "classe": "public-ou-worker",
+      "justification": "worker-direct"
+    },
+    {
+      "route": "internal/notification-outbox/process",
+      "pattern": "/^internal\\/notification\\-outbox\\/process$/",
+      "authentifiee": false,
+      "classe": "public-ou-worker",
+      "justification": "worker-helper"
+    },
+    {
+      "route": "internal/notification-outbox/reminders",
+      "pattern": "/^internal\\/notification\\-outbox\\/reminders$/",
+      "authentifiee": false,
+      "classe": "public-ou-worker",
+      "justification": "worker-helper"
+    },
+    {
+      "route": "internal/notification-outbox/schedule",
+      "pattern": "/^internal\\/notification\\-outbox\\/schedule$/",
+      "authentifiee": false,
+      "classe": "public-ou-worker",
+      "justification": "cron-helper"
+    },
+    {
+      "route": "internal/p2-readiness",
+      "pattern": "/^internal\\/p2\\/readiness$/",
+      "authentifiee": false,
+      "classe": "public-ou-worker",
+      "justification": "readiness"
+    },
+    {
+      "route": "invitations/accept",
+      "pattern": "/^invitations\\/accept$/",
+      "authentifiee": true,
+      "classe": "compte-ou-calcul",
+      "justification": "compte : acceptation d’invitation par jeton, avant adhésion"
+    },
+    {
+      "route": "mass-balance/certificates",
+      "pattern": "/^mass\\-balance\\/certificates$/",
+      "authentifiee": true,
+      "classe": "tenant-valide-explicite",
+      "justification": "requireActiveTenant : résolution et validation du tenant demandé"
+    },
+    {
+      "route": "materials",
+      "pattern": "/^materials$/",
+      "authentifiee": true,
+      "classe": "tenant-valide-explicite",
+      "justification": "requireActiveTenant : résolution et validation du tenant demandé"
+    },
+    {
+      "route": "materials/[materialId]",
+      "pattern": "/^materials\\/([^\\/]+)$/",
+      "authentifiee": true,
+      "classe": "tenant-valide-explicite",
+      "justification": "requireActiveTenant : résolution et validation du tenant demandé"
+    },
+    {
+      "route": "me",
+      "pattern": "/^me$/",
+      "authentifiee": true,
+      "classe": "compte-ou-calcul",
+      "justification": "compte : liste des adhésions du compte, antérieure au choix du tenant"
+    },
+    {
+      "route": "operations/overview",
+      "pattern": "/^operations\\/overview$/",
+      "authentifiee": true,
+      "classe": "tenant-valide-explicite",
+      "justification": "requireActiveTenant : résolution et validation du tenant demandé"
+    },
+    {
+      "route": "organization-settings",
+      "pattern": "/^organization\\-settings$/",
+      "authentifiee": true,
+      "classe": "tenant-valide-explicite",
+      "justification": "requireActiveTenant : résolution et validation du tenant demandé"
+    },
+    {
+      "route": "organization/storage/usage",
+      "pattern": "/^organization\\/storage\\/usage$/",
+      "authentifiee": true,
+      "classe": "tenant-valide-explicite",
+      "justification": "withTracefabTenantContext : validation de l’adhésion active dans la transaction"
+    },
+    {
+      "route": "organizations",
+      "pattern": "/^organizations$/",
+      "authentifiee": true,
+      "classe": "compte-ou-calcul",
+      "justification": "compte : liste/création d’organisations"
+    },
+    {
+      "route": "organizations/[organizationId]/invitations",
+      "pattern": "/^organizations\\/([^\\/]+)\\/invitations$/",
+      "authentifiee": true,
+      "classe": "tenant-valide-explicite",
+      "justification": "withTracefabTenantContext : validation de l’adhésion active dans la transaction"
+    },
+    {
+      "route": "passport/[tokenOrSlug]",
+      "pattern": "/^passport\\/([^\\/]+)$/",
+      "authentifiee": false,
+      "classe": "public-ou-worker",
+      "justification": "public-read (contexte public transactionnel explicite)"
+    },
+    {
+      "route": "passport/[tokenOrSlug]/request-access",
+      "pattern": "/^passport\\/([^\\/]+)\\/request\\-access$/",
+      "authentifiee": false,
+      "classe": "public-ou-worker",
+      "justification": "security-definer-entrypoint"
+    },
+    {
+      "route": "pef/factors",
+      "pattern": "/^pef\\/factors$/",
+      "authentifiee": false,
+      "classe": "public-ou-worker",
+      "justification": "public-reference"
+    },
+    {
+      "route": "products",
+      "pattern": "/^products$/",
+      "authentifiee": true,
+      "classe": "tenant-valide-explicite",
+      "justification": "requireActiveTenant : résolution et validation du tenant demandé"
+    },
+    {
+      "route": "products/[productId]",
+      "pattern": "/^products\\/([^\\/]+)$/",
+      "authentifiee": true,
+      "classe": "tenant-valide-explicite",
+      "justification": "requireActiveTenant : résolution et validation du tenant demandé"
+    },
+    {
+      "route": "products/[productId]/data-points",
+      "pattern": "/^products\\/([^\\/]+)\\/data\\-points$/",
+      "authentifiee": true,
+      "classe": "tenant-valide-explicite",
+      "justification": "requireActiveTenant : résolution et validation du tenant demandé"
+    },
+    {
+      "route": "products/[productId]/dpp",
+      "pattern": "/^products\\/([^\\/]+)\\/dpp$/",
+      "authentifiee": true,
+      "classe": "tenant-valide-explicite",
+      "justification": "withTracefabRequestContext : adhésion active validée centralement + garde SQL liée au tenant"
+    },
+    {
+      "route": "products/[productId]/dpp/claims",
+      "pattern": "/^products\\/([^\\/]+)\\/dpp\\/claims$/",
+      "authentifiee": true,
+      "classe": "tenant-valide-explicite",
+      "justification": "withTracefabRequestContext : adhésion active validée centralement + garde SQL liée au tenant"
+    },
+    {
+      "route": "products/[productId]/dpp/claims/[claimId]/evidence",
+      "pattern": "/^products\\/([^\\/]+)\\/dpp\\/claims\\/([^\\/]+)\\/evidence$/",
+      "authentifiee": true,
+      "classe": "tenant-valide-explicite",
+      "justification": "withTracefabRequestContext : adhésion active validée centralement + garde SQL liée au tenant"
+    },
+    {
+      "route": "products/[productId]/dpp/events",
+      "pattern": "/^products\\/([^\\/]+)\\/dpp\\/events$/",
+      "authentifiee": true,
+      "classe": "tenant-valide-explicite",
+      "justification": "withTracefabRequestContext : adhésion active validée centralement + garde SQL liée au tenant"
+    },
+    {
+      "route": "products/[productId]/dpp/identities",
+      "pattern": "/^products\\/([^\\/]+)\\/dpp\\/identities$/",
+      "authentifiee": true,
+      "classe": "tenant-valide-explicite",
+      "justification": "withTracefabRequestContext : adhésion active validée centralement + garde SQL liée au tenant"
+    },
+    {
+      "route": "products/[productId]/dpp/publication",
+      "pattern": "/^products\\/([^\\/]+)\\/dpp\\/publication$/",
+      "authentifiee": true,
+      "classe": "tenant-valide-explicite",
+      "justification": "withTracefabRequestContext : adhésion active validée centralement + garde SQL liée au tenant"
+    },
+    {
+      "route": "products/[productId]/dpp/publish-review",
+      "pattern": "/^products\\/([^\\/]+)\\/dpp\\/publish\\-review$/",
+      "authentifiee": true,
+      "classe": "tenant-valide-explicite",
+      "justification": "withTracefabRequestContext : adhésion active validée centralement + garde SQL liée au tenant"
+    },
+    {
+      "route": "products/[productId]/dpp/quality-check",
+      "pattern": "/^products\\/([^\\/]+)\\/dpp\\/quality\\-check$/",
+      "authentifiee": true,
+      "classe": "tenant-valide-explicite",
+      "justification": "withTracefabRequestContext : adhésion active validée centralement + garde SQL liée au tenant"
+    },
+    {
+      "route": "products/[productId]/green-claims",
+      "pattern": "/^products\\/([^\\/]+)\\/green\\-claims$/",
+      "authentifiee": true,
+      "classe": "tenant-valide-explicite",
+      "justification": "withTracefabRequestContext : adhésion active validée centralement + garde SQL liée au tenant"
+    },
+    {
+      "route": "products/[productId]/green-claims/audit",
+      "pattern": "/^products\\/([^\\/]+)\\/green\\-claims\\/audit$/",
+      "authentifiee": true,
+      "classe": "tenant-valide-explicite",
+      "justification": "withTracefabRequestContext : adhésion active validée centralement + garde SQL liée au tenant"
+    },
+    {
+      "route": "products/[productId]/identifiers",
+      "pattern": "/^products\\/([^\\/]+)\\/identifiers$/",
+      "authentifiee": true,
+      "classe": "tenant-valide-explicite",
+      "justification": "requireActiveTenant : résolution et validation du tenant demandé"
+    },
+    {
+      "route": "products/[productId]/mass-balance",
+      "pattern": "/^products\\/([^\\/]+)\\/mass\\-balance$/",
+      "authentifiee": true,
+      "classe": "tenant-valide-explicite",
+      "justification": "withTracefabTenantContext : validation de l’adhésion active dans la transaction"
+    },
+    {
+      "route": "products/[productId]/mass-balance/allocate",
+      "pattern": "/^products\\/([^\\/]+)\\/mass\\-balance\\/allocate$/",
+      "authentifiee": true,
+      "classe": "tenant-valide-explicite",
+      "justification": "withTracefabTenantContext : validation de l’adhésion active dans la transaction"
+    },
+    {
+      "route": "products/[productId]/materials",
+      "pattern": "/^products\\/([^\\/]+)\\/materials$/",
+      "authentifiee": true,
+      "classe": "tenant-valide-explicite",
+      "justification": "requireActiveTenant : résolution et validation du tenant demandé"
+    },
+    {
+      "route": "products/[productId]/pef",
+      "pattern": "/^products\\/([^\\/]+)\\/pef$/",
+      "authentifiee": true,
+      "classe": "tenant-valide-explicite",
+      "justification": "withTracefabRequestContext : adhésion active validée centralement + garde SQL liée au tenant"
+    },
+    {
+      "route": "products/[productId]/pef/calculate",
+      "pattern": "/^products\\/([^\\/]+)\\/pef\\/calculate$/",
+      "authentifiee": true,
+      "classe": "tenant-valide-explicite",
+      "justification": "withTracefabRequestContext : adhésion active validée centralement + garde SQL liée au tenant"
+    },
+    {
+      "route": "products/[productId]/revision",
+      "pattern": "/^products\\/([^\\/]+)\\/revision$/",
+      "authentifiee": true,
+      "classe": "tenant-valide-explicite",
+      "justification": "requireActiveTenant : résolution et validation du tenant demandé"
+    },
+    {
+      "route": "products/[productId]/supply-chain",
+      "pattern": "/^products\\/([^\\/]+)\\/supply\\-chain$/",
+      "authentifiee": true,
+      "classe": "tenant-valide-explicite",
+      "justification": "requireActiveTenant : résolution et validation du tenant demandé"
+    },
+    {
+      "route": "products/[productId]/supply-chain/generate-baseline",
+      "pattern": "/^products\\/([^\\/]+)\\/supply\\-chain\\/generate\\-baseline$/",
+      "authentifiee": true,
+      "classe": "tenant-valide-explicite",
+      "justification": "requireActiveTenant : résolution et validation du tenant demandé"
+    },
+    {
+      "route": "products/[productId]/supply-chain/links",
+      "pattern": "/^products\\/([^\\/]+)\\/supply\\-chain\\/links$/",
+      "authentifiee": true,
+      "classe": "tenant-valide-explicite",
+      "justification": "requireActiveTenant : résolution et validation du tenant demandé"
+    },
+    {
+      "route": "products/[productId]/supply-chain/links/[linkId]",
+      "pattern": "/^products\\/([^\\/]+)\\/supply\\-chain\\/links\\/([^\\/]+)$/",
+      "authentifiee": true,
+      "classe": "tenant-valide-explicite",
+      "justification": "requireActiveTenant : résolution et validation du tenant demandé"
+    },
+    {
+      "route": "products/[productId]/supply-chain/nodes",
+      "pattern": "/^products\\/([^\\/]+)\\/supply\\-chain\\/nodes$/",
+      "authentifiee": true,
+      "classe": "tenant-valide-explicite",
+      "justification": "requireActiveTenant : résolution et validation du tenant demandé"
+    },
+    {
+      "route": "products/[productId]/supply-chain/nodes/[nodeId]",
+      "pattern": "/^products\\/([^\\/]+)\\/supply\\-chain\\/nodes\\/([^\\/]+)$/",
+      "authentifiee": true,
+      "classe": "tenant-valide-explicite",
+      "justification": "requireActiveTenant : résolution et validation du tenant demandé"
+    },
+    {
+      "route": "products/[productId]/wallet/apple",
+      "pattern": "/^products\\/([^\\/]+)\\/wallet\\/apple$/",
+      "authentifiee": false,
+      "classe": "public-ou-worker",
+      "justification": "public-read (contexte public transactionnel explicite)"
+    },
+    {
+      "route": "products/[productId]/wallet/google",
+      "pattern": "/^products\\/([^\\/]+)\\/wallet\\/google$/",
+      "authentifiee": false,
+      "classe": "public-ou-worker",
+      "justification": "public-read (contexte public transactionnel explicite)"
+    },
+    {
+      "route": "quality-issues/[issueId]/acknowledge",
+      "pattern": "/^quality\\-issues\\/([^\\/]+)\\/acknowledge$/",
+      "authentifiee": true,
+      "classe": "tenant-valide-explicite",
+      "justification": "withTracefabTenantContext : validation de l’adhésion active dans la transaction"
+    },
+    {
+      "route": "quality-issues/[issueId]/waive",
+      "pattern": "/^quality\\-issues\\/([^\\/]+)\\/waive$/",
+      "authentifiee": true,
+      "classe": "tenant-valide-explicite",
+      "justification": "withTracefabTenantContext : validation de l’adhésion active dans la transaction"
+    },
+    {
+      "route": "quality/audit-pack",
+      "pattern": "/^quality\\/audit\\-pack$/",
+      "authentifiee": true,
+      "classe": "tenant-valide-explicite",
+      "justification": "withTracefabTenantContext : validation de l’adhésion active dans la transaction"
+    },
+    {
+      "route": "quality/calculate-index",
+      "pattern": "/^quality\\/calculate\\-index$/",
+      "authentifiee": true,
+      "classe": "compte-ou-calcul",
+      "justification": "calcul pur sur le corps de la requête"
+    },
+    {
+      "route": "quality/caps",
+      "pattern": "/^quality\\/caps$/",
+      "authentifiee": true,
+      "classe": "tenant-valide-explicite",
+      "justification": "requireActiveTenant : résolution et validation du tenant demandé"
+    },
+    {
+      "route": "quality/caps/[capId]/messages",
+      "pattern": "/^quality\\/caps\\/([^\\/]+)\\/messages$/",
+      "authentifiee": true,
+      "classe": "tenant-valide-explicite",
+      "justification": "withTracefabTenantContext : validation de l’adhésion active dans la transaction"
+    },
+    {
+      "route": "quality/caps/[capId]/review",
+      "pattern": "/^quality\\/caps\\/([^\\/]+)\\/review$/",
+      "authentifiee": true,
+      "classe": "tenant-valide-explicite",
+      "justification": "withTracefabTenantContext : validation de l’adhésion active dans la transaction"
+    },
+    {
+      "route": "quality/caps/[capId]/submit-remediation",
+      "pattern": "/^quality\\/caps\\/([^\\/]+)\\/submit\\-remediation$/",
+      "authentifiee": true,
+      "classe": "tenant-valide-explicite",
+      "justification": "withTracefabTenantContext : validation de l’adhésion active dans la transaction"
+    },
+    {
+      "route": "quality/issues/[issueId]/cap",
+      "pattern": "/^quality\\/issues\\/([^\\/]+)\\/cap$/",
+      "authentifiee": true,
+      "classe": "tenant-valide-explicite",
+      "justification": "withTracefabTenantContext : validation de l’adhésion active dans la transaction"
+    },
+    {
+      "route": "quality/overview",
+      "pattern": "/^quality\\/overview$/",
+      "authentifiee": true,
+      "classe": "tenant-valide-explicite",
+      "justification": "withTracefabRequestContext : adhésion active validée centralement + garde SQL liée au tenant"
+    },
+    {
+      "route": "quality/products/[productId]",
+      "pattern": "/^quality\\/products\\/([^\\/]+)$/",
+      "authentifiee": true,
+      "classe": "tenant-valide-explicite",
+      "justification": "withTracefabRequestContext : adhésion active validée centralement + garde SQL liée au tenant"
+    },
+    {
+      "route": "quality/suppliers/[supplierId]",
+      "pattern": "/^quality\\/suppliers\\/([^\\/]+)$/",
+      "authentifiee": true,
+      "classe": "tenant-valide-explicite",
+      "justification": "withTracefabTenantContext : validation de l’adhésion active dans la transaction"
+    },
+    {
+      "route": "questionnaires",
+      "pattern": "/^questionnaires$/",
+      "authentifiee": true,
+      "classe": "compte-ou-calcul",
+      "justification": "référentiel statique, aucune requête base"
+    },
+    {
+      "route": "questionnaires/[questionnaireKey]",
+      "pattern": "/^questionnaires\\/([^\\/]+)$/",
+      "authentifiee": true,
+      "classe": "compte-ou-calcul",
+      "justification": "référentiel statique, aucune requête base"
+    },
+    {
+      "route": "resolve/[publicId]",
+      "pattern": "/^resolve\\/([^\\/]+)$/",
+      "authentifiee": false,
+      "classe": "public-ou-worker",
+      "justification": "public-read (contexte public transactionnel explicite)"
+    },
+    {
+      "route": "resolve/[publicId]/qr",
+      "pattern": "/^resolve\\/([^\\/]+)\\/qr$/",
+      "authentifiee": false,
+      "classe": "public-ou-worker",
+      "justification": "public-read (contexte public transactionnel explicite)"
+    },
+    {
+      "route": "schema-bindings",
+      "pattern": "/^schema\\-bindings$/",
+      "authentifiee": true,
+      "classe": "tenant-valide-explicite",
+      "justification": "withTracefabTenantContext : validation de l’adhésion active dans la transaction"
+    },
+    {
+      "route": "supplier/certifications",
+      "pattern": "/^supplier\\/certifications$/",
+      "authentifiee": true,
+      "classe": "tenant-valide-explicite",
+      "justification": "withTracefabTenantContext : validation de l’adhésion active dans la transaction"
+    },
+    {
+      "route": "supplier/certifications/[certificationId]",
+      "pattern": "/^supplier\\/certifications\\/([^\\/]+)$/",
+      "authentifiee": true,
+      "classe": "tenant-valide-explicite",
+      "justification": "withTracefabTenantContext : validation de l’adhésion active dans la transaction"
+    },
+    {
+      "route": "supplier/certifications/[certificationId]/auto-verify",
+      "pattern": "/^supplier\\/certifications\\/([^\\/]+)\\/auto\\-verify$/",
+      "authentifiee": true,
+      "classe": "tenant-valide-explicite",
+      "justification": "withTracefabTenantContext : validation de l’adhésion active dans la transaction"
+    },
+    {
+      "route": "supplier/certifications/ocr-extract",
+      "pattern": "/^supplier\\/certifications\\/ocr\\-extract$/",
+      "authentifiee": true,
+      "classe": "tenant-valide-explicite",
+      "justification": "withTracefabTenantContext : validation de l’adhésion active dans la transaction"
+    },
+    {
+      "route": "supplier/data-points",
+      "pattern": "/^supplier\\/data\\-points$/",
+      "authentifiee": true,
+      "classe": "tenant-valide-explicite",
+      "justification": "withTracefabTenantContext : validation de l’adhésion active dans la transaction"
+    },
+    {
+      "route": "supplier/data-points/[dataPointId]",
+      "pattern": "/^supplier\\/data\\-points\\/([^\\/]+)$/",
+      "authentifiee": true,
+      "classe": "tenant-valide-explicite",
+      "justification": "withTracefabTenantContext : validation de l’adhésion active dans la transaction"
+    },
+    {
+      "route": "supplier/documents",
+      "pattern": "/^supplier\\/documents$/",
+      "authentifiee": true,
+      "classe": "tenant-valide-explicite",
+      "justification": "withTracefabTenantContext : validation de l’adhésion active dans la transaction"
+    },
+    {
+      "route": "supplier/documents/[documentId]/download",
+      "pattern": "/^supplier\\/documents\\/([^\\/]+)\\/download$/",
+      "authentifiee": true,
+      "classe": "tenant-valide-explicite",
+      "justification": "withTracefabTenantContext : validation de l’adhésion active dans la transaction"
+    },
+    {
+      "route": "supplier/documents/[documentId]/scan",
+      "pattern": "/^supplier\\/documents\\/([^\\/]+)\\/scan$/",
+      "authentifiee": true,
+      "classe": "tenant-valide-explicite",
+      "justification": "withTracefabTenantContext : validation de l’adhésion active dans la transaction"
+    },
+    {
+      "route": "supplier/documents/upload-intent",
+      "pattern": "/^supplier\\/documents\\/upload\\-intent$/",
+      "authentifiee": true,
+      "classe": "tenant-valide-explicite",
+      "justification": "withTracefabTenantContext : validation de l’adhésion active dans la transaction"
+    },
+    {
+      "route": "supplier/materials/import-bom",
+      "pattern": "/^supplier\\/materials\\/import\\-bom$/",
+      "authentifiee": true,
+      "classe": "tenant-valide-explicite",
+      "justification": "withTracefabTenantContext : validation de l’adhésion active dans la transaction"
+    },
+    {
+      "route": "supplier/member-invitations/[invitationId]",
+      "pattern": "/^supplier\\/member\\-invitations\\/([^\\/]+)$/",
+      "authentifiee": true,
+      "classe": "tenant-valide-explicite",
+      "justification": "withTracefabTenantContext : validation de l’adhésion active dans la transaction"
+    },
+    {
+      "route": "supplier/members",
+      "pattern": "/^supplier\\/members$/",
+      "authentifiee": true,
+      "classe": "tenant-valide-explicite",
+      "justification": "withTracefabTenantContext : validation de l’adhésion active dans la transaction"
+    },
+    {
+      "route": "supplier/onboarding",
+      "pattern": "/^supplier\\/onboarding$/",
+      "authentifiee": true,
+      "classe": "compte-ou-calcul",
+      "justification": "compte : création initiale de l’organisation fournisseur"
+    },
+    {
+      "route": "supplier/organizations",
+      "pattern": "/^supplier\\/organizations$/",
+      "authentifiee": true,
+      "classe": "compte-ou-calcul",
+      "justification": "compte : sélecteur des adhésions fournisseur"
+    },
+    {
+      "route": "supplier/passport",
+      "pattern": "/^supplier\\/passport$/",
+      "authentifiee": true,
+      "classe": "tenant-valide-explicite",
+      "justification": "withTracefabTenantContext : validation de l’adhésion active dans la transaction"
+    },
+    {
+      "route": "supplier/passport/access-requests",
+      "pattern": "/^supplier\\/passport\\/access\\-requests$/",
+      "authentifiee": true,
+      "classe": "tenant-valide-explicite",
+      "justification": "withTracefabTenantContext : validation de l’adhésion active dans la transaction"
+    },
+    {
+      "route": "supplier/profile",
+      "pattern": "/^supplier\\/profile$/",
+      "authentifiee": true,
+      "classe": "tenant-valide-explicite",
+      "justification": "withTracefabTenantContext : validation de l’adhésion active dans la transaction"
+    },
+    {
+      "route": "supplier/profile/submit",
+      "pattern": "/^supplier\\/profile\\/submit$/",
+      "authentifiee": true,
+      "classe": "tenant-valide-explicite",
+      "justification": "withTracefabTenantContext : validation de l’adhésion active dans la transaction"
+    },
+    {
+      "route": "supplier/quality",
+      "pattern": "/^supplier\\/quality$/",
+      "authentifiee": true,
+      "classe": "tenant-valide-explicite",
+      "justification": "withTracefabTenantContext : validation de l’adhésion active dans la transaction"
+    },
+    {
+      "route": "supplier/shares",
+      "pattern": "/^supplier\\/shares$/",
+      "authentifiee": true,
+      "classe": "tenant-valide-explicite",
+      "justification": "withTracefabTenantContext : validation de l’adhésion active dans la transaction"
+    },
+    {
+      "route": "supplier/sites",
+      "pattern": "/^supplier\\/sites$/",
+      "authentifiee": true,
+      "classe": "tenant-valide-explicite",
+      "justification": "withTracefabTenantContext : validation de l’adhésion active dans la transaction"
+    },
+    {
+      "route": "supplier/sites/[siteId]",
+      "pattern": "/^supplier\\/sites\\/([^\\/]+)$/",
+      "authentifiee": true,
+      "classe": "tenant-valide-explicite",
+      "justification": "withTracefabTenantContext : validation de l’adhésion active dans la transaction"
+    },
+    {
+      "route": "supplier/storage/usage",
+      "pattern": "/^supplier\\/storage\\/usage$/",
+      "authentifiee": true,
+      "classe": "tenant-valide-explicite",
+      "justification": "withTracefabTenantContext : validation de l’adhésion active dans la transaction"
+    },
+    {
+      "route": "suppliers",
+      "pattern": "/^suppliers$/",
+      "authentifiee": true,
+      "classe": "tenant-valide-explicite",
+      "justification": "withTracefabTenantContext : validation de l’adhésion active dans la transaction"
+    },
+    {
+      "route": "suppliers/[supplierId]/profile",
+      "pattern": "/^suppliers\\/([^\\/]+)\\/profile$/",
+      "authentifiee": true,
+      "classe": "tenant-valide-explicite",
+      "justification": "withTracefabTenantContext : validation de l’adhésion active dans la transaction"
+    },
+    {
+      "route": "suppliers/[supplierId]/profile/submit",
+      "pattern": "/^suppliers\\/([^\\/]+)\\/profile\\/submit$/",
+      "authentifiee": true,
+      "classe": "tenant-valide-explicite",
+      "justification": "withTracefabTenantContext : validation de l’adhésion active dans la transaction"
+    },
+    {
+      "route": "traceability/audit-chain",
+      "pattern": "/^traceability\\/audit\\-chain$/",
+      "authentifiee": true,
+      "classe": "tenant-valide-explicite",
+      "justification": "withTracefabTenantContext : validation de l’adhésion active dans la transaction"
+    },
+    {
+      "route": "traceability/lineage-graph",
+      "pattern": "/^traceability\\/lineage\\-graph$/",
+      "authentifiee": true,
+      "classe": "compte-ou-calcul",
+      "justification": "calcul pur sur le corps de la requête"
+    },
+    {
+      "route": "traceability/mass-balance",
+      "pattern": "/^traceability\\/mass\\-balance$/",
+      "authentifiee": true,
+      "classe": "compte-ou-calcul",
+      "justification": "calcul pur sur le corps de la requête"
+    },
+    {
+      "route": "webhooks/clerk",
+      "pattern": "/^webhooks\\/clerk$/",
+      "authentifiee": false,
+      "classe": "public-ou-worker",
+      "justification": "worker-direct"
+    }
+  ]
+}

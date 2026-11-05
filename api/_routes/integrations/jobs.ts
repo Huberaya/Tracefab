@@ -1,9 +1,9 @@
 import type { VercelRequest, VercelResponse } from '../../_lib/vercel-types.js';
 import { requireClerkUser, isUnauthorized } from '../../_lib/auth.js';
-import { withTracefabUserContext } from '../../_lib/context.js';
+import { withTracefabTenantContext } from '../../_lib/context.js';
 import { json, methodNotAllowed } from '../../_lib/http.js';
 import { sqlBusinessError } from '../../_lib/sql-errors.js';
-import { activeBrandOrganizationIds } from '../../_lib/products.js';
+
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'GET') {
@@ -13,22 +13,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     const { user } = await requireClerkUser(req);
 
-    return await withTracefabUserContext(user.id, user.email, async (tx) => {
-      const brandOrgIds = await activeBrandOrganizationIds(tx, user.id);
-      const activeOrgId = (req.query.organizationId as string) || brandOrgIds[0];
-
-      if (!activeOrgId || !brandOrgIds.includes(activeOrgId)) {
-        return json(res, 403, { error: 'brand_product_role_required' });
-      }
-
-      const jobs = await tx.plm_erp_sync_jobs.findMany({
-        where: { brand_organization_id: activeOrgId },
-        orderBy: { created_at: 'desc' },
-        take: 50,
-      });
-
-      return json(res, 200, { jobs });
-    });
+    return await withTracefabTenantContext(
+      req,
+      user,
+      { types: ['brand'] },
+      async (tx, tenant) => {
+        const jobs = await tx.plm_erp_sync_jobs.findMany({
+          where: { brand_organization_id: tenant.organizationId },
+          orderBy: { created_at: 'desc' },
+          take: 50,
+        });
+        return json(res, 200, { jobs });
+      },
+    );
   } catch (error: unknown) {
     if (isUnauthorized(error)) return json(res, 401, { error: 'unauthorized' });
     const businessError = sqlBusinessError(error);

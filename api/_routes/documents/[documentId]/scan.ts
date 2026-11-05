@@ -1,7 +1,7 @@
 import { Prisma } from '@prisma/client';
 import type { VercelRequest, VercelResponse } from '../../../_lib/vercel-types.js';
 import { requireClerkUser, isUnauthorized } from '../../../_lib/auth.js';
-import { withTracefabUserContext } from '../../../_lib/context.js';
+import { withTracefabTenantContext } from '../../../_lib/context.js';
 import { json, methodNotAllowed } from '../../../_lib/http.js';
 import { sqlBusinessError } from '../../../_lib/sql-errors.js';
 import { runDocumentScanFlow } from '../../../_lib/document-scan-flow.js';
@@ -25,19 +25,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (!isUuid(documentId)) return json(res, 400, { error: 'invalid_document_id' });
     const { user } = await requireClerkUser(req);
 
-    const ownerOrganizationId = await withTracefabUserContext(user.id, user.email, async (tx) => {
-      const rows = await tx.$queryRaw<Array<{ owner_organization_id: string }>>`
-        SELECT d.owner_organization_id
-        FROM documents d
-        WHERE d.id = ${documentId}::uuid
-          AND tracefab_has_org_role(
-            d.owner_organization_id,
-            ARRAY['owner', 'admin', 'manager', 'contributor']::membership_role[]
-          )
-        LIMIT 1
-      `;
-      return rows[0]?.owner_organization_id ?? null;
-    });
+    const ownerOrganizationId = await withTracefabTenantContext(
+      req,
+      user,
+      { types: ['brand'], roles: ['owner', 'admin', 'manager', 'contributor'] },
+      async (tx, tenant) => {
+        const document = await tx.documents.findFirst({
+          where: { id: documentId, owner_organization_id: tenant.organizationId },
+          select: { id: true },
+        });
+        return document ? tenant.organizationId : null;
+      },
+    );
     if (!ownerOrganizationId) return json(res, 404, { error: 'document_not_found' });
 
     const result = await runDocumentScanFlow(user, documentId, ownerOrganizationId);

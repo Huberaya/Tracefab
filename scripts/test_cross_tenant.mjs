@@ -34,7 +34,9 @@ const ACCESS_MODELS = {
   // le lit dans la requete elle-meme, ce qui rend l'oubli d'armement impossible
   // a ecrire. Les deux arment `tracefab.user_id` et
   // `tracefab.active_organization_id` dans la transaction.
-  TENANT: { needs: ['requireClerkUser'], anyOf: ['withTracefabUserContext', 'withTracefabRequestContext'] },
+  TENANT: { needs: ['requireClerkUser'], anyOf: ['withTracefabUserContext', 'withTracefabRequestContext', 'withTracefabTenantContext'] },
+  // Endpoints de compte : sélection/création d'organisations, avant qu'un tenant soit choisi.
+  ACCOUNT: { needs: ['requireClerkUser'], anyOf: ['withTracefabUserContext', 'withTracefabRequestContext'] },
   // Surface publique assumee : passeport consommateur, wallets, sante, config.
   PUBLIC: { needs: [] },
   // Taches de fond declenchees par un worker : secret partage obligatoire.
@@ -49,6 +51,15 @@ const ACCESS_MODELS = {
  * Chaque entree porte sa justification : une exemption sans raison ecrite est
  * une faille qui attend son heure. */
 const CLASSIFIED = {
+  'me': ['ACCOUNT', 'Profil et adhésions du compte ; endpoint de découverte du tenant actif.'],
+  'organizations': ['ACCOUNT', 'Liste/création des organisations auxquelles le compte appartient.'],
+  'supplier/organizations': ['ACCOUNT', 'Sélecteur des adhésions fournisseur du compte, sans données métier.'],
+  'supplier/onboarding': ['ACCOUNT', 'Création initiale du tenant fournisseur avant toute adhésion.'],
+  'invitations/accept': ['ACCOUNT', 'Acceptation d’une invitation par jeton ; le tenant n’existe pas encore dans les adhésions du compte.'],
+  'dpp/validate': ['ACCOUNT', 'Validation pure du payload fourni par le client, sans lecture ni écriture tenant.'],
+  'quality/calculate-index': ['ACCOUNT', 'Calcul pur sur les composants fournis, sans lecture ni écriture tenant.'],
+  'traceability/lineage-graph': ['ACCOUNT', 'Construction pure du graphe à partir des données fournies, sans lecture ni écriture tenant.'],
+  'traceability/mass-balance': ['ACCOUNT', 'Calcul pur du bilan massique à partir des étapes fournies, sans lecture ni écriture tenant.'],
   'webhooks/clerk': ['WEBHOOK', 'Signature Clerk ; cree les comptes, ne lit aucun locataire.'],
   'passport/[tokenOrSlug]': ['PUBLIC', 'Passeport partage par jeton opaque ; le jeton est le controle d acces.'],
   'passport/[tokenOrSlug]/request-access': ['PUBLIC', 'Demande d acces depuis un passeport partage, avant toute authentification.'],
@@ -119,7 +130,7 @@ if (routes.length !== declaredLoads) {
 /* ------------------------------------------------------------------- audit */
 
 const failures = [];
-const stats = { TENANT: 0, PUBLIC: 0, WORKER: 0, WEBHOOK: 0, REFERENCE: 0 };
+const stats = { TENANT: 0, ACCOUNT: 0, PUBLIC: 0, WORKER: 0, WEBHOOK: 0, REFERENCE: 0 };
 const unknown = [];
 
 for (const r of routes) {
@@ -142,6 +153,22 @@ for (const r of routes) {
       failures.push(`${r.key} [${model}] : maillon d isolation absent -> ${missing.join(', ')}`);
     }
   }
+  // Un contexte utilisateur seul ne suffit pas pour une route métier :
+  // il doit aussi valider le tenant actif, ou passer par le wrapper atomique.
+  const hasExplicitTenantGuard =
+    /withTracefabTenantContext|requireActiveTenant|resolveActiveTenant/.test(src)
+    || (
+      /withTracefabRequestContext/.test(src)
+      && /accessibleProduct|documentAccessibleFromTenant|tracefab_in_active_tenant/.test(src)
+    )
+    || (
+      /withTracefabUserContext[\s\S]*requestedTenantId\(req\)/.test(src)
+      && /accessibleProduct|documentAccessibleFromTenant|tracefab_in_active_tenant/.test(src)
+    );
+  if (model === 'TENANT' && !hasExplicitTenantGuard) {
+    failures.push(`${r.key} [TENANT] : aucun contrôle explicite du tenant actif`);
+  }
+
   // Maillon accepte sous plusieurs formes : au moins une doit etre presente.
   if (anyOf && anyOf.length && !anyOf.some((n) => src.includes(n))) {
     failures.push(`${r.key} [${model}] : maillon d isolation absent -> ${anyOf.join(' ou ')}`);
@@ -182,8 +209,12 @@ for (const r of routes) {
     // SQL `= ANY(${organizationIds}::uuid[])`. La seconde etait invisible a la
     // premiere version du controle, et c'est par elle que
     // catalog/products/import-jobs passait entre les mailles.
-    const MULTI_ORG_FALLBACK = /(\{\s*in:\s*|=\s*ANY\(\s*\$\{\s*)(organizationIds|brandOrganizationIds|orgIds|activeOrganizationIds|scopedOrganizations|organizationIdList)\b/;
+    const MULTI_ORG_FALLBACK = /(\{\s*in:\s*|=\s*ANY\(\s*\$\{\s*)(organizationIds|brandOrganizationIds|brandOrgIds|brandIds|supplierOrganizationIds|supplierOrgIds|orgIds|activeOrganizationIds|scopedOrganizations|organizationIdList)\b/;
     const declaresActiveTenant = /requireActiveTenant|resolveActiveTenant/.test(src);
+    const usesMembershipUnion = /\bactiveBrandOrganizationIds\s*\(|\bactiveSupplierOrganizationIds\s*\(|\bactiveOrganizationIds\s*\(/.test(src);
+    if (usesMembershipUnion && !declaresActiveTenant && !MULTI_ORG_EXEMPT.has(r.key)) {
+      failures.push(`${r.key} [TENANT] : utilise l'union des adhésions sans valider le tenant actif`);
+    }
     if (MULTI_ORG_FALLBACK.test(src) && !declaresActiveTenant && !MULTI_ORG_EXEMPT.has(r.key)) {
       failures.push(
         `${r.key} [TENANT] : filtre sur toutes les organisations de l'utilisateur `

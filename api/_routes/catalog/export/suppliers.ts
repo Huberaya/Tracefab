@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '../../../_lib/vercel-types.js';
 import { requireClerkUser, isUnauthorized } from '../../../_lib/auth.js';
-import { withTracefabUserContext } from '../../../_lib/context.js';
+import { withTracefabTenantContext } from '../../../_lib/context.js';
 import { json, methodNotAllowed } from '../../../_lib/http.js';
 import { sqlBusinessError } from '../../../_lib/sql-errors.js';
 import { exportSuppliersCsv } from '../../../_lib/bulk-operations/compliance-exporter.js';
@@ -12,15 +12,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   try {
     const { user } = await requireClerkUser(req);
-    const brandOrganizationId = (req.query.organizationId as string) || (req.headers['x-tracefab-organization-id'] as string) || '';
-
-    if (!brandOrganizationId || !/^[0-9a-f-]{36}$/i.test(brandOrganizationId)) {
-      return json(res, 400, { error: 'invalid_brand_organization_id' });
-    }
-
-    const csvContent = await withTracefabUserContext(user.id, user.email, async (tx) => {
-      return await exportSuppliersCsv(tx, brandOrganizationId);
-    });
+    const csvContent = await withTracefabTenantContext(
+      req,
+      user,
+      { types: ['brand'] },
+      async (tx, tenant) => exportSuppliersCsv(tx, tenant.organizationId),
+    );
 
     const dateStr = new Date().toISOString().slice(0, 10);
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');

@@ -2,7 +2,7 @@ import type { Prisma } from '@prisma/client';
 import { prisma } from './prisma.js';
 import { cleIdentite, signerIdentite } from './identite-jeton.js';
 import type { VercelRequest } from './vercel-types.js';
-import { requestedTenantId } from './tenant.js';
+import { requireActiveTenant, requestedTenantId, type ActiveTenant, type TenantScope } from './tenant.js';
 
 /**
  * Execute tenant-scoped queries in one transaction with the Clerk-resolved
@@ -77,13 +77,57 @@ export async function withTracefabPublicContext<T>(
  * et `tracefab_in_active_tenant()` est alors fausse partout — la requete ne
  * retourne rien. C'est fail-closed, mais silencieux. Cette variante rend
  * l'oubli impossible a ecrire.
+ *
+ * VALIDATION OBLIGATOIRE (mission isolation globale, PR #109) : armer le GUC
+ * avec une valeur fournie par le client ne suffit pas. Les politiques RLS et
+ * les anciens predicats bornent l'UTILISATEUR (union de ses adhesions), pas le
+ * LOCATAIRE ACTIF ; mesure sur PostgreSQL jetable, un compte membre de A, B et
+ * S avec le tenant A arme lisait les documents des trois organisations. Chaque
+ * requete metier ouverte par cette enveloppe exige donc une adhesion ACTIVE au
+ * tenant demande, resolue et verifiee en base avant le callback. Un tenant
+ * absent, mal forme ou non membre leve `TenantError` (400/404) avant toute
+ * requete metier ; la barriere d'erreur centrale du routeur le traduit.
+ *
+ * Le scope optionnel permet aux routes qui doivent rester mono-type de le dire
+ * explicitement ; par defaut toute adhesion active est admise, ce qui ne
+ * dispense aucune requete SQL d'etre bornee au tenant actif.
  */
 export async function withTracefabRequestContext<T>(
   req: VercelRequest,
   user: { id: string; email: string },
   callback: (tx: Prisma.TransactionClient) => Promise<T>,
+  scope: TenantScope = {},
 ) {
-  return withTracefabUserContext(user.id, user.email, callback, requestedTenantId(req));
+  const activeOrganizationId = requestedTenantId(req);
+  return withTracefabUserContext(user.id, user.email, async (tx) => {
+    const tenant = await requireActiveTenant(tx, req, user.id, scope);
+    // Le tenant valide n'est pas expose au callback : les routes qui ont besoin
+    // de filtrer une colonne utilisent `withTracefabTenantContext`, qui le
+    // retourne. Ici, la validation precede toutes les requetes SQL, y compris
+    // les gardes `tracefab_*_in_active_tenant` et les politiques RLS.
+    void tenant;
+    return callback(tx);
+  }, activeOrganizationId);
+}
+
+/**
+ * Execute une requete privee dans le tenant explicitement demande.
+ *
+ * Le GUC et le jeton signe sont armes AVANT la validation et toute requete
+ * metier. L'absence de tenant, un UUID invalide, une adhesion inactive ou un
+ * role/type non autorise echouent avant l'acces aux donnees.
+ */
+export async function withTracefabTenantContext<T>(
+  req: VercelRequest,
+  user: { id: string; email: string },
+  scope: TenantScope,
+  callback: (tx: Prisma.TransactionClient, tenant: ActiveTenant) => Promise<T>,
+) {
+  const activeOrganizationId = requestedTenantId(req);
+  return withTracefabUserContext(user.id, user.email, async (tx) => {
+    const tenant = await requireActiveTenant(tx, req, user.id, scope);
+    return callback(tx, tenant);
+  }, activeOrganizationId);
 }
 
 export async function withTracefabUserContext<T>(

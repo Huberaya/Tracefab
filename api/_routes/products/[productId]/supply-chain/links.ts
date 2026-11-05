@@ -43,7 +43,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
       if (input.evidenceDocumentId) {
         const accessRows = await tx.$queryRaw<Array<{ can_access: boolean }>>`
-          SELECT tracefab_can_access_document(${input.evidenceDocumentId}::uuid) AS can_access
+          SELECT tracefab_document_accessible_in_active_tenant(${input.evidenceDocumentId}::uuid) AS can_access
         `;
         if (!accessRows[0]?.can_access) throw new Error('invalid_evidence_document_id');
       }

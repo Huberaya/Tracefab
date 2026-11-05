@@ -50,7 +50,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           ? { ...membership.organizations.suppliers, profileCompletion: String(membership.organizations.suppliers.profile_completion) }
           : null,
       })),
-      selectedOrganizationId: selectedOrganizationId || organizations[0]?.organization_id || null,
+      // Aucun locataire n'est choisi implicitement : ce selecteur expose les
+      // adhesions du compte et renvoie l'identifiant SEULEMENT s'il a ete
+      // demande et verifie comme appartenant a l'utilisateur (controle plus
+      // haut). Le client choisit ensuite un tenant explicite ; chaque route
+      // metiere le revalide cote serveur. Une valeur par defaut ici aurait
+      // transforme le selecteur de compte en selection silencieuse de tenant.
+      selectedOrganizationId: selectedOrganizationId || null,
     });
   } catch (error) {
     if (isUnauthorized(error)) return json(res, 401, { error: 'unauthorized' });

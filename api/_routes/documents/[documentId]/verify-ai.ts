@@ -1,10 +1,11 @@
 import { Prisma } from '@prisma/client';
 import type { VercelRequest, VercelResponse } from '../../../_lib/vercel-types.js';
 import { requireClerkUser, isUnauthorized } from '../../../_lib/auth.js';
-import { withTracefabUserContext } from '../../../_lib/context.js';
+import { withTracefabTenantContext } from '../../../_lib/context.js';
 import { json, methodNotAllowed, readJsonBody } from '../../../_lib/http.js';
 import { sqlBusinessError } from '../../../_lib/sql-errors.js';
 import { extractDocumentAi, verifyDocumentWithAi } from '../../../_lib/document-ai.js';
+import { documentAccessibleFromTenant } from '../../../_lib/documents.js';
 
 function routeDocumentId(req: VercelRequest) {
   const value = req.query.documentId;
@@ -31,8 +32,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const { user } = await requireClerkUser(req);
     const body: VerifyAiBody = await readJsonBody<VerifyAiBody>(req).catch(() => ({}));
 
-    const result = await withTracefabUserContext(user.id, user.email, async (tx) => {
+    const result = await withTracefabTenantContext(req, user, { types: ['brand'], roles: ['owner', 'admin', 'manager', 'contributor'] }, async (tx, tenant) => {
       // 1. Verify access to document
+      if (!(await documentAccessibleFromTenant(tx, user.id, documentId, tenant))) return { notFound: true };
       const docRows = await tx.$queryRaw<Array<{
         id: string;
         owner_organization_id: string;
@@ -46,7 +48,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         FROM documents
         WHERE id = ${documentId}::uuid
           AND status <> 'deleted'
-          AND tracefab_can_access_document(${documentId}::uuid);
+          AND tracefab_document_accessible_in_active_tenant(${documentId}::uuid);
       `;
 
       if (!docRows[0]) return { notFound: true };

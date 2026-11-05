@@ -45,7 +45,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       // Verify source document access if specified
       if (input.sourceDocumentId) {
         const accessRows = await tx.$queryRaw<Array<{ can_access: boolean }>>`
-          SELECT tracefab_can_access_document(${input.sourceDocumentId}::uuid) AS can_access
+          SELECT tracefab_document_accessible_in_active_tenant(${input.sourceDocumentId}::uuid) AS can_access
         `;
         if (!accessRows[0]?.can_access) throw new Error('invalid_source_document_id');
       }

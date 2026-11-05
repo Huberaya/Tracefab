@@ -1,4 +1,6 @@
 import type { Prisma } from '@prisma/client';
+import type { ActiveTenant } from './tenant.js';
+import { supplierAccessibleFromTenant } from './supplier-profile.js';
 
 export const QUALITY_SCORE_SELECT = {
   id: true,
@@ -89,36 +91,26 @@ export function serializeQualityIssue(issue: QualityIssueRecord) {
 export async function accessibleSupplier(
   tx: Prisma.TransactionClient,
   supplierId: string,
+  userId: string,
+  tenant: ActiveTenant,
 ): Promise<{ id: string; ownerOrganizationId: string; isOwner: boolean } | null> {
-  const rows = await tx.$queryRaw<AccessRow[]>`
-    SELECT
-      s.id,
-      s.organization_id AS owner_organization_id,
-      tracefab_can_access_org(s.organization_id) AS is_owner
-    FROM suppliers s
-    WHERE s.id = ${supplierId}::uuid
-      AND (
-        tracefab_can_access_org(s.organization_id)
-        OR tracefab_can_access_shared_subject(s.organization_id, 'supplier', s.id)
-      )
-    LIMIT 1
-  `;
-  const row = rows[0];
-  return row
-    ? { id: row.id, ownerOrganizationId: row.owner_organization_id, isOwner: row.is_owner }
-    : null;
+  return supplierAccessibleFromTenant(tx, userId, supplierId, tenant, { allowRelationship: false });
 }
 
 export async function accessibleProduct(
   tx: Prisma.TransactionClient,
   productId: string,
 ): Promise<{ id: string; ownerOrganizationId: string } | null> {
+  // Garde executee en base (migration 20261105180000) : identite verifiee,
+  // adhesion active et produit rattache au SEUL tenant actif. L'ancien
+  // predicat `tracefab_can_access_org(...) AND tracefab_in_active_tenant(...)`
+  // restait une verification applicative ; le nouveau garde est partage par
+  // toutes les routes qui ouvrent un produit par son identifiant.
   const rows = await tx.$queryRaw<Array<{ id: string; owner_organization_id: string }>>`
     SELECT id, brand_organization_id AS owner_organization_id
     FROM tracefab_products
     WHERE id = ${productId}::uuid
-      AND tracefab_can_access_org(brand_organization_id)
-      AND tracefab_in_active_tenant(brand_organization_id)
+      AND tracefab_product_accessible_in_active_tenant(id)
     LIMIT 1
   `;
   const row = rows[0];

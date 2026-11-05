@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '../../../../_lib/vercel-types.js';
 import { requireClerkUser, isUnauthorized } from '../../../../_lib/auth.js';
-import { withTracefabUserContext } from '../../../../_lib/context.js';
+import { withTracefabTenantContext } from '../../../../_lib/context.js';
 import { json, methodNotAllowed, readJsonBody } from '../../../../_lib/http.js';
 import { sqlBusinessError } from '../../../../_lib/sql-errors.js';
 import { isUuid } from '../../../../_lib/data-requests.js';
@@ -32,15 +32,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return json(res, 400, { error: 'invalid_verdict_must_be_approved_or_rejected' });
     }
 
-    const updatedCap = await withTracefabUserContext(user.id, user.email, async (tx) => {
-      return await reviewQualityRemediation(
-        tx,
-        capId,
-        verdict,
-        reviewNotes
-      );
+    const updatedCap = await withTracefabTenantContext(req, user, { types: ['brand'], roles: ['owner', 'admin', 'manager'] }, async (tx, tenant) => {
+      const cap = await tx.quality_corrective_action_plans.findFirst({
+        where: { id: capId, brand_organization_id: tenant.organizationId },
+        select: { id: true },
+      });
+      if (!cap) return null;
+      return reviewQualityRemediation(tx, capId, verdict, reviewNotes);
     });
 
+    if (!updatedCap) return json(res, 404, { error: 'cap_not_found' });
     return json(res, 200, {
       message: verdict === 'approved' ? 'remediation_approved_and_issue_resolved' : 'remediation_rejected',
       cap: updatedCap,
