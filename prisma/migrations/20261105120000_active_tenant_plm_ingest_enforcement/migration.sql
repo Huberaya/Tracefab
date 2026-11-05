@@ -440,7 +440,7 @@ $function$
 
 
 COMMENT ON FUNCTION public.tracefab_ingest_plm_erp_payload(UUID, TEXT, JSONB, UUID) IS
-  'Ingestion PLM/ERP. SECURITY DEFINER avec garde de role, identite signee et verification stricte du tenant actif avant toute operation. search_path epingle a pg_catalog, public.';
+  'Ingestion PLM/ERP. SECURITY DEFINER avec garde de role, identite resolue par tracefab_current_user_id (HMAC en mode strict) et verification du tenant actif avant toute operation. search_path epingle a pg_catalog, public.';
 
 -- La route accepte les types déclarés par PLM_ERP_SYSTEM_TYPES. La contrainte
 -- historique des jobs omettait generic_csv et infor_fashion : l'import pouvait
