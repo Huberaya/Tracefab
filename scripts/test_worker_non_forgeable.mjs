@@ -198,7 +198,7 @@ try {
     const inconnue = await app.query("select tracefab_archive_clerk_organization('org_absente') as r");
     ok(inconnue.rows[0].r === false, 'tracefab_archive_clerk_organization rend false si inconnue');
   } finally {
-    await app.query('rollback');
+    await app.query('rollback').catch(() => {});
     if (tenant.rows[0]?.user_id) {
       await admin.query('DELETE FROM public.organizations WHERE id = $1', [clerkOrgProbeId]);
     }
