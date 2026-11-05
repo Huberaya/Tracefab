@@ -144,8 +144,8 @@ try {
     () => app.query(
       `SELECT * FROM tracefab_finalize_document_upload($1::uuid, repeat('a', 64), true, 2048::bigint)`,
       [docA]),
-    'document_scan_role_required',
-    'finalisation cross-locataire / sans rôle refusée');
+    'active_tenant_mismatch',
+    'finalisation cross-locataire refusée avant contrôle du rôle par la garde tenant actif');
 
   await app.query(`SELECT set_config('tracefab.user_id', '', false)`);
   await app.query(`SELECT set_config('tracefab.user_email', '', false)`);
