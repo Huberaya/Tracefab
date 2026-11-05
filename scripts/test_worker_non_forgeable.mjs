@@ -99,33 +99,14 @@ try {
 
   const TABLES_SENSIBLES = ['public.organizations', 'public.users', 'public.organization_memberships'];
 
-  // L'absence de SELECT direct sur users est intentionnelle : l'accès à l'email
-  // passe par tracefab_current_user_email() sous le propriétaire worker.
-  const appUsersSelect = await admin.query(`
-    select has_table_privilege('tracefab_app', 'public.users', 'SELECT') as allowed,
-           c.relowner::regrole::text as owner,
-           c.relacl::text as acl,
-           pg_has_role('tracefab_app', c.relowner, 'MEMBER') as owner_membership,
-           coalesce((
-             select string_agg(granted.rolname, ', ' order by granted.rolname)
-               from pg_auth_members m
-               join pg_roles granted on granted.oid = m.roleid
-              where m.member = (select oid from pg_roles where rolname = 'tracefab_app')
-           ), 'aucun') as inherited_roles,
-           coalesce((
-             select string_agg(coalesce(grantee.rolname, 'PUBLIC') || ':' || a.privilege_type, ', ' order by coalesce(grantee.rolname, 'PUBLIC'), a.privilege_type)
-               from aclexplode(coalesce(c.relacl, acldefault('r', c.relowner))) a
-               left join pg_roles grantee on grantee.oid = a.grantee
-              where a.privilege_type = 'SELECT'
-           ), 'aucun') as select_grants
-      from pg_class c
-      join pg_namespace n on n.oid = c.relnamespace
-     where n.nspname = 'public' and c.relname = 'users'
-  `);
-  const appUsersDetail = appUsersSelect.rows[0];
-  ok(appUsersDetail?.allowed === false,
-    'tracefab_app ne possède aucun SELECT effectif sur users',
-    appUsersDetail ? JSON.stringify(appUsersDetail) : 'table users introuvable');
+  // tracefab_app conserve SELECT sur users : les lectures métier existantes
+  // sont protégées par users_select_self. On vérifie la visibilité des lignes,
+  // pas l'absence du privilège relationnel.
+  const appUsersSelect = await admin.query(
+    `select has_table_privilege('tracefab_app', 'public.users', 'SELECT') as allowed`,
+  );
+  ok(appUsersSelect.rows[0]?.allowed === true,
+    'tracefab_app dispose du SELECT relationnel, filtré par users_select_self');
 
   // --- 1. Sans contexte -----------------------------------------------------
   console.log('1. Sans contexte arme');
@@ -172,6 +153,14 @@ try {
     const vues = await app.query(
       'select count(*)::int as n from public.organizations where id = $1::uuid',
       [org],
+    );
+    const utilisateursVisibles = await app.query(
+      'select id::text as id from public.users order by id',
+    );
+    ok(
+      utilisateursVisibles.rows.length === 1 && utilisateursVisibles.rows[0]?.id === userId,
+      'users_select_self limite le SELECT applicatif à sa propre identité',
+      `visibles=${utilisateursVisibles.rows.length}; identité=${userId}`,
     );
     const adhesionsAttendues = await admin.query(
       `select distinct organization_id::text as id
@@ -348,22 +337,32 @@ try {
     'le worker a les droits users/outbox/demandes et les helpers de prédicat RLS requis',
     JSON.stringify(wp),
   );
-  // Le seul SELECT table supplémentaire du worker est public.users :
-  // il est requis par tracefab_current_user_email() sous SECURITY DEFINER.
-  // RLS reste active/forcée et tracefab_app ne reçoit aucun SELECT direct.
-  const enPlus = await admin.query(
+  // Le worker est NOLOGIN/NOINHERIT et ne reçoit que les SELECT requis
+  // par ses fonctions système et les politiques RLS qu'elles évaluent.
+  // Ne pas confondre ACL de table et visibilité : l'app garde un SELECT
+  // relationnel sur users, mais users_select_self ne lui montre que soi-même.
+  const tablesSelectWorker = await admin.query(
     `select c.relname
-       from pg_class c
-       join pg_namespace n on n.oid = c.relnamespace
+       from pg_catalog.pg_class c
+       join pg_catalog.pg_namespace n on n.oid = c.relnamespace
       where n.nspname = 'public' and c.relkind in ('r','p')
         and has_table_privilege('tracefab_worker', c.oid, 'SELECT')
-        and not has_table_privilege('tracefab_app', c.oid, 'SELECT')
       order by 1`,
   );
+  const selectWorkerAttendu = [
+    'brand_supplier_relationships',
+    'data_requests',
+    'organization_invitations',
+    'organization_memberships',
+    'organizations',
+    'tracefab_notification_outbox',
+    'users',
+  ];
+  const selectWorkerObserve = tablesSelectWorker.rows.map((r) => r.relname);
   ok(
-    enPlus.rowCount === 1 && enPlus.rows[0]?.relname === 'users',
-    'users est la seule table lisible par le worker seul, sans SELECT applicatif',
-    enPlus.rows.map((r) => r.relname).join(', ') || 'aucune',
+    JSON.stringify(selectWorkerObserve) === JSON.stringify(selectWorkerAttendu),
+    'le worker ne lit que les sept tables explicitement requises',
+    `observé=${selectWorkerObserve.join(',') || 'aucune'}`,
   );
 
   // --- 8. Le registre runtime est ferme ------------------------------------
