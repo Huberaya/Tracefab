@@ -154,6 +154,38 @@ for (const fn of ['tracefab_create_material','tracefab_update_material','tracefa
     materialCertificationDbTest.includes(`await assertTenantGuard('${fn}'`));
 }
 
+const supplierProfilePassportMigration = read('prisma/migrations/20261105210000_active_tenant_supplier_profile_passport_guards/migration.sql');
+for (const [fn, guard] of [
+  ['tracefab_update_supplier_profile', 'v_supplier.organization_id'],
+  ['tracefab_submit_supplier_profile', 'v_supplier.organization_id'],
+  ['tracefab_get_or_create_supplier_passport', 'p_supplier_organization_id'],
+  ['tracefab_update_supplier_passport', 'p_supplier_organization_id'],
+]) {
+  check(`migration SQL : ${fn} exige le tenant fournisseur actif`,
+    supplierProfilePassportMigration.includes(fn)
+      && supplierProfilePassportMigration.includes(`tracefab_require_active_tenant_for_organization(${guard})`));
+}
+for (const path of [
+  'api/_routes/supplier/profile.ts',
+  'api/_routes/supplier/profile/submit.ts',
+  'api/_routes/suppliers/[supplierId]/profile.ts',
+  'api/_routes/suppliers/[supplierId]/profile/submit.ts',
+]) {
+  const src = read(path);
+  check(`${path}: borne les mutations au tenant fournisseur`,
+    src.includes("types: ['supplier']")
+      && src.includes('requestedTenantId(req)')
+      && src.includes('isTenantError(error)'));
+}
+const supplierProfileDbTest = read('scripts/test_neon_active_tenant.mjs');
+for (const fn of [
+  'tracefab_update_supplier_profile','tracefab_submit_supplier_profile',
+  'tracefab_get_or_create_supplier_passport','tracefab_update_supplier_passport',
+]) {
+  check(`PostgreSQL : test négatif direct pour ${fn}`,
+    supplierProfileDbTest.includes(`await assertTenantGuard('${fn}'`));
+}
+
 const definerMigration = read('prisma/migrations/20261105170000_active_tenant_security_definer_guards/migration.sql');
 const definerGuards = [
   ['tracefab_add_supply_chain_link', 'tracefab_require_active_tenant_for_product'],
