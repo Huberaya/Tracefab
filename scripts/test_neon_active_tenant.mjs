@@ -873,8 +873,8 @@ try {
       personal: 0, public: 0, worker: 0, tenant: 0, shared: 0,
     };
     const unresolved = [];
-    const membershipPattern = /tracefab_(?:is_org_member|has_org_role|can_access_org)\\(/g;
-    const activePattern = /tracefab_in_active_tenant\\(/g;
+    const membershipPattern = /tracefab_(?:is_org_member|has_org_role|can_access_org)\(/g;
+    const activePattern = /tracefab_in_active_tenant\(/g;
 
     for (const policy of policies) {
       const key = `${policy.tablename}.${policy.policyname}`;
@@ -911,15 +911,15 @@ try {
         }
         classified = true;
       }
-      if (/tracefab_can_access_shared_subject\\(|tracefab_can_access_document\\(|tracefab_material_visible_via_product\\(/.test(expression)) {
+      if (/tracefab_can_access_shared_subject\(|tracefab_can_access_document\(|tracefab_material_visible_via_product\(/.test(expression)) {
         counts.shared += 1;
         classified = true;
       }
-      if (/tracefab_public_context\\(|tracefab_product_is_public\\(|tracefab_material_is_public\\(|tracefab_supplier_site_is_public\\(/.test(expression)) {
+      if (/tracefab_public_context\(|tracefab_product_is_public\(|tracefab_material_is_public\(|tracefab_supplier_site_is_public\(/.test(expression)) {
         counts.public += 1;
         classified = true;
       }
-      if (/tracefab_worker|current_user\\s*=/.test(expression)) {
+      if (/tracefab_worker|current_user\s*=/.test(expression)) {
         counts.worker += 1;
         classified = true;
       }
