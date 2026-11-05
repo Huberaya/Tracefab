@@ -600,7 +600,90 @@ BEGIN
 END
 $active_tenant_policy_inventory$;
 
--- 7. Les politiques worker ne doivent plus dépendre d'un GUC falsifiable.
+-- 7. Email courant : lecture USERS sous identite worker, jamais sous tracefab_app.
+--    En mode HMAC strict, tracefab_current_user_email() resolvait l'email
+--    depuis users. SECURITY INVOKER faisait executer cette lecture sous
+--    tracefab_app, qui ne possede volontairement aucun SELECT sur users.
+--    La fonction devient SECURITY DEFINER, possedee par le worker NOLOGIN,
+--    dont le SELECT est borne par la politique worker. L'ACL runtime existante
+--    est preservee ; aucune lecture directe de users n'est rendue a l'app.
+DO $current_user_email_worker$
+DECLARE
+  v_oid oid;
+  v_owner oid;
+  v_acl aclitem[];
+  v_worker oid;
+  v_after_owner oid;
+  v_after_acl aclitem[];
+  v_after_secdef boolean;
+  v_after_config text[];
+BEGIN
+  SELECT p.oid, p.proowner, p.proacl
+    INTO v_oid, v_owner, v_acl
+    FROM pg_catalog.pg_proc p
+    JOIN pg_catalog.pg_namespace n ON n.oid = p.pronamespace
+   WHERE n.nspname = 'public'
+     AND p.proname = 'tracefab_current_user_email'
+     AND pg_catalog.pg_get_function_identity_arguments(p.oid) = '';
+
+  SELECT oid INTO v_worker FROM pg_catalog.pg_roles WHERE rolname = 'tracefab_worker';
+  IF v_oid IS NULL OR v_worker IS NULL THEN
+    RAISE EXCEPTION 'current_user_email_worker_target_or_role_missing';
+  END IF;
+
+  IF NOT pg_catalog.has_table_privilege('tracefab_worker', 'public.users', 'SELECT')
+     OR NOT pg_catalog.has_function_privilege(
+       'tracefab_worker', 'public.tracefab_current_user_id()', 'EXECUTE'
+     ) THEN
+    RAISE EXCEPTION 'current_user_email_worker_dependencies_missing';
+  END IF;
+
+  IF NOT pg_catalog.pg_has_role(current_user, 'tracefab_worker', 'MEMBER')
+     AND NOT EXISTS (
+       SELECT 1 FROM pg_catalog.pg_roles r
+        WHERE r.rolname = current_user AND r.rolsuper
+     ) THEN
+    RAISE EXCEPTION 'current_user_email_migration_role_cannot_set_worker_owner';
+  END IF;
+
+  -- PostgreSQL exige CREATE sur le schema para transferir el propietario.
+  GRANT CREATE ON SCHEMA public TO tracefab_worker;
+  ALTER FUNCTION public.tracefab_current_user_email() SECURITY DEFINER;
+  ALTER FUNCTION public.tracefab_current_user_email() OWNER TO tracefab_worker;
+  ALTER FUNCTION public.tracefab_current_user_email() SET search_path = pg_catalog, public;
+  REVOKE CREATE ON SCHEMA public FROM tracefab_worker;
+
+  SELECT p.proowner, p.proacl, p.prosecdef, p.proconfig
+    INTO v_after_owner, v_after_acl, v_after_secdef, v_after_config
+    FROM pg_catalog.pg_proc p
+   WHERE p.oid = v_oid;
+
+  IF v_after_owner IS DISTINCT FROM v_worker
+     OR v_after_acl IS DISTINCT FROM v_acl
+     OR v_after_secdef IS DISTINCT FROM true
+     OR NOT ('search_path=pg_catalog, public' = ANY(coalesce(v_after_config, ARRAY[]::text[]))) THEN
+    RAISE EXCEPTION 'current_user_email_worker_postcondition_failed';
+  END IF;
+
+  IF pg_catalog.has_function_privilege('tracefab_app', v_oid, 'EXECUTE') IS NOT TRUE THEN
+    RAISE EXCEPTION 'current_user_email_runtime_execute_missing';
+  END IF;
+
+  IF EXISTS (
+    SELECT 1
+      FROM pg_catalog.aclexplode(coalesce(v_after_acl, pg_catalog.acldefault('f', v_after_owner))) a
+     WHERE a.grantee = 0 AND a.privilege_type = 'EXECUTE'
+  ) THEN
+    RAISE EXCEPTION 'current_user_email_public_execute_forbidden';
+  END IF;
+
+  IF pg_catalog.has_schema_privilege('tracefab_worker', 'public', 'CREATE') THEN
+    RAISE EXCEPTION 'current_user_email_worker_schema_create_must_be_revoked';
+  END IF;
+END
+$current_user_email_worker$;
+
+-- 8. Les politiques worker ne doivent plus dépendre d'un GUC falsifiable.
 DO $worker_public_postconditions$
 BEGIN
   IF EXISTS (
