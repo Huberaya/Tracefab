@@ -69,9 +69,6 @@ console.log(`  locataires : A=${A.legal_name} · B=${B.legal_name}`);
 // Clé de test, posée puis retirée.
 const secret = randomBytes(32);
 const VERSION = 99011;
-if (jobsFixture.length) await admin.query('DELETE FROM plm_erp_sync_jobs WHERE id = ANY($1::uuid[])', [jobsFixture.map((x) => x.id)]);
-if (integrationsFixture.length) await admin.query('DELETE FROM plm_erp_integrations WHERE id = ANY($1::uuid[])', [integrationsFixture.map((x) => x.id)]);
-if (membershipAjoutee) await admin.query('DELETE FROM organization_memberships WHERE organization_id = $1 AND user_id = $2', [B.id, A.user_id]);
 await admin.query('DELETE FROM public.tracefab_identity_cles WHERE version = $1', [VERSION]);
 await admin.query('INSERT INTO public.tracefab_identity_cles (version, secret, actif) VALUES ($1, $2, true)', [VERSION, secret]);
 
