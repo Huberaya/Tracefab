@@ -13,6 +13,9 @@ const prisma = await createTestPrisma(process.env.DATABASE_URL);
 const brandUser = randomUUID();
 const brandViewer = randomUUID();
 const supplierUser = randomUUID();
+// Un viewer DU FOURNISSEUR : il est dans le bon locataire, mais sans le role
+// requis. Il sert a prouver le refus par ROLE, distinct du refus par LOCATAIRE.
+const supplierViewer = randomUUID();
 const brandOrganization = randomUUID();
 const supplierOrganization = randomUUID();
 const supplierId = randomUUID();
@@ -24,6 +27,7 @@ async function main() {
       { id: brandUser, clerkUserId: `quality_${brandUser}`, email: `${brandUser}@example.test`, fullName: 'Quality Brand' },
       { id: brandViewer, clerkUserId: `quality_${brandViewer}`, email: `${brandViewer}@example.test`, fullName: 'Quality Viewer' },
       { id: supplierUser, clerkUserId: `quality_${supplierUser}`, email: `${supplierUser}@example.test`, fullName: 'Quality Supplier' },
+      { id: supplierViewer, clerkUserId: `quality_${supplierViewer}`, email: `${supplierViewer}@example.test`, fullName: 'Quality Supplier Viewer' },
     ],
   });
   await prisma.organizations.createMany({
@@ -37,6 +41,7 @@ async function main() {
       { organization_id: brandOrganization, user_id: brandUser, role: 'owner', status: 'active' },
       { organization_id: brandOrganization, user_id: brandViewer, role: 'viewer', status: 'active' },
       { organization_id: supplierOrganization, user_id: supplierUser, role: 'owner', status: 'active' },
+      { organization_id: supplierOrganization, user_id: supplierViewer, role: 'viewer', status: 'active' },
     ],
   });
   await prisma.suppliers.create({
@@ -86,8 +91,27 @@ async function main() {
   `);
   assert(acknowledged[0]?.status === 'acknowledged', 'quality issue was not acknowledged');
 
+  // DEUX REFUS DISTINCTS, et non un seul.
+  //
+  // 1. Un viewer de la MARQUE, locataire marque actif, appelle une fonction qui
+  //    porte sur une anomalie dont l'organisation proprietaire est le
+  //    FOURNISSEUR : la garde de locataire actif (`20261105190000`, PR #111)
+  //    refuse AVANT la garde de role, avec `active_tenant_mismatch`. Mesure
+  //    identique sur la base PR #111 seule : ce n'est pas un effet de la
+  //    branche courante, c'est le comportement voulu — un membre d'un autre
+  //    locataire n'a pas a apprendre qu'il lui manque un role.
   await expectSqlCode(
     () => inUserContext(brandViewer, brandOrganization, async (tx) => tx.$queryRaw`
+      SELECT * FROM tracefab_waive_quality_issue(${supplierIssues[0].id}::uuid, 'viewer cannot waive')
+    `),
+    'active_tenant_mismatch',
+  );
+
+  // 2. Un viewer DU FOURNISSEUR, dans SON locataire, franchit la garde de
+  //    locataire et se heurte a la garde de ROLE : c'est cette assertion qui
+  //    preserve le refus par role, plutot que de le perdre.
+  await expectSqlCode(
+    () => inUserContext(supplierViewer, supplierOrganization, async (tx) => tx.$queryRaw`
       SELECT * FROM tracefab_waive_quality_issue(${supplierIssues[0].id}::uuid, 'viewer cannot waive')
     `),
     'quality_issue_waive_role_required',
@@ -129,10 +153,15 @@ async function expectSqlCode(operation, code) {
   try {
     await operation();
   } catch (error) {
-    assert(String(error?.message ?? error).includes(code), `expected SQL error ${code}`);
+    const message = String(error?.message ?? error);
+    // Le message OBSERVE est reporte : sans lui, un echec dit seulement quel
+    // code manquait, jamais ce qui a ete leve a la place. Le journal du job
+    // n'etant pas lisible depuis la session de travail, cette precision est ce
+    // qui rend l'echec diagnosticable.
+    assert(message.includes(code), `expected SQL error ${code}, observe : ${message.split('\n')[0]}`);
     return;
   }
-  throw new Error(`expected SQL error ${code}`);
+  throw new Error(`expected SQL error ${code}, aucune erreur levee`);
 }
 
 function assert(condition, message) {
@@ -151,7 +180,7 @@ try {
 } finally {
   try {
     await prisma.organizations.deleteMany({ where: { id: { in: [brandOrganization, supplierOrganization] } } });
-    await prisma.user.deleteMany({ where: { id: { in: [brandUser, brandViewer, supplierUser] } } });
+    await prisma.user.deleteMany({ where: { id: { in: [brandUser, brandViewer, supplierUser, supplierViewer] } } });
   } finally {
     await prisma.$disconnect();
   }
