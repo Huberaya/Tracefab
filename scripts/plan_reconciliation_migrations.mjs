@@ -123,9 +123,9 @@ const lignesForward = (name) => {
   if (name === '20261105150000_active_tenant_dpp_claims_identity_rls') {
     return {
       ...base,
-      effect: 'borner les lectures privées des claims, événements et identités DPP au tenant du produit ; refuser les fonctions SECURITY DEFINER hors tenant actif',
+      effect: 'borner les lectures privées des claims, événements et identités DPP au tenant du produit ; refuser les fonctions SECURITY DEFINER exposées à l'API hors tenant actif',
       evidence: 'test direct sous tracefab_app : membre A+B, A actif, lecture de 1 claim et 1 identité privée de B ; pg_get_functiondef confirme plusieurs fonctions DPP/identité sans garde tenant',
-      risk: 'CREATE OR REPLACE doit préserver OID, propriétaire et ACL ; conserver les politiques publiques et les accès partagés fournisseur sur les produits du tenant actif',
+      risk: 'CREATE OR REPLACE doit préserver OID, propriétaire et ACL ; ne pas ajouter de garde à tracefab_calculate_product_data_completion, fonction interne appelée par trigger et non exécutable par tracefab_app',
       prerequisite: '20261105140000 terminée ; vérifier les fonctions SECURITY DEFINER, leurs ACL et les politiques publiques DPP avant/après',
       action: 'APPLIQUER APRÈS LE BORNAGE DES ALLÉGATIONS VERTES, EN PRÉPRODUCTION PUIS PRODUCTION APRÈS VALIDATION COMPLÈTE',
     };
