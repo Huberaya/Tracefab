@@ -48,6 +48,45 @@ check('upload : document et clé de stockage utilisent le fournisseur du tenant'
 const usage = read('api/_routes/supplier/storage/usage.ts');
 check('storage : quota lu pour le fournisseur du tenant', /getOrganizationStorageUsage\(tx, supplier\.organization_id\)/.test(usage));
 
+
+const schemaBindings = read('api/_routes/schema-bindings.ts');
+check('schema-bindings : GET résout un tenant explicite', schemaBindings.includes('requireActiveTenant(tx, req, user.id'));
+check('schema-bindings : POST résout le tenant fourni au contexte', schemaBindings.includes('resolveActiveTenant(tx, user.id, activeOrganizationId'));
+check('schema-bindings : le tenant est armé dans la transaction', schemaBindings.includes('}, activeOrganizationId)') && schemaBindings.includes('}, requestedTenantId(req))'));
+check('schema-bindings : le sujet est borné au tenant avant lecture/écriture', schemaBindings.includes('subjectBelongsToTenant'));
+check('schema-bindings : les erreurs tenant sont traitées', schemaBindings.includes('isTenantError(error)'));
+
+const definerMigration = read('prisma/migrations/20261105170000_active_tenant_security_definer_guards/migration.sql');
+const definerGuards = [
+  ['tracefab_add_supply_chain_link', 'tracefab_require_active_tenant_for_product'],
+  ['tracefab_create_supply_chain_node', 'tracefab_require_active_tenant_for_product'],
+  ['tracefab_update_supply_chain_node', 'tracefab_require_active_tenant_for_product'],
+  ['tracefab_delete_supply_chain_node', 'tracefab_require_active_tenant_for_product'],
+  ['tracefab_update_supply_chain_link', 'tracefab_require_active_tenant_for_supply_chain_link'],
+  ['tracefab_delete_supply_chain_link', 'tracefab_require_active_tenant_for_product'],
+  ['tracefab_allocate_tc_quantity', 'tracefab_require_active_tenant_for_tc_allocation'],
+  ['tracefab_calculate_product_pef', 'tracefab_require_active_tenant_for_product'],
+  ['tracefab_compute_dpp_readiness', 'tracefab_require_active_tenant_for_product'],
+  ['tracefab_compute_product_quality', 'tracefab_require_active_tenant_for_product'],
+  ['tracefab_create_data_request', 'tracefab_require_active_tenant_for_organization'],
+  ['tracefab_create_product', 'tracefab_require_active_tenant_for_organization'],
+  ['tracefab_reconcile_mass_balance', 'tracefab_require_active_tenant_for_product'],
+  ['tracefab_set_dpp_publication', 'tracefab_require_active_tenant_for_product'],
+  ['tracefab_start_product_revision', 'tracefab_require_active_tenant_for_product'],
+  ['tracefab_update_product_data', 'tracefab_require_active_tenant_for_product'],
+  ['tracefab_bind_schema', 'tracefab_require_active_tenant_for_schema_subject'],
+  ['tracefab_get_product_traceability', 'tracefab_require_active_tenant_for_product'],
+  ['tracefab_mark_dpp_ready_to_publish', 'tracefab_require_active_tenant_for_dpp_record'],
+];
+for (const [fn, helper] of definerGuards) {
+  check(`migration SQL : ${fn} reçoit une garde ${helper}`,
+    definerMigration.includes(`('${fn}'`) && definerMigration.includes(helper));
+}
+check('migration SQL : le remplacement préserve OID, propriétaire et ACL',
+  definerMigration.includes('active_tenant_guard_changed_oid_owner_or_acl'));
+check('migration SQL : le helper ne reçoit pas EXECUTE de PUBLIC',
+  (definerMigration.match(/REVOKE ALL ON FUNCTION public\\.tracefab_require_active_tenant_/g) || []).length === 6);
+
 const failures = checks.filter((c) => !c.condition);
 for (const c of checks) console.log(`${c.condition ? 'OK' : 'ECHEC'} ${c.name}`);
 console.log(`\n${checks.length - failures.length}/${checks.length} contrôles réussis`);
