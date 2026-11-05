@@ -307,8 +307,8 @@ if (JSON.stringify(newNames) !== JSON.stringify([
   '20261105210000_active_tenant_supplier_profile_passport_guards',
   '20261105220000_active_tenant_quality_cap_guards',
   '20261105230000_active_tenant_invite_document_passport_guards',
-  '20261105240000_active_tenant_supplier_quality_guard',
   '20261105235900_active_tenant_policy_and_worker_closure',
+  '20261105240000_active_tenant_supplier_quality_guard',
   '20261106000000_active_tenant_supplier_passport_guards',
 ])) {
   errors.push(`les dix-sept corrections forward PLM/GS1, graphe, tenant actif, RLS produits/DPP/PEF, allégations vertes, claims/identités DPP, compositions produit-matière, gardes SECURITY DEFINER, enregistrement TC, qualité/collecte, matières/certifications, profil fournisseur, CAP qualité, invitations/documents/passeports et qualité fournisseur sont attendues, obtenu ${JSON.stringify(newNames)}`);
