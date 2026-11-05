@@ -197,6 +197,29 @@ try {
     }
   };
 
+  /* -- Enregistrement TC : le SQL direct doit aussi exiger une partie active -- */
+  {
+    await app.query('begin');
+    await app.query(`select set_config('tracefab.user_id', $1, true)`, [userMulti]);
+    await app.query(`select set_config('tracefab.user_email', $1, true)`, [`mt-${suffixe}@example.test`]);
+    await app.query(`select set_config('tracefab.active_organization_id', $1, true)`, [orgRecette]);
+    await app.query(
+      `select tracefab_register_transaction_certificate(
+        $1, 'gots', 'Synthetic issuer', $2::uuid, $3::uuid,
+        'Synthetic cotton', 10::numeric
+      )`,
+      [`MT-GUARD-POSITIVE-${suffixe}`, orgRecette, orgGinger]);
+    await app.query('commit');
+    ok('tracefab_register_transaction_certificate accepte un appel direct lorsque le tenant actif est vendeur');
+  }
+
+  await assertTenantGuard('tracefab_register_transaction_certificate',
+    `select tracefab_register_transaction_certificate(
+      $1, 'gots', 'Synthetic issuer', $2::uuid, $3::uuid,
+      'Synthetic cotton', 10::numeric
+    )`,
+    [`MT-GUARD-NEGATIVE-${suffixe}`, orgRecette, orgRecette]);
+
   /* Créer un lien réel sous B pour tester aussi la garde update_supply_chain_link,
      dont le résolveur doit retrouver le produit depuis l'identifiant du lien. */
   {
