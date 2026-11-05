@@ -125,6 +125,35 @@ for (const path of tenantBoundRoutes) {
       && src.includes('requestedTenantId(req)')
       && src.includes('isTenantError(error)'));
 }
+const materialCertificationMigration = read('prisma/migrations/20261105200000_active_tenant_material_certification_guards/migration.sql');
+for (const [fn, guard] of [
+  ['tracefab_create_material', 'p_owner_organization_id'],
+  ['tracefab_update_material', 'v_material.owner_organization_id'],
+  ['tracefab_register_certification', 'p_owner_organization_id'],
+  ['tracefab_update_certification', 'v_certification.owner_organization_id'],
+]) {
+  check(`migration SQL : ${fn} exige le tenant actif`,
+    materialCertificationMigration.includes(fn)
+      && materialCertificationMigration.includes(`tracefab_require_active_tenant_for_organization(${guard})`));
+}
+for (const path of ['api/_routes/materials.ts', 'api/_routes/materials/[materialId].ts']) {
+  const src = read(path);
+  check(`${path}: résout et arme le tenant actif`,
+    src.includes('requireActiveTenant(tx, req, user.id') && src.includes('requestedTenantId(req)'));
+}
+for (const path of ['api/_routes/supplier/certifications.ts', 'api/_routes/supplier/certifications/[certificationId].ts']) {
+  const src = read(path);
+  check(`${path}: exige un tenant supplier explicite`,
+    src.includes("resolveActiveTenant(tx, user.id, activeOrganizationId, { types: ['supplier'] })")
+      && src.includes('}, activeOrganizationId)')
+      && src.includes('isTenantError(error)'));
+}
+const materialCertificationDbTest = read('scripts/test_neon_active_tenant.mjs');
+for (const fn of ['tracefab_create_material','tracefab_update_material','tracefab_register_certification','tracefab_update_certification']) {
+  check(`PostgreSQL : test négatif direct pour ${fn}`,
+    materialCertificationDbTest.includes(`await assertTenantGuard('${fn}'`));
+}
+
 const definerMigration = read('prisma/migrations/20261105170000_active_tenant_security_definer_guards/migration.sql');
 const definerGuards = [
   ['tracefab_add_supply_chain_link', 'tracefab_require_active_tenant_for_product'],
