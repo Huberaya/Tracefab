@@ -650,16 +650,20 @@ BEGIN
     RAISE EXCEPTION 'current_user_email_migration_role_cannot_set_worker_owner';
   END IF;
 
-  -- Le SELECT historique de tracefab_app sur users provenait du transfert
-  -- des privileges PUBLIC de 20261014130000. Le worker est désormais le seul
-  -- rôle runtime autorisé à lire users ; les écritures applicatives passent
-  -- également par ses fonctions SECURITY DEFINER.
-  REVOKE SELECT ON TABLE public.users FROM tracefab_app;
-  IF pg_catalog.has_table_privilege('tracefab_app', 'public.users', 'SELECT') THEN
-    RAISE EXCEPTION 'current_user_email_app_must_not_select_users';
+  -- Le SELECT preexistant de tracefab_app est conserve : il est borne par
+  -- users_select_self (id = tracefab_current_user_id()) sous RLS FORCE.
+  -- Le worker NOLOGIN reçoit son SELECT propre pour la fonction SECURITY
+  -- DEFINER, avec la même politique de ligne ; aucun DML n'est accordé à l'app.
+  IF NOT pg_catalog.has_table_privilege('tracefab_app', 'public.users', 'SELECT') THEN
+    RAISE EXCEPTION 'current_user_email_app_select_self_acl_missing';
   END IF;
   IF NOT pg_catalog.has_table_privilege('tracefab_worker', 'public.users', 'SELECT') THEN
     RAISE EXCEPTION 'current_user_email_worker_must_select_users';
+  END IF;
+  IF pg_catalog.has_table_privilege('tracefab_app', 'public.users', 'INSERT')
+     OR pg_catalog.has_table_privilege('tracefab_app', 'public.users', 'UPDATE')
+     OR pg_catalog.has_table_privilege('tracefab_app', 'public.users', 'DELETE') THEN
+    RAISE EXCEPTION 'current_user_email_app_must_not_write_users';
   END IF;
 
   -- Retirer PUBLIC tant que le role de migration est encore proprietaire :
