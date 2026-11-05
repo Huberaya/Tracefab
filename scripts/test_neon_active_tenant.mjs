@@ -84,6 +84,8 @@ const greenClaimRecette = randomUUID();
 const dppClaimRecette = randomUUID();
 const dppIdentityRecette = randomUUID();
 const materialRecette = randomUUID();
+const tcRecette = randomUUID();
+let linkRecette = null;
 
 const proprio = cli(URL_PROPRIO);
 await proprio.connect();
@@ -136,6 +138,12 @@ try {
   await proprio.query(
     'insert into product_materials (product_id, material_id, material_role, percentage, unit, product_version) values ($1, $2, $3, $4, $5, $6)',
     [prodRecette, materialRecette, 'main', 100, '%', 1]);
+  await proprio.query(
+    `insert into transaction_certificates
+      (id, tc_number, standard, issuer_name, seller_organization_id, buyer_organization_id,
+       certified_material_name, total_certified_weight_kg, issue_date, created_by)
+     values ($1, $2, 'GOTS', 'Synthetic test issuer', $3, $4, 'Synthetic cotton', 100, CURRENT_DATE, $5)`,
+    [tcRecette, `MT-${suffixe}`, orgRecette, orgGinger, userMulti]);
   ok('fixture : utilisateur multi-org avec produit, DPP, PEF, claims, identité et composition chez B uniquement');
 
   /* -- événement DPP créé par la fonction SECURITY DEFINER sous le tenant B -- */
@@ -169,6 +177,45 @@ try {
       else ko(`${label} : attendu active_tenant_mismatch, obtenu ${error.message}`);
     }
   };
+
+  /* Créer un lien réel sous B pour tester aussi la garde update_supply_chain_link,
+     dont le résolveur doit retrouver le produit depuis l'identifiant du lien. */
+  {
+    await app.query('begin');
+    await app.query(`select set_config('tracefab.user_id', $1, true)`, [userMulti]);
+    await app.query(`select set_config('tracefab.user_email', $1, true)`, [`mt-${suffixe}@example.test`]);
+    await app.query(`select set_config('tracefab.active_organization_id', $1, true)`, [orgRecette]);
+    const { rows: nodeTypes } = await proprio.query(
+      "select unnest(enum_range(null::node_type))::text as value");
+    const { rows: linkTypes } = await proprio.query(
+      "select unnest(enum_range(null::supply_chain_link_type))::text as value");
+    const productNodeType = nodeTypes.find((x) => x.value === 'product')?.value;
+    const materialNodeType = nodeTypes.find((x) => x.value === 'material')?.value;
+    const linkType = linkTypes[0]?.value;
+    if (!productNodeType || !materialNodeType || !linkType) throw new Error('supply_chain_fixture_enum_missing');
+
+    const { rows: [source] } = await app.query(
+      `select (tracefab_create_supply_chain_node(
+        $1::uuid, $2::node_type, $3::text, $4::uuid, null::uuid,
+        $5::uuid, null::uuid, null::text, '{}'::jsonb, null::uuid, null::date
+      )).id as id`,
+      [prodRecette, productNodeType, 'Synthetic product node', orgRecette, prodRecette]);
+    const { rows: [target] } = await app.query(
+      `select (tracefab_create_supply_chain_node(
+        $1::uuid, $2::node_type, $3::text, null::uuid, null::uuid,
+        null::uuid, $4::uuid, null::text, '{}'::jsonb, null::uuid, null::date
+      )).id as id`,
+      [prodRecette, materialNodeType, 'Synthetic material node', materialRecette]);
+    const { rows: [link] } = await app.query(
+      `select (tracefab_add_supply_chain_link(
+        $1::uuid, $2::uuid, $3::uuid, $4::supply_chain_link_type,
+        1, null::date, null::date, null::uuid, '{}'::jsonb
+      )).id as id`,
+      [prodRecette, source.id, target.id, linkType]);
+    linkRecette = link.id;
+    await app.query('commit');
+    ok('fixture : deux nœuds et un lien supply-chain réels créés sous le tenant B');
+  }
 
   await assertTenantGuard('tracefab_add_dpp_claim',
     'select tracefab_add_dpp_claim($1::uuid, $2, $3)',
@@ -230,6 +277,19 @@ try {
   await assertTenantGuard('tracefab_create_product',
     'select tracefab_create_product($1::uuid, $2, $3, $4, $5)',
     [orgRecette, 'NEGATIVE-TENANT', 'Synthetic negative product', null, null]);
+  await assertTenantGuard('tracefab_update_product_data',
+    `select tracefab_update_product_data(
+      $1::uuid, null::text, null::text, null::text, null::text, null::text,
+      null::text, null::text, null::text[], null::varchar(2), null::varchar(2),
+      null::numeric, null::jsonb
+    )`,
+    [prodRecette]);
+  await assertTenantGuard('tracefab_allocate_tc_quantity',
+    'select tracefab_allocate_tc_quantity($1::uuid, $2::uuid, 1::numeric)',
+    [tcRecette, prodRecette]);
+  await assertTenantGuard('tracefab_update_supply_chain_link',
+    `select tracefab_update_supply_chain_link($1::uuid, null::integer, null::date, null::date, null::uuid, '{}'::jsonb)`,
+    [linkRecette]);
   await assertTenantGuard('tracefab_bind_schema',
     'select tracefab_bind_schema($1, $2, $3, $4::uuid)',
     ['tenant-negative-schema', '1', 'product', prodRecette]);
