@@ -147,6 +147,7 @@
     "serve": "node scripts/dev_static_server.mjs --port 3000",
     "test:journeys": "node scripts/test_journeys_e2e.mjs",
     "test:cross-tenant": "node scripts/test_cross_tenant.mjs",
+    "test:active-tenant:routes": "node scripts/test_active_tenant_route_contract.mjs",
     "test:active-tenant": "npx tsx scripts/test_active_tenant_context.mjs",
     "test:multi-tenant:browser": "node scripts/test_multi_tenant_browser.mjs",
     "audit:personas": "node scripts/persona_audit.mjs --base http://127.0.0.1:3000",
