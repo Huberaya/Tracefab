@@ -26,7 +26,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       });
 
       return json(res, 200, { jobs });
-    });
+    }, requestedOrgId);
   } catch (error: unknown) {
     if (isUnauthorized(error)) return json(res, 401, { error: 'unauthorized' });
     if (isTenantError(error)) return json(res, error.status, { error: error.message });
