@@ -68,7 +68,7 @@ const compter = async (client, cible) => {
   } catch (error) {
     // tracefab_app n'a volontairement aucun SELECT sur users. Le refus SQL
     // 42501 est une protection plus forte que RLS=>0 ligne, et doit être
-    // compté comme inaccessible — jamais corrigé par un GRANT sur users.
+    // compté comme inaccessible — sans accorder de SELECT direct sur users.
     if (client === app && cible === 'public.users' && error.code === '42501') return 0;
     throw error;
   }
