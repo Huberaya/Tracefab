@@ -372,13 +372,14 @@ try {
     'organization_invitations',
     'organization_memberships',
     'organizations',
+    'tracefab_identity_politique',
     'tracefab_notification_outbox',
     'users',
   ];
   const selectWorkerObserve = tablesSelectWorker.rows.map((r) => r.relname);
   ok(
     JSON.stringify(selectWorkerObserve) === JSON.stringify(selectWorkerAttendu),
-    'le worker ne lit que les sept tables explicitement requises',
+    'le worker ne lit que les huit tables explicitement requises (dont la politique d’identité lue par le resolver email)',
     `observé=${selectWorkerObserve.join(',') || 'aucune'}`,
   );
 
