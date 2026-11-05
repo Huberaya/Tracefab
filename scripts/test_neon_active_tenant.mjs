@@ -305,6 +305,16 @@ try {
     )`, [orgRecette, `${orgRecette}/blocked.pdf`]);
   await assertTenantGuard('tracefab_mark_document_scanning',
     'select tracefab_mark_document_scanning($1::uuid)', [documentRecette]);
+  await assertTenantGuard('tracefab_finalize_document_upload',
+    'select tracefab_finalize_document_upload($1::uuid, repeat(\'a\', 64), false, 128::bigint)', [documentRecette]);
+  await assertTenantGuard('tracefab_apply_document_ai_verification',
+    `select tracefab_apply_document_ai_verification(
+      $1::uuid, 'failed'::verification_status, 'tenant_guard_test', 'Synthetic test',
+      null::text, null::text, null::text, null::text, null::text,
+      null::date, null::date, 0.5::numeric, '{}'::jsonb
+    )`, [documentRecette]);
+  await assertTenantGuard('tracefab_enqueue_manual_data_request_reminder',
+    'select tracefab_enqueue_manual_data_request_reminder($1::uuid)', [requestBrandB]);
   await assertTenantGuard('tracefab_review_passport_access',
     `select tracefab_review_passport_access($1::uuid, 'approved')`, [accessRequestRecette]);
 
