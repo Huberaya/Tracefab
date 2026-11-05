@@ -292,6 +292,18 @@ ok(/authentication_required/.test(String(m4.erreur)), 'M4 aucune identité : ref
 // ---------------------------------------------------------------------------
 // Aucun résidu
 // ---------------------------------------------------------------------------
+if (jobsFixture.length) {
+  await admin.query('DELETE FROM plm_erp_sync_jobs WHERE id = ANY($1::uuid[])', [jobsFixture.map((x) => x.id)]);
+}
+if (integrationsFixture.length) {
+  await admin.query('DELETE FROM plm_erp_integrations WHERE id = ANY($1::uuid[])', [integrationsFixture.map((x) => x.id)]);
+}
+if (membershipAjoutee) {
+  await admin.query(
+    'DELETE FROM organization_memberships WHERE organization_id = $1 AND user_id = $2',
+    [B.id, A.user_id],
+  );
+}
 await admin.query('DELETE FROM public.tracefab_identity_cles WHERE version = $1', [VERSION]);
 const residus = (await admin.query(
   `SELECT count(*)::int AS n FROM tracefab_products WHERE reference LIKE 'P105-M%'`,
