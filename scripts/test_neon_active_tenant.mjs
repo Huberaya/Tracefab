@@ -146,6 +146,51 @@ try {
     ok('la fonction SECURITY DEFINER crée un événement DPP dans le tenant actif B');
   }
 
+  /* -- les fonctions SECURITY DEFINER refusent le produit d'un autre tenant -- */
+  const assertTenantGuard = async (label, query, params) => {
+    await app.query('begin');
+    await app.query(`select set_config('tracefab.user_id', $1, true)`, [userMulti]);
+    await app.query(`select set_config('tracefab.user_email', $1, true)`, [`mt-${suffixe}@example.test`]);
+    await app.query(`select set_config('tracefab.active_organization_id', $1, true)`, [orgGinger]);
+    try {
+      await app.query(query, params);
+      await app.query('rollback');
+      ko(`${label} a accepté le produit du tenant B depuis le tenant A`);
+    } catch (error) {
+      await app.query('rollback').catch(() => {});
+      if (String(error.message).includes('active_tenant_mismatch')) ok(`${label} refuse le tenant B depuis le tenant A`);
+      else ko(`${label} : attendu active_tenant_mismatch, obtenu ${error.message}`);
+    }
+  };
+
+  await assertTenantGuard('tracefab_add_dpp_claim',
+    'select tracefab_add_dpp_claim($1::uuid, $2, $3)',
+    [prodRecette, `negative.${suffixe}`, 'Synthetic negative claim']);
+  await assertTenantGuard('tracefab_add_dpp_event',
+    `select tracefab_add_dpp_event($1::uuid, 'passport_created', 'Synthetic negative event')`,
+    [prodRecette]);
+  await assertTenantGuard('tracefab_create_dpp_identity',
+    'select tracefab_create_dpp_identity($1::uuid, $2, $3)',
+    [prodRecette, `negative-${suffixe}`, 'model']);
+  await assertTenantGuard('tracefab_replace_dpp_identity',
+    'select tracefab_replace_dpp_identity($1::uuid, $2, $3)',
+    [dppIdentityRecette, `replacement-${suffixe}`, 'negative tenant test']);
+  await assertTenantGuard('tracefab_add_product_identifier',
+    `select tracefab_add_product_identifier($1::uuid, 'internal', $2)`,
+    [prodRecette, `negative-${suffixe}`]);
+  await assertTenantGuard('tracefab_update_product_identifier',
+    'select tracefab_update_product_identifier($1::uuid, $2::uuid, $3, false)',
+    [prodRecette, randomUUID(), `negative-${suffixe}`]);
+  await assertTenantGuard('tracefab_audit_product_green_claims',
+    'select tracefab_audit_product_green_claims($1::uuid)',
+    [prodRecette]);
+  await assertTenantGuard('tracefab_calculate_product_data_completion',
+    'select tracefab_calculate_product_data_completion($1::uuid)',
+    [prodRecette]);
+  await assertTenantGuard('tracefab_link_dpp_claim_evidence',
+    'select tracefab_link_dpp_claim_evidence($1::uuid, $2::uuid)',
+    [dppClaimRecette, randomUUID()]);
+
   /* -- 1. hors contexte, aucun locataire --------------------------------- */
   {
     const { rows: [r] } = await app.query('select tracefab_active_organization_id() as active');
