@@ -86,6 +86,7 @@ const dppIdentityRecette = randomUUID();
 const materialRecette = randomUUID();
 const tcRecette = randomUUID();
 const issueRecette = randomUUID();
+const certificationRecette = randomUUID();
 const requestBrandB = randomUUID();
 const requestSupplierB = randomUUID();
 const itemBrandB = randomUUID();
@@ -170,6 +171,11 @@ try {
      values ($1, $2, 'gots', 'Synthetic test issuer', $3, $4, 'Synthetic cotton', 100, CURRENT_DATE, $5)`,
     [tcRecette, `MT-${suffixe}`, orgRecette, orgGinger, userMulti]);
   await proprio.query(
+    `insert into certifications
+      (id, owner_organization_id, standard_name, standard_code, issuer_name, certificate_number, status, created_by)
+     values ($1, $2, 'Synthetic standard', 'SYNTHETIC', 'Synthetic issuer', $3, 'declared', $4)`,
+    [certificationRecette, orgRecette, `CERT-MT-${suffixe}`, userMulti]);
+  await proprio.query(
     `insert into data_quality_issues
       (id, owner_organization_id, rule_key, rule_version, severity, message)
      values ($1, $2, 'tenant.guard.fixture', '1', 'blocking', 'Synthetic tenant guard issue')`,
@@ -224,6 +230,26 @@ try {
       else ko(`${label} : attendu active_tenant_mismatch, obtenu ${error.message}`);
     }
   };
+
+  await assertTenantGuard('tracefab_create_material',
+    `select tracefab_create_material(
+      $1::uuid, 'fiber', 'Synthetic negative material', '{}'::jsonb, null::varchar
+    )`, [orgRecette]);
+  await assertTenantGuard('tracefab_update_material',
+    `select tracefab_update_material(
+      $1::uuid, 'fiber', 'Synthetic changed material', '{}'::jsonb, null::varchar
+    )`, [materialRecette]);
+  await assertTenantGuard('tracefab_register_certification',
+    `select tracefab_register_certification(
+      $1::uuid, null::uuid, null::uuid, $2::uuid, 'Synthetic standard',
+      'SYNTHETIC', 'Synthetic issuer', 'CERT-NEGATIVE', CURRENT_DATE,
+      CURRENT_DATE + 365, null::uuid
+    )`, [orgRecette, prodRecette]);
+  await assertTenantGuard('tracefab_update_certification',
+    `select tracefab_update_certification(
+      $1::uuid, 'Synthetic changed standard', 'SYNTHETIC',
+      'Synthetic issuer', 'CERT-NEGATIVE', CURRENT_DATE, CURRENT_DATE + 365, null::uuid
+    )`, [certificationRecette]);
 
   await assertTenantGuard('tracefab_acknowledge_quality_issue',
     'select tracefab_acknowledge_quality_issue($1::uuid)', [issueRecette]);
