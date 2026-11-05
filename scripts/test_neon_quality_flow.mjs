@@ -37,6 +37,7 @@ async function main() {
       { organization_id: brandOrganization, user_id: brandUser, role: 'owner', status: 'active' },
       { organization_id: brandOrganization, user_id: brandViewer, role: 'viewer', status: 'active' },
       { organization_id: supplierOrganization, user_id: supplierUser, role: 'owner', status: 'active' },
+      { organization_id: supplierOrganization, user_id: brandViewer, role: 'viewer', status: 'active' },
     ],
   });
   await prisma.suppliers.create({
@@ -87,7 +88,7 @@ async function main() {
   assert(acknowledged[0]?.status === 'acknowledged', 'quality issue was not acknowledged');
 
   await expectSqlCode(
-    () => inUserContext(brandViewer, brandOrganization, async (tx) => tx.$queryRaw`
+    () => inUserContext(brandViewer, supplierOrganization, async (tx) => tx.$queryRaw`
       SELECT * FROM tracefab_waive_quality_issue(${supplierIssues[0].id}::uuid, 'viewer cannot waive')
     `),
     'quality_issue_waive_role_required',
