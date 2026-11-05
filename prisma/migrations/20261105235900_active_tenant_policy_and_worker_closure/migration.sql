@@ -645,6 +645,18 @@ BEGIN
     RAISE EXCEPTION 'current_user_email_migration_role_cannot_set_worker_owner';
   END IF;
 
+  -- Le SELECT historique de tracefab_app sur users provenait du transfert
+  -- des privileges PUBLIC de 20261014130000. Le worker est désormais le seul
+  -- rôle runtime autorisé à lire users ; les écritures applicatives passent
+  -- également par ses fonctions SECURITY DEFINER.
+  REVOKE SELECT ON TABLE public.users FROM tracefab_app;
+  IF pg_catalog.has_table_privilege('tracefab_app', 'public.users', 'SELECT') THEN
+    RAISE EXCEPTION 'current_user_email_app_must_not_select_users';
+  END IF;
+  IF NOT pg_catalog.has_table_privilege('tracefab_worker', 'public.users', 'SELECT') THEN
+    RAISE EXCEPTION 'current_user_email_worker_must_select_users';
+  END IF;
+
   -- Retirer PUBLIC tant que le role de migration est encore proprietaire :
   -- l'owner worker ne doit jamais heriter du EXECUTE public par defaut.
   REVOKE ALL ON FUNCTION public.tracefab_current_user_email() FROM PUBLIC;
