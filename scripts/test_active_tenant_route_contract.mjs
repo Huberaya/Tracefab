@@ -182,7 +182,7 @@ check('supplier passport : résout un tenant supplier explicite', supplierPasspo
 check('supplier passport : arme le tenant dans le contexte SQL', supplierPassportRoute.includes('}, activeOrganizationId)'));
 check('supplier passport : traite les erreurs tenant', supplierPassportRoute.includes('isTenantError(err)'));
 const universalPassportTest = read('scripts/test_neon_universal_passport.mjs');
-check('passeport universel : le parcours positif arme puis efface le tenant actif', (universalPassportTest.match(/set_config\\('tracefab\\.active_organization_id'/g) || []).length === 3);
+check('passeport universel : le parcours positif arme puis efface le tenant actif', (universalPassportTest.split("set_config('tracefab.active_organization_id'").length - 1) === 3);
 
 const supplierProfileDbTest = read('scripts/test_neon_active_tenant.mjs');
 for (const fn of [
