@@ -475,7 +475,7 @@ try {
     ko(`bascule acceptee pour un autre locataire — etat ${etat}`);
   } catch (e) {
     const m = String(e.message);
-    if (m.includes('document_not_found') || m.includes('document_scan_role_required')) {
+    if (m.includes('active_tenant_mismatch') || m.includes('document_not_found') || m.includes('document_scan_role_required')) {
       ok('bascule refusee pour un autre locataire');
     } else {
       ko(`bascule pour un autre locataire — erreur inattendue : ${m}`);
