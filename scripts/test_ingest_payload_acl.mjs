@@ -398,7 +398,7 @@ try {
     await admin.query(`REVOKE ALL ON SCHEMA public FROM ${ROLE_PROPRIO}`).catch(() => {});
     await admin.query(`DROP OWNED BY ${ROLE_PROPRIO}`).catch(() => {});
     await admin.query(`DROP ROLE IF EXISTS ${ROLE_PROPRIO}`);
-    await admin.query(`CREATE ROLE ${ROLE_PROPRIO} LOGIN PASSWORD '${MDP_SONDE}' NOSUPERUSER NOCREATEDB NOCREATEROLE NOBYPASSRLS`);
+    await admin.query(`CREATE ROLE ${ROLE_PROPRIO} LOGIN PASSWORD '${MDP_SONDE}' NOSUPERUSER NOCREATEDB NOCREATEROLE BYPASSRLS`);
     nettoyage.push(async () => {
       await admin.query(`ALTER FUNCTION public.tracefab_ingest_plm_erp_payload(UUID, TEXT, JSONB, UUID) OWNER TO "${proprietaireInitial}"`).catch(() => {});
       await admin.query(`REVOKE ALL ON SCHEMA public FROM ${ROLE_PROPRIO}`).catch(() => {});
