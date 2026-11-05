@@ -63,10 +63,20 @@ async function main() {
     ],
   });
 
+  // Le locataire actif est arme ICI, et son absence est eprouvee juste apres.
+  //
+  // Depuis `20261105250000`, les politiques des tables appartenant a un
+  // locataire (`suppliers`, `tracefab_products`, `materials`, `documents`,
+  // `supplier_sites`, `certifications`) exigent le locataire actif en plus de
+  // l'appartenance : sans lui, la reponse est vide. L'assertion precedente
+  // (« exactement un fournisseur ») supposait qu'une appartenance suffisait —
+  // c'est-a-dire exactement le defaut corrige. Elle est donc armee, et une
+  // seconde transaction SANS locataire prouve le refus par defaut.
   await prisma.$transaction(async (tx) => {
     await tx.$executeRawUnsafe(`SET LOCAL ROLE ${role}`);
     await tx.$executeRaw`SELECT set_config('tracefab.user_id', ${userA}, true)`;
     await tx.$executeRaw`SELECT set_config('tracefab.user_email', ${`${clerkA}@example.test`}, true)`;
+    await tx.$executeRaw`SELECT set_config('tracefab.active_organization_id', ${orgA}, true)`;
 
     const visibleOrganizations = await tx.$queryRaw`SELECT id FROM organizations ORDER BY id`;
     assert(visibleOrganizations.length === 1 && visibleOrganizations[0].id === orgA, 'organization RLS leaked another tenant');
@@ -83,6 +93,22 @@ async function main() {
       `,
       'supplier_profile_role_required',
     );
+  });
+
+  // Sans locataire actif, la table appartenant a un locataire est fermee, et
+  // l'appartenance seule ne l'ouvre pas. Les organisations restent lisibles :
+  // `organizations_select_member` est une politique d'APPARTENANCE, et c'est
+  // l'objet meme qui la definit.
+  await prisma.$transaction(async (tx) => {
+    await tx.$executeRawUnsafe(`SET LOCAL ROLE ${role}`);
+    await tx.$executeRaw`SELECT set_config('tracefab.user_id', ${userA}, true)`;
+    await tx.$executeRaw`SELECT set_config('tracefab.user_email', ${`${clerkA}@example.test`}, true)`;
+    await tx.$executeRaw`SELECT set_config('tracefab.active_organization_id', '', true)`;
+
+    const sansLocataire = await tx.$queryRaw`SELECT id FROM suppliers ORDER BY id`;
+    assert(sansLocataire.length === 0, 'supplier visible sans locataire actif : la garde de locataire ne s applique pas');
+    const organisationsToujoursLisibles = await tx.$queryRaw`SELECT id FROM organizations ORDER BY id`;
+    assert(organisationsToujoursLisibles.length === 1, 'les organisations de l utilisateur doivent rester lisibles sans locataire actif');
   });
 
   // Ecriture directe : elle doit etre refusee. Le refus peut venir de deux
