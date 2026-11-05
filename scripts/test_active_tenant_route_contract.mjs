@@ -186,6 +186,33 @@ for (const fn of [
     supplierProfileDbTest.includes(`await assertTenantGuard('${fn}'`));
 }
 
+const qualityCapMigration = read('prisma/migrations/20261105220000_active_tenant_quality_cap_guards/migration.sql');
+for (const [fn, guard] of [
+  ['tracefab_create_quality_cap', 'v_issue.owner_organization_id'],
+  ['tracefab_submit_quality_remediation', 'v_cap.supplier_organization_id'],
+  ['tracefab_review_quality_remediation', 'v_cap.brand_organization_id'],
+]) {
+  check(`migration SQL : ${fn} exige le tenant actif de la partie concernée`,
+    qualityCapMigration.includes(fn)
+      && qualityCapMigration.includes(`tracefab_require_active_tenant_for_organization(${guard})`));
+}
+for (const [path, type] of [
+  ['api/_routes/quality/issues/[issueId]/cap.ts', 'brand'],
+  ['api/_routes/quality/caps/[capId]/submit-remediation.ts', 'supplier'],
+  ['api/_routes/quality/caps/[capId]/review.ts', 'brand'],
+]) {
+  const src = read(path);
+  check(`${path}: borne le CAP au tenant ${type}`,
+    src.includes(`types: ['${type}']`)
+      && src.includes('requestedTenantId(req)')
+      && src.includes('isTenantError(err)'));
+}
+const qualityCapDbTest = read('scripts/test_neon_active_tenant.mjs');
+for (const fn of ['tracefab_create_quality_cap','tracefab_submit_quality_remediation','tracefab_review_quality_remediation']) {
+  check(`PostgreSQL : test positif/négatif CAP pour ${fn}`,
+    qualityCapDbTest.includes(`await assertTenantGuard('${fn}'`));
+}
+
 const definerMigration = read('prisma/migrations/20261105170000_active_tenant_security_definer_guards/migration.sql');
 const definerGuards = [
   ['tracefab_add_supply_chain_link', 'tracefab_require_active_tenant_for_product'],
