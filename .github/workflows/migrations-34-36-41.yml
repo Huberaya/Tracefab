@@ -148,7 +148,7 @@ jobs:
           SQL
 
       # La commande Prisma migrate deploy ci-dessus applique toute la chaîne
-      # du checkout, dont 20261105250000_active_tenant_policy_and_worker_closure.
+      # du checkout, dont 20261105235900_active_tenant_policy_and_worker_closure.
       # Ces suites exécutent ensuite les assertions métier sous tracefab_app
       # sur le même PostgreSQL 17 jetable, après provisionnement du rôle.
       - name: Isolation tenant actif — positifs et refus inter-tenant PostgreSQL 17
