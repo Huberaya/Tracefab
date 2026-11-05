@@ -62,8 +62,17 @@ const ok = (condition, libelle, detail) => {
 const app = new pg.Client({ connectionString: APP_URL, ssl: false });
 const admin = new pg.Client({ connectionString: ADMIN_URL, ssl: false });
 
-const compter = async (client, cible) =>
-  (await client.query(`select count(*)::int as n from ${cible}`)).rows[0].n;
+const compter = async (client, cible) => {
+  try {
+    return (await client.query(`select count(*)::int as n from ${cible}`)).rows[0].n;
+  } catch (error) {
+    // tracefab_app n'a volontairement aucun SELECT sur users. Le refus SQL
+    // 42501 est une protection plus forte que RLS=>0 ligne, et doit être
+    // compté comme inaccessible — jamais corrigé par un GRANT sur users.
+    if (client === app && cible === 'public.users' && error.code === '42501') return 0;
+    throw error;
+  }
+};
 
 try {
   // R11 : les deux connexions doivent viser le MEME cluster, et la session
@@ -89,6 +98,14 @@ try {
   console.log(`Identite applicative : ${(await app.query('select current_user as u')).rows[0].u}\n`);
 
   const TABLES_SENSIBLES = ['public.organizations', 'public.users', 'public.organization_memberships'];
+
+  // L'absence de SELECT direct sur users est intentionnelle : l'accès à l'email
+  // passe par tracefab_current_user_email() sous le propriétaire worker.
+  const appUsersSelect = await admin.query(
+    `select has_table_privilege('tracefab_app', 'public.users', 'SELECT') as allowed`,
+  );
+  ok(appUsersSelect.rows[0]?.allowed === false,
+    'tracefab_app ne possède aucun SELECT direct sur users');
 
   // --- 1. Sans contexte -----------------------------------------------------
   console.log('1. Sans contexte arme');
@@ -252,7 +269,13 @@ try {
   const fonctionsWorker = await admin.query(
     `select p.proname, pg_get_userbyid(p.proowner) as owner,
             has_function_privilege('tracefab_app', p.oid, 'EXECUTE') as app_exec,
-            has_function_privilege('public', p.oid, 'EXECUTE') as public_exec
+            EXISTS (
+              SELECT 1
+                FROM pg_catalog.aclexplode(
+                  coalesce(p.proacl, pg_catalog.acldefault('f', p.proowner))
+                ) a
+               WHERE a.grantee = 0 AND a.privilege_type = 'EXECUTE'
+            ) as public_exec
        from pg_proc p join pg_namespace n on n.oid = p.pronamespace
       where n.nspname = 'public'
         and p.proname in (
