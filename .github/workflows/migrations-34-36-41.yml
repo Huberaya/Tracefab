@@ -139,10 +139,10 @@ jobs:
       # Ces suites exécutent ensuite les assertions métier sous tracefab_app
       # sur le même PostgreSQL 17 jetable, après provisionnement du rôle.
       - name: Isolation tenant actif — positifs et refus inter-tenant PostgreSQL 17
-        run: npm run test:neon:active-tenant
+        run: node scripts/run-db-suite.mjs scripts/test_neon_active_tenant.mjs
 
       - name: Identité worker non falsifiable — PostgreSQL 17
-        run: npm run test:neon:worker-non-forgeable
+        run: node scripts/run-db-suite.mjs scripts/test_worker_non_forgeable.mjs
 
       - name: Isolation RLS inter-tenant — PostgreSQL 17
-        run: npm run test:neon:cross-tenant
+        run: node scripts/run-db-suite.mjs scripts/test_neon_cross_tenant.mjs
