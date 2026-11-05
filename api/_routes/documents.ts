@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '../_lib/vercel-types.js';
 import { requireClerkUser, isUnauthorized } from '../_lib/auth.js';
-import { withTracefabUserContext } from '../_lib/context.js';
+import {withTracefabRequestContext} from '../_lib/context.js';
 import { json, methodNotAllowed } from '../_lib/http.js';
 import { sqlBusinessError } from '../_lib/sql-errors.js';
 import { isTenantError, requireActiveTenant, requestedTenantId } from '../_lib/tenant.js';
@@ -34,7 +34,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   try {
     const { user } = await requireClerkUser(req);
-    const result = await withTracefabUserContext(user.id, user.email, async (tx) => {
+    const result = await withTracefabRequestContext(req, user, async (tx) => {
       const tenant = await requireActiveTenant(tx, req, user.id, { types: ['brand'] });
       const documents = await tx.documents.findMany({
         where: {
@@ -46,7 +46,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         take: 200,
       });
       return { documents };
-    }, requestedTenantId(req));
+    });
 
     return json(res, 200, { documents: result.documents.map(serializeDocument) });
   } catch (error) {

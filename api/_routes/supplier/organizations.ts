@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '../../_lib/vercel-types.js';
 import { requireClerkUser, isUnauthorized } from '../../_lib/auth.js';
-import { withTracefabUserContext } from '../../_lib/context.js';
+import {withTracefabRequestContext} from '../../_lib/context.js';
 import { json, methodNotAllowed } from '../../_lib/http.js';
 import { requestedOrganizationId } from '../../_lib/supplier-profile.js';
 
@@ -9,7 +9,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     const { user } = await requireClerkUser(req);
     const selectedOrganizationId = requestedOrganizationId(req);
-    const organizations = await withTracefabUserContext(user.id, user.email, async (tx) => {
+    const organizations = await withTracefabRequestContext(req, user, async (tx) => {
       const memberships = await tx.organization_memberships.findMany({
         where: {
           user_id: user.id,

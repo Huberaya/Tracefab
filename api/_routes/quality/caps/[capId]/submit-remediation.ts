@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '../../../../_lib/vercel-types.js';
 import { requireClerkUser, isUnauthorized } from '../../../../_lib/auth.js';
-import { withTracefabUserContext } from '../../../../_lib/context.js';
+import {withTracefabRequestContext} from '../../../../_lib/context.js';
 import { json, methodNotAllowed, readJsonBody } from '../../../../_lib/http.js';
 import { sqlBusinessError } from '../../../../_lib/sql-errors.js';
 import { isUuid } from '../../../../_lib/data-requests.js';
@@ -36,7 +36,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return json(res, 400, { error: 'response_summary_required' });
     }
 
-    const updatedCap = await withTracefabUserContext(user.id, user.email, async (tx) => {
+    const updatedCap = await withTracefabRequestContext(req, user, async (tx) => {
       const tenant = await requireActiveTenant(tx, req, user.id, { types: ['supplier'] });
       const cap = await tx.quality_corrective_action_plans.findFirst({
         where: { id: capId, supplier_organization_id: tenant.organizationId },
@@ -50,7 +50,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         supportingDocumentId,
         message
       );
-    }, requestedTenantId(req));
+    });
 
     if (!updatedCap) return json(res, 404, { error: 'cap_not_found' });
     return json(res, 200, {

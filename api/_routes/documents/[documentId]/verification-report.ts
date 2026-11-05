@@ -1,7 +1,7 @@
 import { Prisma } from '@prisma/client';
 import type { VercelRequest, VercelResponse } from '../../../_lib/vercel-types.js';
 import { requireClerkUser, isUnauthorized } from '../../../_lib/auth.js';
-import { withTracefabUserContext } from '../../../_lib/context.js';
+import {withTracefabRequestContext} from '../../../_lib/context.js';
 import { json, methodNotAllowed } from '../../../_lib/http.js';
 import { sqlBusinessError } from '../../../_lib/sql-errors.js';
 
@@ -23,7 +23,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const { user } = await requireClerkUser(req);
 
-    const report = await withTracefabUserContext(user.id, user.email, async (tx) => {
+    const report = await withTracefabRequestContext(req, user, async (tx) => {
       // 1. Verify access to document
       const docRows = await tx.$queryRaw<Array<{
         id: string;

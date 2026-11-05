@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '../../../_lib/vercel-types.js';
 import { requireClerkUser, isUnauthorized } from '../../../_lib/auth.js';
-import { withTracefabUserContext } from '../../../_lib/context.js';
+import {withTracefabRequestContext} from '../../../_lib/context.js';
 import { json, methodNotAllowed } from '../../../_lib/http.js';
 import { sqlBusinessError } from '../../../_lib/sql-errors.js';
 import { isUuid, PRODUCT_SELECT, serializeProduct } from '../../../_lib/products.js';
@@ -21,7 +21,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (!isUuid(productId)) return json(res, 400, { error: 'invalid_product_id' });
     const { user } = await requireClerkUser(req);
 
-    const product = await withTracefabUserContext(user.id, user.email, async (tx) => {
+    const product = await withTracefabRequestContext(req, user, async (tx) => {
       // Locataire actif obligatoire, resolu AVANT toute mutation : `{ in:
       // organizationIds }` bornait l'utilisateur, pas le locataire affiche.
       const tenant = await requireActiveTenant(tx, req, user.id, { types: ['brand'] });
@@ -47,7 +47,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       });
       if (!revised) throw new Error('product_revision_failed');
       return revised;
-    }, requestedTenantId(req));
+    });
 
     return json(res, 200, { product: serializeProduct(product) });
   } catch (error) {

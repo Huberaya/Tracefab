@@ -9,6 +9,7 @@
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { armeLeTenant, nombreArmements } from './lib/tenant-arming.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const read = (path) => readFileSync(join(root, path), 'utf8');
@@ -52,7 +53,7 @@ check('storage : quota lu pour le fournisseur du tenant', /getOrganizationStorag
 const schemaBindings = read('api/_routes/schema-bindings.ts');
 check('schema-bindings : GET résout un tenant explicite', schemaBindings.includes('requireActiveTenant(tx, req, user.id'));
 check('schema-bindings : POST résout le tenant fourni au contexte', schemaBindings.includes('resolveActiveTenant(tx, user.id, activeOrganizationId'));
-check('schema-bindings : le tenant est armé dans la transaction', schemaBindings.includes('}, activeOrganizationId)') && schemaBindings.includes('}, requestedTenantId(req))'));
+check('schema-bindings : le tenant est armé dans la transaction', nombreArmements(schemaBindings) >= 2);
 check('schema-bindings : le sujet est borné au tenant avant lecture/écriture', schemaBindings.includes('subjectBelongsToTenant'));
 check('schema-bindings : les erreurs tenant sont traitées', schemaBindings.includes('isTenantError(error)'));
 
@@ -66,13 +67,13 @@ check('catalog import : traite les erreurs tenant', catalogImport.includes('isTe
 const massBalance = read('api/_routes/products/[productId]/mass-balance.ts');
 check('mass-balance : exige un tenant brand actif', (massBalance.match(/resolveActiveTenant\(tx, user\.id, activeOrganizationId, \{ types: \['brand'\] \}\)/g) || []).length === 2);
 check('mass-balance : borne le produit au tenant avant lecture et écriture', (massBalance.match(/brand_organization_id: tenant\.organizationId/g) || []).length === 2);
-check('mass-balance : arme le tenant dans les deux transactions', (massBalance.match(/\}, activeOrganizationId\)/g) || []).length === 2);
+check('mass-balance : arme le tenant dans les deux transactions', nombreArmements(massBalance) === 2);
 check('mass-balance : traite les erreurs tenant', massBalance.includes('isTenantError(err)'));
 
 
 const massBalanceAllocate = read('api/_routes/products/[productId]/mass-balance/allocate.ts');
 check('allocation TC : résout un tenant brand ou supplier explicite', massBalanceAllocate.includes("types: ['brand', 'supplier']"));
-check('allocation TC : arme le tenant dans le contexte SQL', massBalanceAllocate.includes('}, activeOrganizationId)'));
+check('allocation TC : arme le tenant dans le contexte SQL', armeLeTenant(massBalanceAllocate));
 check('allocation TC : exige un lien actif au produit ou au TC vendeur', massBalanceAllocate.includes('if (!product && !certificate) return null'));
 check('allocation TC : traite les erreurs tenant', massBalanceAllocate.includes('isTenantError(err)'));
 
@@ -122,7 +123,7 @@ for (const path of tenantBoundRoutes) {
   const src = read(path);
   check(`${path}: arme et valide le tenant actif`,
     src.includes('requireActiveTenant(tx, req, user.id')
-      && (src.includes('requestedTenantId(req)') || src.includes('requestedOrganizationId(req)'))
+      && armeLeTenant(src)
       && src.includes('isTenantError(error)'));
 }
 const materialCertificationMigration = read('prisma/migrations/20261105200000_active_tenant_material_certification_guards/migration.sql');
@@ -139,13 +140,13 @@ for (const [fn, guard] of [
 for (const path of ['api/_routes/materials.ts', 'api/_routes/materials/[materialId].ts']) {
   const src = read(path);
   check(`${path}: résout et arme le tenant actif`,
-    src.includes('requireActiveTenant(tx, req, user.id') && src.includes('requestedTenantId(req)'));
+    src.includes('requireActiveTenant(tx, req, user.id') && armeLeTenant(src));
 }
 for (const path of ['api/_routes/supplier/certifications.ts', 'api/_routes/supplier/certifications/[certificationId].ts']) {
   const src = read(path);
   check(`${path}: exige un tenant supplier explicite`,
     src.includes("resolveActiveTenant(tx, user.id, activeOrganizationId, { types: ['supplier'] })")
-      && src.includes('}, activeOrganizationId)')
+      && armeLeTenant(src)
       && src.includes('isTenantError(error)'));
 }
 const materialCertificationDbTest = read('scripts/test_neon_active_tenant.mjs');
@@ -174,7 +175,7 @@ for (const path of [
   const src = read(path);
   check(`${path}: borne les mutations au tenant fournisseur`,
     src.includes("types: ['supplier']")
-      && (src.includes('requestedTenantId(req)') || src.includes('requestedOrganizationId(req)'))
+      && armeLeTenant(src)
       && src.includes('isTenantError(error)'));
 }
 const tenantBoundForwardRoutes = [
@@ -190,7 +191,7 @@ for (const path of tenantBoundForwardRoutes) {
   const src = read(path);
   check(`${path}: arme le tenant actif avant fonction sensible`,
     src.includes('resolveActiveTenant(tx, user.id')
-      && (src.includes('}, activeOrganizationId)') || src.includes('}, organizationId)'))
+      && armeLeTenant(src)
       && src.includes('isTenantError('));
 }
 const scanFlow = read('api/_lib/document-scan-flow.ts');
@@ -200,7 +201,7 @@ check('scan documentaire : les trois transactions réarment le tenant propriéta
 const supplierQualityRoute = read('api/_routes/supplier/quality.ts');
 check('qualité fournisseur : résout et arme le tenant supplier actif',
   supplierQualityRoute.includes("resolveActiveTenant(tx, user.id, activeOrganizationId, { types: ['supplier'] })")
-    && supplierQualityRoute.includes('}, activeOrganizationId)')
+    && armeLeTenant(supplierQualityRoute)
     && supplierQualityRoute.includes('isTenantError(error)'));
 const supplierQualityMigration = read('prisma/migrations/20261105240000_active_tenant_supplier_quality_guard/migration.sql');
 check('qualité fournisseur : SECURITY DEFINER vérifie le tenant propriétaire et préserve OID/ACL',
@@ -224,7 +225,7 @@ check('currentSupplier : absence de tenant ou appartenance invalide échoue ferm
 
 const supplierPassportRoute = read('api/_routes/supplier/passport.ts');
 check('supplier passport : résout un tenant supplier explicite', supplierPassportRoute.includes("resolveActiveTenant(tx, user.id, activeOrganizationId, { types: ['supplier'] })"));
-check('supplier passport : arme le tenant dans le contexte SQL', supplierPassportRoute.includes('}, activeOrganizationId)'));
+check('supplier passport : arme le tenant dans le contexte SQL', armeLeTenant(supplierPassportRoute));
 check('supplier passport : traite les erreurs tenant', supplierPassportRoute.includes('isTenantError(err)'));
 const universalPassportTest = read('scripts/test_neon_universal_passport.mjs');
 check('passeport universel : le parcours positif arme puis efface le tenant actif', (universalPassportTest.split("set_config('tracefab.active_organization_id'").length - 1) === 3);
@@ -256,7 +257,7 @@ for (const [path, type] of [
   const src = read(path);
   check(`${path}: borne le CAP au tenant ${type}`,
     src.includes(`types: ['${type}']`)
-      && src.includes('requestedTenantId(req)')
+      && armeLeTenant(src)
       && src.includes('isTenantError(err)'));
 }
 const qualityCapDbTest = read('scripts/test_neon_active_tenant.mjs');

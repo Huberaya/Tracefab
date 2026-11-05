@@ -109,7 +109,7 @@ assert(/get\('demo'\)\s*===\s*'1'/.test(clerkPreload), 'Le mode démonstration n
 // Elle exige desormais la resolution explicite du locataire actif, et refuse
 // explicitement le repli multi-organisations.
 assert(reminderRoute.includes("req.method !== 'POST'"), 'Manual reminder route must reject other HTTP methods');
-assert(reminderRoute.includes('withTracefabUserContext'), 'Manual reminder route must run inside the RLS context');
+assert(/withTracefab(Request|User)Context/.test(reminderRoute), 'Manual reminder route must run inside the RLS context');
 assert(reminderRoute.includes('requireActiveTenant'), 'Manual reminder route must resolve the active tenant');
 assert(!reminderRoute.includes('activeOrganizationIds'), 'Manual reminder route must not fall back to every organization of the account');
 

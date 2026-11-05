@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '../../_lib/vercel-types.js';
 import { requireClerkUser, isUnauthorized } from '../../_lib/auth.js';
-import { withTracefabUserContext } from '../../_lib/context.js';
+import {withTracefabRequestContext} from '../../_lib/context.js';
 import { json, methodNotAllowed } from '../../_lib/http.js';
 import { sqlBusinessError } from '../../_lib/sql-errors.js';
 import { currentSupplier, requestedOrganizationId } from '../../_lib/supplier-profile.js';
@@ -10,7 +10,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'GET') return methodNotAllowed(res, ['GET']);
   try {
     const { user } = await requireClerkUser(req);
-    const documents = await withTracefabUserContext(user.id, user.email, async (tx) => {
+    const documents = await withTracefabRequestContext(req, user, async (tx) => {
       const supplier = await currentSupplier(tx, user.id, requestedOrganizationId(req));
       if (!supplier) return null;
       return tx.documents.findMany({ where: { owner_organization_id: supplier.organization_id, status: { not: 'deleted' } }, select: DOCUMENT_SELECT, orderBy: { created_at: 'desc' } });

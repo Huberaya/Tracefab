@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '../../_lib/vercel-types.js';
 import { requireClerkUser, isUnauthorized } from '../../_lib/auth.js';
-import { withTracefabUserContext } from '../../_lib/context.js';
+import {withTracefabRequestContext} from '../../_lib/context.js';
 import { isTenantError, requireActiveTenant, requestedTenantId } from '../../_lib/tenant.js';
 import { json, methodNotAllowed } from '../../_lib/http.js';
 import { sqlBusinessError } from '../../_lib/sql-errors.js';
@@ -15,7 +15,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const statusFilter = typeof req.query.status === 'string' ? req.query.status : undefined;
     const roleFilter = typeof req.query.role === 'string' ? req.query.role : undefined; // 'brand' | 'supplier'
 
-    const result = await withTracefabUserContext(user.id, user.email, async (tx) => {
+    const result = await withTracefabRequestContext(req, user, async (tx) => {
       // Locataire actif obligatoire. Les plans d'action corrective ont une
       // marque ET un fournisseur : l'union de toutes les organisations du
       // compte affichait les plans de l'autre tenant.
@@ -61,7 +61,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       });
 
       return caps;
-    }, requestedTenantId(req));
+    });
 
     return json(res, 200, {
       caps: result,

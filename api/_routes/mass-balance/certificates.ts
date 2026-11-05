@@ -1,7 +1,7 @@
 import type { VercelRequest, VercelResponse } from '../../_lib/vercel-types.js';
 import { requireClerkUser, isUnauthorized } from '../../_lib/auth.js';
 import { isTenantError, requireActiveTenant, requestedTenantId } from '../../_lib/tenant.js';
-import { withTracefabUserContext } from '../../_lib/context.js';
+import {withTracefabRequestContext} from '../../_lib/context.js';
 import { json, methodNotAllowed, readJsonBody } from '../../_lib/http.js';
 import { sqlBusinessError } from '../../_lib/sql-errors.js';
 import { registerTransactionCertificate } from '../../_lib/mass-balance/mass-balance-manager.js';
@@ -16,7 +16,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const { user } = await requireClerkUser(req);
 
     if (req.method === 'GET') {
-      const result = await withTracefabUserContext(user.id, user.email, async (tx) => {
+      const result = await withTracefabRequestContext(req, user, async (tx) => {
         // Locataire actif obligatoire : un certificat de transaction a un
         // vendeur ET un acheteur, et l'union de toutes les organisations du
         // compte affichait les certificats de l'autre tenant.
@@ -57,7 +57,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           issueDate: t.issue_date.toISOString().slice(0, 10),
           expiryDate: t.expiry_date?.toISOString?.().slice(0, 10),
         }));
-      }, requestedTenantId(req));
+      });
 
       return json(res, 200, { certificates: result, count: result.length });
     }
@@ -86,7 +86,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return json(res, 400, { error: 'total_certified_weight_kg_must_be_positive' });
     }
 
-    const created = await withTracefabUserContext(user.id, user.email, async (tx) => {
+    const created = await withTracefabRequestContext(req, user, async (tx) => {
       // Le locataire actif doit etre partie au certificat qu'il enregistre.
       // Sans ce controle, un membre de A et B pouvait enregistrer un certificat
       // entre deux organisations tierces depuis n'importe lequel de ses tenants.
@@ -107,7 +107,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         expiryDate,
         documentId,
       });
-    }, requestedTenantId(req));
+    });
 
     return json(res, 201, {
       message: 'transaction_certificate_registered',

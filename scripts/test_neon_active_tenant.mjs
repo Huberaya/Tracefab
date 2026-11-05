@@ -46,10 +46,35 @@
  * sortie 2. Un test qui n'a pas tourne n'est pas un test qui passe.
  */
 import { randomUUID } from 'node:crypto';
+import { readFileSync } from 'node:fs';
 import pg from 'pg';
 
 const URL_PROPRIO = process.env.DATABASE_URL;
 const URL_APP = process.env.TF_RLS_APP_URL;
+
+/**
+ * Nom du bucket prive.
+ *
+ * Il est fixe a DEUX endroits qui doivent rester identiques : le runtime
+ * (`api/_lib/storage.ts`) et le trigger `tracefab_validate_document_location`
+ * (`tracefab_private_bucket_required`). Cette fixture portait un troisieme nom,
+ * `'private'`, et le trigger la refusait — a juste titre. Le refus etait donc
+ * lu comme une panne de la suite alors qu'il mesurait la fidelite de la
+ * fixture.
+ *
+ * Le nom est desormais LU dans le runtime, jamais reecrit ici : le jour ou le
+ * bucket change, la fixture suit, et si le trigger ne suivait pas, le meme
+ * message designerait cette fois une vraie divergence runtime/schema.
+ */
+const BUCKET_PRIVE = (() => {
+  const source = readFileSync(new URL('../api/_lib/storage.ts', import.meta.url), 'utf8');
+  const trouve = source.match(/const PRIVATE_STORAGE_BUCKET = '([^']+)'/);
+  if (!trouve) {
+    console.log('  NON EXECUTE — api/_lib/storage.ts ne declare plus PRIVATE_STORAGE_BUCKET.');
+    process.exit(2);
+  }
+  return trouve[1];
+})();
 
 if (!URL_PROPRIO || !URL_APP) {
   console.log('  NON EXECUTE — il manque DATABASE_URL et/ou TF_RLS_APP_URL.');
@@ -94,6 +119,8 @@ const passportRecette = randomUUID();
 const accessRequestRecette = randomUUID();
 const requestBrandB = randomUUID();
 const requestSupplierB = randomUUID();
+const relationshipRecette = randomUUID();
+const relationshipGinger = randomUUID();
 const itemBrandB = randomUUID();
 const itemSupplierB = randomUUID();
 const responseBrandB = randomUUID();
@@ -151,8 +178,8 @@ try {
   await proprio.query(
     `insert into documents
       (id, owner_organization_id, storage_bucket, storage_path, original_filename, content_type, byte_size, uploaded_by)
-     values ($1, $2, 'private', $3, 'tenant-guard.pdf', 'application/pdf', 128, $4)`,
-    [documentRecette, orgRecette, `${orgRecette}/tenant-guard.pdf`, userMulti]);
+     values ($1, $2, $3, $4, 'tenant-guard.pdf', 'application/pdf', 128, $5)`,
+    [documentRecette, orgRecette, BUCKET_PRIVE, `${orgRecette}/tenant-guard.pdf`, userMulti]);
   await proprio.query(
     `insert into supplier_universal_passports
       (id, supplier_organization_id, supplier_id, share_token)
@@ -196,23 +223,54 @@ try {
        certified_material_name, total_certified_weight_kg, issue_date, created_by)
      values ($1, $2, 'gots', 'Synthetic test issuer', $3, $4, 'Synthetic cotton', 100, CURRENT_DATE, $5)`,
     [tcRecette, `MT-${suffixe}`, orgRecette, orgGinger, userMulti]);
+  // `certifications_check` exige qu'une certification porte au moins une cible
+  // (`supplier_id`, `supplier_site_id` ou `product_id`), et
+  // `certifications_validate_subject_ownership` exige que cette cible
+  // appartienne au proprietaire declare. Une certification orpheline n'a pas de
+  // sens metier : la fixture rattache donc la certification au produit de
+  // recette, exactement la forme qu'exerce plus bas
+  // `tracefab_register_certification`.
   await proprio.query(
     `insert into certifications
-      (id, owner_organization_id, standard_name, standard_code, issuer_name, certificate_number, status, created_by)
-     values ($1, $2, 'Synthetic standard', 'SYNTHETIC', 'Synthetic issuer', $3, 'declared', $4)`,
-    [certificationRecette, orgRecette, `CERT-MT-${suffixe}`, userMulti]);
+      (id, owner_organization_id, product_id, standard_name, standard_code, issuer_name, certificate_number, status, created_by)
+     values ($1, $2, $5, 'Synthetic standard', 'SYNTHETIC', 'Synthetic issuer', $3, 'declared', $4)`,
+    [certificationRecette, orgRecette, `CERT-MT-${suffixe}`, userMulti, prodRecette]);
+  // `data_quality_issues_check` exige EXACTEMENT une cible (produit ou
+  // fournisseur) et `quality_issues_validate_subject` exige qu'elle appartienne
+  // au proprietaire declare. Une anomalie sans sujet n'existe pas.
   await proprio.query(
     `insert into data_quality_issues
-      (id, owner_organization_id, rule_key, rule_version, severity, message)
-     values ($1, $2, 'tenant.guard.fixture', '1', 'blocking', 'Synthetic tenant guard issue')`,
-    [issueRecette, orgRecette]);
+      (id, owner_organization_id, product_id, rule_key, rule_version, severity, message)
+     values ($1, $2, $3, 'tenant.guard.fixture', '1', 'blocking', 'Synthetic tenant guard issue')`,
+    [issueRecette, orgRecette, prodRecette]);
+  // `tracefab_validate_data_request_integrity` exige une organisation
+  // EMETTRICE de type `brand`, une organisation RECEPTRICE de type `supplier`,
+  // et une relation brand/supplier explicite reliant exactement ces deux
+  // organisations. La fixture precedente presentait deux organisations de type
+  // `brand` et aucune relation : elle ne decrivait donc aucune collecte reelle,
+  // et le refus du trigger etait legitime.
+  //
+  // Les deux requetes gardent leur role dans le test :
+  //   — `requestBrandB`     : tenant B est la MARQUE   (garde = brand_organization_id)
+  //   — `requestSupplierB`  : tenant B n'est pas la marque ; la garde de
+  //     `tracefab_submit_data_request` porte sur `supplier_organization_id`,
+  //     donc elle refuse elle aussi un locataire qui n'est pas le fournisseur
+  //     de la requete.
+  await proprio.query(
+    `insert into brand_supplier_relationships
+      (id, brand_organization_id, supplier_organization_id, status, requested_by, accepted_at)
+     values
+      ($1, $3, $5, 'active', $6, now()),
+      ($2, $4, $5, 'active', $6, now())`,
+    [relationshipRecette, relationshipGinger, orgRecette, orgGinger, orgSupplier, userMulti]);
   await proprio.query(
     `insert into data_requests
-      (id, brand_organization_id, supplier_organization_id, title, questionnaire_key, questionnaire_version, status, created_by)
+      (id, brand_organization_id, supplier_organization_id, relationship_id, title, questionnaire_key, questionnaire_version, status, created_by)
      values
-      ($1, $3, $4, 'Synthetic brand request', 'tenant_guard', '1', 'in_progress', $5),
-      ($2, $4, $3, 'Synthetic supplier request', 'tenant_guard', '1', 'sent', $5)`,
-    [requestBrandB, requestSupplierB, orgRecette, orgGinger, userMulti]);
+      ($1, $3, $5, $6, 'Synthetic brand request', 'tenant_guard', '1', 'in_progress', $8),
+      ($2, $4, $5, $7, 'Synthetic supplier request', 'tenant_guard', '1', 'sent', $8)`,
+    [requestBrandB, requestSupplierB, orgRecette, orgGinger, orgSupplier, relationshipRecette,
+      relationshipGinger, userMulti]);
   await proprio.query(
     `insert into data_request_items (id, data_request_id, field_key, label, data_type, required, evidence_required)
      values

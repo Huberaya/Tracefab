@@ -5,7 +5,7 @@
   "description": "Tracefab supplier data platform foundations",
   "scripts": {
     "test": "npm run typecheck && npm run api:typecheck && npm run schema:static && npm run test:active-tenant && npm run test:security:chantier1 && npm run test:error-reporting && npm run test:sql-errors && npm run test:bridge:chantier2 && npm run test:supplychain:chantier3 && npm run test:supplychain:contract && npm run test:dpp:chantier4 && npm run test:dpp:quality-gate && npm run test:dpp:migrations && npm run test:brand-console:dpp-journey && npm run test:dpp:lifecycle && npm run test:dpp:evidence && npm run test:dpp:quality && npm run test:dpp:identity && npm run test:dpp:demo-separation && npm run test:context-integrity && npm run test:clerk-identity && npm run test:quality-actions:chantier5 && npm run test:cap:chantier5 && npm run test:universal-passport:chantier6 && npm run test:onboarding:chantier6 && npm run test:mass-balance:chantier7 && npm run test:bulk:chantier8 && npm run test:wallet:chantier9 && npm run test:storage:chantier10 && npm run test:docai:chantier1 && npm run test:plm-erp:chantier2 && npm run test:plm-erp:policy-dedup && npm run test:plm-sync-job-policy-reconciliation && npm run test:pef:chantier3 && npm run test:green-claims:chantier4 && npm run test:brand-console && npm run test:brand-journey && npm run test:brand-journey-58 && npm run test:customer-journey:blockers && npm run test:clerk-proxy && npm run test:supplier-portal && npm run test:questionnaires",
-    "test:sql-errors": "node scripts/test_sql_business_errors.mjs",
+    "test:sql-errors": "npx tsx scripts/test_sql_business_errors.mjs",
     "test:plm-sync-job-policy-reconciliation": "node scripts/test_plm_sync_job_policy_reconciliation.mjs",
     "test:bulk:chantier8": "npx tsx scripts/test_bulk_operations_chantier8.mjs",
     "test:neon:bulk:chantier8": "node scripts/run-db-suite.mjs scripts/test_neon_bulk_operations_chantier8.mjs",
@@ -78,6 +78,7 @@
     "test:neon:collection": "node scripts/run-db-suite.mjs scripts/test_neon_data_collection_flow.mjs",
     "test:neon:cross-tenant": "node scripts/run-db-suite.mjs scripts/test_neon_cross_tenant.mjs",
     "test:neon:active-tenant": "node scripts/run-db-suite.mjs scripts/test_neon_active_tenant.mjs",
+    "test:neon:document-material-scope": "node scripts/run-db-suite.mjs scripts/test_neon_document_material_tenant_scope.mjs",
     "test:mission-ui": "node scripts/test_mission_ui_ux.mjs",
     "test:brand-console": "node scripts/test_brand_console.mjs",
     "test:brand-console:schema-bindings": "node scripts/test_brand_console_schema_bindings_browser.mjs",

@@ -1,7 +1,7 @@
 import type { VercelRequest, VercelResponse } from '../_lib/vercel-types.js';
 import { Prisma } from '@prisma/client';
 import { requireClerkUser, isUnauthorized } from '.././_lib/auth.js';
-import { withTracefabUserContext } from '.././_lib/context.js';
+import {withTracefabRequestContext} from '.././_lib/context.js';
 import { json, methodNotAllowed, readJsonBody } from '.././_lib/http.js';
 import { sqlBusinessError } from '.././_lib/sql-errors.js';
 import { isUuid } from '.././_lib/products.js';
@@ -65,7 +65,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   try {
     const { user } = await requireClerkUser(req);
-    const result = await withTracefabUserContext(user.id, user.email, async (tx) => {
+    const result = await withTracefabRequestContext(req, user, async (tx) => {
       // Locataire actif obligatoire. Le repli precedent listait les matieres de
       // toutes les organisations du compte. Le partage explicite entre
       // organisations est conserve : il passe par
@@ -105,7 +105,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         )
       `;
       return { material: rows[0] };
-    }, requestedTenantId(req));
+    });
 
     if ('materials' in result) return json(res, 200, { materials: result.materials!.map(serializedMaterial) });
     if (!result.material) throw new Error('material_creation_failed');

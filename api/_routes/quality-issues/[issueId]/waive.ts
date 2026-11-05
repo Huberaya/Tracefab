@@ -1,7 +1,7 @@
 import type { VercelRequest, VercelResponse } from '../../../_lib/vercel-types.js';
 import type { QualityIssueRecord } from '../../../_lib/quality.js';
 import { requireClerkUser, isUnauthorized } from '../../../_lib/auth.js';
-import { withTracefabUserContext } from '../../../_lib/context.js';
+import {withTracefabRequestContext} from '../../../_lib/context.js';
 import { json, methodNotAllowed, readJsonBody } from '../../../_lib/http.js';
 import { sqlBusinessError } from '../../../_lib/sql-errors.js';
 import { isUuid, requiredString } from '../../../_lib/data-requests.js';
@@ -24,13 +24,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const { user } = await requireClerkUser(req);
     const body = await readJsonBody<WaiveBody>(req);
     const reason = requiredString(body.reason, 'waiver_reason', 4000);
-    const issue = await withTracefabUserContext(user.id, user.email, async (tx) => {
+    const issue = await withTracefabRequestContext(req, user, async (tx) => {
       await requireActiveTenant(tx, req, user.id);
       const rows = await tx.$queryRaw<QualityIssueRecord[]>`
         SELECT * FROM tracefab_waive_quality_issue(${issueId}::uuid, ${reason})
       `;
       return rows[0] ?? null;
-    }, requestedTenantId(req));
+    });
     if (!issue) throw new Error('quality_issue_not_found');
     return json(res, 200, { issue: serializeQualityIssue(issue) });
   } catch (error) {

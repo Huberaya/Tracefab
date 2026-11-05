@@ -756,6 +756,18 @@ jobs:
         # reellement evaluees. Le test echoue s'il ne peut pas s'executer.
         run: npm run test:neon:rls
 
+      - name: Documents et matieres — acces autorises conserves, inter-locataires refuses
+        # Le locataire actif borne la propriete des documents, des matieres, des
+        # fournisseurs, de leurs sites et de leurs certifications. Une suite qui
+        # ne verifierait que le refus laisserait passer une correction qui ferme
+        # aussi l'acces legitime : celle-ci eprouve les deux sens sur PostgreSQL
+        # reel — lecture de ses propres pieces, refus des pieces d'un autre
+        # locataire, partage explicite toujours lisible, composition
+        # produit-matiere du fournisseur preservee, puis refus en ecriture.
+        run: npm run test:neon:document-material-scope
+        env:
+          TF_EXIGER_LOCAL: oui
+
       - name: Registre des fonctions runtime — perimetre et coherence
         # Bloquant. Echoue si (1) une fonction autorisee n'existe pas, (2) le
         # module TypeScript et la base divergent, (3) une fonction executable

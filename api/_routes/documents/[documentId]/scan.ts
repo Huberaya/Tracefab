@@ -1,7 +1,7 @@
 import { Prisma } from '@prisma/client';
 import type { VercelRequest, VercelResponse } from '../../../_lib/vercel-types.js';
 import { requireClerkUser, isUnauthorized } from '../../../_lib/auth.js';
-import { withTracefabUserContext } from '../../../_lib/context.js';
+import {withTracefabRequestContext} from '../../../_lib/context.js';
 import { json, methodNotAllowed } from '../../../_lib/http.js';
 import { sqlBusinessError } from '../../../_lib/sql-errors.js';
 import { isTenantError, resolveActiveTenant, requestedTenantId } from '../../../_lib/tenant.js';
@@ -27,7 +27,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const { user } = await requireClerkUser(req);
 
     const activeOrganizationId = requestedTenantId(req);
-    const ownerOrganizationId = await withTracefabUserContext(user.id, user.email, async (tx) => {
+    const ownerOrganizationId = await withTracefabRequestContext(req, user, async (tx) => {
       const tenant = await resolveActiveTenant(tx, user.id, activeOrganizationId, {
         types: ['brand'],
         roles: ['owner', 'admin', 'manager', 'contributor'],
@@ -44,7 +44,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         LIMIT 1
       `;
       return rows[0]?.owner_organization_id ?? null;
-    }, activeOrganizationId);
+    });
     if (!ownerOrganizationId) return json(res, 404, { error: 'document_not_found' });
 
     const result = await runDocumentScanFlow(user, documentId, ownerOrganizationId);

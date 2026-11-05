@@ -2,7 +2,7 @@ import { validateProductPatch, ProductFieldError, type UpdateProductBody } from 
 import { Prisma } from '@prisma/client';
 import type { VercelRequest, VercelResponse } from '../../_lib/vercel-types.js';
 import { requireClerkUser, isUnauthorized } from '../../_lib/auth.js';
-import { withTracefabUserContext } from '../../_lib/context.js';
+import { withTracefabRequestContext } from '../../_lib/context.js';
 import { json, methodNotAllowed, readJsonBody } from '../../_lib/http.js';
 import { sqlBusinessError } from '../../_lib/sql-errors.js';
 import { isUuid, PRODUCT_SELECT, serializeProduct } from '../../_lib/products.js';
@@ -60,7 +60,7 @@ function productDetailPayload(product: ProductDetail) {
   };
 }
 
-export function createProductHandler(deps = { requireClerkUser, withTracefabUserContext }) {
+export function createProductHandler(deps = { requireClerkUser, withTracefabRequestContext }) {
 return async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'GET' && req.method !== 'PATCH') return methodNotAllowed(res, ['GET', 'PATCH']);
 
@@ -69,7 +69,7 @@ return async function handler(req: VercelRequest, res: VercelResponse) {
     if (!isUuid(productId)) return json(res, 400, { error: 'invalid_product_id' });
     const { user } = await deps.requireClerkUser(req);
 
-    const result = await deps.withTracefabUserContext(user.id, user.email, async (tx) => {
+    const result = await deps.withTracefabRequestContext(req, user, async (tx) => {
       // Locataire actif obligatoire. `{ in: organizationIds }` bornait
       // l'utilisateur, pas le locataire : un administrateur de Ginger et de la
       // recette lisait et modifiait la fiche produit de l'autre tenant.
@@ -209,7 +209,7 @@ return async function handler(req: VercelRequest, res: VercelResponse) {
       const updated = await tx.tracefab_products.findFirst({ where: scoped, select: DETAIL_SELECT });
       if (!updated) throw new Error('product_update_failed');
       return updated;
-    }, requestedTenantId(req));
+    });
 
     if (!result) return json(res, 404, { error: 'product_not_found' });
     return json(res, 200, productDetailPayload(result));

@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '../../../../_lib/vercel-types.js';
 import { requireClerkUser, isUnauthorized } from '../../../../_lib/auth.js';
-import { withTracefabUserContext } from '../../../../_lib/context.js';
+import {withTracefabRequestContext} from '../../../../_lib/context.js';
 import { json, methodNotAllowed } from '../../../../_lib/http.js';
 import { sqlBusinessError } from '../../../../_lib/sql-errors.js';
 import { isTenantError, requireActiveTenant, requestedTenantId } from '../../../../_lib/tenant.js';
@@ -58,7 +58,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     const { user } = await requireClerkUser(req);
-    const rows = await withTracefabUserContext(user.id, user.email, async (tx) => {
+    const rows = await withTracefabRequestContext(req, user, async (tx) => {
       const tenant = await requireActiveTenant(tx, req, user.id, { types: ['supplier'] });
       const supplier = await tx.suppliers.findFirst({
         where: { id: supplierId, organization_id: tenant.organizationId },
@@ -69,7 +69,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         SELECT *
         FROM tracefab_submit_supplier_profile(${supplierId}::uuid)
       `;
-    }, requestedTenantId(req));
+    });
     const row = rows[0];
     if (!row) return json(res, 404, { error: 'supplier_not_found' });
     return json(res, 200, { profile: publicProfile(row) });

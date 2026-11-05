@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '../../../_lib/vercel-types.js';
 import { requireClerkUser, isUnauthorized } from '../../../_lib/auth.js';
-import { withTracefabUserContext } from '../../../_lib/context.js';
+import {withTracefabRequestContext} from '../../../_lib/context.js';
 import { isTenantError, requireActiveTenant, requestedTenantId, tenantFilter } from '../../../_lib/tenant.js';
 import { isUuid } from '../../../_lib/data-requests.js';
 import { json, methodNotAllowed } from '../../../_lib/http.js';
@@ -18,7 +18,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const requestId = routeRequestId(req);
     if (!isUuid(requestId)) return json(res, 400, { error: 'invalid_request_id' });
     const { user } = await requireClerkUser(req);
-    const result = await withTracefabUserContext(user.id, user.email, async (tx) => {
+    const result = await withTracefabRequestContext(req, user, async (tx) => {
       // Locataire actif obligatoire, resolu AVANT l'enqueue : une relance est
       // une notification sortante vers un fournisseur, pas une lecture.
       const tenant = await requireActiveTenant(tx, req, user.id);
@@ -43,7 +43,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         FROM tracefab_enqueue_manual_data_request_reminder(${requestId}::uuid)
       `;
       return rows[0] ?? null;
-    }, requestedTenantId(req));
+    });
     if (!result) return json(res, 404, { error: 'data_request_not_found' });
     return json(res, 202, {
       queued: true,

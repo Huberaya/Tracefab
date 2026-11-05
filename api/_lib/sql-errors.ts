@@ -10,6 +10,79 @@ const DEFINITIONS: Record<string, SqlErrorDefinition> = {
   // conflit de configuration du schéma, sans détail SQL exposé au client.
   active_tenant_guard_helpers_executable_by_runtime: { status: 409 },
   active_tenant_guard_runtime_role_owns_definer_function: { status: 409 },
+  // Gardes de la migration 20261105180000 (enregistrement des certificats de
+  // transaction). Ces codes ne sont leves que si la fonction cible n'est pas
+  // celle attendue, si son corps ne permet pas l'injection de la garde, ou si
+  // l'OID, le proprietaire ou l'ACL ont change. C'est un conflit avec l'etat de
+  // schema attendu — jamais un detail SQL expose ni une panne serveur : 409.
+  active_tenant_tc_registration_target_not_security_definer: { status: 409 },
+  active_tenant_tc_registration_expected_parameters_missing: { status: 409 },
+  active_tenant_tc_registration_cannot_find_plpgsql_body: { status: 409 },
+  active_tenant_tc_registration_changed_oid_owner_or_acl: { status: 409 },
+  active_tenant_tc_registration_postcondition_failed: { status: 409 },
+  // Gardes des migrations 20261105190000 a 20261105230000. Meme classe
+  // d'invariant : un helper de garde accessible au runtime, une fonction
+  // SECURITY DEFINER possedee par le role HTTP, ou une postcondition non
+  // verifiee sont des conflits de configuration du schema (409). Les nommer
+  // evite qu'un refus deliberé du moteur ne devienne un 500 opaque.
+  active_tenant_quality_collection_runtime_owns_definer_function: { status: 409 },
+  active_tenant_quality_collection_helper_executable_by_runtime: { status: 409 },
+  active_tenant_material_certification_runtime_owns_definer_function: { status: 409 },
+  active_tenant_material_certification_helper_executable_by_runtime: { status: 409 },
+  active_tenant_supplier_profile_runtime_owns_definer_function: { status: 409 },
+  active_tenant_supplier_profile_helper_executable_by_runtime: { status: 409 },
+  active_tenant_quality_cap_runtime_owns_definer_function: { status: 409 },
+  active_tenant_quality_cap_helper_executable_by_runtime: { status: 409 },
+  active_tenant_documents_runtime_owns_definer_function: { status: 409 },
+  active_tenant_documents_helper_executable_by_runtime: { status: 409 },
+  active_tenant_supplier_quality_runtime_owns_definer_function: { status: 409 },
+  active_tenant_supplier_quality_target_missing_or_not_definer: { status: 409 },
+  active_tenant_supplier_quality_anchor_missing: { status: 409 },
+  active_tenant_supplier_quality_changed_owner_or_acl: { status: 409 },
+  active_tenant_supplier_quality_postcondition_failed: { status: 409 },
+  active_tenant_supplier_quality_helper_executable_by_runtime: { status: 409 },
+  // `rate_limit_counters` : l'identite d'un compteur (cle, debut de fenetre)
+  // est immuable. Le deplacer reviendrait a remettre le compteur a zero sans
+  // supprimer la ligne, ce que la migration borne explicitement. Tentative de
+  // mutation d'un invariant d'etat : 409, comme les autres champs immuables.
+  rate_limit_counter_identity_is_immutable: { status: 409 },
+  // Gardes de la migration 20261105250000 (locataire actif sur documents,
+  // materiaux, fournisseurs, sites et certifications). Une cible absente ou
+  // une postcondition non verifiee est un conflit d'etat de schema : 409.
+  active_tenant_documents_target_missing_or_not_definer: { status: 409 },
+  active_tenant_documents_postcondition_failed: { status: 409 },
+  // Gardes de la migration 20261105260000 (email du porteur evaluable par le
+  // runtime). Ce sont des invariants de proprietaire et d'ACL : 409.
+  runtime_user_email_target_missing: { status: 409 },
+  runtime_user_email_changed_oid: { status: 409 },
+  runtime_user_email_changed_owner: { status: 409 },
+  runtime_user_email_changed_acl: { status: 409 },
+  runtime_user_email_not_definer_or_search_path_unset: { status: 409 },
+  runtime_user_email_not_executable_by_runtime: { status: 409 },
+  runtime_user_email_owned_by_runtime: { status: 409 },
+  // Garde de la migration 20261105270000 : une lecture attendue du runtime qui
+  // n'est pas accordee (ou un privilege d'ecriture accorde par erreur) est un
+  // conflit de provisionnement, jamais une panne serveur.
+  runtime_read_grant_missing: { status: 409 },
+  runtime_read_grant_unexpected: { status: 409 },
+  runtime_read_grant_without_forced_rls: { status: 409 },
+  runtime_read_grant_missing_select_policy: { status: 409 },
+  // Gardes de la migration 20261105280000 (chemins indirects de
+  // tracefab_can_access_document). Ce sont des invariants de schema et de
+  // propriete : une cible absente, un proprietaire ou une ACL qui ont bouge, un
+  // search_path perdu, une garde de locataire disparue d'une branche. 409.
+  indirect_paths_target_missing: { status: 409 },
+  indirect_paths_target_not_definer: { status: 409 },
+  indirect_paths_target_owned_by_runtime: { status: 409 },
+  indirect_paths_responses_branch_lost: { status: 409 },
+  indirect_paths_shared_branch_lost: { status: 409 },
+  indirect_paths_changed_oid: { status: 409 },
+  indirect_paths_changed_owner: { status: 409 },
+  indirect_paths_changed_acl: { status: 409 },
+  indirect_paths_search_path_unset: { status: 409 },
+  indirect_paths_runtime_cannot_execute: { status: 403 },
+  indirect_paths_executable_by_public: { status: 409 },
+  indirect_paths_active_tenant_guard_missing: { status: 409 },
   brand_admin_role_required: { status: 403 },
   brand_organization_required: { status: 400 },
   valid_supplier_email_required: { status: 400 },
@@ -274,13 +347,28 @@ const DEFINITIONS: Record<string, SqlErrorDefinition> = {
 };
 
 /**
+ * Codes tries du PLUS LONG au plus court.
+ *
+ * Le classement se fait par inclusion de sous-chaine, et deux codes du registre
+ * sont prefixes d'un autre : `invalid_material` prefixe
+ * `invalid_material_percentage`, `passport_not_found` prefixe
+ * `passport_not_found_or_private`. Dans l'ordre de declaration, un echec de
+ * pourcentage de matiere etait donc annonce au client comme un simple
+ * `invalid_material`, et un passeport prive comme un `passport_not_found`
+ * ordinaire : le statut HTTP tombait juste par hasard, la raison annoncee etait
+ * fausse. Trier par longueur decroissante rend le code le plus specifique
+ * prioritaire, sans changer aucun statut.
+ */
+const CODES_PAR_SPECIFICITE = Object.keys(DEFINITIONS).sort((a, b) => b.length - a.length);
+
+/**
  * Convert a deliberately small, stable set of PostgreSQL business exceptions
  * into API responses. Raw database error messages are never returned because
  * they can contain implementation details or values from a failed query.
  */
 export function sqlBusinessError(error: unknown): { status: number; error: string } | null {
   const message = error instanceof Error ? error.message : String(error);
-  const code = Object.keys(DEFINITIONS).find((candidate) => message.includes(candidate));
+  const code = CODES_PAR_SPECIFICITE.find((candidate) => message.includes(candidate));
   if (code) return { status: DEFINITIONS[code].status, error: code };
 
   if (message.includes('supplier_profile_incomplete')) {

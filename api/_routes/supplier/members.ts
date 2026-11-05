@@ -2,7 +2,7 @@ import { randomBytes, createHash } from 'node:crypto';
 import { Prisma, membership_role, membership_status } from '@prisma/client';
 import type { VercelRequest, VercelResponse } from '../../_lib/vercel-types.js';
 import { requireClerkUser, isUnauthorized } from '../../_lib/auth.js';
-import { withTracefabUserContext } from '../../_lib/context.js';
+import {withTracefabRequestContext} from '../../_lib/context.js';
 import { manualInvitationFallbackAllowed, sendOrganizationMemberInvitationEmail } from '../../_lib/email.js';
 import { json, methodNotAllowed, readJsonBody } from '../../_lib/http.js';
 import { sqlBusinessError } from '../../_lib/sql-errors.js';
@@ -65,7 +65,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const { user } = await requireClerkUser(req);
     const organizationId = requestedOrganizationId(req);
     if (req.method === 'GET') {
-      const result = await withTracefabUserContext(user.id, user.email, async (tx) => {
+      const result = await withTracefabRequestContext(req, user, async (tx) => {
         const context = await memberContext(tx, user.id, organizationId);
         if (!context) return null;
         const [members, invitations] = await Promise.all([
@@ -101,7 +101,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     const body = await readJsonBody<MembersBody>(req);
-    const result = await withTracefabUserContext(user.id, user.email, async (tx) => {
+    const result = await withTracefabRequestContext(req, user, async (tx) => {
       const context = await memberContext(tx, user.id, organizationId);
       if (!context) return null;
       if (!['owner', 'admin'].includes(context.actor.role)) throw new Error('member_management_role_required');

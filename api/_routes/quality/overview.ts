@@ -2,7 +2,7 @@ import { Prisma } from '@prisma/client';
 import type { VercelRequest, VercelResponse } from '../../_lib/vercel-types.js';
 import { requireClerkUser, isUnauthorized } from '../../_lib/auth.js';
 import { sqlBusinessError } from '../../_lib/sql-errors.js';
-import { withTracefabRequestContext } from '../../_lib/context.js';
+import {withTracefabRequestContext} from '../../_lib/context.js';
 import { isTenantError } from '../../_lib/tenant.js';
 import { json, methodNotAllowed } from '../../_lib/http.js';
 

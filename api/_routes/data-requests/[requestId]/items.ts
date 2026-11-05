@@ -1,7 +1,7 @@
 import { Prisma } from '@prisma/client';
 import type { VercelRequest, VercelResponse } from '../../../_lib/vercel-types.js';
 import { requireClerkUser, isUnauthorized } from '../../../_lib/auth.js';
-import { withTracefabUserContext } from '../../../_lib/context.js';
+import {withTracefabRequestContext} from '../../../_lib/context.js';
 import { json, methodNotAllowed, readJsonBody } from '../../../_lib/http.js';
 import { sqlBusinessError } from '../../../_lib/sql-errors.js';
 import { accessibleRequest, isUuid, jsonObject, requiredString } from '../../../_lib/data-requests.js';
@@ -69,7 +69,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (!isUuid(requestId)) return json(res, 400, { error: 'invalid_request_id' });
     const { user } = await requireClerkUser(req);
 
-    const result = await withTracefabUserContext(user.id, user.email, async (tx) => {
+    const result = await withTracefabRequestContext(req, user, async (tx) => {
       const tenant = await requireActiveTenant(tx, req, user.id);
       const request = await accessibleRequest(tx, user.id, requestId, {
         id: true, brand_organization_id: true, supplier_organization_id: true,
@@ -114,7 +114,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         )
       `;
       return { item: rows[0] };
-    }, requestedTenantId(req));
+    });
 
     if (!result) return json(res, 404, { error: 'data_request_not_found' });
     if ('items' in result) return json(res, 200, { items: result.items!.map(serializeItem) });

@@ -140,6 +140,46 @@ const lignesForward = (name) => {
       action: 'APPLIQUER APRÈS LES GARDES CAP QUALITÉ, EN PRÉPRODUCTION PUIS PRODUCTION APRÈS VALIDATION COMPLÈTE',
     };
   }
+  if (name === '20261105250000_active_tenant_document_material_access') {
+    return {
+      ...base,
+      effect: 'borner les documents, materiaux, fournisseurs, sites et certifications au locataire actif, et n’ouvrir le partage explicite qu’au beneficiaire actif',
+      evidence: 'test PostgreSQL direct a trois tenants : document d’un autre locataire invisible, partage explicite toujours lisible, materiau du fournisseur visible par composition, refus en ecriture',
+      risk: 'remplace six politiques et deux fonctions DEFINER ; les branches de partage metier doivent rester ouvertes, verifie par postcondition sur le catalogue',
+      prerequisite: '20261105240000 terminee ; verifier test_neon_document_lifecycle et test_neon_document_material_tenant_scope sur PostgreSQL 17',
+      action: 'APPLIQUER APRES LA GARDE QUALITE FOURNISSEUR, EN PRÉPRODUCTION PUIS PRODUCTION APRÈS VALIDATION COMPLÈTE',
+    };
+  }
+  if (name === '20261105260000_runtime_user_email_definer_guard') {
+    return {
+      ...base,
+      effect: 'rendre tracefab_current_user_email executable par le runtime sans lui accorder SELECT sur users (SECURITY DEFINER, search_path fige, ACL conservee)',
+      evidence: 'mesure : select id from organizations sous tracefab_app rendait 42501 permission denied for table users ; rend zero ligne apres correction',
+      risk: 'CREATE OR REPLACE doit preserver OID, proprietaire et ACL ; la fonction ne rend que l’email de l’identite courante',
+      prerequisite: '20261105250000 terminee ; verifier test:neon:cross-tenant et test:neon:rls',
+      action: 'APPLIQUER APRES LA GARDE DOCUMENTS/MATERIAUX, EN PRÉPRODUCTION PUIS PRODUCTION APRÈS VALIDATION COMPLÈTE',
+    };
+  }
+  if (name === '20261105280000_active_tenant_document_indirect_paths') {
+    return {
+      ...base,
+      effect: 'borner au locataire actif les branches indirectes de tracefab_can_access_document (reponses de collecte, certifications, points de donnee)',
+      evidence: 'mesure sur PostgreSQL 17 : locataire A actif, la fonction rendait vrai pour une piece de B atteinte par un point de donnee, et la RLS laissait passer 1 piece sur 3',
+      risk: 'CREATE OR REPLACE doit preserver OID, proprietaire et ACL ; les branches legitimes (propriete, partage explicite, relation active) sont conservees',
+      prerequisite: '20261105270000 terminee ; verifier test:neon:document-material-scope et test:neon:document-lifecycle',
+      action: 'APPLIQUER APRES LA LECTURE RUNTIME, EN PRÉPRODUCTION PUIS PRODUCTION APRÈS VALIDATION COMPLÈTE',
+    };
+  }
+  if (name === '20261105270000_runtime_read_users_and_registry') {
+    return {
+      ...base,
+      effect: 'accorder SELECT (et seulement SELECT) au runtime sur users et tracefab_runtime_function_registry, sous les politiques deja en place',
+      evidence: 'test:neon:rls mesurait ces deux tables en « erreur de politique » (42501) ; les politiques de lecture existaient mais etaient inatteignables',
+      risk: 'aucun INSERT/UPDATE/DELETE accorde ; RLS forcee et politiques de lecture verifiees par postcondition',
+      prerequisite: '20261105260000 terminee ; verifier test:neon:rls sur base amorcee par db:seed-rls',
+      action: 'APPLIQUER APRES LA GARDE EMAIL RUNTIME, EN PRÉPRODUCTION PUIS PRODUCTION APRÈS VALIDATION COMPLÈTE',
+    };
+  }
   if (name === '20261105240000_active_tenant_supplier_quality_guard') {
     return {
       ...base,
@@ -249,7 +289,7 @@ const lines = [
 const errors = [];
 const warnings = [];
 const phases = [
-  { label: 'PREPRODUCTION', command: 'npx prisma migrate deploy', gate: '13 migrations historiques pending + 15 corrections forward ordonnées (PLM/GS1, graphe, tenant actif PLM/ERP, RLS produits/DPP/PEF, allégations vertes, claims/identités DPP, compositions produit-matière, 19 fonctions SECURITY DEFINER puis enregistrement TC) ; 1 variance checksum documentée et éprouvée par test Prisma ; aucun resolve' },
+  { label: 'PREPRODUCTION', command: 'npx prisma migrate deploy', gate: '13 migrations historiques pending + 19 corrections forward ordonnées (PLM/GS1, graphe, tenant actif PLM/ERP, RLS produits/DPP/PEF, allégations vertes, claims/identités DPP, compositions produit-matière, 19 fonctions SECURITY DEFINER puis enregistrement TC) ; 1 variance checksum documentée et éprouvée par test Prisma ; aucun resolve' },
   { label: 'PRODUCTION', command: 'npx prisma migrate deploy', gate: 'Préproduction validée et catalogue vérifié' },
 ];
 function violationsFor(planLines, phaseList = phases) {
@@ -288,8 +328,19 @@ if (JSON.stringify(newNames) !== JSON.stringify([
   '20261105220000_active_tenant_quality_cap_guards',
   '20261105230000_active_tenant_invite_document_passport_guards',
   '20261105240000_active_tenant_supplier_quality_guard',
+  // Corrections ajoutees apres la revue finale : le locataire actif borne
+  // documents, materiaux, fournisseurs, sites, certifications et partages ;
+  // l'email du porteur redevient evaluable par le runtime ; deux tables que le
+  // runtime doit lire lui sont enfin accordees en SELECT.
+  '20261105250000_active_tenant_document_material_access',
+  '20261105260000_runtime_user_email_definer_guard',
+  '20261105270000_runtime_read_users_and_registry',
+  // La mesure a montre que les chemins INDIRECTS de
+  // `tracefab_can_access_document` n'etaient pas bornes au locataire actif : la
+  // fuite traversait la politique de lecture, qui delegue a cette fonction.
+  '20261105280000_active_tenant_document_indirect_paths',
 ])) {
-  errors.push(`les quinze corrections forward PLM/GS1, graphe, tenant actif, RLS produits/DPP/PEF, allégations vertes, claims/identités DPP, compositions produit-matière, gardes SECURITY DEFINER, enregistrement TC, qualité/collecte, matières/certifications, profil fournisseur, CAP qualité, invitations/documents/passeports et qualité fournisseur sont attendues, obtenu ${JSON.stringify(newNames)}`);
+  errors.push(`les dix-neuf corrections forward PLM/GS1, graphe, tenant actif, RLS produits/DPP/PEF, allégations vertes, claims/identités DPP, compositions produit-matière, gardes SECURITY DEFINER, enregistrement TC, qualité/collecte, matières/certifications, profil fournisseur, CAP qualité, invitations/documents/passeports et qualité fournisseur sont attendues, obtenu ${JSON.stringify(newNames)}`);
 }
 if (ROLLED_BACK_ATTEMPTS.length !== 2) errors.push('le snapshot doit conserver deux tentatives annulees');
 for (const name of outOfBand) {
@@ -368,7 +419,7 @@ if (markdown) {
   console.log('\n## Déjà appliquées hors bande — ne pas rejouer');
   for (const name of outOfBand) console.log(`- ${name}: ${HORS_BANDE[name].join(', ')}`);
   console.log('\n## Séquence d’exécution');
-  console.log('1. PRÉPRODUCTION : npx prisma migrate status — 13 migrations historiques pending + 15 corrections forward PLM/GS1, graphe, tenant actif, RLS produits/DPP/PEF, allégations vertes, claims/identités DPP, compositions produit-matière, gardes SECURITY DEFINER, enregistrement TC, qualité/collecte, matières/certifications, profil fournisseur puis CAP qualité ; 1 écart historique documenté, aucun resolve.');
+  console.log('1. PRÉPRODUCTION : npx prisma migrate status — 13 migrations historiques pending + 19 corrections forward PLM/GS1, graphe, tenant actif, RLS produits/DPP/PEF, allégations vertes, claims/identités DPP, compositions produit-matière, gardes SECURITY DEFINER, enregistrement TC, qualité/collecte, matières/certifications, profil fournisseur puis CAP qualité ; 1 écart historique documenté, aucun resolve.');
   console.log('2. PRÉPRODUCTION : npx prisma migrate deploy, puis contrôles catalogue et tests.');
   console.log('3. PRODUCTION : même commande uniquement après validation complète de Préproduction.');
   console.log(`\nHistorique : ${appliedViaPrisma} via Prisma + ${outOfBand.length} hors bande, ${pending.length} migrations historiques absentes + ${newNames.length} correction(s) forward, ${ROLLED_BACK_ATTEMPTS.length} tentatives annulées déjà suivies d'une réussite.`);
@@ -400,4 +451,4 @@ if (errors.length) {
   for (const error of errors) console.error(`  - ${error}`);
   process.exit(1);
 }
-console.log('\nPlan cohérent : 51 via Prisma + 5 hors bande, 13 migrations historiques en attente + 15 corrections forward PLM/GS1, graphe, tenant actif, RLS produits/DPP/PEF, allégations vertes, claims/identités DPP, compositions produit-matière, gardes SECURITY DEFINER, TC, qualité/collecte, matières/certifications, profil fournisseur, CAP, invitations/documents/passeports et qualité fournisseur, 1 écart historique documenté, aucun resolve ni changement de checksum.');
+console.log('\nPlan cohérent : 51 via Prisma + 5 hors bande, 13 migrations historiques en attente + 19 corrections forward PLM/GS1, graphe, tenant actif, RLS produits/DPP/PEF, allégations vertes, claims/identités DPP, compositions produit-matière, gardes SECURITY DEFINER, TC, qualité/collecte, matières/certifications, profil fournisseur, CAP, invitations/documents/passeports et qualité fournisseur, 1 écart historique documenté, aucun resolve ni changement de checksum.');

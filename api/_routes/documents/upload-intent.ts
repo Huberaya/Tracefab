@@ -1,7 +1,7 @@
 import { Prisma } from '@prisma/client';
 import type { VercelRequest, VercelResponse } from '../../_lib/vercel-types.js';
 import { requireClerkUser, isUnauthorized } from '../../_lib/auth.js';
-import { withTracefabUserContext } from '../../_lib/context.js';
+import {withTracefabRequestContext} from '../../_lib/context.js';
 import { json, methodNotAllowed, readJsonBody } from '../../_lib/http.js';
 import { sqlBusinessError } from '../../_lib/sql-errors.js';
 import { isTenantError, resolveActiveTenant, requestedTenantId } from '../../_lib/tenant.js';
@@ -15,7 +15,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const { user } = await requireClerkUser(req);
     const body = documentMetadata(await readJsonBody<Record<string, unknown>>(req));
     const activeOrganizationId = requestedTenantId(req);
-    const result = await withTracefabUserContext(user.id, user.email, async (tx) => {
+    const result = await withTracefabRequestContext(req, user, async (tx) => {
       const tenant = await resolveActiveTenant(tx, user.id, activeOrganizationId, {
         types: ['brand'],
         roles: ['owner', 'admin', 'manager', 'contributor'],
@@ -42,7 +42,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const document = rows[0];
       if (!document) throw new Error('document_registration_failed');
       return { document, upload: presignedUpload(storagePath, body.contentType) };
-    }, activeOrganizationId);
+    });
 
     if (!result) return json(res, 404, { error: 'organization_not_found' });
     return json(res, 201, {

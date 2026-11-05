@@ -147,6 +147,20 @@ export const TABLES_FERMEES_PAR_CONCEPTION = [
  * protections, ou — pire — passerait une table reellement fermee pour une
  * table simplement vide.
  */
+/**
+ * Tables fermees au runtime par l'ACL, et non par une politique.
+ *
+ * `tracefab_identity_cles` : les cles HMAC de l'identite signee. Aucun role
+ * applicatif ne doit pouvoir les lire, meme pour verifier un jeton — la
+ * verification passe par les fonctions DEFINER.
+ *
+ * `orders` n'est PAS classee ici : sur une base amorcee par `db:seed-rls`, le
+ * runtime recoit un SELECT filtre par RLS sur l'ensemble des tables de donnees,
+ * `orders` comprise. La classer « fermee » ferait echouer `test_rls_isolation`
+ * sur une lecture qui est en fait autorisee et bornee par
+ * `orders_select_participant`. Mesure faite : c'est l'ACL de l'environnement
+ * non amorce qui la fermait, pas le depot.
+ */
 export const TABLES_SANS_PRIVILEGE_RUNTIME = ['tracefab_identity_cles'];
 
 /**

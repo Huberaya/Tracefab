@@ -1,7 +1,7 @@
 import { Prisma } from '@prisma/client';
 import type { VercelRequest, VercelResponse } from '../_lib/vercel-types.js';
 import { requireClerkUser, isUnauthorized } from '../_lib/auth.js';
-import { withTracefabUserContext } from '../_lib/context.js';
+import {withTracefabRequestContext, withTracefabUserContext} from '../_lib/context.js';
 import { isUuid } from '../_lib/data-requests.js';
 import { json, methodNotAllowed, readJsonBody } from '../_lib/http.js';
 import { getSchema } from '../_lib/schema-catalog.js';
@@ -107,7 +107,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           : type === 'supplier'
             ? Prisma.sql`supplier_id = ${id}::uuid`
             : Prisma.sql`data_request_id = ${id}::uuid`;
-      const bindings = await withTracefabUserContext(user.id, user.email, async (tx) => {
+      const bindings = await withTracefabRequestContext(req, user, async (tx) => {
         const tenant = await requireActiveTenant(tx, req, user.id, tenantScope(type));
         if (!await subjectBelongsToTenant(tx, type, id, tenant.organizationId)) {
           throw new Error('schema_subject_not_found');
@@ -124,7 +124,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           WHERE ${subjectClause}
           ORDER BY created_at DESC
         `;
-      }, requestedTenantId(req));
+      });
       return json(res, 200, { bindings: bindings.map(serializeBinding) });
     }
 

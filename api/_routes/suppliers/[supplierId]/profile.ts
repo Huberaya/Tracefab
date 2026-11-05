@@ -1,7 +1,7 @@
 import { Prisma } from '@prisma/client';
 import type { VercelRequest, VercelResponse } from '../../../_lib/vercel-types.js';
 import { requireClerkUser, isUnauthorized } from '../../../_lib/auth.js';
-import { withTracefabUserContext } from '../../../_lib/context.js';
+import {withTracefabRequestContext} from '../../../_lib/context.js';
 import { json, methodNotAllowed, readJsonBody } from '../../../_lib/http.js';
 import { sqlBusinessError } from '../../../_lib/sql-errors.js';
 import { isTenantError, requireActiveTenant, requestedTenantId } from '../../../_lib/tenant.js';
@@ -27,7 +27,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     const { user } = await requireClerkUser(req);
-    const result = await withTracefabUserContext(user.id, user.email, async (tx) => {
+    const result = await withTracefabRequestContext(req, user, async (tx) => {
       const tenant = req.method === 'PATCH' ? await requireActiveTenant(tx, req, user.id, { types: ['supplier'] }) : null;
       const current = tenant
         ? await tx.suppliers.findFirst({ where: { id: supplierId, organization_id: tenant.organizationId }, select: SUPPLIER_PROFILE_SELECT })
@@ -51,7 +51,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         )
       `;
       return rows[0] ?? null;
-    }, requestedTenantId(req));
+    });
 
     if (!result) return json(res, 404, { error: 'supplier_not_found' });
     return json(res, 200, { profile: serializeSupplierProfile(result) });
