@@ -164,6 +164,39 @@ Non exécutables dans cet environnement (indépendant des changements) :
 
 ---
 
+## 5 bis. CI — preuve sur un SHA exact
+
+Dépôt `Huberaya/Tracefab`, branche `arena/8cb8c0b6-tracefab`, PR **#112** (brouillon).
+
+| Workflow | Job | Statut | Durée | Lien |
+|---|---|---|---|---|
+| CI | Socle — types, compilation, isolation | **pass** | 4m03 | `actions/runs/42089935305/job/127465733800` |
+| CI | Base — isolation RLS executee | **pass** | 2m37 | `actions/runs/42089935305/job/127468056812` |
+| CI | Verification — suite de tests | **pass** | 11m27 | `actions/runs/42089935305/job/127468057168` |
+| CI | Parcours — navigateur reel | **pass** | 1m36 | `actions/runs/42089935305/job/127468056852` |
+| Intégration migrations 34/36/41 | Chaîne 34/36/41 sur Postgres 17 jetable | **pass** | 1m29 | `actions/runs/42089935132/job/127465002427` |
+
+SHA mesuré : `e7f11f5`. Les cinq jobs sont verts sur ce SHA, sans `continue-on-error`,
+sans étape désactivée, sans exclusion de fichier.
+
+Quatre échecs ont été rencontrés puis corrigés, chacun avec sa cause mesurée :
+
+1. **`test:neon:security`** — la suite lisait `suppliers` sans armer de locataire actif et
+   attendait une ligne. Reproduit hors Prisma sous `tracefab_app` : sans locataire → 0 fournisseur,
+   avec locataire → 1. La suite arme désormais le locataire **et** prouve le refus par défaut.
+2. **`test:neon:quality`** — la suite attendait `quality_issue_waive_role_required` là où la garde
+   de locataire ajoutée par la PR #111 (`20261105190000`) refuse **avant**, avec
+   `active_tenant_mismatch`. Mesuré à l'identique sur la base PR #111 seule : **défaut de la
+   suite, pas de la branche**. La suite distingue maintenant les deux refus et exige les deux :
+   locataire (viewer de la marque) puis rôle (viewer du fournisseur, dans son locataire).
+3. **Routage des suites destructives** — un script de sonde local (`scripts/_q.mjs`) avait été
+   embarqué par un `git add -A` ; le contrôle de routage l'a refusé, à raison. Supprimé.
+4. **Lisibilité des échecs** — le journal du job n'est pas accessible depuis la session de
+   travail ; une suite qui échoue sans nommer sa cause ne laisse que « exit code 1 ». La suite
+   qualité imprime désormais `::error::<message>` (visible comme annotation du check) et
+   `expectSqlCode` reporte le message **observé**, pas seulement le code attendu. Ces deux ajouts
+   n'assouplissent aucune assertion : ils rendent l'échec diagnosticable.
+
 ## 6. Ce qui exige une autorisation humaine
 
 1. **Application en Préproduction puis Production.** Aucune migration de cette branche n'a été

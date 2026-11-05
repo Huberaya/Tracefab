@@ -255,8 +255,15 @@ avant les suites d'étanchéité : le test fait son **ménage** de fixtures, vé
 suite voisine (`test:neon:worker-non-forgeable`) mesure « aucune autre organisation visible » et
 échouait à cause de fixtures laissées en place — mesuré, puis corrigé.
 
+Cinq jobs verts sur le SHA `e7f11f5` (Socle, Base — isolation RLS, Verification, Parcours
+navigateur, Chaîne 34/36/41) ; détail et liens dans `SECURITY_MIGRATION_EVIDENCE.md` § 5 bis.
+
 Aucun test n'a été désactivé, aucun `continue-on-error`, aucune exclusion de fichier, aucune
-assertion affaiblie. Les contrats statiques qui ne reconnaissaient qu'une seule des deux formes
+assertion affaiblie. Deux suites ont dû être corrigées, et la mesure a chaque fois départagé la
+cause : `test:neon:security` lisait une table de locataire sans armer de locataire (comportement
+voulu depuis `20261105250000`), et `test:neon:quality` attendait un refus par **rôle** là où la
+PR #111 refuse par **locataire** — reproduit à l'identique sur la base PR #111 seule, donc défaut
+de la suite et non de la branche. Les deux suites exigent désormais les deux refus. Les contrats statiques qui ne reconnaissaient qu'une seule des deux formes
 légitimes d'armement ont été **généralisés par un module partagé**, pas contournés : la propriété
 vérifiée est la même, et elle est vérifiée pour davantage de routes.
 
