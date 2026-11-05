@@ -256,16 +256,24 @@ const guardedFunctions = await scalar(baseline.db, `
   WHERE n.nspname='public' AND p.prosecdef
     AND p.proname IN (
       'tracefab_add_dpp_claim','tracefab_add_dpp_event','tracefab_add_product_identifier',
-      'tracefab_audit_product_green_claims','tracefab_calculate_product_data_completion',
-      'tracefab_create_dpp_identity','tracefab_link_dpp_claim_evidence',
-      'tracefab_replace_dpp_identity','tracefab_update_product_identifier',
-      'tracefab_add_product_material','tracefab_material_visible_via_product',
-      'tracefab_update_product_material'
+      'tracefab_audit_product_green_claims','tracefab_create_dpp_identity',
+      'tracefab_link_dpp_claim_evidence','tracefab_replace_dpp_identity',
+      'tracefab_update_product_identifier','tracefab_add_product_material',
+      'tracefab_material_visible_via_product','tracefab_update_product_material'
     )
     AND p.prosrc LIKE '%tracefab_in_active_tenant%'
 `);
-ok('les 12 fonctions SECURITY DEFINER ciblées vérifient le tenant actif',
-  guardedFunctions === 12, String(guardedFunctions));
+ok('les 11 fonctions SECURITY DEFINER exposées ciblées vérifient le tenant actif',
+  guardedFunctions === 11, String(guardedFunctions));
+const completionGuard = await scalar(baseline.db, `
+  SELECT (NOT has_function_privilege(
+    'tracefab_app',
+    'public.tracefab_calculate_product_data_completion(uuid)',
+    'EXECUTE'
+  ))::int AS value
+`);
+ok('le calcul interne de complétude reste non exécutable par tracefab_app',
+  completionGuard === 1, String(completionGuard));
 const publicDppPolicies = await scalar(baseline.db, `
   SELECT count(*)::int AS value FROM pg_policies
   WHERE schemaname='public'
