@@ -260,7 +260,7 @@ BEGIN
     END IF;
 
     v_definition := pg_catalog.pg_get_functiondef(v_oid);
-    IF pg_catalog.position(v_target.guard_sql IN v_definition) > 0 THEN
+    IF pg_catalog.strpos(v_definition, v_target.guard_sql) > 0 THEN
       CONTINUE;
     END IF;
 
@@ -337,7 +337,7 @@ BEGIN
         JOIN pg_catalog.pg_namespace n ON n.oid = p.pronamespace
        WHERE n.nspname = 'public' AND p.proname = v_target.function_name
          AND p.prosecdef
-         AND pg_catalog.position(v_target.helper_name IN pg_catalog.pg_get_functiondef(p.oid)) > 0
+         AND pg_catalog.strpos(pg_catalog.pg_get_functiondef(p.oid), v_target.helper_name) > 0
     ) THEN
       RAISE EXCEPTION 'active_tenant_guard_postcondition_failed: %',
         v_target.function_name;
