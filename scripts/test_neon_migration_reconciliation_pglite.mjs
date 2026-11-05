@@ -178,7 +178,7 @@ for (const name of newNames) {
   forwardResults.push({ name, ...result });
   console.log(`  ${result.ok ? 'ok   ' : 'ECHEC'} ${name}${result.ok ? '' : ` — ${result.message}`}`);
 }
-ok('les huit corrections forward post-snapshot s’appliquent', forwardResults.length === 8 && forwardResults.every((r) => r.ok),
+ok('les quinze corrections forward post-snapshot s’appliquent', forwardResults.length === 15 && forwardResults.every((r) => r.ok),
   JSON.stringify(forwardResults.filter((r) => !r.ok)));
 const repairedPlmChecks = await scalar(baseline.db, `
   SELECT count(*)::int AS value FROM pg_constraint
@@ -196,7 +196,7 @@ ok('les quatre CHECK PLM sont présents et validés', repairedPlmChecks === 4, S
 ok('la contrainte GS1 accepte désormais GPC', repairedIdentifierCheck.includes('gpc'), repairedIdentifierCheck);
 const forwardReplay = [];
 for (const name of newNames) forwardReplay.push({ name, ...(await jouer(baseline.db, name)) });
-ok('les huit corrections forward sont idempotentes', forwardReplay.length === 8 && forwardReplay.every((r) => r.ok),
+ok('les quinze corrections forward sont idempotentes', forwardReplay.length === 15 && forwardReplay.every((r) => r.ok),
   JSON.stringify(forwardReplay.filter((r) => !r.ok)));
 
 console.log('\n  5. Contrôles du catalogue après application');
