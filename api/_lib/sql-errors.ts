@@ -5,6 +5,7 @@ type SqlErrorDefinition = {
 
 const DEFINITIONS: Record<string, SqlErrorDefinition> = {
   authentication_required: { status: 401 },
+  active_tenant_mismatch: { status: 403 },
   brand_admin_role_required: { status: 403 },
   brand_organization_required: { status: 400 },
   valid_supplier_email_required: { status: 400 },
