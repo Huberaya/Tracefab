@@ -82,7 +82,7 @@ async function scalar(db, sql, params = []) {
 }
 
 console.log(`\n  1. Snapshot Neon ${SNAPSHOT_DATE} — cohérence des catégories`);
-ok('85 dossiers de migration dans le dépôt', dossiers.length === 85, String(dossiers.length));
+ok('86 dossiers de migration dans le dépôt', dossiers.length === 86, String(dossiers.length));
 ok('56 migrations terminées dans les deux bases', baselineNames.length === 56);
 ok('13 migrations réellement en attente', pendingNames.length === 13);
 ok('5 migrations hors bande incluses dans le baseline', outOfBandNames.length === 5);
@@ -179,7 +179,7 @@ for (const name of newNames) {
   forwardResults.push({ name, ...result });
   console.log(`  ${result.ok ? 'ok   ' : 'ECHEC'} ${name}${result.ok ? '' : ` — ${result.message}`}`);
 }
-ok('les seize corrections forward post-snapshot s’appliquent', forwardResults.length === 16 && forwardResults.every((r) => r.ok),
+ok('les dix-sept corrections forward post-snapshot s’appliquent', forwardResults.length === 17 && forwardResults.every((r) => r.ok),
   JSON.stringify(forwardResults.filter((r) => !r.ok)));
 const repairedPlmChecks = await scalar(baseline.db, `
   SELECT count(*)::int AS value FROM pg_constraint
@@ -197,7 +197,7 @@ ok('les quatre CHECK PLM sont présents et validés', repairedPlmChecks === 4, S
 ok('la contrainte GS1 accepte désormais GPC', repairedIdentifierCheck.includes('gpc'), repairedIdentifierCheck);
 const forwardReplay = [];
 for (const name of newNames) forwardReplay.push({ name, ...(await jouer(baseline.db, name)) });
-ok('les seize corrections forward sont idempotentes', forwardReplay.length === 16 && forwardReplay.every((r) => r.ok),
+ok('les dix-sept corrections forward sont idempotentes', forwardReplay.length === 17 && forwardReplay.every((r) => r.ok),
   JSON.stringify(forwardReplay.filter((r) => !r.ok)));
 
 console.log('\n  5. Contrôles du catalogue après application');
@@ -368,4 +368,4 @@ if (echecs) {
   console.error(`  ${echecs} échec(s) sur ${verifies}.`);
   process.exit(1);
 }
-console.log(`  ${verifies} vérifications passées — baseline 56, pending historiques 13 + 16 corrections forward PLM/GS1, graphe, tenant actif, DPP, fournisseurs, qualité, documents et worker/public, 1 écart PLM documenté, aucun resolve ni réécriture de checksum.`);
+console.log(`  ${verifies} vérifications passées — baseline 56, pending historiques 13 + 17 corrections forward PLM/GS1, graphe, tenant actif, DPP, fournisseurs, qualité, documents et worker/public, 1 écart PLM documenté, aucun resolve ni réécriture de checksum.`);
