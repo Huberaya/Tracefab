@@ -5,6 +5,8 @@ import { json, methodNotAllowed, readJsonBody } from '../../../_lib/http.js';
 import { sqlBusinessError } from '../../../_lib/sql-errors.js';
 import { reviewPassportAccess } from '../../../_lib/supplier-passport/passport-manager.js';
 import { isUuid } from '../../../_lib/data-requests.js';
+import { requestedOrganizationId } from '../../../_lib/supplier-profile.js';
+import { isTenantError, resolveActiveTenant } from '../../../_lib/tenant.js';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'GET' && req.method !== 'POST') {
@@ -13,25 +15,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   try {
     const { user } = await requireClerkUser(req);
-    const orgIdQuery = typeof req.query.organizationId === 'string' ? req.query.organizationId : undefined;
-
+    const activeOrganizationId = requestedOrganizationId(req);
     const result = await withTracefabUserContext(user.id, user.email, async (tx) => {
-      let supplierOrgId = orgIdQuery;
-      if (!supplierOrgId) {
-        const membership = await tx.organization_memberships.findFirst({
-          where: {
-            user_id: user.id,
-            status: 'active',
-            organizations: { type: 'supplier' },
-          },
-          select: { organization_id: true },
-        });
-        supplierOrgId = membership?.organization_id;
-      }
-
-      if (!supplierOrgId) {
-        throw new Error('supplier_organization_not_found');
-      }
+      const tenant = await resolveActiveTenant(tx, user.id, activeOrganizationId, { types: ['supplier'] });
+      const supplierOrgId = tenant.organizationId;
 
       if (req.method === 'GET') {
         const requests = await tx.supplier_passport_access_requests.findMany({
@@ -59,7 +46,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
 
       return await reviewPassportAccess(tx, requestId, verdict);
-    });
+    }, activeOrganizationId);
 
     return json(res, 200, {
       requests: req.method === 'GET' ? result : undefined,
@@ -69,6 +56,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (isUnauthorized(err)) {
       return json(res, 401, { error: 'unauthorized' });
     }
+    if (isTenantError(err)) return json(res, err.status, { error: err.message });
     const sqlError = sqlBusinessError(err);
     if (sqlError) {
       return json(res, sqlError.status, { error: sqlError.error });
