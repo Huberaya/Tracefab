@@ -140,14 +140,14 @@ const lignesForward = (name) => {
       action: 'APPLIQUER APRÈS LES GARDES CAP QUALITÉ, EN PRÉPRODUCTION PUIS PRODUCTION APRÈS VALIDATION COMPLÈTE',
     };
   }
-  if (name === '20261105250000_active_tenant_policy_and_worker_closure') {
+  if (name === '20261105235900_active_tenant_policy_and_worker_closure') {
     return {
       ...base,
       effect: 'recalculer et borner les politiques RLS restantes au tenant actif, sécuriser les fonctions documentaires et transférer les traitements globaux de notification à l’identité worker non connectable',
       evidence: 'inventaire PostgreSQL pg_policies, contrôles de postconditions, tests négatifs directs des fonctions documentaires, tests worker non falsifiable et contrôle du contexte public',
       risk: 'migration à forte portée : réécrit dynamiquement les prédicats RLS et change le propriétaire de trois fonctions ; revue catalogue/ACL obligatoire avant tout déploiement réel',
-      prerequisite: '20261105240000 terminée ; comparer le nombre de politiques et les expressions USING/WITH CHECK avant/après, vérifier OID/propriétaires/ACL, puis exécuter les tests RLS, documentaires, worker et public',
-      action: 'APPLIQUER APRÈS LES GARDES QUALITÉ FOURNISSEUR, EN PRÉPRODUCTION PUIS PRODUCTION APRÈS VALIDATION COMPLÈTE',
+      prerequisite: '20261105230000 terminée ; comparer le nombre de politiques et les expressions USING/WITH CHECK avant/après, vérifier OID/propriétaires/ACL, puis exécuter les tests RLS, documentaires, worker et public',
+      action: 'APPLIQUER APRÈS LES GARDES INVITATIONS/DOCUMENTS/PASSEPORTS, EN PRÉPRODUCTION PUIS PRODUCTION APRÈS VALIDATION COMPLÈTE',
     };
   }
   if (name === '20261105240000_active_tenant_supplier_quality_guard') {
@@ -158,6 +158,16 @@ const lignesForward = (name) => {
       risk: 'CREATE OR REPLACE doit préserver OID, propriétaire et ACL ; le helper reste non exécutable par tracefab_app',
       prerequisite: '20261105230000 terminée ; vérifier le parcours positif test_neon_quality_flow et le refus inter-tenant',
       action: 'APPLIQUER APRÈS LES GARDES INVITATIONS/DOCUMENTS/PASSEPORTS, EN PRÉPRODUCTION PUIS PRODUCTION APRÈS VALIDATION COMPLÈTE',
+    };
+  }
+  if (name === '20261106000000_active_tenant_supplier_passport_guards') {
+    return {
+      ...base,
+      effect: 'rétablir immédiatement après les migrations historiques tardives la garde du tenant actif dans les deux fonctions SECURITY DEFINER de passeport fournisseur',
+      evidence: 'pg_get_functiondef vérifie la garde après BEGIN ; les tests PostgreSQL 17 couvrent le refus inter-tenant et le parcours fournisseur positif',
+      risk: 'CREATE OR REPLACE doit préserver OID, propriétaire et ACL ; le helper ne doit jamais être exécutable directement par tracefab_app',
+      prerequisite: '20261105235900 et 20261105240000 terminées ; vérifier les deux fonctions sur le schéma canonique après les scénarios de migration tardive',
+      action: 'APPLIQUER APRÈS LA FERMETURE RLS/WORKER ET LES GARDES QUALITÉ FOURNISSEUR, EN PRÉPRODUCTION PUIS PRODUCTION APRÈS VALIDATION COMPLÈTE',
     };
   }
   if (name === '20261105210000_active_tenant_supplier_profile_passport_guards') {
@@ -259,7 +269,7 @@ const lines = [
 const errors = [];
 const warnings = [];
 const phases = [
-  { label: 'PREPRODUCTION', command: 'npx prisma migrate deploy', gate: '13 migrations historiques pending + 16 corrections forward ordonnées (PLM/GS1, graphe, tenant actif PLM/ERP, RLS produits/DPP/PEF, allégations vertes, claims/identités DPP, compositions produit-matière, 19 fonctions SECURITY DEFINER, enregistrement TC, politiques RLS restantes et fermeture worker/public) ; 1 variance checksum documentée et éprouvée par test Prisma ; aucun resolve' },
+  { label: 'PREPRODUCTION', command: 'npx prisma migrate deploy', gate: '13 migrations historiques pending + 17 corrections forward ordonnées (PLM/GS1, graphe, tenant actif PLM/ERP, RLS produits/DPP/PEF, allégations vertes, claims/identités DPP, compositions produit-matière, 19 fonctions SECURITY DEFINER, enregistrement TC, politiques RLS restantes et fermeture worker/public) ; 1 variance checksum documentée et éprouvée par test Prisma ; aucun resolve' },
   { label: 'PRODUCTION', command: 'npx prisma migrate deploy', gate: 'Préproduction validée et catalogue vérifié' },
 ];
 function violationsFor(planLines, phaseList = phases) {
@@ -298,9 +308,10 @@ if (JSON.stringify(newNames) !== JSON.stringify([
   '20261105220000_active_tenant_quality_cap_guards',
   '20261105230000_active_tenant_invite_document_passport_guards',
   '20261105240000_active_tenant_supplier_quality_guard',
-  '20261105250000_active_tenant_policy_and_worker_closure',
+  '20261105235900_active_tenant_policy_and_worker_closure',
+  '20261106000000_active_tenant_supplier_passport_guards',
 ])) {
-  errors.push(`les seize corrections forward PLM/GS1, graphe, tenant actif, RLS produits/DPP/PEF, allégations vertes, claims/identités DPP, compositions produit-matière, gardes SECURITY DEFINER, enregistrement TC, qualité/collecte, matières/certifications, profil fournisseur, CAP qualité, invitations/documents/passeports et qualité fournisseur sont attendues, obtenu ${JSON.stringify(newNames)}`);
+  errors.push(`les dix-sept corrections forward PLM/GS1, graphe, tenant actif, RLS produits/DPP/PEF, allégations vertes, claims/identités DPP, compositions produit-matière, gardes SECURITY DEFINER, enregistrement TC, qualité/collecte, matières/certifications, profil fournisseur, CAP qualité, invitations/documents/passeports et qualité fournisseur sont attendues, obtenu ${JSON.stringify(newNames)}`);
 }
 if (ROLLED_BACK_ATTEMPTS.length !== 2) errors.push('le snapshot doit conserver deux tentatives annulees');
 for (const name of outOfBand) {
