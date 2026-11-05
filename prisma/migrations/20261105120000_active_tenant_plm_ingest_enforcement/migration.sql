@@ -436,7 +436,7 @@ BEGIN
     'summary', v_summary
   );
 END;
-$function$
+$function$;
 
 
 -- La route accepte les types déclarés par PLM_ERP_SYSTEM_TYPES. La contrainte
