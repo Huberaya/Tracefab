@@ -11,6 +11,8 @@
 -- Migration additive : aucune migration historique ni aucun checksum n'est
 -- modifie. Les ACL existantes de la fonction sont conservees par CREATE OR REPLACE.
 
+BEGIN;
+
 CREATE OR REPLACE FUNCTION public.tracefab_ingest_plm_erp_payload(p_organization_id uuid, p_system_type text, p_payload jsonb, p_integration_id uuid DEFAULT NULL::uuid)
  RETURNS jsonb
  LANGUAGE plpgsql
@@ -506,3 +508,5 @@ CREATE POLICY plm_sync_jobs_select_org
     tracefab_in_active_tenant(brand_organization_id)
     AND tracefab_is_org_member(brand_organization_id)
   );
+
+COMMIT;
