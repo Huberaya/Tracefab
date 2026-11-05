@@ -213,8 +213,14 @@ try {
       )).id as id`,
       [prodRecette, source.id, target.id, linkType]);
     linkRecette = link.id;
+    await app.query(
+      `select tracefab_update_supply_chain_link($1::uuid, 2, null::date, null::date, null::uuid, '{}'::jsonb)`,
+      [linkRecette]);
+    await app.query(
+      'select tracefab_allocate_tc_quantity($1::uuid, $2::uuid, 1::numeric)',
+      [tcRecette, prodRecette]);
     await app.query('commit');
-    ok('fixture : deux nœuds et un lien supply-chain réels créés sous le tenant B');
+    ok('parcours positifs : nœuds/liens créés et modifiés, TC alloué sous le tenant B');
   }
 
   await assertTenantGuard('tracefab_add_dpp_claim',
