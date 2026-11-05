@@ -78,6 +78,8 @@ const userMulti = randomUUID();
 const orgGinger = randomUUID();
 const orgRecette = randomUUID();
 const orgSupplier = randomUUID();
+const relationshipGingerSupplier = randomUUID();
+const relationshipRecetteSupplier = randomUUID();
 const supplierRecette = randomUUID();
 const prodRecette = randomUUID();
 const dppRecette = randomUUID();
@@ -207,12 +209,19 @@ try {
      values ($1, $2, $3, 'tenant.guard.fixture', '1', 'blocking', 'Synthetic tenant guard issue')`,
     [issueRecette, orgRecette, prodRecette]);
   await proprio.query(
-    `insert into data_requests
-      (id, brand_organization_id, supplier_organization_id, title, questionnaire_key, questionnaire_version, status, created_by)
+    `insert into brand_supplier_relationships
+      (id, brand_organization_id, supplier_organization_id, status, requested_by, accepted_at)
      values
-      ($1, $3, $4, 'Synthetic brand request', 'tenant_guard', '1', 'in_progress', $5),
-      ($2, $4, $3, 'Synthetic supplier request', 'tenant_guard', '1', 'sent', $5)`,
-    [requestBrandB, requestSupplierB, orgRecette, orgGinger, userMulti]);
+      ($1, $2, $4, 'active', $6, now()),
+      ($3, $5, $4, 'active', $6, now())`,
+    [relationshipRecetteSupplier, orgRecette, relationshipGingerSupplier, orgSupplier, orgGinger, userMulti]);
+  await proprio.query(
+    `insert into data_requests
+      (id, brand_organization_id, supplier_organization_id, relationship_id, title, questionnaire_key, questionnaire_version, status, created_by)
+     values
+      ($1, $3, $4, $6, 'Synthetic brand request', 'tenant_guard', '1', 'in_progress', $8),
+      ($2, $5, $4, $7, 'Synthetic supplier request', 'tenant_guard', '1', 'sent', $8)`,
+    [requestBrandB, requestSupplierB, orgRecette, orgSupplier, orgGinger, relationshipRecetteSupplier, relationshipGingerSupplier, userMulti]);
   await proprio.query(
     `insert into data_request_items (id, data_request_id, field_key, label, data_type, required, evidence_required)
      values
