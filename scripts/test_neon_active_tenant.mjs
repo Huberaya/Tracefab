@@ -83,6 +83,7 @@ const pefRecette = randomUUID();
 const greenClaimRecette = randomUUID();
 const dppClaimRecette = randomUUID();
 const dppIdentityRecette = randomUUID();
+const materialRecette = randomUUID();
 
 const proprio = cli(URL_PROPRIO);
 await proprio.connect();
@@ -129,7 +130,13 @@ try {
   await proprio.query(
     'insert into dpp_resolvable_identifiers (id, product_id, owner_organization_id, public_id, granularity) values ($1, $2, $3, $4, $5)',
     [dppIdentityRecette, prodRecette, orgRecette, `tf-${suffixe}-private`, 'model']);
-  ok('fixture : utilisateur multi-org avec produit, DPP, PEF, allégation verte, claim et identité chez B uniquement');
+  await proprio.query(
+    'insert into materials (id, owner_organization_id, material_type, name, composition, created_by) values ($1, $2, $3, $4, $5::jsonb, $6)',
+    [materialRecette, orgRecette, 'fiber', 'Synthetic shared cotton', '{}', userMulti]);
+  await proprio.query(
+    'insert into product_materials (product_id, material_id, material_role, percentage, unit, product_version) values ($1, $2, $3, $4, $5, $6)',
+    [prodRecette, materialRecette, 'main', 100, '%', 1]);
+  ok('fixture : utilisateur multi-org avec produit, DPP, PEF, claims, identité et composition chez B uniquement');
 
   /* -- événement DPP créé par la fonction SECURITY DEFINER sous le tenant B -- */
   let dppEventRecette = null;
@@ -190,6 +197,12 @@ try {
   await assertTenantGuard('tracefab_link_dpp_claim_evidence',
     'select tracefab_link_dpp_claim_evidence($1::uuid, $2::uuid)',
     [dppClaimRecette, randomUUID()]);
+  await assertTenantGuard('tracefab_add_product_material',
+    'select tracefab_add_product_material($1::uuid, $2::uuid, $3, $4, $5)',
+    [prodRecette, materialRecette, 'main', 50, '%']);
+  await assertTenantGuard('tracefab_update_product_material',
+    'select tracefab_update_product_material($1::uuid, $2::uuid, $3, $4, $5, $6)',
+    [prodRecette, materialRecette, 'main', 1, 50, '%']);
 
   /* -- 1. hors contexte, aucun locataire --------------------------------- */
   {
@@ -385,8 +398,10 @@ try {
     const directDppClaims = await app.query('select id from dpp_claims where id = $1::uuid', [dppClaimRecette]);
     const directDppEvents = await app.query('select id from dpp_lifecycle_events where id = $1::uuid', [dppEventRecette]);
     const directDppIdentities = await app.query('select id from dpp_resolvable_identifiers where id = $1::uuid', [dppIdentityRecette]);
+    const directProductMaterials = await app.query('select material_id from product_materials where product_id = $1::uuid and material_id = $2::uuid', [prodRecette, materialRecette]);
+    const materialVisible = await app.query('select tracefab_material_visible_via_product($1::uuid) as visible', [materialRecette]);
     await app.query('commit');
-    return { rows, directProducts: directProducts.rows, directDpp: directDpp.rows, directPef: directPef.rows, directGreenClaims: directGreenClaims.rows, directDppClaims: directDppClaims.rows, directDppEvents: directDppEvents.rows, directDppIdentities: directDppIdentities.rows };
+    return { rows, directProducts: directProducts.rows, directDpp: directDpp.rows, directPef: directPef.rows, directGreenClaims: directGreenClaims.rows, directDppClaims: directDppClaims.rows, directDppEvents: directDppEvents.rows, directDppIdentities: directDppIdentities.rows, directProductMaterials: directProductMaterials.rows, materialVisible: materialVisible.rows };
   };
 
   {
@@ -396,15 +411,15 @@ try {
     const fromGinger = await asTenant(orgGinger);
 
     if (fromRecette.rows.length === 1 && fromRecette.rows[0].owner_organization_id === orgRecette
-      && fromRecette.directProducts.length === 1 && fromRecette.directDpp.length === 1 && fromRecette.directPef.length === 1 && fromRecette.directGreenClaims.length === 1 && fromRecette.directDppClaims.length === 1 && fromRecette.directDppEvents.length === 1 && fromRecette.directDppIdentities.length === 1) {
+      && fromRecette.directProducts.length === 1 && fromRecette.directDpp.length === 1 && fromRecette.directPef.length === 1 && fromRecette.directGreenClaims.length === 1 && fromRecette.directDppClaims.length === 1 && fromRecette.directDppEvents.length === 1 && fromRecette.directDppIdentities.length === 1 && fromRecette.directProductMaterials.length === 1 && fromRecette.materialVisible[0]?.visible === true) {
       ok('sous le locataire de recette, accessibleProduct rend le produit de recette');
     } else {
       ko(`sous le locataire de recette, attendu 1 ligne, obtenu ${fromRecette.length}`);
     }
 
     if (fromGinger.rows.length === 0 && fromGinger.directProducts.length === 0
-      && fromGinger.directDpp.length === 0 && fromGinger.directPef.length === 0 && fromGinger.directGreenClaims.length === 0 && fromGinger.directDppClaims.length === 0 && fromGinger.directDppEvents.length === 0 && fromGinger.directDppIdentities.length === 0) {
-      ok('sous Ginger, la RLS directe bloque produit, DPP, PEF, allégation, claim, événement et identité — sans filtre applicatif');
+      && fromGinger.directDpp.length === 0 && fromGinger.directPef.length === 0 && fromGinger.directGreenClaims.length === 0 && fromGinger.directDppClaims.length === 0 && fromGinger.directDppEvents.length === 0 && fromGinger.directDppIdentities.length === 0 && fromGinger.directProductMaterials.length === 0 && fromGinger.materialVisible[0]?.visible === false) {
+      ok('sous Ginger, la RLS directe bloque produit, DPP, PEF, claims, événements, identités et composition — sans filtre applicatif');
     } else {
       ko('fuite inter-tenant : produit=' + fromGinger.directProducts.length + ', DPP=' + fromGinger.directDpp.length + ', PEF=' + fromGinger.directPef.length + ', green_claims=' + fromGinger.directGreenClaims.length + ', dpp_claims=' + fromGinger.directDppClaims.length + ', dpp_events=' + fromGinger.directDppEvents.length + ', dpp_identities=' + fromGinger.directDppIdentities.length);
     }
