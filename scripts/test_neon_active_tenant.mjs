@@ -92,6 +92,7 @@ const tcRecette = randomUUID();
 const issueRecette = randomUUID();
 const certificationRecette = randomUUID();
 const documentRecette = randomUUID();
+const documentAvailable = randomUUID();
 const documentShared = randomUUID();
 const shareGingerSupplier = randomUUID();
 const passportRecette = randomUUID();
@@ -160,6 +161,11 @@ try {
   await proprio.query(
     `insert into documents
       (id, owner_organization_id, storage_bucket, storage_path, original_filename, content_type, byte_size, uploaded_by)
+     values ($1, $2, 'tracefab-private', $3, 'tenant-guard-available.pdf', 'application/pdf', 128, $4)`,
+    [documentAvailable, orgRecette, `${orgRecette}/tenant-guard-available.pdf`, userMulti]);
+  await proprio.query(
+    `insert into documents
+      (id, owner_organization_id, storage_bucket, storage_path, original_filename, content_type, byte_size, uploaded_by)
      values ($1, $2, 'tracefab-private', $3, 'shared-supplier-evidence.pdf', 'application/pdf', 128, $4)`,
     [documentShared, orgSupplier, `${orgSupplier}/shared-supplier-evidence.pdf`, userMulti]);
   await proprio.query(
@@ -222,6 +228,18 @@ try {
       ($1, $2, $4, 'active', $6, now()),
       ($3, $5, $4, 'active', $6, now())`,
     [relationshipRecetteSupplier, orgRecette, relationshipGingerSupplier, orgSupplier, orgGinger, userMulti]);
+  {
+    await app.query('begin');
+    await app.query(`select set_config('tracefab.user_id', $1, true)`, [userMulti]);
+    await app.query(`select set_config('tracefab.user_email', $1, true)`, [`mt-${suffixe}@example.test`]);
+    await app.query(`select set_config('tracefab.active_organization_id', $1, true)`, [orgRecette]);
+    await app.query(
+      `select tracefab_finalize_document_upload($1::uuid, repeat('c', 64), true, 128::bigint)`,
+      [documentAvailable],
+    );
+    await app.query('commit');
+    ok('document de marque synthétique finalisé pour le test d’accès documentaire');
+  }
   await proprio.query(
     `insert into data_shares
       (id, relationship_id, supplier_organization_id, grantee_organization_id, scope, status, created_by)
@@ -336,7 +354,7 @@ try {
       $1::uuid, 'failed'::verification_status, 'tenant_guard_test', 'Synthetic test',
       null::text, null::text, null::text, null::text, null::text,
       null::date, null::date, 0.5::numeric, '{}'::jsonb
-    )`, [documentRecette]);
+    )`, [documentAvailable]);
   await assertTenantGuard('tracefab_enqueue_manual_data_request_reminder',
     'select tracefab_enqueue_manual_data_request_reminder($1::uuid)', [requestBrandB]);
   await assertTenantGuard('tracefab_review_passport_access',
@@ -771,6 +789,8 @@ try {
     const directDppIdentities = await app.query('select id from dpp_resolvable_identifiers where id = $1::uuid', [dppIdentityRecette]);
     const directProductMaterials = await app.query('select material_id from product_materials where product_id = $1::uuid and material_id = $2::uuid', [prodRecette, materialRecette]);
     const directDocuments = await app.query('select id from documents where id = $1::uuid', [documentRecette]);
+    const directAvailableDocuments = await app.query('select id from documents where id = $1::uuid', [documentAvailable]);
+    const availableDocumentAccess = await app.query('select tracefab_can_access_document($1::uuid) as accessible', [documentAvailable]);
     const directSharedDocuments = await app.query('select id from documents where id = $1::uuid', [documentShared]);
     const sharedDocumentAccess = await app.query('select tracefab_can_access_document($1::uuid) as accessible', [documentShared]);
     const directCertifications = await app.query('select id from certifications where id = $1::uuid', [certificationRecette]);
@@ -790,6 +810,7 @@ try {
       directDppEvents: directDppEvents.rows, directDppIdentities: directDppIdentities.rows,
       directProductMaterials: directProductMaterials.rows, directDocuments: directDocuments.rows,
       directSharedDocuments: directSharedDocuments.rows, sharedDocumentAccess: sharedDocumentAccess.rows,
+      directAvailableDocuments: directAvailableDocuments.rows, availableDocumentAccess: availableDocumentAccess.rows,
       directCertifications: directCertifications.rows, directQualityIssues: directQualityIssues.rows,
       directBrandRequests: directBrandRequests.rows, directBrandRequestItems: directBrandRequestItems.rows,
       directBrandResponses: directBrandResponses.rows, directBrandSupplierRelationship: directBrandSupplierRelationship.rows,
@@ -806,7 +827,7 @@ try {
 
     if (fromRecette.rows.length === 1 && fromRecette.rows[0].owner_organization_id === orgRecette
       && fromRecette.directProducts.length === 1 && fromRecette.directDpp.length === 1 && fromRecette.directPef.length === 1 && fromRecette.directGreenClaims.length === 1 && fromRecette.directDppClaims.length === 1 && fromRecette.directDppEvents.length === 1 && fromRecette.directDppIdentities.length === 1 && fromRecette.directProductMaterials.length === 1
-      && fromRecette.directDocuments.length === 1 && fromRecette.directSharedDocuments.length === 0 && fromRecette.sharedDocumentAccess[0]?.accessible === false && fromRecette.directCertifications.length === 1 && fromRecette.directQualityIssues.length === 1
+      && fromRecette.directDocuments.length === 1 && fromRecette.directAvailableDocuments.length === 1 && fromRecette.availableDocumentAccess[0]?.accessible === true && fromRecette.directSharedDocuments.length === 0 && fromRecette.sharedDocumentAccess[0]?.accessible === false && fromRecette.directCertifications.length === 1 && fromRecette.directQualityIssues.length === 1
       && fromRecette.directBrandRequests.length === 1 && fromRecette.directBrandRequestItems.length === 1 && fromRecette.directBrandResponses.length === 1
       && fromRecette.directBrandSupplierRelationship.length === 1 && fromRecette.directTransactionCertificate.length === 1
       && fromRecette.directMaterials.length === 1 && fromRecette.directPassportAccessRequests.length === 0
@@ -818,7 +839,7 @@ try {
 
     if (fromGinger.rows.length === 0 && fromGinger.directProducts.length === 0
       && fromGinger.directDpp.length === 0 && fromGinger.directPef.length === 0 && fromGinger.directGreenClaims.length === 0 && fromGinger.directDppClaims.length === 0 && fromGinger.directDppEvents.length === 0 && fromGinger.directDppIdentities.length === 0 && fromGinger.directProductMaterials.length === 0
-      && fromGinger.directDocuments.length === 0 && fromGinger.directSharedDocuments.length === 1 && fromGinger.sharedDocumentAccess[0]?.accessible === true && fromGinger.directCertifications.length === 0 && fromGinger.directQualityIssues.length === 0
+      && fromGinger.directDocuments.length === 0 && fromGinger.directAvailableDocuments.length === 0 && fromGinger.availableDocumentAccess[0]?.accessible === false && fromGinger.directSharedDocuments.length === 1 && fromGinger.sharedDocumentAccess[0]?.accessible === true && fromGinger.directCertifications.length === 0 && fromGinger.directQualityIssues.length === 0
       && fromGinger.directBrandRequests.length === 0 && fromGinger.directBrandRequestItems.length === 0 && fromGinger.directBrandResponses.length === 0
       && fromGinger.directBrandSupplierRelationship.length === 0 && fromGinger.directTransactionCertificate.length === 1
       && fromGinger.directMaterials.length === 0 && fromGinger.directPassportAccessRequests.length === 1
