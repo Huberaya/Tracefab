@@ -41,6 +41,13 @@ function controle(libelle, condition, detail) {
     Number(annonce[1]) === reel,
     `le document annonce ${annonce[1]} migration(s)`,
   );
+  const migrationRls = '20261105130000_active_tenant_product_dpp_pef_rls';
+  const migrationRlsPresente = readdirSync('prisma/migrations').includes(migrationRls);
+  controle(
+    'la migration RLS produits/DPP/PEF est référencée dans le registre',
+    migrationRlsPresente && texte.includes(migrationRls),
+    migrationRlsPresente ? 'migration présente mais absente du registre' : 'migration absente du dépôt',
+  );
   const entete = texte.slice(0, 1000);
   const nonVerifie = /Neon de production\s*:\s*non vérifié/i.test(entete);
   let preuveNeon = '';
