@@ -615,14 +615,12 @@ DECLARE
   v_after_secdef boolean;
   v_after_config text[];
   v_app_exec_before boolean;
-  v_public_exec_before boolean;
   v_app_exec_after boolean;
   v_public_exec_after boolean;
 BEGIN
   SELECT p.oid,
-         pg_catalog.has_function_privilege('tracefab_app', p.oid, 'EXECUTE'),
-         pg_catalog.has_function_privilege('public', p.oid, 'EXECUTE')
-    INTO v_oid, v_app_exec_before, v_public_exec_before
+         pg_catalog.has_function_privilege('tracefab_app', p.oid, 'EXECUTE')
+    INTO v_oid, v_app_exec_before
     FROM pg_catalog.pg_proc p
     JOIN pg_catalog.pg_namespace n ON n.oid = p.pronamespace
    WHERE n.nspname = 'public'
@@ -658,7 +656,13 @@ BEGIN
 
   SELECT p.proowner, p.prosecdef, p.proconfig,
          pg_catalog.has_function_privilege('tracefab_app', p.oid, 'EXECUTE'),
-         pg_catalog.has_function_privilege('public', p.oid, 'EXECUTE')
+         EXISTS (
+           SELECT 1
+             FROM pg_catalog.aclexplode(
+               coalesce(p.proacl, pg_catalog.acldefault('f', p.proowner))
+             ) a
+            WHERE a.grantee = 0 AND a.privilege_type = 'EXECUTE'
+         )
     INTO v_after_owner, v_after_secdef, v_after_config, v_app_exec_after, v_public_exec_after
     FROM pg_catalog.pg_proc p
    WHERE p.oid = v_oid;
@@ -667,7 +671,6 @@ BEGIN
      OR v_after_secdef IS DISTINCT FROM true
      OR NOT ('search_path=pg_catalog, public' = ANY(coalesce(v_after_config, ARRAY[]::text[])))
      OR v_app_exec_after IS DISTINCT FROM v_app_exec_before
-     OR v_public_exec_after IS DISTINCT FROM v_public_exec_before
      OR v_app_exec_after IS NOT TRUE
      OR v_public_exec_after IS TRUE THEN
     RAISE EXCEPTION 'current_user_email_worker_postcondition_failed: owner=% worker=% secdef=% config=% app_before=% app_after=% public_before=% public_after=%',
