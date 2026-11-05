@@ -91,6 +91,40 @@ check('certificats TC : test PostgreSQL positif et refus direct inter-tenant',
   activeTenantDbTest.includes('tracefab_register_transaction_certificate accepte un appel direct')
     && activeTenantDbTest.includes("await assertTenantGuard('tracefab_register_transaction_certificate'"));
 
+const qualityCollectionMigration = read('prisma/migrations/20261105190000_active_tenant_quality_collection_guards/migration.sql');
+const qualityCollectionFunctions = [
+  ['tracefab_acknowledge_quality_issue', 'v_issue.owner_organization_id'],
+  ['tracefab_waive_quality_issue', 'v_issue.owner_organization_id'],
+  ['tracefab_add_data_request_item', 'v_request.brand_organization_id'],
+  ['tracefab_send_data_request', 'v_request.brand_organization_id'],
+  ['tracefab_submit_data_request', 'v_request.supplier_organization_id'],
+  ['tracefab_submit_data_response', 'v_request.supplier_organization_id'],
+  ['tracefab_review_data_response', 'v_request.brand_organization_id'],
+];
+for (const [fn, tenantExpression] of qualityCollectionFunctions) {
+  check(`migration SQL : ${fn} exige le tenant actif de ${tenantExpression}`,
+    qualityCollectionMigration.includes(fn)
+      && qualityCollectionMigration.includes(`tracefab_require_active_tenant_for_organization(${tenantExpression})`));
+}
+check('migration qualité/collecte : helpers accordés aux propriétaires, jamais au runtime',
+  qualityCollectionMigration.includes('GRANT EXECUTE ON FUNCTION public.tracefab_require_active_tenant_for_organization(uuid)')
+    && qualityCollectionMigration.includes('active_tenant_quality_collection_runtime_owns_definer_function')
+    && qualityCollectionMigration.includes('active_tenant_quality_collection_helper_executable_by_runtime'));
+const tenantBoundRoutes = [
+  'api/_routes/quality-issues/[issueId]/acknowledge.ts',
+  'api/_routes/quality-issues/[issueId]/waive.ts',
+  'api/_routes/data-requests/[requestId]/items.ts',
+  'api/_routes/data-requests/[requestId]/send.ts',
+  'api/_routes/data-requests/[requestId]/submit.ts',
+  'api/_routes/data-request-items/[itemId]/response.ts',
+];
+for (const path of tenantBoundRoutes) {
+  const src = read(path);
+  check(`${path}: arme et valide le tenant actif`,
+    src.includes('requireActiveTenant(tx, req, user.id')
+      && src.includes('requestedTenantId(req)')
+      && src.includes('isTenantError(error)'));
+}
 const definerMigration = read('prisma/migrations/20261105170000_active_tenant_security_definer_guards/migration.sql');
 const definerGuards = [
   ['tracefab_add_supply_chain_link', 'tracefab_require_active_tenant_for_product'],
