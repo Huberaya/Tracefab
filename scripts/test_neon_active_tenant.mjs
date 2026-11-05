@@ -1084,7 +1084,13 @@ try {
     const emailHelper = await proprio.query(`
       select r.rolname as owner, p.prosecdef,
              pg_catalog.has_function_privilege('tracefab_app', p.oid, 'EXECUTE') as app_exec,
-             pg_catalog.has_function_privilege('public', p.oid, 'EXECUTE') as public_exec
+             exists (
+               select 1
+                 from pg_catalog.aclexplode(
+                   coalesce(p.proacl, pg_catalog.acldefault('f', p.proowner))
+                 ) a
+                where a.grantee = 0 and a.privilege_type = 'EXECUTE'
+             ) as public_exec
         from pg_catalog.pg_proc p
         join pg_catalog.pg_namespace n on n.oid = p.pronamespace
         join pg_catalog.pg_roles r on r.oid = p.proowner
