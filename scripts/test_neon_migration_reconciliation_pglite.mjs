@@ -4,7 +4,7 @@
  *
  * Baseline : les 56 migrations qui ont une ligne terminée dans Production et
  * Préproduction (dont les 5 exécutées hors bande). Cible : les 13 migrations
- * historiques absentes, puis les corrections forward post-snapshot. Les deux
+ * historiques absentes, puis les trois corrections forward post-snapshot. Les deux
  * tentatives rolled_back ont aussi une ligne réussie et font partie du baseline.
  *
  * IMPORTANT : le SQL PLM utilisé ici est celui du dépôt courant. Son checksum
@@ -82,17 +82,18 @@ async function scalar(db, sql, params = []) {
 }
 
 console.log(`\n  1. Snapshot Neon ${SNAPSHOT_DATE} — cohérence des catégories`);
-ok('71 dossiers de migration dans le dépôt', dossiers.length === 71, String(dossiers.length));
+ok('72 dossiers de migration dans le dépôt', dossiers.length === 72, String(dossiers.length));
 ok('56 migrations terminées dans les deux bases', baselineNames.length === 56);
 ok('13 migrations réellement en attente', pendingNames.length === 13);
 ok('5 migrations hors bande incluses dans le baseline', outOfBandNames.length === 5);
 ok('les 2 tentatives annulées ont aussi une ligne réussie',
   ROLLED_BACK_ATTEMPTS.length === 2 && ROLLED_BACK_ATTEMPTS.every((x) => PRODUCTION_APPLIED[x.name]));
 ok('aucun nom annulé n’est classé pending', ROLLED_BACK_ATTEMPTS.every((x) => !ECARTS[x.name]));
-ok('les deux corrections forward sont postérieures au snapshot et ordonnées',
+ok('les trois corrections forward sont postérieures au snapshot et ordonnées',
   JSON.stringify(newNames) === JSON.stringify([
     '20261104090000_plm_integrations_and_gs1_constraints',
     '20261104100000_supply_chain_status_enum_casts',
+    '20261105120000_active_tenant_plm_ingest_enforcement',
   ]), JSON.stringify(newNames));
 ok('les quatre fonctions create/update des noeuds et liens castent leur enum',
   ['tracefab_create_supply_chain_node', 'tracefab_update_supply_chain_node', 'tracefab_add_supply_chain_link', 'tracefab_update_supply_chain_link']
@@ -165,7 +166,7 @@ for (const name of newNames) {
   forwardResults.push({ name, ...result });
   console.log(`  ${result.ok ? 'ok   ' : 'ECHEC'} ${name}${result.ok ? '' : ` — ${result.message}`}`);
 }
-ok('les deux corrections forward post-snapshot s’appliquent', forwardResults.length === 2 && forwardResults.every((r) => r.ok),
+ok('les trois corrections forward post-snapshot s’appliquent', forwardResults.length === 3 && forwardResults.every((r) => r.ok),
   JSON.stringify(forwardResults.filter((r) => !r.ok)));
 const repairedPlmChecks = await scalar(baseline.db, `
   SELECT count(*)::int AS value FROM pg_constraint
@@ -183,7 +184,7 @@ ok('les quatre CHECK PLM sont présents et validés', repairedPlmChecks === 4, S
 ok('la contrainte GS1 accepte désormais GPC', repairedIdentifierCheck.includes('gpc'), repairedIdentifierCheck);
 const forwardReplay = [];
 for (const name of newNames) forwardReplay.push({ name, ...(await jouer(baseline.db, name)) });
-ok('les deux corrections forward sont idempotentes', forwardReplay.length === 2 && forwardReplay.every((r) => r.ok),
+ok('les trois corrections forward sont idempotentes', forwardReplay.length === 3 && forwardReplay.every((r) => r.ok),
   JSON.stringify(forwardReplay.filter((r) => !r.ok)));
 
 console.log('\n  5. Contrôles du catalogue après application');
@@ -218,6 +219,22 @@ ok('deux politiques PLM canoniques après normalisation', policyCount === 2, Str
 const ingestDef = await scalar(baseline.db,
   "SELECT pg_get_functiondef('public.tracefab_ingest_plm_erp_payload(uuid,text,jsonb,uuid)'::regprocedure) AS value");
 ok('ingestion PLM/ERP vérifie le rôle de session', ingestDef.includes('session_user') && ingestDef.includes('ingest_role_not_allowed'));
+ok('ingestion PLM/ERP refuse une organisation différente du tenant actif', ingestDef.includes('active_tenant_mismatch'));
+const activeTenantPolicies = await scalar(baseline.db, `
+  SELECT count(*)::int AS value FROM pg_policies
+  WHERE schemaname='public'
+    AND tablename IN ('plm_erp_integrations','plm_erp_sync_jobs')
+    AND (coalesce(qual,'') LIKE '%tracefab_in_active_tenant%'
+      OR coalesce(with_check,'') LIKE '%tracefab_in_active_tenant%')
+`);
+ok('les quatre politiques RLS PLM/ERP appliquent le tenant actif', activeTenantPolicies === 4, String(activeTenantPolicies));
+const sourceSystemCheck = await scalar(baseline.db, `
+  SELECT pg_get_constraintdef(oid) AS value FROM pg_constraint
+  WHERE conrelid='public.plm_erp_sync_jobs'::regclass
+    AND conname='plm_erp_sync_jobs_source_system_check'
+`);
+ok('la contrainte des jobs accepte les types generic_csv et infor_fashion',
+  sourceSystemCheck.includes('generic_csv') && sourceSystemCheck.includes('infor_fashion'), sourceSystemCheck);
 const invitationDef = await scalar(baseline.db,
   "SELECT pg_get_functiondef('public.tracefab_validate_member_invitation_role()'::regprocedure) AS value");
 ok('invitation fournisseur vérifie le rattachement et le statut de relation',
@@ -250,4 +267,4 @@ if (echecs) {
   console.error(`  ${echecs} échec(s) sur ${verifies}.`);
   process.exit(1);
 }
-console.log(`  ${verifies} vérifications passées — baseline 56, pending historiques 13 + 2 corrections forward PLM/GS1 et graphe, 1 écart PLM documenté, aucun resolve ni réécriture de checksum.`);
+console.log(`  ${verifies} vérifications passées — baseline 56, pending historiques 13 + 3 corrections forward PLM/GS1, graphe et tenant actif PLM/ERP, 1 écart PLM documenté, aucun resolve ni réécriture de checksum.`);
