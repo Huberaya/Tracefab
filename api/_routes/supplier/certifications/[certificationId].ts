@@ -5,6 +5,7 @@ import { withTracefabUserContext } from '../../../_lib/context.js';
 import { json, methodNotAllowed, readJsonBody } from '../../../_lib/http.js';
 import { sqlBusinessError } from '../../../_lib/sql-errors.js';
 import { currentSupplier, requestedOrganizationId } from '../../../_lib/supplier-profile.js';
+import { isTenantError, resolveActiveTenant } from '../../../_lib/tenant.js';
 import { certificationValues, serializeSupplierCertification, SUPPLIER_CERTIFICATION_SELECT, type SupplierCertificationRecord } from '../../../_lib/supplier-certifications.js';
 
 function routeCertificationId(req: VercelRequest) {
@@ -19,8 +20,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const certificationId = routeCertificationId(req);
     if (!isUuid(certificationId)) return json(res, 400, { error: 'invalid_certification_id' });
     const { user } = await requireClerkUser(req);
+    const activeOrganizationId = requestedOrganizationId(req);
     const result = await withTracefabUserContext(user.id, user.email, async (tx) => {
-      const supplier = await currentSupplier(tx, user.id, requestedOrganizationId(req));
+      const tenant = await resolveActiveTenant(tx, user.id, activeOrganizationId, { types: ['supplier'] });
+      const supplier = await currentSupplier(tx, user.id, tenant.organizationId);
       if (!supplier) return null;
       const current = await tx.certifications.findFirst({ where: { id: certificationId, owner_organization_id: supplier.organization_id, supplier_id: supplier.id }, select: SUPPLIER_CERTIFICATION_SELECT });
       if (!current) return null;
@@ -46,11 +49,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         )
       `;
       return rows[0] ?? null;
-    });
+    }, activeOrganizationId);
     if (!result) return json(res, 404, { error: 'certification_not_found' });
     return json(res, 200, { certification: serializeSupplierCertification(result) });
   } catch (error) {
     if (isUnauthorized(error)) return json(res, 401, { error: 'unauthorized' });
+    if (isTenantError(error)) return json(res, error.status, { error: error.message });
     const businessError = sqlBusinessError(error);
     if (businessError) return json(res, businessError.status, { error: businessError.error });
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') return json(res, 409, { error: 'certification_already_exists' });
