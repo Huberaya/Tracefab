@@ -78,6 +78,8 @@ const userMulti = randomUUID();
 const orgGinger = randomUUID();
 const orgRecette = randomUUID();
 const prodRecette = randomUUID();
+const dppRecette = randomUUID();
+const pefRecette = randomUUID();
 
 const proprio = cli(URL_PROPRIO);
 await proprio.connect();
@@ -109,7 +111,13 @@ try {
     `insert into tracefab_products (id, brand_organization_id, reference, name, status, version, created_by)
      values ($1, $2, 'RECETTE-DPP-20261017', 'Produit synthetique de recette', 'draft', 1, $3)`,
     [prodRecette, orgRecette, userMulti]);
-  ok('fixture : un utilisateur admin de deux organisations, produit brouillon chez B uniquement');
+  await proprio.query(
+    'insert into dpp_records (id, product_id, product_version, requirement_profile_key, requirement_profile_version) values ($1, $2, 1, $3, $4)',
+    [dppRecette, prodRecette, 'textile_dpp', '1']);
+  await proprio.query(
+    'insert into product_pef_assessments (id, product_id, brand_organization_id) values ($1, $2, $3)',
+    [pefRecette, prodRecette, orgRecette]);
+  ok('fixture : utilisateur multi-org avec produit, DPP et PEF chez B uniquement');
 
   /* -- 1. hors contexte, aucun locataire --------------------------------- */
   {
@@ -298,8 +306,11 @@ try {
     await app.query(`select set_config('tracefab.user_email', 'mt@example.test', true)`);
     await app.query(`select set_config('tracefab.active_organization_id', $1, true)`, [organizationId]);
     const { rows } = await app.query(accessibleProductQuery, [prodRecette]);
+    const directProducts = await app.query('select id from tracefab_products where id = $1::uuid', [prodRecette]);
+    const directDpp = await app.query('select id from dpp_records where id = $1::uuid', [dppRecette]);
+    const directPef = await app.query('select id from product_pef_assessments where id = $1::uuid', [pefRecette]);
     await app.query('commit');
-    return rows;
+    return { rows, directProducts: directProducts.rows, directDpp: directDpp.rows, directPef: directPef.rows };
   };
 
   {
@@ -308,16 +319,18 @@ try {
     const fromRecette = await asTenant(orgRecette);
     const fromGinger = await asTenant(orgGinger);
 
-    if (fromRecette.length === 1 && fromRecette[0].owner_organization_id === orgRecette) {
+    if (fromRecette.rows.length === 1 && fromRecette.rows[0].owner_organization_id === orgRecette
+      && fromRecette.directProducts.length === 1 && fromRecette.directDpp.length === 1 && fromRecette.directPef.length === 1) {
       ok('sous le locataire de recette, accessibleProduct rend le produit de recette');
     } else {
       ko(`sous le locataire de recette, attendu 1 ligne, obtenu ${fromRecette.length}`);
     }
 
-    if (fromGinger.length === 0) {
-      ok('sous Ginger, accessibleProduct ne rend PAS le produit de recette — le defaut du 2026-10-17');
+    if (fromGinger.rows.length === 0 && fromGinger.directProducts.length === 0
+      && fromGinger.directDpp.length === 0 && fromGinger.directPef.length === 0) {
+      ok('sous Ginger, la RLS directe bloque produit, DPP et PEF — sans filtre applicatif');
     } else {
-      ko(`sous Ginger, accessibleProduct a rendu ${fromGinger.length} ligne(s) : le produit de recette fuit`);
+      ko('fuite inter-tenant : produit=' + fromGinger.directProducts.length + ', DPP=' + fromGinger.directDpp.length + ', PEF=' + fromGinger.directPef.length);
     }
   }
 
