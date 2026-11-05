@@ -101,11 +101,31 @@ try {
 
   // L'absence de SELECT direct sur users est intentionnelle : l'accès à l'email
   // passe par tracefab_current_user_email() sous le propriétaire worker.
-  const appUsersSelect = await admin.query(
-    `select has_table_privilege('tracefab_app', 'public.users', 'SELECT') as allowed`,
-  );
-  ok(appUsersSelect.rows[0]?.allowed === false,
-    'tracefab_app ne possède aucun SELECT direct sur users');
+  const appUsersSelect = await admin.query(`
+    select has_table_privilege('tracefab_app', 'public.users', 'SELECT') as allowed,
+           c.relowner::regrole::text as owner,
+           c.relacl::text as acl,
+           pg_has_role('tracefab_app', c.relowner, 'MEMBER') as owner_membership,
+           coalesce((
+             select string_agg(granted.rolname, ', ' order by granted.rolname)
+               from pg_auth_members m
+               join pg_roles granted on granted.oid = m.roleid
+              where m.member = (select oid from pg_roles where rolname = 'tracefab_app')
+           ), 'aucun') as inherited_roles,
+           coalesce((
+             select string_agg(coalesce(grantee.rolname, 'PUBLIC') || ':' || a.privilege_type, ', ' order by coalesce(grantee.rolname, 'PUBLIC'), a.privilege_type)
+               from aclexplode(coalesce(c.relacl, acldefault('r', c.relowner))) a
+               left join pg_roles grantee on grantee.oid = a.grantee
+              where a.privilege_type = 'SELECT'
+           ), 'aucun') as select_grants
+      from pg_class c
+      join pg_namespace n on n.oid = c.relnamespace
+     where n.nspname = 'public' and c.relname = 'users'
+  `);
+  const appUsersDetail = appUsersSelect.rows[0];
+  ok(appUsersDetail?.allowed === false,
+    'tracefab_app ne possède aucun SELECT effectif sur users',
+    appUsersDetail ? JSON.stringify(appUsersDetail) : 'table users introuvable');
 
   // --- 1. Sans contexte -----------------------------------------------------
   console.log('1. Sans contexte arme');
