@@ -670,7 +670,9 @@ BEGIN
      OR v_public_exec_after IS DISTINCT FROM v_public_exec_before
      OR v_app_exec_after IS NOT TRUE
      OR v_public_exec_after IS TRUE THEN
-    RAISE EXCEPTION 'current_user_email_worker_postcondition_failed';
+    RAISE EXCEPTION 'current_user_email_worker_postcondition_failed: owner=% worker=% secdef=% config=% app_before=% app_after=% public_before=% public_after=%',
+      v_after_owner, v_worker, v_after_secdef, v_after_config,
+      v_app_exec_before, v_app_exec_after, v_public_exec_before, v_public_exec_after;
   END IF;
 
   IF pg_catalog.has_schema_privilege('tracefab_worker', 'public', 'CREATE') THEN
