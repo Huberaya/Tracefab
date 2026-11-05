@@ -179,6 +179,21 @@ REVOKE ALL ON FUNCTION public.tracefab_require_active_tenant_for_supply_chain_li
 REVOKE ALL ON FUNCTION public.tracefab_require_active_tenant_for_tc_allocation(uuid, uuid) FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.tracefab_require_active_tenant_for_schema_subject(text, uuid) FROM PUBLIC;
 
+-- Le rôle HTTP ne doit jamais pouvoir appeler directement ces helpers, même
+-- si des ACL explicites ou des privilèges par défaut ont été ajoutés ailleurs.
+DO $revoke_runtime_helpers$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_catalog.pg_roles WHERE rolname = 'tracefab_app') THEN
+    REVOKE ALL ON FUNCTION public.tracefab_require_active_tenant_for_organization(uuid) FROM tracefab_app;
+    REVOKE ALL ON FUNCTION public.tracefab_require_active_tenant_for_product(uuid) FROM tracefab_app;
+    REVOKE ALL ON FUNCTION public.tracefab_require_active_tenant_for_dpp_record(uuid) FROM tracefab_app;
+    REVOKE ALL ON FUNCTION public.tracefab_require_active_tenant_for_supply_chain_link(uuid) FROM tracefab_app;
+    REVOKE ALL ON FUNCTION public.tracefab_require_active_tenant_for_tc_allocation(uuid, uuid) FROM tracefab_app;
+    REVOKE ALL ON FUNCTION public.tracefab_require_active_tenant_for_schema_subject(text, uuid) FROM tracefab_app;
+  END IF;
+END;
+$revoke_runtime_helpers$;
+
 DO $guard_functions$
 DECLARE
   v_target record;
@@ -299,6 +314,9 @@ BEGIN
       JOIN pg_catalog.pg_roles r ON r.oid = p.proowner
      WHERE n.nspname = 'public' AND p.proname = ANY(v_targets)
   LOOP
+    IF v_role.rolname = 'tracefab_app' THEN
+      RAISE EXCEPTION 'active_tenant_guard_runtime_role_owns_definer_function';
+    END IF;
     EXECUTE format('GRANT EXECUTE ON FUNCTION public.tracefab_require_active_tenant_for_organization(uuid) TO %I', v_role.rolname);
     EXECUTE format('GRANT EXECUTE ON FUNCTION public.tracefab_require_active_tenant_for_product(uuid) TO %I', v_role.rolname);
     EXECUTE format('GRANT EXECUTE ON FUNCTION public.tracefab_require_active_tenant_for_dpp_record(uuid) TO %I', v_role.rolname);
@@ -306,6 +324,26 @@ BEGIN
     EXECUTE format('GRANT EXECUTE ON FUNCTION public.tracefab_require_active_tenant_for_tc_allocation(uuid, uuid) TO %I', v_role.rolname);
     EXECUTE format('GRANT EXECUTE ON FUNCTION public.tracefab_require_active_tenant_for_schema_subject(text, uuid) TO %I', v_role.rolname);
   END LOOP;
+
+  -- Le runtime ne peut pas appeler les helpers directement. Cette vérification
+  -- inclut les privilèges hérités et PUBLIC, pas seulement les ACL directes.
+  IF EXISTS (
+    SELECT 1
+      FROM pg_catalog.pg_proc p
+      JOIN pg_catalog.pg_namespace n ON n.oid = p.pronamespace
+     WHERE n.nspname = 'public'
+       AND p.proname IN (
+         'tracefab_require_active_tenant_for_organization',
+         'tracefab_require_active_tenant_for_product',
+         'tracefab_require_active_tenant_for_dpp_record',
+         'tracefab_require_active_tenant_for_supply_chain_link',
+         'tracefab_require_active_tenant_for_tc_allocation',
+         'tracefab_require_active_tenant_for_schema_subject'
+       )
+       AND pg_catalog.has_function_privilege('tracefab_app', p.oid, 'EXECUTE')
+  ) THEN
+    RAISE EXCEPTION 'active_tenant_guard_helpers_executable_by_runtime';
+  END IF;
 
   -- Postconditions : les 19 fonctions portent leur garde dans le corps SQL.
   FOR v_target IN
