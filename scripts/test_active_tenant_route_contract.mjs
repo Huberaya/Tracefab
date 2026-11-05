@@ -154,16 +154,24 @@ for (const fn of ['tracefab_create_material','tracefab_update_material','tracefa
     materialCertificationDbTest.includes(`await assertTenantGuard('${fn}'`));
 }
 
-const supplierProfilePassportMigration = read('prisma/migrations/20261105210000_active_tenant_supplier_profile_passport_guards/migration.sql');
+const supplierProfileMigration = read('prisma/migrations/20261105210000_active_tenant_supplier_profile_passport_guards/migration.sql');
 for (const [fn, guard] of [
   ['tracefab_update_supplier_profile', 'v_supplier.organization_id'],
   ['tracefab_submit_supplier_profile', 'v_supplier.organization_id'],
-  ['tracefab_get_or_create_supplier_passport', 'p_supplier_organization_id'],
-  ['tracefab_update_supplier_passport', 'p_supplier_organization_id'],
 ]) {
   check(`migration SQL : ${fn} exige le tenant fournisseur actif`,
-    supplierProfilePassportMigration.includes(fn)
-      && supplierProfilePassportMigration.includes(`tracefab_require_active_tenant_for_organization(${guard})`));
+    supplierProfileMigration.includes(fn)
+      && supplierProfileMigration.includes(`tracefab_require_active_tenant_for_organization(${guard})`));
+}
+const supplierPassportMigration = read('prisma/migrations/20261105260000_active_tenant_supplier_passport_guards/migration.sql');
+for (const fn of ['tracefab_get_or_create_supplier_passport', 'tracefab_update_supplier_passport']) {
+  check(`migration SQL forward : ${fn} exige le tenant fournisseur actif au début du corps`,
+    supplierPassportMigration.includes(fn)
+      && supplierPassportMigration.includes('PERFORM public.tracefab_require_active_tenant_for_organization(p_supplier_organization_id);')
+      && supplierPassportMigration.includes(`'BEGIN'`)
+      && supplierPassportMigration.includes('supplier_passport_guard_changed_oid_owner_or_acl'));
+  check(`PostgreSQL : test négatif direct pour ${fn}`,
+    read('scripts/test_neon_active_tenant.mjs').includes(`await assertTenantGuard('${fn}'`));
 }
 for (const path of [
   'api/_routes/supplier/profile.ts',
