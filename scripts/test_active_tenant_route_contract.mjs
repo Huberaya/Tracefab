@@ -104,8 +104,14 @@ for (const [fn, helper] of definerGuards) {
 }
 check('migration SQL : le remplacement préserve OID, propriétaire et ACL',
   definerMigration.includes('active_tenant_guard_changed_oid_owner_or_acl'));
-check('migration SQL : le helper ne reçoit pas EXECUTE de PUBLIC',
-  (definerMigration.match(/REVOKE ALL ON FUNCTION/g) || []).length === 6);
+check('migration SQL : les six helpers sont révoqués de PUBLIC',
+  (definerMigration.match(/REVOKE ALL ON FUNCTION[^;]+ FROM PUBLIC;/g) || []).length === 6);
+check('migration SQL : les six helpers sont révoqués de tracefab_app',
+  (definerMigration.match(/REVOKE ALL ON FUNCTION[^;]+ FROM tracefab_app;/g) || []).length === 6);
+check('migration SQL : refuse un propriétaire de fonction appelante égal au runtime',
+  definerMigration.includes("active_tenant_guard_runtime_role_owns_definer_function"));
+check('migration SQL : postcondition vérifie l’absence d’EXECUTE effectif du runtime',
+  definerMigration.includes("active_tenant_guard_helpers_executable_by_runtime"));
 
 const failures = checks.filter((c) => !c.condition);
 for (const c of checks) console.log(`${c.condition ? 'OK' : 'ECHEC'} ${c.name}`);
