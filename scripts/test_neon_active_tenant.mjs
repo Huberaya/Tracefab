@@ -837,6 +837,136 @@ try {
       ko(`${rows.length}/3 fonctions trouvees, ${ouvertes.length} executable(s) par PUBLIC`);
     }
   }
+
+  /* -- 8. inventaire exhaustif des politiques RLS -------------------------- */
+  {
+    const { rows: policies } = await proprio.query(`
+      select tablename, policyname, cmd,
+             coalesce(qual, '') as qual,
+             coalesce(with_check, '') as with_check
+        from pg_policies
+       where schemaname = 'public'
+       order by tablename, policyname
+    `);
+    const accountWideTables = new Set([
+      'organizations', 'organization_memberships', 'organization_invitations',
+    ]);
+    const systemTables = new Set([
+      'tracefab_identity_cles', 'tracefab_identity_politique',
+      'tracefab_runtime_function_registry',
+    ]);
+    const referenceTables = new Set([
+      'rate_limit_counters', 'tracefab_schema_catalog',
+      'dpp_requirement_profiles', 'green_claims_rules', 'pef_emission_factors',
+    ]);
+    const personalPolicies = new Set([
+      'orders.orders_insert_buyer',
+      'orders.orders_update_participant',
+      'users.users_select_self',
+      'users.users_update_self',
+    ]);
+    const publicPolicies = new Set([
+      'supplier_passport_access_requests.passport_access_insert',
+    ]);
+    const counts = {
+      total: policies.length, account: 0, system: 0, reference: 0,
+      personal: 0, public: 0, worker: 0, tenant: 0, shared: 0,
+    };
+    const unresolved = [];
+    const membershipPattern = /tracefab_(?:is_org_member|has_org_role|can_access_org)\\(/g;
+    const activePattern = /tracefab_in_active_tenant\\(/g;
+
+    for (const policy of policies) {
+      const key = `${policy.tablename}.${policy.policyname}`;
+      const expression = `${policy.qual} ${policy.with_check}`;
+      if (accountWideTables.has(policy.tablename)) {
+        counts.account += 1;
+        continue;
+      }
+      if (systemTables.has(policy.tablename)) {
+        counts.system += 1;
+        continue;
+      }
+      if (referenceTables.has(policy.tablename)) {
+        counts.reference += 1;
+        continue;
+      }
+      if (personalPolicies.has(key)) {
+        counts.personal += 1;
+        continue;
+      }
+      if (publicPolicies.has(key)) {
+        counts.public += 1;
+        continue;
+      }
+
+      let classified = false;
+      const membershipCalls = (expression.match(membershipPattern) || []).length;
+      const activeCalls = (expression.match(activePattern) || []).length;
+      if (membershipCalls > 0) {
+        if (activeCalls < membershipCalls) {
+          unresolved.push(`${key}: ${membershipCalls} prédicat(s) membership pour ${activeCalls} tenant(s)`);
+        } else {
+          counts.tenant += 1;
+        }
+        classified = true;
+      }
+      if (/tracefab_can_access_shared_subject\\(|tracefab_can_access_document\\(|tracefab_material_visible_via_product\\(/.test(expression)) {
+        counts.shared += 1;
+        classified = true;
+      }
+      if (/tracefab_public_context\\(|tracefab_product_is_public\\(|tracefab_material_is_public\\(|tracefab_supplier_site_is_public\\(/.test(expression)) {
+        counts.public += 1;
+        classified = true;
+      }
+      if (/tracefab_worker|current_user\\s*=/.test(expression)) {
+        counts.worker += 1;
+        classified = true;
+      }
+      if (/tracefab_in_active_tenant\\(/.test(expression) && !membershipCalls) {
+        counts.tenant += 1;
+        classified = true;
+      }
+      if (!classified) unresolved.push(`${key}: aucune classification explicite`);
+    }
+
+    const shared = await proprio.query(`
+      select pg_get_functiondef('public.tracefab_can_access_shared_subject(uuid,text,uuid)'::regprocedure) as definition
+    `);
+    const documents = await proprio.query(`
+      select pg_get_functiondef('public.tracefab_can_access_document(uuid)'::regprocedure) as definition
+    `);
+    const sharedScoped = shared.rows[0]?.definition?.includes('s.grantee_organization_id = public.tracefab_active_organization_id()');
+    const documentsScoped = documents.rows[0]?.definition?.includes('tracefab_active_organization_id()')
+      && documents.rows[0]?.definition?.includes('tracefab_is_org_member(a.organization_id)');
+    if (!sharedScoped) unresolved.push('tracefab_can_access_shared_subject: grantee non borné au tenant actif');
+    if (!documentsScoped) unresolved.push('tracefab_can_access_document: lecture documentaire non bornée au tenant actif');
+
+    const workerGuc = await proprio.query(`
+      select count(*)::int as n
+        from pg_policies
+       where schemaname = 'public'
+         and (coalesce(qual, '') ilike '%tracefab.worker_context%'
+           or coalesce(with_check, '') ilike '%tracefab.worker_context%')
+    `);
+    if (workerGuc.rows[0].n !== 0) unresolved.push(`politiques worker encore pilotées par GUC: ${workerGuc.rows[0].n}`);
+
+    const publicContext = await proprio.query(`
+      select prosecdef
+        from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+       where n.nspname = 'public' and p.proname = 'tracefab_public_context'
+    `);
+    if (publicContext.rows.length !== 1 || publicContext.rows[0].prosecdef) {
+      unresolved.push('tracefab_public_context doit rester SECURITY INVOKER');
+    }
+
+    console.log(`  info      inventaire RLS PostgreSQL: ${JSON.stringify(counts)}`);
+    if (unresolved.length === 0) {
+      ok('chaque politique RLS est classifiée : tenant actif, partage, worker, public, compte, personnel, référence ou système');
+    } else {
+      ko(`inventaire RLS incomplet : ${unresolved.join(' ; ')}`);
+    }
+  }
 } catch (error) {
   ko(`erreur inattendue : ${error.message}`);
   console.log(`::error::active-tenant base — pile : ${String(error.stack).split('\n').slice(0, 4).join(' | ')}`);
