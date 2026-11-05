@@ -159,8 +159,8 @@ try {
       [clerkOrgProbeId, tenant.rows[0].user_id, clerkOrgProbeKey],
     );
   }
-  await app.query('begin');
   try {
+    await app.query('begin');
     if (tenant.rows[0]?.user_id) {
       const resolved = await app.query(
         'SELECT tracefab_clerk_organization_uuid($1) AS id',
