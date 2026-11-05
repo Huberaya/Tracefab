@@ -106,7 +106,7 @@ ok('les dix-sept corrections forward sont postérieures au snapshot et ordonnée
     '20261105220000_active_tenant_quality_cap_guards',
     '20261105230000_active_tenant_invite_document_passport_guards',
     '20261105240000_active_tenant_supplier_quality_guard',
-    '20261105250000_active_tenant_policy_and_worker_closure',
+    '20261105235900_active_tenant_policy_and_worker_closure',
     '20261106000000_active_tenant_supplier_passport_guards',
   ]), JSON.stringify(newNames));
 ok('les quatre fonctions create/update des noeuds et liens castent leur enum',
