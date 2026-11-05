@@ -584,6 +584,15 @@ BEGIN
       RAISE EXCEPTION 'active_tenant_policy_unclassified: %.% (membership predicates %, tenant predicates %)',
         v_policy.tablename, v_policy.policyname, v_before, v_after;
     END IF;
+
+    -- Les sous-requêtes directes sur organization_memberships sont des
+    -- décisions d'accès tenant même sans helper. Elles doivent être bornées
+    -- explicitement, sinon l'inventaire échoue fermé.
+    IF v_policy.expression ~* 'organization_memberships'
+       AND v_policy.expression !~* 'tracefab_in_active_tenant\\(' THEN
+      RAISE EXCEPTION 'active_tenant_policy_direct_membership_unclassified: %.%',
+        v_policy.tablename, v_policy.policyname;
+    END IF;
   END LOOP;
 
   RAISE NOTICE 'RLS active-tenant inventory: % policies réécrites, % prédicats membership/role bornés, % politiques non classifiées',
