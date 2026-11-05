@@ -101,6 +101,19 @@ jobs:
       - name: Intégration A (neuve) et B (10120000 tardif)
         run: bash scripts/test_migration_integration_34_36_41.sh
 
+      # Le scénario B applique volontairement 10120000/1414 après la chaîne
+      # courante pour éprouver la conservation des ACL. Il laisse donc un schéma
+      # de test non canonique (les CREATE OR REPLACE historiques précèdent alors
+      # les gardes tenant). On restaure le checkout et on reconstruit la base
+      # jetable complète avant les tests métier qui suivent.
+      - name: Restaurer le schéma canonique après les scénarios historiques
+        shell: bash
+        run: |
+          git reset --hard "$GITHUB_SHA"
+          node scripts/run-db-suite.mjs --verrou-cluster scripts/reinitialiser_base_jetable.mjs
+          node scripts/run-db-suite.mjs --verrou-cluster scripts/prepare_ci_db_role.mjs
+          node scripts/db-deploy-throwaway.mjs
+
       - name: Inventaire RLS après migration #25 — compteurs et zéro non classé
         shell: bash
         run: |
