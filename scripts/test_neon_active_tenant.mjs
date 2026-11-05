@@ -982,7 +982,7 @@ try {
         counts.worker += 1;
         classified = true;
       }
-      if (/tracefab_in_active_tenant\\(/.test(expression) && !membershipCalls) {
+      if (/tracefab_in_active_tenant\(/.test(expression) && !membershipCalls) {
         counts.tenant += 1;
         classified = true;
       }
