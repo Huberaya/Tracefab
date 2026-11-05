@@ -17,7 +17,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const supplier = await currentSupplier(tx, user.id, tenant.organizationId);
       if (!supplier) return null;
       return getOrganizationStorageUsage(tx, supplier.organization_id);
-    });
+    }, requestedOrgId);
 
     if (!usage) return json(res, 404, { error: 'supplier_profile_not_found' });
     return json(res, 200, { storage: usage });
