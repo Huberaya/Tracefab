@@ -122,7 +122,7 @@ for (const path of tenantBoundRoutes) {
   const src = read(path);
   check(`${path}: arme et valide le tenant actif`,
     src.includes('requireActiveTenant(tx, req, user.id')
-      && src.includes('requestedTenantId(req)')
+      && (src.includes('requestedTenantId(req)') || src.includes('requestedOrganizationId(req)'))
       && src.includes('isTenantError(error)'));
 }
 const materialCertificationMigration = read('prisma/migrations/20261105200000_active_tenant_material_certification_guards/migration.sql');
