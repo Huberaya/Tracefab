@@ -110,6 +110,16 @@ const lignesForward = (name) => {
       action: 'APPLIQUER APRÈS LA CORRECTION PLM/GS1, EN PRÉPRODUCTION PUIS PRODUCTION',
     };
   }
+  if (name === '20261105120000_active_tenant_plm_ingest_enforcement') {
+    return {
+      ...base,
+      effect: 'refuser les imports SECURITY DEFINER hors tenant actif, borner la RLS des intégrations/jobs PLM et accepter tous les types de source API',
+      evidence: 'test multi-tenant direct sous tracefab_app : tenant A autorisé, B refusé en fonction et RLS ; CI test:p105:ingestion à obtenir',
+      risk: 'CREATE OR REPLACE SECURITY DEFINER conserve OID, propriétaire et ACL ; prérequis tracefab_app et tracefab_in_active_tenant présents',
+      prerequisite: '20261104100000 terminée ; vérifier le propriétaire neondb_owner, les ACL, la RLS, les rôles tracefab_app et les types source_system avant puis après',
+      action: 'APPLIQUER APRÈS LA CORRECTION SUPPLY-CHAIN, EN PRÉPRODUCTION PUIS PRODUCTION APRÈS VALIDATION COMPLÈTE',
+    };
+  }
   return base;
 };
 const lines = [
@@ -119,7 +129,7 @@ const lines = [
 const errors = [];
 const warnings = [];
 const phases = [
-  { label: 'PREPRODUCTION', command: 'npx prisma migrate deploy', gate: '13 migrations historiques pending + 2 corrections forward ordonnées (PLM/GS1, puis graphe) ; 1 variance checksum documentée et éprouvée par test Prisma ; aucun resolve' },
+  { label: 'PREPRODUCTION', command: 'npx prisma migrate deploy', gate: '13 migrations historiques pending + 3 corrections forward ordonnées (PLM/GS1, graphe, puis tenant actif PLM/ERP) ; 1 variance checksum documentée et éprouvée par test Prisma ; aucun resolve' },
   { label: 'PRODUCTION', command: 'npx prisma migrate deploy', gate: 'Préproduction validée et catalogue vérifié' },
 ];
 function violationsFor(planLines, phaseList = phases) {
@@ -145,8 +155,9 @@ if (pending.length !== 13) errors.push(`migrations historiques en attente attend
 if (JSON.stringify(newNames) !== JSON.stringify([
   '20261104090000_plm_integrations_and_gs1_constraints',
   '20261104100000_supply_chain_status_enum_casts',
+  '20261105120000_active_tenant_plm_ingest_enforcement',
 ])) {
-  errors.push(`les deux corrections forward PLM/GS1 puis graphe sont attendues, obtenu ${JSON.stringify(newNames)}`);
+  errors.push(`les trois corrections forward PLM/GS1, graphe puis tenant actif sont attendues, obtenu ${JSON.stringify(newNames)}`);
 }
 if (ROLLED_BACK_ATTEMPTS.length !== 2) errors.push('le snapshot doit conserver deux tentatives annulees');
 for (const name of outOfBand) {
