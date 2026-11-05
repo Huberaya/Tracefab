@@ -91,6 +91,13 @@ function controle(libelle, condition, detail) {
     migrationSupplierQualityPresente && texte.includes(migrationSupplierQuality),
     migrationSupplierQualityPresente ? 'migration présente mais absente du registre' : 'migration absente du dépôt',
   );
+  const migrationPolicyWorkerClosure = '20261105250000_active_tenant_policy_and_worker_closure';
+  const migrationPolicyWorkerClosurePresente = readdirSync('prisma/migrations').includes(migrationPolicyWorkerClosure);
+  controle(
+    'la migration de fermeture des politiques RLS et des fonctions worker est référencée dans le registre',
+    migrationPolicyWorkerClosurePresente && texte.includes(migrationPolicyWorkerClosure),
+    migrationPolicyWorkerClosurePresente ? 'migration présente mais absente du registre' : 'migration absente du dépôt',
+  );
   const migrationQualityCap = '20261105220000_active_tenant_quality_cap_guards';
   const migrationQualityCapPresente = readdirSync('prisma/migrations').includes(migrationQualityCap);
   controle(
