@@ -605,13 +605,11 @@ BEGIN
 END
 $active_tenant_policy_inventory$;
 
--- 7. Email courant : lecture USERS sous identite worker, jamais sous tracefab_app.
---    En mode HMAC strict, tracefab_current_user_email() resolvait l'email
---    depuis users. SECURITY INVOKER faisait executer cette lecture sous
---    tracefab_app, qui ne possede volontairement aucun SELECT sur users.
---    La fonction devient SECURITY DEFINER, possedee par le worker NOLOGIN,
---    dont le SELECT est borne par la politique worker. L'ACL runtime existante
---    est preservee ; aucune lecture directe de users n'est rendue a l'app.
+-- 7. Email courant : la lecture interne de users s'execute sous l'identite
+--    worker NOLOGIN, jamais sous les droits de l'appelant.
+--    tracefab_app peut conserver un SELECT relationnel historique, borne a sa
+--    propre ligne par users_select_self sous RLS FORCE ; aucun DML ne lui est
+--    accorde. Le worker recoit son SELECT propre pour le resolver SECURITY DEFINER.
 DO $current_user_email_worker$
 DECLARE
   v_oid oid;
