@@ -142,7 +142,7 @@ try {
     `insert into transaction_certificates
       (id, tc_number, standard, issuer_name, seller_organization_id, buyer_organization_id,
        certified_material_name, total_certified_weight_kg, issue_date, created_by)
-     values ($1, $2, 'GOTS', 'Synthetic test issuer', $3, $4, 'Synthetic cotton', 100, CURRENT_DATE, $5)`,
+     values ($1, $2, 'gots', 'Synthetic test issuer', $3, $4, 'Synthetic cotton', 100, CURRENT_DATE, $5)`,
     [tcRecette, `MT-${suffixe}`, orgRecette, orgGinger, userMulti]);
   ok('fixture : utilisateur multi-org avec produit, DPP, PEF, claims, identité et composition chez B uniquement');
 
