@@ -453,7 +453,7 @@ ALTER TABLE public.plm_erp_sync_jobs
     'lectra', 'lectra_kubix',
     'sap', 'sap_s4hana',
     'generic_bom', 'generic_csv',
-    'gs1_epcis', 'custom_api', 'infor_fashion'
+    'gs1', 'gs1_epcis', 'custom_api', 'infor_fashion'
   ));
 
 DROP POLICY IF EXISTS plm_integrations_mutate_brand ON public.plm_erp_integrations;
