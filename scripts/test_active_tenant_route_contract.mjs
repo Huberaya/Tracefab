@@ -211,6 +211,13 @@ const supplierQualityDbTest = read('scripts/test_neon_active_tenant.mjs');
 check('qualité fournisseur : refus PostgreSQL direct inter-tenant',
   supplierQualityDbTest.includes('tracefab_compute_supplier_quality') && supplierQualityDbTest.includes('assertTenantGuard'));
 
+const supplierProfileHelper = read('api/_lib/supplier-profile.ts');
+check('currentSupplier : aucun fallback premier fournisseur et GUC actif armé',
+  supplierProfileHelper.includes("resolveActiveTenant(tx, userId, organizationId, { types: ['supplier'] })")
+    && supplierProfileHelper.includes("set_config('tracefab.active_organization_id'")
+    && supplierProfileHelper.includes('if (!organizationId) return null;')
+    && !supplierProfileHelper.includes("orderBy: { created_at: 'asc' }"));
+
 const supplierPassportRoute = read('api/_routes/supplier/passport.ts');
 check('supplier passport : résout un tenant supplier explicite', supplierPassportRoute.includes("resolveActiveTenant(tx, user.id, activeOrganizationId, { types: ['supplier'] })"));
 check('supplier passport : arme le tenant dans le contexte SQL', supplierPassportRoute.includes('}, activeOrganizationId)'));

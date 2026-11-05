@@ -1,4 +1,5 @@
 import type { Prisma } from '@prisma/client';
+import { isTenantError, resolveActiveTenant } from './tenant.js';
 
 export const SUPPLIER_PROFILE_SELECT = {
   id: true,
@@ -79,21 +80,21 @@ export async function currentSupplier(
   userId: string,
   organizationId?: string | null,
 ) {
-  const membership = await tx.organization_memberships.findFirst({
-    where: {
-      user_id: userId,
-      status: 'active',
-      ...(organizationId ? { organization_id: organizationId } : {}),
-      organizations: { type: 'supplier' },
-    },
-    select: { organization_id: true },
-    orderBy: { created_at: 'asc' },
-  });
-  if (!membership) return null;
-  return tx.suppliers.findUnique({
-    where: { organization_id: membership.organization_id },
-    select: SUPPLIER_PROFILE_SELECT,
-  });
+  // Aucune sélection implicite du premier fournisseur : le client doit
+  // transmettre le tenant choisi. Le GUC est armé dans cette transaction afin
+  // que toutes les requêtes suivantes restent bornées au même tenant.
+  if (!organizationId) return null;
+  try {
+    const tenant = await resolveActiveTenant(tx, userId, organizationId, { types: ['supplier'] });
+    await tx.$executeRaw`SELECT set_config('tracefab.active_organization_id', ${tenant.organizationId}, true)`;
+    return tx.suppliers.findUnique({
+      where: { organization_id: tenant.organizationId },
+      select: SUPPLIER_PROFILE_SELECT,
+    });
+  } catch (error) {
+    if (isTenantError(error)) return null;
+    throw error;
+  }
 }
 
 export function serializeSupplierProfile(row: SupplierProfileRecord) {
