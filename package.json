@@ -272,6 +272,7 @@
     "test:jetables:nettoyer": "node scripts/run-db-suite.mjs scripts/nettoyer_ressources_jetables.mjs",
     "test:jetables": "npm run test:jetables:verrou-cluster && npm run test:jetables:concurrence && npm run test:jetables:base-ephemere && npm run test:jetables:role-ephemere && npm run test:jetables:role-app && npm run test:jetables:destruction && npm run test:jetables:ressources-fixes && npm run test:jetables:reprise && npm run test:jetables:provisioning && npm run test:jetables:garde-cible && npm run test:jetables:migration-atomicite && npm run test:jetables:r4-inscription && npm run test:jetables:harnais-rls",
     "test:isolation:globale": "node scripts/test_isolation_globale_pglite.mjs",
+    "test:hmac:chaine-confiance": "node scripts/test_p107_chaine_confiance_pglite.mjs",
     "test:tenant:matrix": "node scripts/test_route_tenant_matrix.mjs",
     "test:tenant:autorisations": "node scripts/test_matrice_autorisations.mjs"
   },
