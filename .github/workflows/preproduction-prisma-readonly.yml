@@ -1,0 +1,74 @@
+name: TraceFab — contrôle Préproduction (lecture seule)
+
+on:
+  push:
+    branches:
+      - fix/neon-migration-reconciliation-20261104
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tracefab-preproduction-readonly
+  cancel-in-progress: false
+
+jobs:
+  preflight:
+    name: Prisma — identité et état des migrations (sans écriture)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: tracefab-preproduction
+    steps:
+      - name: Récupérer le dépôt
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+
+      - name: Installer Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: '20'
+          cache: npm
+
+      - name: Installer les dépendances
+        run: npm ci
+
+      - name: Vérifier les deux URL sans révéler les identifiants
+        env:
+          PREPROD_POOLER_URL: ${{ secrets.TRACEFAB_PREPROD_POOLER_URL }}
+          PREPROD_DIRECT_URL: ${{ secrets.TRACEFAB_PREPROD_DIRECT_URL }}
+        run: |
+          node --input-type=module <<'NODE'
+          const expected = {
+            pooled: 'ep-lively-field-b1wicg4v-pooler.c-5.eu-central-1.aws.neon.tech',
+            direct: 'ep-lively-field-b1wicg4v.c-5.eu-central-1.aws.neon.tech',
+          };
+          for (const [label, raw, host] of [
+            ['pooler', process.env.PREPROD_POOLER_URL, expected.pooled],
+            ['direct', process.env.PREPROD_DIRECT_URL, expected.direct],
+          ]) {
+            if (!raw) throw new Error(`Secret TRACEFAB_PREPROD_${label.toUpperCase()}_URL absent.`);
+            const u = new URL(raw);
+            if (!['postgres:', 'postgresql:'].includes(u.protocol)) throw new Error(`${label}: protocole PostgreSQL attendu.`);
+            if (u.hostname !== host) throw new Error(`${label}: hôte inattendu — cible Préproduction refusée.`);
+            if (decodeURIComponent(u.username) !== 'tracefab_migrator') throw new Error(`${label}: le rôle doit être tracefab_migrator.`);
+            if (u.pathname.replace(/^\\//, '') !== 'neondb') throw new Error(`${label}: la base doit être neondb.`);
+            if (!u.password) throw new Error(`${label}: mot de passe absent.`);
+            console.log(`${label}: URL présente, hôte/role/base conformes (secret masqué).`);
+          }
+          NODE
+
+      - name: Vérifier Prisma via le pooler (lecture seule)
+        env:
+          DATABASE_URL: ${{ secrets.TRACEFAB_PREPROD_POOLER_URL }}
+        run: npx prisma migrate status
+
+      - name: Vérifier Prisma via la connexion directe (lecture seule)
+        env:
+          DATABASE_URL: ${{ secrets.TRACEFAB_PREPROD_DIRECT_URL }}
+        run: npx prisma migrate status
+
+      - name: Résumé de sécurité
+        run: |
+          echo "Contrôles terminés. Ce workflow n'exécute aucune migration."
+          echo "Aucun prisma migrate deploy, migrate resolve ou SQL d'écriture n'est autorisé ici."
