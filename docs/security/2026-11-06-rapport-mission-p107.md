@@ -33,7 +33,7 @@ Mesuré sur deux bases jetables, même rôle `tracefab_app` (`NOSUPERUSER`, `NOB
 
 | Livrable | Rôle |
 |---|---|
-| `prisma/migrations/20261105120000_identite_systeme_signee/migration.sql` (663 l.) | la 70ᵉ migration : jeton système vérifié par la base, treize gardes, sonde d'exploitation, postcondition inversée |
+| `prisma/migrations/20261106130000_identite_systeme_signee/migration.sql` (663 l.) | la 70ᵉ migration : jeton système vérifié par la base, treize gardes, sonde d'exploitation, postcondition inversée |
 | `api/_lib/identite-systeme.ts` (225 l.) | signature et état de la clé, côté application |
 | `api/_lib/contexte-systeme.ts` (84 l.) | frontière HTTP : le contexte système n'est posé que si l'appelant a le secret d'exploitation |
 | `scripts/activer_identite_systeme_stricte.mjs` (202 l.) | l'acte d'exploitation (`--verifier` / `--dry-run` / `--activer` / `--desactiver`) |

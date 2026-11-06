@@ -195,7 +195,7 @@ node scripts/activer_identite_systeme_stricte.mjs --desactiver
 L'outil refuse d'écrire sur une cible qui n'est pas classée jetable : le
 basculement d'un environnement qui sert se fait avec l'outil de déploiement de
 cet environnement, selon l'ordre écrit dans l'en-tête de la migration
-`20261105120000_identite_systeme_signee`. La procédure complète, les mesures et
+`20261106130000_identite_systeme_signee`. La procédure complète, les mesures et
 les risques résiduels sont dans `docs/security/2026-11-05-p107-identite-systeme.md`.
 
 

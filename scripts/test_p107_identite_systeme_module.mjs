@@ -92,7 +92,22 @@ console.log('\n  B. falsifications refusees');
   const mac = signe.jeton.slice(coupe + 1);
   const echeance = MAINTENANT + 60;
 
-  ok(!jetonSystemeValide(`${corps}.${mac.slice(0, -2)}00`, { cle: CLE, maintenant: MAINTENANT }),
+  // MUTATION GARANTIE, ET POURQUOI PAS « les deux derniers octets a 00 ».
+  //
+  // La version precedente ecrivait `${mac.slice(0,-2)}00`. Quand le MAC se
+  // terminait DEJA par `00` — ce qui arrive une fois sur 256 — la « mutation »
+  // reproduisait le jeton d'origine, et l'assertion echouait en annoncant que
+  // la verification acceptait un MAC modifie. Elle etait en realite correcte.
+  //
+  // Mesure du 2026-11-06 : une execution sur ~30 a echoue ainsi, alors que la
+  // meme suite passait cinq fois de suite. Un test de securite intermittent
+  // n'est pas un test : il apprend a relancer plutot qu'a lire.
+  //
+  // On force donc un caractere STRICTEMENT different du dernier.
+  const dernierInverse = mac.slice(-1) === '0' ? '1' : '0';
+  const macMute = mac.slice(0, -1) + dernierInverse;
+  ok(macMute !== mac, 'M2 la mutation du MAC change reellement la valeur');
+  ok(!jetonSystemeValide(`${corps}.${macMute}`, { cle: CLE, maintenant: MAINTENANT }),
     'M2 MAC modifie : refuse');
   ok(!jetonSystemeValide(`${corps.replace(IDENTITE_SYSTEME, 'postgres')}.${mac}`, { cle: CLE, maintenant: MAINTENANT }),
     'M3 corps modifie, MAC conserve : refuse');

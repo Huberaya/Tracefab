@@ -43,7 +43,7 @@ d'origine. Le contrôle manquant porte sur l'**ORIGINE**, pas sur l'identité.
 
 ### 2.1 Une identité système SIGNÉE
 
-Migration `20261105120000_identite_systeme_signee`.
+Migration `20261106130000_identite_systeme_signee`.
 
 | Élément | Rôle |
 |---|---|
@@ -303,6 +303,71 @@ d'atteindre ce fichier. La correction est un déplacement de deux lignes, et la
 leçon est écrite ici : **« le typecheck passe » n'est pas la même chose que
 « le typecheck a regardé ce fichier »**.
 
+## 5 quater. Corrections issues du contre-audit indépendant du 2026-11-06
+
+Un contre-audit indépendant a repris les mesures de ce document. Il en a tiré
+trois corrections, dont deux défauts réels que ce rapport n'avait pas vus.
+
+### 5 quater.1 Le jeton système n'avait aucun plafond d'expiration
+
+La migration corrigée dans la PR #113 (`20261106120000_p107_hmac_forme_canonique_et_ttl`)
+borne la durée de vie du jeton **utilisateur** à 600 s. Le jeton **système** de
+cette branche, écrit séparément, avait gardé le comportement d'origine : `exp`
+était seulement comparé à `now()`.
+
+Mesuré sur base jetable, clé active :
+
+| `exp` | avant | après |
+|---|---|---|
+| `now + 60` | accepté | accepté |
+| `now + 700` | **accepté** | refusé |
+| `now + 86400` | **accepté** | refusé |
+| `999999999999` | **accepté** (≈ 31 000 ans) | refusé |
+
+Seul un détenteur de la clé peut produire un tel corps, mais une fuite ou une
+erreur d'outillage devenait alors **permanente** jusqu'à révocation manuelle.
+
+### 5 quater.2 La comparaison du MAC n'était pas à temps constant
+
+`v_candidat = v_mac` compare deux `TEXT` et s'arrête au premier caractère
+différent : le temps de réponse dépend du préfixe correct. C'est un oracle
+**temporel**, que l'absence d'oracle **logique** (la fonction ne rend qu'un
+booléen) ne supprime pas. La comparaison accumule désormais un XOR sur les
+32 octets, sans sortie anticipée.
+
+**Défaut introduit par la correction elle-même, et attrapé avant fusion :**
+`v_diff` était déclaré une seule fois. Sans remise à zéro à chaque clé, la
+première clé non correspondante condamnait toutes les suivantes — seule la clé
+de plus haute version pouvait valider, donc **la rotation était cassée**.
+C'est l'assertion F de `test:p107:identite-systeme` (« pendant le chevauchement,
+un jeton signé par l'ANCIENNE clé est accepté ») qui l'a révélé.
+
+### 5 quater.3 La canonisation du MAC devait être explicite
+
+`decode(…, 'hex')` accepte les **majuscules** : sans un contrôle
+`^[0-9a-f]{64}$`, un même jeton aurait eu deux écritures valides — l'ambiguïté
+de sérialisation que le contrôle « un seul point » ferme par ailleurs,
+réintroduite par la porte de derrière. Le contrôle est posé, et la matrice de
+test le vérifie.
+
+### 5 quater.4 Collision d'horodatage
+
+La migration vivait sous `20261105120000`, déjà porté par
+`20261105120000_active_tenant_plm_ingest_enforcement` (PR #110/#111). Le
+contrôle `test:migrations:horodatages` du dépôt rendait **exit 1** dès que les
+deux étaient présentes. Elle est désormais `20261106130000_identite_systeme_signee`.
+N'étant appliquée sur aucune base partagée, ce renommage ne provoque aucune
+réapplication.
+
+### 5 quater.5 Un test intermittent
+
+`test:p107:identite-systeme-module` mutait le MAC en réécrivant ses deux
+derniers caractères par `00`. Quand le MAC se terminait déjà par `00` — une
+fois sur 256 — la « mutation » reproduisait le jeton d'origine et l'assertion
+échouait, correctement, mais en accusant la vérification. Le test force
+désormais un caractère strictement différent. Mesure : 12 exécutions
+consécutives, 0 échec.
+
 ## 6. Risques résiduels
 
 | # | Risque | Portée réelle | Atténuation / décision |
@@ -362,7 +427,7 @@ jetons signés par cette clé cessent d'être acceptés à l'instruction suivant
 
 | objet | chemin |
 |---|---|
-| migration (gardes, prédicat, vérification, sonde) | `prisma/migrations/20261105120000_identite_systeme_signee/migration.sql` |
+| migration (gardes, prédicat, vérification, sonde) | `prisma/migrations/20261106130000_identite_systeme_signee/migration.sql` |
 | signature et vérification applicatives | `api/_lib/identite-systeme.ts` |
 | contexte worker (signature) | `api/_lib/contexte-systeme.ts` |
 | activation / retour arrière | `scripts/activer_identite_systeme_stricte.mjs` |
