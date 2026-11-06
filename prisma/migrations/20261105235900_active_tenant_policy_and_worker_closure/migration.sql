@@ -35,6 +35,11 @@ GRANT EXECUTE ON FUNCTION public.tracefab_active_organization_id() TO tracefab_w
 GRANT EXECUTE ON FUNCTION public.tracefab_in_active_tenant(uuid) TO tracefab_worker;
 GRANT EXECUTE ON FUNCTION public.tracefab_can_access_org(uuid) TO tracefab_worker;
 
+-- PostgreSQL exige CREATE sur le schéma pour transférer le propriétaire
+-- d'une fonction à tracefab_worker. Le droit est temporaire et sera révoqué
+-- après les transferts, dans le bloc current_user_email ci-dessous.
+GRANT CREATE ON SCHEMA public TO tracefab_worker;
+
 -- 2. Ces fonctions étaient possédées par neondb_owner (BYPASSRLS). Les faire
 --    exécuter sous tracefab_worker active les politiques worker de la table
 --    outbox et de data_requests. L'ACL runtime tracefab_app est conservée.
@@ -669,8 +674,6 @@ BEGIN
   ALTER DEFAULT PRIVILEGES FOR ROLE tracefab_worker IN SCHEMA public
     REVOKE EXECUTE ON FUNCTIONS FROM PUBLIC;
 
-  -- PostgreSQL exige CREATE sur le schema pour transférer le propriétaire.
-  GRANT CREATE ON SCHEMA public TO tracefab_worker;
   ALTER FUNCTION public.tracefab_current_user_email() SECURITY DEFINER;
   ALTER FUNCTION public.tracefab_current_user_email() OWNER TO tracefab_worker;
   ALTER FUNCTION public.tracefab_current_user_email() SET search_path = pg_catalog, public;
