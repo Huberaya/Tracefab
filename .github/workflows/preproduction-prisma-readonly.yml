@@ -59,12 +59,40 @@ jobs:
       - name: Vérifier Prisma via le pooler (lecture seule)
         env:
           DATABASE_URL: ${{ secrets.TRACEFAB_CLEANROOM_POOLER_URL }}
-        run: npx prisma migrate status
+        shell: bash
+        run: |
+          set +e
+          output=$(npx prisma migrate status 2>&1)
+          status=$?
+          set -e
+          printf '%s\\n' "$output"
+          if [ "$status" -eq 0 ]; then
+            echo "Pooler : connexion et historique Prisma accessibles."
+          elif printf '%s' "$output" | grep -Fq "Following migrations have not yet been applied:"; then
+            echo "::notice::Pooler : connexion réussie ; des migrations sont en attente sur cette base Cleanroom neuve."
+          else
+            echo "::error::Échec Prisma via le pooler (code $status)."
+            exit "$status"
+          fi
 
       - name: Vérifier Prisma via la connexion directe (lecture seule)
         env:
           DATABASE_URL: ${{ secrets.TRACEFAB_CLEANROOM_DIRECT_URL }}
-        run: npx prisma migrate status
+        shell: bash
+        run: |
+          set +e
+          output=$(npx prisma migrate status 2>&1)
+          status=$?
+          set -e
+          printf '%s\\n' "$output"
+          if [ "$status" -eq 0 ]; then
+            echo "Direct : connexion et historique Prisma accessibles."
+          elif printf '%s' "$output" | grep -Fq "Following migrations have not yet been applied:"; then
+            echo "::notice::Direct : connexion réussie ; des migrations sont en attente sur cette base Cleanroom neuve."
+          else
+            echo "::error::Échec Prisma via la connexion directe (code $status)."
+            exit "$status"
+          fi
 
       - name: Résumé de sécurité
         run: |
