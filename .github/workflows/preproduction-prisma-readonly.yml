@@ -1,9 +1,7 @@
 name: TraceFab — contrôle Cleanroom (lecture seule)
 
 on:
-  push:
-    branches:
-      - fix/neon-migration-reconciliation-20261104
+  workflow_dispatch:
 
 permissions:
   contents: read
