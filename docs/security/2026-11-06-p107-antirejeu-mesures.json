@@ -1,0 +1,149 @@
+{
+  "schema": "tracefab-p107-antirejeu-v1",
+  "date": "2026-11-06T15:56:53.811Z",
+  "environnement": "PGlite / PostgreSQL 18.6 jetable local",
+  "migrations": 71,
+  "version": "PostgreSQL 18.6 (PGlite 0.5.12) on wasm32-unknown-emscripten, compiled by emcc (",
+  "mesures": [
+    {
+      "section": "ACTUEL",
+      "mesure": "même jeton rejoué dans 5 transactions distinctes",
+      "valeur": [
+        "10000000-0000-4000-8000-000000000002",
+        "10000000-0000-4000-8000-000000000002",
+        "10000000-0000-4000-8000-000000000002",
+        "10000000-0000-4000-8000-000000000002",
+        "10000000-0000-4000-8000-000000000002"
+      ]
+    },
+    {
+      "section": "ACTUEL",
+      "mesure": "5 contextes authentifiés distincts obtenus avec UN jeton",
+      "valeur": 5
+    },
+    {
+      "section": "ACTUEL",
+      "mesure": "rejeu après COMMIT",
+      "valeur": "10000000-0000-4000-8000-000000000002"
+    },
+    {
+      "section": "ACTUEL",
+      "mesure": "rejeu après ROLLBACK",
+      "valeur": "10000000-0000-4000-8000-000000000002"
+    },
+    {
+      "section": "ACTUEL",
+      "mesure": "frontière organisation (jeton A présenté avec org B)",
+      "valeur": null
+    },
+    {
+      "section": "ACTUEL",
+      "mesure": "jeton expiré rejoué",
+      "valeur": null
+    },
+    {
+      "section": "ACTUEL",
+      "mesure": "nonce / request-id / version de clé dans le corps signé",
+      "valeur": {
+        "nonce": false,
+        "request_id": false,
+        "key_version": false,
+        "operation": false
+      }
+    },
+    {
+      "section": "ACTUEL",
+      "mesure": "identifiant de requête applicatif présent dans api/_lib/context.ts",
+      "valeur": false
+    },
+    {
+      "section": "IDEMP",
+      "mesure": "claim #1 / #2 (même ligne, deux transactions)",
+      "valeur": {
+        "premier": 1,
+        "second": 0
+      }
+    },
+    {
+      "section": "IDEMP",
+      "mesure": "complete #2 sur la même ligne",
+      "valeur": "REFUSE : notification_outbox_item_not_processing"
+    },
+    {
+      "section": "IDEMP",
+      "mesure": "contrainte UNIQUE sur event_key",
+      "valeur": 1
+    },
+    {
+      "section": "V2",
+      "mesure": "signature émise APRÈS ouverture de transaction (mesuré)",
+      "valeur": {
+        "xid": "897"
+      }
+    },
+    {
+      "section": "V2",
+      "mesure": "jeton v2 accepté dans SA transaction",
+      "valeur": "10000000-0000-4000-8000-000000000002"
+    },
+    {
+      "section": "V2",
+      "mesure": "MÊME jeton rejoué dans une AUTRE transaction",
+      "valeur": null
+    },
+    {
+      "section": "V2",
+      "mesure": "retry légitime (nouveau xid + nouveau jeton)",
+      "valeur": "10000000-0000-4000-8000-000000000002"
+    },
+    {
+      "section": "V2",
+      "mesure": "après ROLLBACK, nouvelle transaction avec nouveau jeton",
+      "valeur": "10000000-0000-4000-8000-000000000002"
+    },
+    {
+      "section": "V2",
+      "mesure": "deux opérations indépendantes correctement distinguées",
+      "valeur": [
+        "10000000-0000-4000-8000-000000000002",
+        "10000000-0000-4000-8000-000000000002"
+      ]
+    },
+    {
+      "section": "V2",
+      "mesure": "xids des 3 transactions successives",
+      "valeur": [
+        "897",
+        "899",
+        "900"
+      ]
+    },
+    {
+      "section": "V2",
+      "mesure": "coût de stockage (table de nonces)",
+      "valeur": 0
+    },
+    {
+      "section": "V2",
+      "mesure": "coût : un SELECT d’identifiant de transaction par requête",
+      "valeur": 1
+    },
+    {
+      "section": "V2",
+      "mesure": "compatibilité lecture seule : txid_current() consomme un XID",
+      "valeur": "a_evaluer_sur_postgres_17"
+    },
+    {
+      "section": "V2",
+      "mesure": "txid_current() / pg_current_xact_id() disponibles sur le moteur jetable",
+      "valeur": true
+    },
+    {
+      "section": "V2",
+      "mesure": "jeton signé HORS transaction puis présenté dans une transaction",
+      "valeur": null
+    }
+  ],
+  "echecs": 0,
+  "avertissement": "Aucune preuve Neon, Preview ou Production. Le prototype v2 est un objet de base jetable, pas du code livre."
+}

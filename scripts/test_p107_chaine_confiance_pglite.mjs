@@ -106,6 +106,7 @@ ok('PostgreSQL jetable réel (pas un mock)', /PostgreSQL/i.test(versionPG), vers
 const cleV1 = randomBytes(32);            // Buffer, 32 octets = 256 bits
 const cleV2 = randomBytes(32);
 const cleFausse = randomBytes(32);
+const cleDerniere = randomBytes(32);
 ok('clé de 32 octets issue de crypto.randomBytes', cleV1.length === 32 && cleV2.length === 32);
 ok('les deux versions de clé sont distinctes', !cleV1.equals(cleV2));
 
@@ -412,6 +413,44 @@ section('S4 — canonicalisation et durée de vie bornée (défauts D1/D2 mesur�
       const c = `${corpsDe()}|EXTRA`;
       return `${c}.${createHmac('sha256', cleV2).update(c).digest('hex')}`;
     })())) === null);
+
+  // L'expiration est comparée à l'horloge de la BASE, pas à celle du client :
+  // on signe ici avec un `exp` dérivé de `extract(epoch from now())` lu SUR la
+  // connexion, et on vérifie que le vérificateur suit exactement cette horloge.
+  const epochBase = Number((await db.query(
+    'SELECT extract(epoch FROM now())::bigint AS e')).rows[0].e);
+  ok('horloge de la base lue sur la connexion (10 chiffres)',
+    /^\d{10}$/.test(String(epochBase)), `epoch=${epochBase}`);
+  ok('exp = horloge_base + 60 : ACCEPTÉ (horloge de la base, pas du client)',
+    (await identiteDans(signer({ cle: cleV2, exp: epochBase + 60 }))) === U_A);
+  ok('exp = horloge_base - 1 : REFUSÉ',
+    (await identiteDans(signer({ cle: cleV2, exp: epochBase - 1 }))) === null);
+
+  // D3 — témoin comportemental de l'absence de sortie anticipée : avec CINQ
+  // clés actives, un jeton signé par la DERNIÈRE de la boucle doit être
+  // accepté. Une boucle qui s'arrêterait au premier échec le refuserait.
+  await db.exec('RESET ROLE');
+  // C18 a désactivé la version 1 : la réactiver pour mesurer une boucle de
+  // cinq clés, et non de quatre. C'est une clé de test, pas une clé d'exploitation.
+  await db.query('UPDATE public.tracefab_identity_cles SET actif = true WHERE version = 1');
+  for (const [version, cle] of [[3, cleFausse], [4, cleV1], [5, cleDerniere]]) {
+    await db.query(
+      'INSERT INTO public.tracefab_identity_cles (version, secret, actif) VALUES ($1, $2, true)',
+      [version, cle],
+    );
+  }
+  const nbActives = (await db.query(
+    'SELECT count(*)::int AS n FROM public.tracefab_identity_cles WHERE actif')).rows[0].n;
+  ok('cinq clés actives réellement provisionnées', nbActives === 5, `n=${nbActives}`);
+  await db.exec('SET ROLE tracefab_app');
+  ok('D3 jeton signé par la DERNIÈRE clé de la boucle accepté (pas de sortie anticipée)',
+    (await identiteDans(signer({ cle: cleDerniere }))) === U_A);
+  ok('D3 jeton signé par une clé INACTIVE refusé',
+    (await identiteDans((() => {
+      const c = corpsDe();
+      const inactive = randomBytes(32);
+      return `${c}.${createHmac('sha256', inactive).update(c).digest('hex')}`;
+    })())) === null);
 }
 
 /* -------------------------------------------------------------------------- *
@@ -477,6 +516,30 @@ section('S5 — GUC transactionnels : A → B → sans contexte → falsifié �
   }, async () => (await db.query('SELECT public.tracefab_current_user_id()::text AS id')).rows[0].id);
   ok('contexte public/worker + GUC forgé ne crée AUCUNE identité en strict',
     rPublic === null, `id=${rPublic}`);
+
+  // COMMIT (et non ROLLBACK) : le GUC transactionnel doit disparaître avec la
+  // transaction validée, sans contaminer la connexion rendue au pool.
+  const TCommit = signer({ cle: cleV2 });
+  await db.exec('BEGIN');
+  await db.query('SELECT set_config($1, $2, true)', ['tracefab.identity', TCommit]);
+  await db.query('SELECT set_config($1, $2, true)', ['tracefab.active_organization_id', A]);
+  const pendant = (await db.query(
+    'SELECT public.tracefab_current_user_id()::text AS id')).rows[0].id;
+  await db.exec('COMMIT');
+  ok('COMMIT : l’identité signée est bien rendue pendant la transaction',
+    pendant === U_A, `id=${pendant}`);
+  const apresCommit = await db.query(
+    `SELECT coalesce(current_setting('tracefab.identity', true),'') AS j,
+            coalesce(current_setting('tracefab.active_organization_id', true),'') AS o`);
+  ok('après COMMIT, aucun GUC transactionnel ne subsiste sur la connexion',
+    apresCommit.rows[0].j === '' && apresCommit.rows[0].o === '',
+    JSON.stringify(apresCommit.rows[0]));
+  const suivante = await requete({}, async () =>
+    (await db.query('SELECT public.tracefab_current_user_id()::text AS id')).rows[0].id);
+  ok('après COMMIT, la transaction suivante sans jeton rend NULL (fail-closed)',
+    suivante === null, `id=${suivante}`);
+  ok('après ROLLBACK déjà mesuré plus haut, la connexion reste saine',
+    (await identiteDans(TCommit)) === U_A);
 }
 
 /* -------------------------------------------------------------------------- *
@@ -567,6 +630,74 @@ section('S8 — fail-closed : aucune clé active, vérificateur indisponible');
 }
 
 /* -------------------------------------------------------------------------- *
+ * S8 bis — forme de production : fonctions protegees par reecriture de
+ * `pg_get_functiondef` (migration 69) et inventaire complet des SECURITY
+ * DEFINER. Aucune fonction attendue ne doit etre ignoree silencieusement.
+ * ------------------------------------------------------------------------- */
+section('S8bis — pg_get_functiondef, langages, proprietaires, gardes applicatives');
+{
+  await db.exec('RESET ROLE');
+  const inventaire = (await db.query(`
+    SELECT p.proname, p.prolang, l.lanname AS langage,
+           pg_get_userbyid(p.proowner) AS proprietaire,
+           p.proconfig, p.prosecdef,
+           coalesce(p.proacl::text,'') AS acl
+      FROM pg_proc p
+      JOIN pg_namespace n ON n.oid = p.pronamespace
+      JOIN pg_language l ON l.oid = p.prolang
+     WHERE n.nspname = 'public' AND p.prosecdef
+     ORDER BY p.proname
+  `)).rows;
+  ok('inventaire des SECURITY DEFINER non vide', inventaire.length > 0, `n=${inventaire.length}`);
+  const langages = [...new Set(inventaire.map((f) => f.langage))].sort();
+  ok('les langages des fonctions privilegiees sont identifies (SQL et PL/pgSQL)',
+    langages.length >= 1 && langages.every((l) => ['sql', 'plpgsql'].includes(l)),
+    langages.join(', '));
+  const proprietaires = [...new Set(inventaire.map((f) => f.proprietaire))].sort();
+  ok('les proprietaires sont des roles nommes, jamais PUBLIC',
+    proprietaires.length > 0 && proprietaires.every((p) => p !== 'PUBLIC' && p !== ''),
+    proprietaires.join(', '));
+  const sansChemin = inventaire.filter((f) =>
+    !Array.isArray(f.proconfig) || !f.proconfig.some((c) => String(c).startsWith('search_path=')));
+  ok('TOUTES les fonctions privilegiees ont un search_path epingle',
+    sansChemin.length === 0, sansChemin.map((f) => f.proname).join(', '));
+  const exposeesPublic = inventaire.filter((f) => /(^|,)=/.test(f.acl));
+  ok('AUCUNE fonction privilegiee n’a d’entree ACL pour PUBLIC',
+    exposeesPublic.length === 0, exposeesPublic.map((f) => f.proname).join(', '));
+
+  // Migration 69 : trois fonctions d'attestation reecrites depuis leur
+  // `pg_get_functiondef` courant. On verifie la GARDE APRES coup, dans le
+  // catalogue, et non la presence d'une chaine dans le fichier SQL.
+  const attestations = (await db.query(`
+    SELECT p.proname,
+           pg_get_functiondef(p.oid) LIKE '%tracefab_current_user_id()%' AS gardee,
+           pg_get_functiondef(p.oid) LIKE '%current_setting(''tracefab.user_id''%' AS guc_brut
+      FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+     WHERE n.nspname='public' AND p.proname = ANY (ARRAY[
+       'tracefab_register_transaction_certificate',
+       'tracefab_allocate_tc_quantity',
+       'tracefab_reconcile_mass_balance'])
+     ORDER BY p.proname
+  `)).rows;
+  ok('les trois fonctions d’attestation existe et sont gardees par l’identite signee',
+    attestations.length === 3 && attestations.every((f) => f.gardee === true),
+    JSON.stringify(attestations));
+  ok('aucune des trois ne relit le GUC brut tracefab.user_id',
+    attestations.every((f) => f.guc_brut === false));
+
+  const lectureGucBrut = (await db.query(`
+    SELECT p.proname FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace
+     WHERE n.nspname='public' AND p.prokind='f'
+       AND p.proname <> 'tracefab_current_user_id'
+       AND pg_get_functiondef(p.oid) LIKE '%current_setting(''tracefab.user_id''%'
+     ORDER BY p.proname
+  `)).rows;
+  ok('aucune autre fonction ne lit le GUC non signe (postcondition de la 69e migration)',
+    lectureGucBrut.length === 0, lectureGucBrut.map((f) => f.proname).join(', '));
+  await db.exec('SET ROLE tracefab_app');
+}
+
+/* -------------------------------------------------------------------------- *
  * S9 — vraie connexion applicative : `SET SESSION AUTHORIZATION tracefab_app`.
  * C'est la seule modélisation fidèle du déploiement (session_user = role de
  * connexion). Sous une simple session superutilisateur, `SET ROLE` est permis
@@ -595,6 +726,15 @@ section('S9 — connexion applicative réelle : élévation de privilèges refus
   try { await db.query('ALTER TABLE public.tracefab_identity_cles DISABLE ROW LEVEL SECURITY'); }
   catch (e) { refusRls = /permission denied|42501|must be owner/i.test(e.message); }
   ok('la connexion applicative ne peut pas désactiver RLS', refusRls);
+  let refusSignature = false;
+  try {
+    await db.query(`SELECT public.hmac(pg_catalog.convert_to('v1|forge','UTF8'),
+      (SELECT secret FROM public.tracefab_identity_cles LIMIT 1), 'sha256')`);
+  } catch (e) { refusSignature = /permission denied|42501/i.test(e.message); }
+  ok('la connexion applicative ne peut PAS SIGNER avec une clé stockée',
+    refusSignature);
+  ok('la connexion applicative ne peut pas endosser son propre rôle privilégié',
+    (await db.query(`SELECT pg_catalog.pg_has_role(current_user, 'tracefab_worker', 'MEMBER') AS m`)).rows[0].m === false);
 }
 
 await db.close();

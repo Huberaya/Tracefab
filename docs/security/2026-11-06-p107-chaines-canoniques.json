@@ -1,0 +1,860 @@
+{
+  "schema": "tracefab-p107-chaines-v2",
+  "date": "2026-11-06T16:02:53.550Z",
+  "environnement": "PGlite / PostgreSQL 18.6 jetable local",
+  "tetes_114": {
+    "actuelle": "f0aeb51cb52ce778f7f9a5e857438603d81fa5ad",
+    "ancienne": "537bc310d0b6e857c4f74ec0017a130987b22497"
+  },
+  "avertissement": "Aucune preuve Neon, Preview ou Production. Lectures par git show, aucune branche distante modifiee.",
+  "collisions_historiques_acceptees": [
+    "20261006120000",
+    "20261006200000",
+    "20261006220000",
+    "20261017120000"
+  ],
+  "verification_manifeste": {
+    "conformes": 75,
+    "ecarts": 0
+  },
+  "chaines": [
+    {
+      "chaine": "A_canonique_114_actuelle",
+      "refs": [
+        "main",
+        "#113",
+        "#114"
+      ],
+      "correctif": true,
+      "renommages": [],
+      "total": 73,
+      "appliquees": 73,
+      "collisions_avant_renommage": [
+        {
+          "horodatage": "20261006120000",
+          "n": 2
+        },
+        {
+          "horodatage": "20261006200000",
+          "n": 2
+        },
+        {
+          "horodatage": "20261006220000",
+          "n": 2
+        },
+        {
+          "horodatage": "20261017120000",
+          "n": 2
+        }
+      ],
+      "collisions_apres_renommage": [
+        {
+          "horodatage": "20261006120000",
+          "n": 2
+        },
+        {
+          "horodatage": "20261006200000",
+          "n": 2
+        },
+        {
+          "horodatage": "20261006220000",
+          "n": 2
+        },
+        {
+          "horodatage": "20261017120000",
+          "n": 2
+        }
+      ],
+      "secdef": 130,
+      "echec": null,
+      "noms": [
+        "20260923130000_tracefab_neon_initial",
+        "20260923140000_tracefab_clerk_context",
+        "20260923150000_fix_invitation_acceptance",
+        "20260923160000_tracefab_product_api_functions",
+        "20260923170000_fix_data_collection_workflow_context",
+        "20260923180000_fix_data_response_progress_guard",
+        "20260923190000_tracefab_notification_outbox",
+        "20260923200000_tracefab_collection_reminders",
+        "20261005090000_supplier_portal_advanced_hardening",
+        "20261005100000_supplier_invitation_compatibility",
+        "20261006100000_security_force_rls_and_document_access",
+        "20261006110000_quality_center_shared_access",
+        "20261006113000_clerk_directory_membership_sync",
+        "20261006120000_data_collection_bridge_and_quality_automation",
+        "20261006120000_external_schema_bindings",
+        "20261006123000_clerk_sync_security_functions",
+        "20261006130000_tracefab_manual_data_request_reminders",
+        "20261006140000_supply_chain_traceability_api",
+        "20261006160000_dpp_readiness_exposure",
+        "20261006180000_supplier_self_onboarding",
+        "20261006190000_catalog_import_export",
+        "20261006200000_catalog_import_kind",
+        "20261006200000_document_ai_automated_verification",
+        "20261006210000_plm_erp_gs1_interoperability",
+        "20261006220000_esg_pef_footprint_engine",
+        "20261006220000_production_hardening",
+        "20261006230000_green_claims_anti_greenwashing_engine",
+        "20261006240000_quality_corrective_action_plans_cap",
+        "20261006250000_universal_supplier_passport",
+        "20261006260000_mass_balance_anti_fraud_engine",
+        "20261007100000_security_definer_execute_hardening",
+        "20261007120000_force_rls_schema_bindings",
+        "20261008100000_rate_limit_counters",
+        "20261009120000_fix_materials_policy_recursion",
+        "20261009180000_public_read_context",
+        "20261010120000_publication_explicite",
+        "20261012120000_close_public_execute_gap",
+        "20261014100000_revoke_material_visible_public",
+        "20261014110000_revoke_dpp_functions_public",
+        "20261014120000_close_global_default_function_execute",
+        "20261014130000_revoke_public_schema_privileges",
+        "20261014140000_remove_public_supplier_passport_share_token",
+        "20261016130000_dynamic_dpp_lifecycle",
+        "20261016150000_dpp_claim_evidence_chain",
+        "20261016170000_dpp_resolvable_identity",
+        "20261017100000_fix_document_lifecycle_access",
+        "20261017120000_active_tenant_context",
+        "20261017120000_harden_dpp_table_privileges",
+        "20261017150000_harden_finalize_ops_gate",
+        "20261019120000_restreindre_dml_role_applicatif",
+        "20261019140000_restreindre_suppression_compteurs_debit",
+        "20261019160000_retablir_dml_tables_ecrites_directement",
+        "20261020120000_structured_supply_chain_graph_membership",
+        "20261021120000_limit_app_function_execute",
+        "20261021130000_reconcile_runtime_dml_and_migration_history",
+        "20261021170000_dpp_readiness_truthful_gates",
+        "20261023120000_revoke_app_default_dml",
+        "20261027100000_dpp_quality_gate_requires_assessment",
+        "20261027130000_dpp_review_preservation_and_publication_coherence",
+        "20261028120000_runtime_function_registry",
+        "20261028120100_worker_identity_not_forgeable",
+        "20261028120200_document_reserved_fields_internal_only",
+        "20261028130000_product_computed_fields_column_scoped",
+        "20261028140000_supplier_invitation_owner_relationship_scope",
+        "20261028150000_reconcile_plm_erp_sync_job_policies",
+        "20261029180000_plm_erp_sync_jobs_policy_dedup",
+        "20261030140000_ingest_payload_role_guard_and_acl",
+        "20261031120000_identite_hmac_liee_au_contexte",
+        "20261102120000_identite_stricte_email_et_rotation",
+        "20261105180000_active_tenant_access_guards",
+        "20261106120000_p107_hmac_forme_canonique_et_ttl",
+        "20261106130000_identite_systeme_signee",
+        "20261106120300_outbox_owner_identite_systeme"
+      ]
+    },
+    {
+      "chaine": "A2_canonique_114_ancienne",
+      "refs": [
+        "main",
+        "#113",
+        "#114-ancien"
+      ],
+      "correctif": true,
+      "renommages": [],
+      "total": 73,
+      "appliquees": 73,
+      "collisions_avant_renommage": [
+        {
+          "horodatage": "20261006120000",
+          "n": 2
+        },
+        {
+          "horodatage": "20261006200000",
+          "n": 2
+        },
+        {
+          "horodatage": "20261006220000",
+          "n": 2
+        },
+        {
+          "horodatage": "20261017120000",
+          "n": 2
+        }
+      ],
+      "collisions_apres_renommage": [
+        {
+          "horodatage": "20261006120000",
+          "n": 2
+        },
+        {
+          "horodatage": "20261006200000",
+          "n": 2
+        },
+        {
+          "horodatage": "20261006220000",
+          "n": 2
+        },
+        {
+          "horodatage": "20261017120000",
+          "n": 2
+        }
+      ],
+      "secdef": 130,
+      "echec": null,
+      "noms": [
+        "20260923130000_tracefab_neon_initial",
+        "20260923140000_tracefab_clerk_context",
+        "20260923150000_fix_invitation_acceptance",
+        "20260923160000_tracefab_product_api_functions",
+        "20260923170000_fix_data_collection_workflow_context",
+        "20260923180000_fix_data_response_progress_guard",
+        "20260923190000_tracefab_notification_outbox",
+        "20260923200000_tracefab_collection_reminders",
+        "20261005090000_supplier_portal_advanced_hardening",
+        "20261005100000_supplier_invitation_compatibility",
+        "20261006100000_security_force_rls_and_document_access",
+        "20261006110000_quality_center_shared_access",
+        "20261006113000_clerk_directory_membership_sync",
+        "20261006120000_data_collection_bridge_and_quality_automation",
+        "20261006120000_external_schema_bindings",
+        "20261006123000_clerk_sync_security_functions",
+        "20261006130000_tracefab_manual_data_request_reminders",
+        "20261006140000_supply_chain_traceability_api",
+        "20261006160000_dpp_readiness_exposure",
+        "20261006180000_supplier_self_onboarding",
+        "20261006190000_catalog_import_export",
+        "20261006200000_catalog_import_kind",
+        "20261006200000_document_ai_automated_verification",
+        "20261006210000_plm_erp_gs1_interoperability",
+        "20261006220000_esg_pef_footprint_engine",
+        "20261006220000_production_hardening",
+        "20261006230000_green_claims_anti_greenwashing_engine",
+        "20261006240000_quality_corrective_action_plans_cap",
+        "20261006250000_universal_supplier_passport",
+        "20261006260000_mass_balance_anti_fraud_engine",
+        "20261007100000_security_definer_execute_hardening",
+        "20261007120000_force_rls_schema_bindings",
+        "20261008100000_rate_limit_counters",
+        "20261009120000_fix_materials_policy_recursion",
+        "20261009180000_public_read_context",
+        "20261010120000_publication_explicite",
+        "20261012120000_close_public_execute_gap",
+        "20261014100000_revoke_material_visible_public",
+        "20261014110000_revoke_dpp_functions_public",
+        "20261014120000_close_global_default_function_execute",
+        "20261014130000_revoke_public_schema_privileges",
+        "20261014140000_remove_public_supplier_passport_share_token",
+        "20261016130000_dynamic_dpp_lifecycle",
+        "20261016150000_dpp_claim_evidence_chain",
+        "20261016170000_dpp_resolvable_identity",
+        "20261017100000_fix_document_lifecycle_access",
+        "20261017120000_active_tenant_context",
+        "20261017120000_harden_dpp_table_privileges",
+        "20261017150000_harden_finalize_ops_gate",
+        "20261019120000_restreindre_dml_role_applicatif",
+        "20261019140000_restreindre_suppression_compteurs_debit",
+        "20261019160000_retablir_dml_tables_ecrites_directement",
+        "20261020120000_structured_supply_chain_graph_membership",
+        "20261021120000_limit_app_function_execute",
+        "20261021130000_reconcile_runtime_dml_and_migration_history",
+        "20261021170000_dpp_readiness_truthful_gates",
+        "20261023120000_revoke_app_default_dml",
+        "20261027100000_dpp_quality_gate_requires_assessment",
+        "20261027130000_dpp_review_preservation_and_publication_coherence",
+        "20261028120000_runtime_function_registry",
+        "20261028120100_worker_identity_not_forgeable",
+        "20261028120200_document_reserved_fields_internal_only",
+        "20261028130000_product_computed_fields_column_scoped",
+        "20261028140000_supplier_invitation_owner_relationship_scope",
+        "20261028150000_reconcile_plm_erp_sync_job_policies",
+        "20261029180000_plm_erp_sync_jobs_policy_dedup",
+        "20261030140000_ingest_payload_role_guard_and_acl",
+        "20261031120000_identite_hmac_liee_au_contexte",
+        "20261102120000_identite_stricte_email_et_rotation",
+        "20261105120000_identite_systeme_signee",
+        "20261105180000_active_tenant_access_guards",
+        "20261106120000_p107_hmac_forme_canonique_et_ttl",
+        "20261106120300_outbox_owner_identite_systeme"
+      ]
+    },
+    {
+      "chaine": "B_etendue_110_112",
+      "refs": [
+        "main",
+        "#110",
+        "#112",
+        "#113",
+        "#114"
+      ],
+      "correctif": true,
+      "renommages": [
+        "20261105180000_active_tenant_access_guards"
+      ],
+      "total": 94,
+      "appliquees": 94,
+      "collisions_avant_renommage": [
+        {
+          "horodatage": "20261006120000",
+          "n": 2
+        },
+        {
+          "horodatage": "20261006200000",
+          "n": 2
+        },
+        {
+          "horodatage": "20261006220000",
+          "n": 2
+        },
+        {
+          "horodatage": "20261017120000",
+          "n": 2
+        },
+        {
+          "horodatage": "20261105180000",
+          "n": 2
+        }
+      ],
+      "collisions_apres_renommage": [
+        {
+          "horodatage": "20261006120000",
+          "n": 2
+        },
+        {
+          "horodatage": "20261006200000",
+          "n": 2
+        },
+        {
+          "horodatage": "20261006220000",
+          "n": 2
+        },
+        {
+          "horodatage": "20261017120000",
+          "n": 2
+        }
+      ],
+      "secdef": 131,
+      "echec": null,
+      "noms": [
+        "20260923130000_tracefab_neon_initial",
+        "20260923140000_tracefab_clerk_context",
+        "20260923150000_fix_invitation_acceptance",
+        "20260923160000_tracefab_product_api_functions",
+        "20260923170000_fix_data_collection_workflow_context",
+        "20260923180000_fix_data_response_progress_guard",
+        "20260923190000_tracefab_notification_outbox",
+        "20260923200000_tracefab_collection_reminders",
+        "20261005090000_supplier_portal_advanced_hardening",
+        "20261005100000_supplier_invitation_compatibility",
+        "20261006100000_security_force_rls_and_document_access",
+        "20261006110000_quality_center_shared_access",
+        "20261006113000_clerk_directory_membership_sync",
+        "20261006120000_data_collection_bridge_and_quality_automation",
+        "20261006120000_external_schema_bindings",
+        "20261006123000_clerk_sync_security_functions",
+        "20261006130000_tracefab_manual_data_request_reminders",
+        "20261006140000_supply_chain_traceability_api",
+        "20261006160000_dpp_readiness_exposure",
+        "20261006180000_supplier_self_onboarding",
+        "20261006190000_catalog_import_export",
+        "20261006200000_catalog_import_kind",
+        "20261006200000_document_ai_automated_verification",
+        "20261006210000_plm_erp_gs1_interoperability",
+        "20261006220000_esg_pef_footprint_engine",
+        "20261006220000_production_hardening",
+        "20261006230000_green_claims_anti_greenwashing_engine",
+        "20261006240000_quality_corrective_action_plans_cap",
+        "20261006250000_universal_supplier_passport",
+        "20261006260000_mass_balance_anti_fraud_engine",
+        "20261007100000_security_definer_execute_hardening",
+        "20261007120000_force_rls_schema_bindings",
+        "20261008100000_rate_limit_counters",
+        "20261009120000_fix_materials_policy_recursion",
+        "20261009180000_public_read_context",
+        "20261010120000_publication_explicite",
+        "20261012120000_close_public_execute_gap",
+        "20261014100000_revoke_material_visible_public",
+        "20261014110000_revoke_dpp_functions_public",
+        "20261014120000_close_global_default_function_execute",
+        "20261014130000_revoke_public_schema_privileges",
+        "20261014140000_remove_public_supplier_passport_share_token",
+        "20261016130000_dynamic_dpp_lifecycle",
+        "20261016150000_dpp_claim_evidence_chain",
+        "20261016170000_dpp_resolvable_identity",
+        "20261017100000_fix_document_lifecycle_access",
+        "20261017120000_active_tenant_context",
+        "20261017120000_harden_dpp_table_privileges",
+        "20261017150000_harden_finalize_ops_gate",
+        "20261019120000_restreindre_dml_role_applicatif",
+        "20261019140000_restreindre_suppression_compteurs_debit",
+        "20261019160000_retablir_dml_tables_ecrites_directement",
+        "20261020120000_structured_supply_chain_graph_membership",
+        "20261021120000_limit_app_function_execute",
+        "20261021130000_reconcile_runtime_dml_and_migration_history",
+        "20261021170000_dpp_readiness_truthful_gates",
+        "20261023120000_revoke_app_default_dml",
+        "20261027100000_dpp_quality_gate_requires_assessment",
+        "20261027130000_dpp_review_preservation_and_publication_coherence",
+        "20261028120000_runtime_function_registry",
+        "20261028120100_worker_identity_not_forgeable",
+        "20261028120200_document_reserved_fields_internal_only",
+        "20261028130000_product_computed_fields_column_scoped",
+        "20261028140000_supplier_invitation_owner_relationship_scope",
+        "20261028150000_reconcile_plm_erp_sync_job_policies",
+        "20261029180000_plm_erp_sync_jobs_policy_dedup",
+        "20261030140000_ingest_payload_role_guard_and_acl",
+        "20261031120000_identite_hmac_liee_au_contexte",
+        "20261102120000_identite_stricte_email_et_rotation",
+        "20261104090000_plm_integrations_and_gs1_constraints",
+        "20261104100000_supply_chain_status_enum_casts",
+        "20261105120000_active_tenant_plm_ingest_enforcement",
+        "20261105130000_active_tenant_product_dpp_pef_rls",
+        "20261105140000_active_tenant_green_claims_rls",
+        "20261105150000_active_tenant_dpp_claims_identity_rls",
+        "20261105160000_active_tenant_product_materials_rls",
+        "20261105170000_active_tenant_security_definer_guards",
+        "20261105180000_active_tenant_tc_registration_guard",
+        "20261105180010_active_tenant_access_guards",
+        "20261105190000_active_tenant_quality_collection_guards",
+        "20261105200000_active_tenant_material_certification_guards",
+        "20261105210000_active_tenant_supplier_profile_passport_guards",
+        "20261105220000_active_tenant_quality_cap_guards",
+        "20261105230000_active_tenant_invite_document_passport_guards",
+        "20261105235900_active_tenant_policy_and_worker_closure",
+        "20261105240000_active_tenant_supplier_quality_guard",
+        "20261105250000_active_tenant_document_material_access",
+        "20261105260000_runtime_user_email_definer_guard",
+        "20261105270000_runtime_read_users_and_registry",
+        "20261105280000_active_tenant_document_indirect_paths",
+        "20261106000000_active_tenant_supplier_passport_guards",
+        "20261106120000_p107_hmac_forme_canonique_et_ttl",
+        "20261106130000_identite_systeme_signee",
+        "20261106120300_outbox_owner_identite_systeme"
+      ]
+    },
+    {
+      "chaine": "B2_etendue_114_ancienne",
+      "refs": [
+        "main",
+        "#110",
+        "#112",
+        "#113",
+        "#114-ancien"
+      ],
+      "correctif": true,
+      "renommages": [
+        "20261105120000_identite_systeme_signee",
+        "20261105180000_active_tenant_access_guards"
+      ],
+      "total": 94,
+      "appliquees": 94,
+      "collisions_avant_renommage": [
+        {
+          "horodatage": "20261006120000",
+          "n": 2
+        },
+        {
+          "horodatage": "20261006200000",
+          "n": 2
+        },
+        {
+          "horodatage": "20261006220000",
+          "n": 2
+        },
+        {
+          "horodatage": "20261017120000",
+          "n": 2
+        },
+        {
+          "horodatage": "20261105120000",
+          "n": 2
+        },
+        {
+          "horodatage": "20261105180000",
+          "n": 2
+        }
+      ],
+      "collisions_apres_renommage": [
+        {
+          "horodatage": "20261006120000",
+          "n": 2
+        },
+        {
+          "horodatage": "20261006200000",
+          "n": 2
+        },
+        {
+          "horodatage": "20261006220000",
+          "n": 2
+        },
+        {
+          "horodatage": "20261017120000",
+          "n": 2
+        }
+      ],
+      "secdef": 131,
+      "echec": null,
+      "noms": [
+        "20260923130000_tracefab_neon_initial",
+        "20260923140000_tracefab_clerk_context",
+        "20260923150000_fix_invitation_acceptance",
+        "20260923160000_tracefab_product_api_functions",
+        "20260923170000_fix_data_collection_workflow_context",
+        "20260923180000_fix_data_response_progress_guard",
+        "20260923190000_tracefab_notification_outbox",
+        "20260923200000_tracefab_collection_reminders",
+        "20261005090000_supplier_portal_advanced_hardening",
+        "20261005100000_supplier_invitation_compatibility",
+        "20261006100000_security_force_rls_and_document_access",
+        "20261006110000_quality_center_shared_access",
+        "20261006113000_clerk_directory_membership_sync",
+        "20261006120000_data_collection_bridge_and_quality_automation",
+        "20261006120000_external_schema_bindings",
+        "20261006123000_clerk_sync_security_functions",
+        "20261006130000_tracefab_manual_data_request_reminders",
+        "20261006140000_supply_chain_traceability_api",
+        "20261006160000_dpp_readiness_exposure",
+        "20261006180000_supplier_self_onboarding",
+        "20261006190000_catalog_import_export",
+        "20261006200000_catalog_import_kind",
+        "20261006200000_document_ai_automated_verification",
+        "20261006210000_plm_erp_gs1_interoperability",
+        "20261006220000_esg_pef_footprint_engine",
+        "20261006220000_production_hardening",
+        "20261006230000_green_claims_anti_greenwashing_engine",
+        "20261006240000_quality_corrective_action_plans_cap",
+        "20261006250000_universal_supplier_passport",
+        "20261006260000_mass_balance_anti_fraud_engine",
+        "20261007100000_security_definer_execute_hardening",
+        "20261007120000_force_rls_schema_bindings",
+        "20261008100000_rate_limit_counters",
+        "20261009120000_fix_materials_policy_recursion",
+        "20261009180000_public_read_context",
+        "20261010120000_publication_explicite",
+        "20261012120000_close_public_execute_gap",
+        "20261014100000_revoke_material_visible_public",
+        "20261014110000_revoke_dpp_functions_public",
+        "20261014120000_close_global_default_function_execute",
+        "20261014130000_revoke_public_schema_privileges",
+        "20261014140000_remove_public_supplier_passport_share_token",
+        "20261016130000_dynamic_dpp_lifecycle",
+        "20261016150000_dpp_claim_evidence_chain",
+        "20261016170000_dpp_resolvable_identity",
+        "20261017100000_fix_document_lifecycle_access",
+        "20261017120000_active_tenant_context",
+        "20261017120000_harden_dpp_table_privileges",
+        "20261017150000_harden_finalize_ops_gate",
+        "20261019120000_restreindre_dml_role_applicatif",
+        "20261019140000_restreindre_suppression_compteurs_debit",
+        "20261019160000_retablir_dml_tables_ecrites_directement",
+        "20261020120000_structured_supply_chain_graph_membership",
+        "20261021120000_limit_app_function_execute",
+        "20261021130000_reconcile_runtime_dml_and_migration_history",
+        "20261021170000_dpp_readiness_truthful_gates",
+        "20261023120000_revoke_app_default_dml",
+        "20261027100000_dpp_quality_gate_requires_assessment",
+        "20261027130000_dpp_review_preservation_and_publication_coherence",
+        "20261028120000_runtime_function_registry",
+        "20261028120100_worker_identity_not_forgeable",
+        "20261028120200_document_reserved_fields_internal_only",
+        "20261028130000_product_computed_fields_column_scoped",
+        "20261028140000_supplier_invitation_owner_relationship_scope",
+        "20261028150000_reconcile_plm_erp_sync_job_policies",
+        "20261029180000_plm_erp_sync_jobs_policy_dedup",
+        "20261030140000_ingest_payload_role_guard_and_acl",
+        "20261031120000_identite_hmac_liee_au_contexte",
+        "20261102120000_identite_stricte_email_et_rotation",
+        "20261104090000_plm_integrations_and_gs1_constraints",
+        "20261104100000_supply_chain_status_enum_casts",
+        "20261105120000_active_tenant_plm_ingest_enforcement",
+        "20261105120010_identite_systeme_signee",
+        "20261105130000_active_tenant_product_dpp_pef_rls",
+        "20261105140000_active_tenant_green_claims_rls",
+        "20261105150000_active_tenant_dpp_claims_identity_rls",
+        "20261105160000_active_tenant_product_materials_rls",
+        "20261105170000_active_tenant_security_definer_guards",
+        "20261105180000_active_tenant_tc_registration_guard",
+        "20261105180010_active_tenant_access_guards",
+        "20261105190000_active_tenant_quality_collection_guards",
+        "20261105200000_active_tenant_material_certification_guards",
+        "20261105210000_active_tenant_supplier_profile_passport_guards",
+        "20261105220000_active_tenant_quality_cap_guards",
+        "20261105230000_active_tenant_invite_document_passport_guards",
+        "20261105235900_active_tenant_policy_and_worker_closure",
+        "20261105240000_active_tenant_supplier_quality_guard",
+        "20261105250000_active_tenant_document_material_access",
+        "20261105260000_runtime_user_email_definer_guard",
+        "20261105270000_runtime_read_users_and_registry",
+        "20261105280000_active_tenant_document_indirect_paths",
+        "20261106000000_active_tenant_supplier_passport_guards",
+        "20261106120000_p107_hmac_forme_canonique_et_ttl",
+        "20261106120300_outbox_owner_identite_systeme"
+      ]
+    },
+    {
+      "chaine": "C_114_seule",
+      "refs": [
+        "main",
+        "#114"
+      ],
+      "correctif": false,
+      "renommages": [],
+      "total": 70,
+      "appliquees": 70,
+      "collisions_avant_renommage": [
+        {
+          "horodatage": "20261006120000",
+          "n": 2
+        },
+        {
+          "horodatage": "20261006200000",
+          "n": 2
+        },
+        {
+          "horodatage": "20261006220000",
+          "n": 2
+        },
+        {
+          "horodatage": "20261017120000",
+          "n": 2
+        }
+      ],
+      "collisions_apres_renommage": [
+        {
+          "horodatage": "20261006120000",
+          "n": 2
+        },
+        {
+          "horodatage": "20261006200000",
+          "n": 2
+        },
+        {
+          "horodatage": "20261006220000",
+          "n": 2
+        },
+        {
+          "horodatage": "20261017120000",
+          "n": 2
+        }
+      ],
+      "secdef": 127,
+      "echec": null,
+      "noms": [
+        "20260923130000_tracefab_neon_initial",
+        "20260923140000_tracefab_clerk_context",
+        "20260923150000_fix_invitation_acceptance",
+        "20260923160000_tracefab_product_api_functions",
+        "20260923170000_fix_data_collection_workflow_context",
+        "20260923180000_fix_data_response_progress_guard",
+        "20260923190000_tracefab_notification_outbox",
+        "20260923200000_tracefab_collection_reminders",
+        "20261005090000_supplier_portal_advanced_hardening",
+        "20261005100000_supplier_invitation_compatibility",
+        "20261006100000_security_force_rls_and_document_access",
+        "20261006110000_quality_center_shared_access",
+        "20261006113000_clerk_directory_membership_sync",
+        "20261006120000_data_collection_bridge_and_quality_automation",
+        "20261006120000_external_schema_bindings",
+        "20261006123000_clerk_sync_security_functions",
+        "20261006130000_tracefab_manual_data_request_reminders",
+        "20261006140000_supply_chain_traceability_api",
+        "20261006160000_dpp_readiness_exposure",
+        "20261006180000_supplier_self_onboarding",
+        "20261006190000_catalog_import_export",
+        "20261006200000_catalog_import_kind",
+        "20261006200000_document_ai_automated_verification",
+        "20261006210000_plm_erp_gs1_interoperability",
+        "20261006220000_esg_pef_footprint_engine",
+        "20261006220000_production_hardening",
+        "20261006230000_green_claims_anti_greenwashing_engine",
+        "20261006240000_quality_corrective_action_plans_cap",
+        "20261006250000_universal_supplier_passport",
+        "20261006260000_mass_balance_anti_fraud_engine",
+        "20261007100000_security_definer_execute_hardening",
+        "20261007120000_force_rls_schema_bindings",
+        "20261008100000_rate_limit_counters",
+        "20261009120000_fix_materials_policy_recursion",
+        "20261009180000_public_read_context",
+        "20261010120000_publication_explicite",
+        "20261012120000_close_public_execute_gap",
+        "20261014100000_revoke_material_visible_public",
+        "20261014110000_revoke_dpp_functions_public",
+        "20261014120000_close_global_default_function_execute",
+        "20261014130000_revoke_public_schema_privileges",
+        "20261014140000_remove_public_supplier_passport_share_token",
+        "20261016130000_dynamic_dpp_lifecycle",
+        "20261016150000_dpp_claim_evidence_chain",
+        "20261016170000_dpp_resolvable_identity",
+        "20261017100000_fix_document_lifecycle_access",
+        "20261017120000_active_tenant_context",
+        "20261017120000_harden_dpp_table_privileges",
+        "20261017150000_harden_finalize_ops_gate",
+        "20261019120000_restreindre_dml_role_applicatif",
+        "20261019140000_restreindre_suppression_compteurs_debit",
+        "20261019160000_retablir_dml_tables_ecrites_directement",
+        "20261020120000_structured_supply_chain_graph_membership",
+        "20261021120000_limit_app_function_execute",
+        "20261021130000_reconcile_runtime_dml_and_migration_history",
+        "20261021170000_dpp_readiness_truthful_gates",
+        "20261023120000_revoke_app_default_dml",
+        "20261027100000_dpp_quality_gate_requires_assessment",
+        "20261027130000_dpp_review_preservation_and_publication_coherence",
+        "20261028120000_runtime_function_registry",
+        "20261028120100_worker_identity_not_forgeable",
+        "20261028120200_document_reserved_fields_internal_only",
+        "20261028130000_product_computed_fields_column_scoped",
+        "20261028140000_supplier_invitation_owner_relationship_scope",
+        "20261028150000_reconcile_plm_erp_sync_job_policies",
+        "20261029180000_plm_erp_sync_jobs_policy_dedup",
+        "20261030140000_ingest_payload_role_guard_and_acl",
+        "20261031120000_identite_hmac_liee_au_contexte",
+        "20261102120000_identite_stricte_email_et_rotation",
+        "20261106130000_identite_systeme_signee"
+      ]
+    },
+    {
+      "chaine": "D_111_114",
+      "refs": [
+        "main",
+        "#111",
+        "#114"
+      ],
+      "correctif": false,
+      "renommages": [],
+      "total": 87,
+      "appliquees": 87,
+      "collisions_avant_renommage": [
+        {
+          "horodatage": "20261006120000",
+          "n": 2
+        },
+        {
+          "horodatage": "20261006200000",
+          "n": 2
+        },
+        {
+          "horodatage": "20261006220000",
+          "n": 2
+        },
+        {
+          "horodatage": "20261017120000",
+          "n": 2
+        }
+      ],
+      "collisions_apres_renommage": [
+        {
+          "horodatage": "20261006120000",
+          "n": 2
+        },
+        {
+          "horodatage": "20261006200000",
+          "n": 2
+        },
+        {
+          "horodatage": "20261006220000",
+          "n": 2
+        },
+        {
+          "horodatage": "20261017120000",
+          "n": 2
+        }
+      ],
+      "secdef": 128,
+      "echec": null,
+      "noms": [
+        "20260923130000_tracefab_neon_initial",
+        "20260923140000_tracefab_clerk_context",
+        "20260923150000_fix_invitation_acceptance",
+        "20260923160000_tracefab_product_api_functions",
+        "20260923170000_fix_data_collection_workflow_context",
+        "20260923180000_fix_data_response_progress_guard",
+        "20260923190000_tracefab_notification_outbox",
+        "20260923200000_tracefab_collection_reminders",
+        "20261005090000_supplier_portal_advanced_hardening",
+        "20261005100000_supplier_invitation_compatibility",
+        "20261006100000_security_force_rls_and_document_access",
+        "20261006110000_quality_center_shared_access",
+        "20261006113000_clerk_directory_membership_sync",
+        "20261006120000_data_collection_bridge_and_quality_automation",
+        "20261006120000_external_schema_bindings",
+        "20261006123000_clerk_sync_security_functions",
+        "20261006130000_tracefab_manual_data_request_reminders",
+        "20261006140000_supply_chain_traceability_api",
+        "20261006160000_dpp_readiness_exposure",
+        "20261006180000_supplier_self_onboarding",
+        "20261006190000_catalog_import_export",
+        "20261006200000_catalog_import_kind",
+        "20261006200000_document_ai_automated_verification",
+        "20261006210000_plm_erp_gs1_interoperability",
+        "20261006220000_esg_pef_footprint_engine",
+        "20261006220000_production_hardening",
+        "20261006230000_green_claims_anti_greenwashing_engine",
+        "20261006240000_quality_corrective_action_plans_cap",
+        "20261006250000_universal_supplier_passport",
+        "20261006260000_mass_balance_anti_fraud_engine",
+        "20261007100000_security_definer_execute_hardening",
+        "20261007120000_force_rls_schema_bindings",
+        "20261008100000_rate_limit_counters",
+        "20261009120000_fix_materials_policy_recursion",
+        "20261009180000_public_read_context",
+        "20261010120000_publication_explicite",
+        "20261012120000_close_public_execute_gap",
+        "20261014100000_revoke_material_visible_public",
+        "20261014110000_revoke_dpp_functions_public",
+        "20261014120000_close_global_default_function_execute",
+        "20261014130000_revoke_public_schema_privileges",
+        "20261014140000_remove_public_supplier_passport_share_token",
+        "20261016130000_dynamic_dpp_lifecycle",
+        "20261016150000_dpp_claim_evidence_chain",
+        "20261016170000_dpp_resolvable_identity",
+        "20261017100000_fix_document_lifecycle_access",
+        "20261017120000_active_tenant_context",
+        "20261017120000_harden_dpp_table_privileges",
+        "20261017150000_harden_finalize_ops_gate",
+        "20261019120000_restreindre_dml_role_applicatif",
+        "20261019140000_restreindre_suppression_compteurs_debit",
+        "20261019160000_retablir_dml_tables_ecrites_directement",
+        "20261020120000_structured_supply_chain_graph_membership",
+        "20261021120000_limit_app_function_execute",
+        "20261021130000_reconcile_runtime_dml_and_migration_history",
+        "20261021170000_dpp_readiness_truthful_gates",
+        "20261023120000_revoke_app_default_dml",
+        "20261027100000_dpp_quality_gate_requires_assessment",
+        "20261027130000_dpp_review_preservation_and_publication_coherence",
+        "20261028120000_runtime_function_registry",
+        "20261028120100_worker_identity_not_forgeable",
+        "20261028120200_document_reserved_fields_internal_only",
+        "20261028130000_product_computed_fields_column_scoped",
+        "20261028140000_supplier_invitation_owner_relationship_scope",
+        "20261028150000_reconcile_plm_erp_sync_job_policies",
+        "20261029180000_plm_erp_sync_jobs_policy_dedup",
+        "20261030140000_ingest_payload_role_guard_and_acl",
+        "20261031120000_identite_hmac_liee_au_contexte",
+        "20261102120000_identite_stricte_email_et_rotation",
+        "20261104090000_plm_integrations_and_gs1_constraints",
+        "20261104100000_supply_chain_status_enum_casts",
+        "20261105120000_active_tenant_plm_ingest_enforcement",
+        "20261105130000_active_tenant_product_dpp_pef_rls",
+        "20261105140000_active_tenant_green_claims_rls",
+        "20261105150000_active_tenant_dpp_claims_identity_rls",
+        "20261105160000_active_tenant_product_materials_rls",
+        "20261105170000_active_tenant_security_definer_guards",
+        "20261105180000_active_tenant_tc_registration_guard",
+        "20261105190000_active_tenant_quality_collection_guards",
+        "20261105200000_active_tenant_material_certification_guards",
+        "20261105210000_active_tenant_supplier_profile_passport_guards",
+        "20261105220000_active_tenant_quality_cap_guards",
+        "20261105230000_active_tenant_invite_document_passport_guards",
+        "20261105235900_active_tenant_policy_and_worker_closure",
+        "20261105240000_active_tenant_supplier_quality_guard",
+        "20261106000000_active_tenant_supplier_passport_guards",
+        "20261106130000_identite_systeme_signee"
+      ]
+    }
+  ],
+  "rejeu_renommage_114": {
+    "scenario": "E_rejeu_renommage_114",
+    "environnement": "PGlite / PostgreSQL 18.6 jetable, journal _prisma_migrations SIMULE",
+    "tete_ancienne": "537bc310d0b6e857c4f74ec0017a130987b22497",
+    "tete_actuelle": "f0aeb51cb52ce778f7f9a5e857438603d81fa5ad",
+    "migrations_avant": 72,
+    "erreur_chaine_historique": null,
+    "nom_attendu_par_la_nouvelle_chaine": "20261106130000_identite_systeme_signee",
+    "nom_deja_applique": "20261105120000_identite_systeme_signee",
+    "reapplication": "SQL REUSSI (idempotent)",
+    "noms_distincts": 2,
+    "fonction_verif": 1,
+    "colonne_mode": 1,
+    "interpretation": "Le SQL est idempotent (CREATE OR REPLACE / IF NOT EXISTS), mais Prisma enregistre alors le NOUVEAU nom : le journal finit avec DEUX noms distincts pour les MEMES objets (ancien + nouveau), donc deux checksums pour une seule definition. Aucune conclusion de compatibilite ne peut etre tiree sans lecture du journal REEL de la Preview (BLOCKED). Ce scenario est une MODELISATION locale, pas une mesure distante."
+  }
+}

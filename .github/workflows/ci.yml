@@ -683,6 +683,14 @@ jobs:
       - name: Installer les dependances
         run: npm ci
 
+      # P10.7 — chantier E : consigner la version EXACTE du PostgreSQL serveur
+      # utilise par la CI. `postgres:17` n'epingle pas de version mineure, donc
+      # seule une mesure sur le service en cours de run fait foi. Lecture seule,
+      # aucun secret : DATABASE_URL designe deja la base jetable du service.
+      - name: Version exacte du PostgreSQL jetable
+        run: |
+          node -e "const {Client}=require('pg');(async()=>{const c=new Client({connectionString:process.env.DATABASE_URL});await c.connect();const r=await c.query('select version() as v');console.log('PostgreSQL CI : '+r.rows[0].v);await c.end()})()"
+
       - name: Generer le client Prisma
         run: npm run db:generate
 
