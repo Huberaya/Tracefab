@@ -6,6 +6,8 @@ import { json, methodNotAllowed } from '../../_lib/http.js';
 import { workerAuthorized, workerSecretConfigured } from '../../_lib/worker-auth.js';
 import { databaseIdentityIsSafe, probeDatabaseIdentity, runLiveProbes } from '../../_lib/readiness-probes.js';
 import { etatCleIdentite } from '../../_lib/identite-jeton.js';
+import { prisma } from '../../_lib/prisma.js';
+import { etatCleSysteme, signerIdentiteSysteme } from '../../_lib/identite-systeme.js';
 
 function configured(name: string) {
   return Boolean(process.env[name]?.trim());
@@ -83,6 +85,57 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   };
 
   const wantIdentity = req.query?.identity === '1';
+
+  // P10.7 — l'application sait-elle signer une identite SYSTEME, et la base
+  // sait-elle la VERIFIER ?
+  //
+  // Ce n'est pas la meme question que `identityTokens` : le jeton utilisateur et
+  // le jeton systeme partagent la cle mais pas l'usage, et le mode strict de
+  // l'un n'est pas celui de l'autre. Un operateur doit pouvoir constater les
+  // deux avant d'activer quoi que ce soit.
+  //
+  // `verifiee_par_la_base` n'est pas un constat de configuration : c'est un
+  // ALLER-RETOUR reel — on signe un jeton, on le fait verifier par la base, et
+  // on rapporte le booleen. Une application qui signe et une base qui refuse
+  // (cle differente, mode strict, table vide) est exactement le mode de panne
+  // que cette sonde doit rendre visible AVANT la bascule.
+  const etatSysteme = etatCleSysteme();
+  let verificationBase: boolean | null = null;
+  let verificationDetail = 'non_sondee';
+  if (etatSysteme === 'valide' && wantIdentity) {
+    const signe = signerIdentiteSysteme({ cle: process.env.TRACEFAB_IDENTITY_KEY });
+    if (signe === null) {
+      verificationDetail = 'signature_impossible';
+    } else {
+      try {
+        const rows = await prisma.$queryRaw<Array<{ v: boolean | null }>>`
+          SELECT public.tracefab_identite_systeme_jeton_valide(${signe.jeton}) AS v
+        `;
+        verificationBase = rows?.[0]?.v === true;
+        verificationDetail = verificationBase ? 'aller_retour_reussi' : 'base_a_refuse';
+      } catch (error) {
+        // Une erreur n'est PAS un « non » : c'est une incapacite de mesurer, et
+        // la distinguer evite de lire un feu vert la ou rien n'a ete verifie.
+        verificationBase = null;
+        verificationDetail = error instanceof Error && /42501|permission denied/.test(error.message)
+          ? 'verification_non_accordee_au_runtime'
+          : 'verification_en_erreur';
+      }
+    }
+  }
+  const jetonsSysteme = {
+    // Meme cle que `identityTokens` : deux variables distinctes pour la meme
+    // valeur seraient deux occasions de les faire diverger.
+    configured: etatSysteme === 'valide',
+    mode: etatSysteme === 'valide' ? 'signe' : etatSysteme === 'invalide' ? 'cle_invalide' : 'non_configure',
+    usage: 'tracefab_system',
+    // `null` = non mesuree (et non « fausse ») : le champ n'est renseigne que
+    // sur demande (`?identity=1`), pour ne pas interroger la base a chaque
+    // passage d'une sonde de supervision.
+    verifiee_par_la_base: verificationBase,
+    verification: verificationDetail,
+  };
+
   const databaseIdentity = wantIdentity ? await probeDatabaseIdentity() : undefined;
   // En mode diagnostic, la readiness est rouge tant que l'identité effective
   // ne prouve pas le rôle applicatif sans privilèges de contournement RLS.
@@ -95,6 +148,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       configurationOnly: true,
       services,
       identityTokens: jetonsIdentite,
+      identitySysteme: jetonsSysteme,
       ...(databaseIdentity ? { databaseIdentity } : {}),
     });
   }
@@ -111,6 +165,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     services,
     probes,
     identityTokens: jetonsIdentite,
+    identitySysteme: jetonsSysteme,
     ...(databaseIdentity ? { databaseIdentity } : {}),
   });
 }

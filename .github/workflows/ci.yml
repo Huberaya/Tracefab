@@ -1231,6 +1231,57 @@ jobs:
         # jetable, et le script refuse toute cible non locale avant connexion.
         run: npm run test:p107:demonstration
 
+      - name: P10.7 — le module de signature systeme, eprouve hors ligne
+        # 44 assertions, sans base : jeton valide, MAC modifie, corps modifie
+        # MAC conserve, identite designee changee, expiration depassee ou EGALE,
+        # signature absente, usage du jeton UTILISATEUR rejoue, version inconnue,
+        # serialisation ambigue, MAC en majuscules, cle malformee. La cle est
+        # tiree au hasard a chaque execution : aucune valeur n est en depot.
+        # Verifie dans les deux sens : quatre mutations du module (expiration,
+        # usage, identite, comparaison) font chacune echouer le cas qui la nomme.
+        run: npm run test:p107:identite-systeme-module
+
+      - name: P10.7 — l origine des operations systeme est prouvee, pas supposee
+        # 54 assertions sous `tracefab_app` sans SUPERUSER ni BYPASSRLS : les
+        # treize operations REFUSENT sans jeton systeme signe (42501),
+        # l ACCEPTENT avec, et l escalade complete du 05/11 est rejouee — aucune
+        # adhesion ecrite chez le locataire voisin, aucune donnee lue. Rotation
+        # et revocation mesurees.
+        #
+        # La cle est provisionnee par la suite ELLE-MEME, comme le fait deja
+        # `test:p105:jeton` : tiree au hasard a chaque execution, confiee au
+        # script d exploitation par variable d environnement, jamais ecrite dans
+        # les journaux, et jetee avec la base. Aucune commande npm ne nomme
+        # l outil de provisionnement : la politique de routage des suites
+        # destructives l exige, pour qu aucun outil d ecriture d exploitation ne
+        # devienne declenchable automatiquement.
+        run: npm run test:p107:identite-systeme
+
+      - name: P10.7 — l activation du mode strict ferme reellement, et se refuse a tort
+        # 23 assertions sur une base jetable creee par la suite. Elle mesure
+        # D ABORD le defaut en mode permissif (l operation passe SANS jeton et
+        # ecrit une ligne), PUIS la fermeture, PUIS les refus de l outil (sans
+        # cle active, avec une operation non gardee), PUIS le retour arriere.
+        # Sans la premiere partie, un environnement ou tout est refuse passerait
+        # pour sur.
+        run: npm run test:p107:activation-stricte
+
+      - name: P10.7 — les droits du runtime sont DERIVES du code, pas d une liste
+        # R4 : la sonde d exploitation n est jamais un droit du runtime.
+        # R5 : la verification systeme est accordee parce que api/ l appelle.
+        # R6 : le predicat n est jamais cite par api/ (il ne vit que dans les
+        # corps SECURITY DEFINER). Sans base : lit api/ et les migrations.
+        run: |
+          node --input-type=module -e "
+            import { ecartsSansBase } from './scripts/lib/derivation_droits_runtime.mjs';
+            const { ecarts } = ecartsSansBase();
+            for (const e of ecarts) console.log('  ECHEC ' + e);
+            console.log(ecarts.length === 0
+              ? '  droits du runtime : tous derives du code'
+              : '  ' + ecarts.length + ' droit(s) sans source');
+            process.exit(ecarts.length === 0 ? 0 : 1);
+          "
+
       - name: P10.7 — la sonde de configuration HMAC n expose aucun fragment de cle
         # Chantier C. La sonde lit la cle en memoire et n en publie que la
         # PRESENCE, le FORMAT (valide ou non) et un libelle d etat ; ce test

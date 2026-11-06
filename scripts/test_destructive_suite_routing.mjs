@@ -253,6 +253,19 @@ const OPERATOR_WRITER_SCRIPTS = [
   // garde de cible : ils sont donc hors de toute chaine automatique, et chacun
   // porte un mode sans ecriture (--dry-run ou --etat).
   'scripts/migrer_fidelement.mjs',
+  // P10.7. Meme situation, et elle merite d'etre nommee : c'est l'outil qui
+  // pose et retire le mode strict de l'identite systeme. Il ne bascule JAMAIS
+  // dans une chaine automatique (aucune commande npm, aucun workflow : une
+  // migration qui exige un secret casserait toute base neuve — mesure du
+  // 05/11). Ce qui le borne, et qui le rend sur :
+  //   - `--verifier` est le seul mode atteignable sans ecriture ;
+  //   - une ecriture exige `TF_ALLOW_WRITE=oui` ET une cible classee JETABLE
+  //     par le classifieur commun : il refuse un environnement qui sert ;
+  //   - il relit sa postcondition dans la meme transaction.
+  // Les suites P10.7 l'invoquent comme processus ENFANT sur la base qu'elles
+  // ont creee et qu'elles detruisent. Un operateur, lui, pose le mode avec
+  // l'outil de deploiement de son environnement.
+  'scripts/activer_identite_systeme_stricte.mjs',
   // P10.5. Aucune commande npm ni aucun workflow ne les nomme : ils sont
   // invoques par les suites P10.5 comme processus ENFANT, sur une base que ces
   // suites ont creee et qu'elles detruisent (voir P105_DB_SUITES). Ce qui les
