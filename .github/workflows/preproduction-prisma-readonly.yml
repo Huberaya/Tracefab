@@ -52,7 +52,7 @@ jobs:
             if (!['postgres:', 'postgresql:'].includes(u.protocol)) throw new Error(`${label}: protocole PostgreSQL attendu.`);
             if (u.hostname !== host) throw new Error(`${label}: hôte inattendu — cible Préproduction refusée.`);
             if (decodeURIComponent(u.username) !== 'tracefab_migrator') throw new Error(`${label}: le rôle doit être tracefab_migrator.`);
-            if (u.pathname.replace(/^\\//, '') !== 'neondb') throw new Error(`${label}: la base doit être neondb.`);
+            if (u.pathname !== '/neondb') throw new Error(`${label}: la base doit être neondb.`);
             if (!u.password) throw new Error(`${label}: mot de passe absent.`);
             console.log(`${label}: URL présente, hôte/role/base conformes (secret masqué).`);
           }
