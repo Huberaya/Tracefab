@@ -1,4 +1,4 @@
-name: TraceFab — contrôle Préproduction (lecture seule)
+name: TraceFab — contrôle Cleanroom (lecture seule)
 
 on:
   push:
@@ -9,7 +9,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: tracefab-preproduction-readonly
+  group: tracefab-cleanroom-readonly
   cancel-in-progress: false
 
 jobs:
@@ -17,7 +17,7 @@ jobs:
     name: Prisma — identité et état des migrations (sans écriture)
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    environment: tracefab-preproduction
+    environment: tracefab-cleanroom
     steps:
       - name: Récupérer le dépôt
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
@@ -35,22 +35,22 @@ jobs:
 
       - name: Vérifier les deux URL sans révéler les identifiants
         env:
-          PREPROD_POOLER_URL: ${{ secrets.TRACEFAB_PREPROD_POOLER_URL }}
-          PREPROD_DIRECT_URL: ${{ secrets.TRACEFAB_PREPROD_DIRECT_URL }}
+          CLEANROOM_POOLER_URL: ${{ secrets.TRACEFAB_CLEANROOM_POOLER_URL }}
+          CLEANROOM_DIRECT_URL: ${{ secrets.TRACEFAB_CLEANROOM_DIRECT_URL }}
         run: |
           node --input-type=module <<'NODE'
           const expected = {
-            pooled: 'ep-lively-field-b1wicg4v-pooler.c-5.eu-central-1.aws.neon.tech',
-            direct: 'ep-lively-field-b1wicg4v.c-5.eu-central-1.aws.neon.tech',
+            pooled: 'ep-wandering-rice-ba8jfvon-pooler.c-8.eu-central-1.aws.neon.tech',
+            direct: 'ep-wandering-rice-ba8jfvon.c-8.eu-central-1.aws.neon.tech',
           };
           for (const [label, raw, host] of [
-            ['pooler', process.env.PREPROD_POOLER_URL, expected.pooled],
-            ['direct', process.env.PREPROD_DIRECT_URL, expected.direct],
+            ['pooler', process.env.CLEANROOM_POOLER_URL, expected.pooled],
+            ['direct', process.env.CLEANROOM_DIRECT_URL, expected.direct],
           ]) {
-            if (!raw) throw new Error(`Secret TRACEFAB_PREPROD_${label.toUpperCase()}_URL absent.`);
+            if (!raw) throw new Error(`Secret TRACEFAB_CLEANROOM_${label.toUpperCase()}_URL absent.`);
             const u = new URL(raw);
             if (!['postgres:', 'postgresql:'].includes(u.protocol)) throw new Error(`${label}: protocole PostgreSQL attendu.`);
-            if (u.hostname !== host) throw new Error(`${label}: hôte inattendu — cible Préproduction refusée.`);
+            if (u.hostname !== host) throw new Error(`${label}: hôte inattendu — cible Cleanroom refusée.`);
             if (decodeURIComponent(u.username) !== 'tracefab_migrator') throw new Error(`${label}: le rôle doit être tracefab_migrator.`);
             if (u.pathname !== '/neondb') throw new Error(`${label}: la base doit être neondb.`);
             if (!u.password) throw new Error(`${label}: mot de passe absent.`);
@@ -60,12 +60,12 @@ jobs:
 
       - name: Vérifier Prisma via le pooler (lecture seule)
         env:
-          DATABASE_URL: ${{ secrets.TRACEFAB_PREPROD_POOLER_URL }}
+          DATABASE_URL: ${{ secrets.TRACEFAB_CLEANROOM_POOLER_URL }}
         run: npx prisma migrate status
 
       - name: Vérifier Prisma via la connexion directe (lecture seule)
         env:
-          DATABASE_URL: ${{ secrets.TRACEFAB_PREPROD_DIRECT_URL }}
+          DATABASE_URL: ${{ secrets.TRACEFAB_CLEANROOM_DIRECT_URL }}
         run: npx prisma migrate status
 
       - name: Résumé de sécurité
