@@ -205,7 +205,13 @@ try {
   });
   const appliquees = (mig1.stdout.match(/appliquee\s+20/g) || []).length;
   ok(mig1.status === 0, 'B2.1 la chaîne s applique intégralement', `sortie ${mig1.status}, ${appliquees} appliquée(s)`);
-  if (mig1.status !== 0) console.log(mig1.stdout.split('\n').filter((l) => /ECHEC|REFUS/.test(l)).join('\n'));
+  if (mig1.status !== 0) {
+    console.error('  DIAGNOSTICHE migrer_fidelement.mjs — stdout :');
+    console.error(mig1.stdout.split('\n').slice(-100).join('\n'));
+    console.error('  DIAGNOSTICHE migrer_fidelement.mjs — stderr :');
+    console.error(mig1.stderr.split('\n').slice(-100).join('\n'));
+    console.error(`  DIAGNOSTICHE migrer_fidelement.mjs — signal=${mig1.signal ?? 'aucun'} error=${mig1.error?.message ?? 'aucune'}`);
+  }
 
   const cible = new pg.Client({ connectionString: url(ROLE_MIGRATOR), ssl: sslDepuisUrl(url(ROLE_MIGRATOR)) });
   await cible.connect();
