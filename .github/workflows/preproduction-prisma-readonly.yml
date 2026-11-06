@@ -65,7 +65,7 @@ jobs:
           output=$(npx prisma migrate status 2>&1)
           status=$?
           set -e
-          printf '%s\\n' "$output"
+          printf '%s\n' "$output"
           if [ "$status" -eq 0 ]; then
             echo "Pooler : connexion et historique Prisma accessibles."
           elif printf '%s' "$output" | grep -Fq "Following migrations have not yet been applied:"; then
@@ -84,7 +84,7 @@ jobs:
           output=$(npx prisma migrate status 2>&1)
           status=$?
           set -e
-          printf '%s\\n' "$output"
+          printf '%s\n' "$output"
           if [ "$status" -eq 0 ]; then
             echo "Direct : connexion et historique Prisma accessibles."
           elif printf '%s' "$output" | grep -Fq "Following migrations have not yet been applied:"; then
