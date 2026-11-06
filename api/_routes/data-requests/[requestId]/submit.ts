@@ -4,6 +4,7 @@ import { withTracefabUserContext } from '../../../_lib/context.js';
 import { json, methodNotAllowed } from '../../../_lib/http.js';
 import { sqlBusinessError } from '../../../_lib/sql-errors.js';
 import { isUuid, REQUEST_SELECT, serializeRequest } from '../../../_lib/data-requests.js';
+import { isTenantError, requireActiveTenant, requestedTenantId } from '../../../_lib/tenant.js';
 
 function routeRequestId(req: VercelRequest) {
   const value = req.query.requestId;
@@ -18,6 +19,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (!isUuid(requestId)) return json(res, 400, { error: 'invalid_request_id' });
     const { user } = await requireClerkUser(req);
     const request = await withTracefabUserContext(user.id, user.email, async (tx) => {
+      await requireActiveTenant(tx, req, user.id, { types: ['supplier'] });
       const rows = await tx.$queryRaw<Array<{ id: string }>>`
         SELECT id FROM tracefab_submit_data_request(${requestId}::uuid)
       `;
@@ -25,7 +27,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const submitted = await tx.data_requests.findUnique({ where: { id: requestId }, select: REQUEST_SELECT });
       if (!submitted) throw new Error('data_request_submit_failed');
       return submitted;
-    });
+    }, requestedTenantId(req));
 
     return json(res, 200, {
       request: serializeRequest(request),
@@ -33,6 +35,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     });
   } catch (error) {
     if (isUnauthorized(error)) return json(res, 401, { error: 'unauthorized' });
+    if (isTenantError(error)) return json(res, error.status, { error: error.message });
     const businessError = sqlBusinessError(error);
     if (businessError) return json(res, businessError.status, { error: businessError.error });
     if (error instanceof Error && error.message === 'missing_clerk_secret_key') {

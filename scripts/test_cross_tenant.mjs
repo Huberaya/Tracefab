@@ -34,7 +34,7 @@ const ACCESS_MODELS = {
   // le lit dans la requete elle-meme, ce qui rend l'oubli d'armement impossible
   // a ecrire. Les deux arment `tracefab.user_id` et
   // `tracefab.active_organization_id` dans la transaction.
-  TENANT: { needs: ['requireClerkUser'], anyOf: ['withTracefabUserContext', 'withTracefabRequestContext'] },
+  TENANT: { needs: ['requireClerkUser'], anyOf: ['withTracefabUserContext', 'withTracefabRequestContext', 'withTracefabTenantContext'] },
   // Surface publique assumee : passeport consommateur, wallets, sante, config.
   PUBLIC: { needs: [] },
   // Taches de fond declenchees par un worker : secret partage obligatoire.

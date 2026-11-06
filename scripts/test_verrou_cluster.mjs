@@ -291,7 +291,7 @@ console.log('\n  E. apres une suite complete, aucun verrou ne reste');
   const suite = join(RACINE, 'scripts', 'test_isolation_lignes_reelles.mjs');
   const code = await new Promise((resoudre) => {
     const p = spawn(process.execPath, [join(RACINE, 'scripts', 'run-db-suite.mjs'), suite],
-      { env: process.env, stdio: 'ignore' });
+      { env: process.env, stdio: 'inherit' });
     p.on('exit', resoudre);
   });
   verifier('la suite verrouillee aboutit', code === 0, `exit=${code}`);

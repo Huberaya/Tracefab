@@ -67,6 +67,7 @@ async function main() {
     await tx.$executeRawUnsafe(`SET LOCAL ROLE ${role}`);
     await tx.$executeRaw`SELECT set_config('tracefab.user_id', ${userA}, true)`;
     await tx.$executeRaw`SELECT set_config('tracefab.user_email', ${`${clerkA}@example.test`}, true)`;
+    await tx.$executeRaw`SELECT set_config('tracefab.active_organization_id', ${orgA}, true)`;
 
     const visibleOrganizations = await tx.$queryRaw`SELECT id FROM organizations ORDER BY id`;
     assert(visibleOrganizations.length === 1 && visibleOrganizations[0].id === orgA, 'organization RLS leaked another tenant');

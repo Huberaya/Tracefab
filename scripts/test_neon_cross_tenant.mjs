@@ -110,6 +110,7 @@ try {
   await app.query('begin');
   await app.query("select set_config('tracefab.user_id', $1, true)", [userA]);
   await app.query("select set_config('tracefab.user_email', $1, true)", [`ct-a-${suffixe}@example.test`]);
+  await app.query("select set_config('tracefab.active_organization_id', $1, true)", [orgA]);
 
   // Une tentative refusée (RLS) avorte la transaction : savepoint avant
   // chaque écriture cross-org pour pouvoir continuer les assertions.

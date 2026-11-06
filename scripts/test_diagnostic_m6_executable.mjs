@@ -9,7 +9,7 @@
  * mais il a ete ecrit sans jamais tourner sur un schema complet : une colonne
  * mal nommee, un catalogue lu au mauvais endroit, et l'operateur decouvre
  * l'erreur au pire moment, sur la base qu'il ne faut pas abimer. Ce test
- * applique les 71 migrations de la branche dans un PostgreSQL compile en WASM,
+ * applique les migrations du snapshot de production presentes dans la branche dans un PostgreSQL compile en WASM,
  * fabrique le snapshot Neon du 04/11/2026 (56 réussies, 2 tentatives annulées,
  * 13 absentes, 0 inachevée), puis execute le fichier de releve en entier.
  *
@@ -76,7 +76,13 @@ for (const d of dossiers) {
   await db.exec(fs.readFileSync(f, 'utf8'));
   appliquees += 1;
 }
-ok(`${appliquees} migrations reussies du snapshot appliquees`, appliquees === snapshot.applied.length && dossiers.length === 71, `${appliquees}/${snapshot.applied.length}; depot=${dossiers.length}`);
+const nomsDuDepot = new Set(dossiers);
+const appliqueesAbsentesDuDepot = [...appliedNames].filter((name) => !nomsDuDepot.has(name));
+ok(
+  `${appliquees} migrations reussies du snapshot appliquees`,
+  appliquees === snapshot.applied.length && appliqueesAbsentesDuDepot.length === 0,
+  `${appliquees}/${snapshot.applied.length}; depot=${dossiers.length}; appliquees absentes=${appliqueesAbsentesDuDepot.join(', ') || 'aucune'}`,
+);
 
 // Historique de migrations SYNTHETIQUE. Aucune donnee de production : on
 // fabrique exactement le cas decrit — deux entrees non terminees, deux

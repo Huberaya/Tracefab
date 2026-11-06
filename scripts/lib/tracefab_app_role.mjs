@@ -63,13 +63,11 @@ export const APP_ROLE = 'tracefab_app';
 //   supplier_sites                api/_routes/supplier/sites/[siteId].ts:32            (supplier_sites.create, supplier_sites.update)
 //   tracefab_catalog_import_jobs  api/_routes/catalog/products/import.ts:138           (insert, update)
 //   tracefab_products             api/_lib/bulk-operations/bulk-importer.ts:97         (tracefab_products.create, tracefab_products.update)
-//   users                         RETIREE le 28/10/2026 — les ecritures passent
-//                                 desormais par tracefab_upsert_clerk_user et
-//                                 tracefab_ensure_clerk_user, possedees par
-//                                 tracefab_worker et declarees au registre
-//                                 runtime. Aucune ecriture directe ne subsiste
-//                                 dans api/ (verifie par
-//                                 test:tables-ecriture-directe).
+//   users                         RETIREE des ecritures directes le 28/10/2026.
+//                                 Les mutations passent par les fonctions
+//                                 SECURITY DEFINER possedees par tracefab_worker.
+//                                 Le SELECT applicatif reste borne par
+//                                 users_select_self sous RLS FORCE.
 //   documents                     RETIREE le 28/10/2026 — la bascule
 //                                 `uploaded -> scanning` passait par un UPDATE
 //                                 brut sous tracefab_app, qui pouvait poser
@@ -489,8 +487,8 @@ export async function ensureAppRole(db, password, { role = APP_ROLE } = {}) {
     `GRANT CONNECT ON DATABASE "${base}" TO ${APP_ROLE}`,
     `GRANT USAGE ON SCHEMA public TO ${APP_ROLE}`,
     // LECTURE sur toutes les tables : le client Prisma lit directement, et la
-    // RLS — activee et forcee sur les 50 tables — filtre ce qui est visible.
-    // La lecture large est donc contenue ; l'ecriture large ne l'etait pas.
+    // RLS — activee et forcee sur les tables metier — filtre ce qui est visible.
+    // users reste lisible uniquement pour l'identite courante via users_select_self.
     `GRANT SELECT ON ALL TABLES IN SCHEMA public TO ${APP_ROLE}`,
     // Re-bootstrap must not restore runtime access to Prisma's control-plane ledger.
     `DO $bootstrap$ BEGIN

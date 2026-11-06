@@ -121,15 +121,15 @@ for (const p of TOUTES) {
   console.log(`      detruit par  : ${detruit.length ? detruit.join(', ') : '(aucune)'}`);
 }
 
-// Une migration ultérieure peut légitimement DROP puis recréer les politiques
-// canoniques pour réaffirmer leur définition. On vérifie la provenance initiale
-// ET la liste exhaustive des recréations autorisées, plutôt que de compter chaque
-// CREATE POLICY comme une création concurrente.
+// Les migrations de déduplication puis de durcissement du tenant actif peuvent
+// légitimement DROP puis recréer les politiques canoniques. On vérifie la provenance
+// initiale ET la liste exhaustive des recréations autorisées.
 const createursCanoniquesAttendus = [
   '20261006210000_plm_erp_gs1_interoperability',
   '20261029180000_plm_erp_sync_jobs_policy_dedup',
+  '20261105120000_active_tenant_plm_ingest_enforcement',
 ];
-ok('les politiques canoniques sont créées initialement puis recréées uniquement par la migration de déduplication',
+ok('les politiques canoniques sont créées initialement puis recréées par les deux migrations forward autorisées',
   CANONIQUES.every((p) => JSON.stringify(createurs.get(p) ?? []) === JSON.stringify(createursCanoniquesAttendus)),
   JSON.stringify(Object.fromEntries(CANONIQUES.map((p) => [p, createurs.get(p)]))));
 /**
@@ -146,7 +146,7 @@ ok('les politiques canoniques sont créées initialement puis recréées uniquem
   ok('temoin allowlist : une migration NON autorisee qui cree une canonique est refusee',
     !accepte({ ...base, [CANONIQUES[0]]: [...createursCanoniquesAttendus, '20261030120000_intrus'] }));
   ok('temoin allowlist : une recréation par une AUTRE migration suffit a faire echouer',
-    !accepte({ ...base, [CANONIQUES[1]]: ['20261006210000_plm_erp_gs1_interoperability', '20261030120000_intrus'] }));
+    !accepte({ ...base, [CANONIQUES[1]]: [...createursCanoniquesAttendus, '20261030120000_intrus'] }));
   ok('temoin allowlist : l ordre compte, une recréation anteriorisee est refusee',
     !accepte({ ...base, [CANONIQUES[0]]: [...createursCanoniquesAttendus].reverse() }));
   ok('temoin allowlist : une canonique jamais creee est refusee',

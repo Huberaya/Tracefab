@@ -229,6 +229,10 @@ try {
     END IF; END $$`);
   await admin.query(`GRANT USAGE ON SCHEMA public TO ${PROBE_ROLE}`);
   await admin.query(`GRANT SELECT, UPDATE ON dpp_resolvable_identifiers TO ${PROBE_ROLE}`);
+  // La politique de dpp_resolvable_identifiers résout le tenant via une
+  // sous-requête sur tracefab_products : le rôle de sonde doit pouvoir lire
+  // cette table pour que la RLS de la table testée soit effectivement évaluée.
+  await admin.query(`GRANT SELECT ON tracefab_products TO ${PROBE_ROLE}`);
   await admin.query(`GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA public TO ${PROBE_ROLE}`);
 
   const bypass = await one(`SELECT rolbypassrls AS b, rolsuper AS s FROM pg_roles WHERE rolname = $1`, [PROBE_ROLE]);
@@ -240,6 +244,7 @@ try {
   });
   await probe.connect();
   await probe.query(`SELECT set_config('tracefab.user_id', $1, false)`, [orgA.user_id]);
+  await probe.query(`SELECT set_config('tracefab.active_organization_id', $1, false)`, [orgA.id]);
 
   const autorise = await probe.query(
     `UPDATE dpp_resolvable_identifiers SET reason = 'sonde-autorisee' WHERE id = $1`, [fixtureId]);
@@ -262,6 +267,7 @@ try {
     codeErreur ? `42501 ${codeErreur === '42501' ? 'new row violates row-level security policy' : ''}` : '0 ligne mise a jour');
 
   await probe.query(`SELECT set_config('tracefab.user_id', $1, false)`, [orgB.user_id]);
+  await probe.query(`SELECT set_config('tracefab.active_organization_id', $1, false)`, [orgB.id]);
   const etranger = await probe.query(
     `UPDATE dpp_resolvable_identifiers SET reason = 'sonde-etrangere' WHERE id = $1`, [fixtureId]);
   verifier(etranger.rowCount === 0,

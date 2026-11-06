@@ -111,8 +111,17 @@ try {
   // -------------------------------------------------------------------------
   // B3.1 — provisioning, deux fois : la seconde ne doit RIEN émettre d'ALTER.
   // -------------------------------------------------------------------------
+  const urlAdminBase = (() => {
+    const u = new URL(urlAdmin);
+    u.pathname = `/${base}`;
+    return u.toString();
+  })();
   const envProv = {
-    DATABASE_URL: (() => { const u = new URL(urlAdmin); u.pathname = `/${base}`; return u.toString(); })(),
+    // Le provisionnement doit agir sur la base jetable elle-même : le
+    // DATABASE_ADMIN_URL hérité du job ne doit jamais rediriger l'ALTER SCHEMA
+    // vers la base partagée tracefab_test.
+    DATABASE_URL: urlAdminBase,
+    DATABASE_ADMIN_URL: urlAdminBase,
     TF_ALLOW_PROVISIONING: 'oui',
     TF_APP_PASSWORD: MDP_APP,
     TF_MIGRATOR_PASSWORD: MDP_MIG,
@@ -120,6 +129,20 @@ try {
   verrou = await verrouillerCluster({ urlProprietaire: urlAdmin });
   const prov1 = lancer(['scripts/provisionner_roles_db.mjs'], envProv);
   ok(prov1.status === 0, 'B3.1 provisioning initial réussi', `sortie ${prov1.status}`);
+  const schemaProbe = new pg.Client({
+    connectionString: urlAdminBase,
+    ssl: sslDepuisUrl(urlAdminBase),
+    application_name: 'tracefab-p105-schema-owner-probe',
+  });
+  await schemaProbe.connect();
+  const schemaOwner = (await schemaProbe.query(
+    `SELECT n.nspowner::regrole::text AS owner
+       FROM pg_catalog.pg_namespace n WHERE n.nspname = 'public'`,
+  )).rows[0]?.owner;
+  ok(schemaOwner === ROLE_MIGRATOR,
+    'B3.1 le migrateur est propriétaire du schéma public de la base jetable',
+    `owner=${schemaOwner ?? 'inconnu'}`);
+  await schemaProbe.end();
   const prov2 = lancer(['scripts/provisionner_roles_db.mjs'], envProv);
   ok(prov2.status === 0, 'B3.1 re-provisioning réussi (idempotent)', `sortie ${prov2.status}`);
   const alterEmis = /durci/.test(prov2.stdout);
@@ -182,7 +205,13 @@ try {
   });
   const appliquees = (mig1.stdout.match(/appliquee\s+20/g) || []).length;
   ok(mig1.status === 0, 'B2.1 la chaîne s applique intégralement', `sortie ${mig1.status}, ${appliquees} appliquée(s)`);
-  if (mig1.status !== 0) console.log(mig1.stdout.split('\n').filter((l) => /ECHEC|REFUS/.test(l)).join('\n'));
+  if (mig1.status !== 0) {
+    console.error('  DIAGNOSTICHE migrer_fidelement.mjs — stdout :');
+    console.error(mig1.stdout.split('\n').slice(-100).join('\n'));
+    console.error('  DIAGNOSTICHE migrer_fidelement.mjs — stderr :');
+    console.error(mig1.stderr.split('\n').slice(-100).join('\n'));
+    console.error(`  DIAGNOSTICHE migrer_fidelement.mjs — signal=${mig1.signal ?? 'aucun'} error=${mig1.error?.message ?? 'aucune'}`);
+  }
 
   const cible = new pg.Client({ connectionString: url(ROLE_MIGRATOR), ssl: sslDepuisUrl(url(ROLE_MIGRATOR)) });
   await cible.connect();

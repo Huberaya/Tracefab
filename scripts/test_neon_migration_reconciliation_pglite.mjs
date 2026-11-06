@@ -4,7 +4,7 @@
  *
  * Baseline : les 56 migrations qui ont une ligne terminée dans Production et
  * Préproduction (dont les 5 exécutées hors bande). Cible : les 13 migrations
- * historiques absentes, puis les corrections forward post-snapshot. Les deux
+ * historiques absentes, puis les seize corrections forward post-snapshot. Les deux
  * tentatives rolled_back ont aussi une ligne réussie et font partie du baseline.
  *
  * IMPORTANT : le SQL PLM utilisé ici est celui du dépôt courant. Son checksum
@@ -82,17 +82,32 @@ async function scalar(db, sql, params = []) {
 }
 
 console.log(`\n  1. Snapshot Neon ${SNAPSHOT_DATE} — cohérence des catégories`);
-ok('71 dossiers de migration dans le dépôt', dossiers.length === 71, String(dossiers.length));
+ok('86 dossiers de migration dans le dépôt', dossiers.length === 86, String(dossiers.length));
 ok('56 migrations terminées dans les deux bases', baselineNames.length === 56);
 ok('13 migrations réellement en attente', pendingNames.length === 13);
 ok('5 migrations hors bande incluses dans le baseline', outOfBandNames.length === 5);
 ok('les 2 tentatives annulées ont aussi une ligne réussie',
   ROLLED_BACK_ATTEMPTS.length === 2 && ROLLED_BACK_ATTEMPTS.every((x) => PRODUCTION_APPLIED[x.name]));
 ok('aucun nom annulé n’est classé pending', ROLLED_BACK_ATTEMPTS.every((x) => !ECARTS[x.name]));
-ok('les deux corrections forward sont postérieures au snapshot et ordonnées',
+ok('les dix-sept corrections forward sont postérieures au snapshot et ordonnées',
   JSON.stringify(newNames) === JSON.stringify([
     '20261104090000_plm_integrations_and_gs1_constraints',
     '20261104100000_supply_chain_status_enum_casts',
+    '20261105120000_active_tenant_plm_ingest_enforcement',
+    '20261105130000_active_tenant_product_dpp_pef_rls',
+    '20261105140000_active_tenant_green_claims_rls',
+    '20261105150000_active_tenant_dpp_claims_identity_rls',
+    '20261105160000_active_tenant_product_materials_rls',
+    '20261105170000_active_tenant_security_definer_guards',
+    '20261105180000_active_tenant_tc_registration_guard',
+    '20261105190000_active_tenant_quality_collection_guards',
+    '20261105200000_active_tenant_material_certification_guards',
+    '20261105210000_active_tenant_supplier_profile_passport_guards',
+    '20261105220000_active_tenant_quality_cap_guards',
+    '20261105230000_active_tenant_invite_document_passport_guards',
+    '20261105235900_active_tenant_policy_and_worker_closure',
+    '20261105240000_active_tenant_supplier_quality_guard',
+    '20261106000000_active_tenant_supplier_passport_guards',
   ]), JSON.stringify(newNames));
 ok('les quatre fonctions create/update des noeuds et liens castent leur enum',
   ['tracefab_create_supply_chain_node', 'tracefab_update_supply_chain_node', 'tracefab_add_supply_chain_link', 'tracefab_update_supply_chain_link']
@@ -165,7 +180,7 @@ for (const name of newNames) {
   forwardResults.push({ name, ...result });
   console.log(`  ${result.ok ? 'ok   ' : 'ECHEC'} ${name}${result.ok ? '' : ` — ${result.message}`}`);
 }
-ok('les deux corrections forward post-snapshot s’appliquent', forwardResults.length === 2 && forwardResults.every((r) => r.ok),
+ok('les dix-sept corrections forward post-snapshot s’appliquent', forwardResults.length === 17 && forwardResults.every((r) => r.ok),
   JSON.stringify(forwardResults.filter((r) => !r.ok)));
 const repairedPlmChecks = await scalar(baseline.db, `
   SELECT count(*)::int AS value FROM pg_constraint
@@ -183,7 +198,7 @@ ok('les quatre CHECK PLM sont présents et validés', repairedPlmChecks === 4, S
 ok('la contrainte GS1 accepte désormais GPC', repairedIdentifierCheck.includes('gpc'), repairedIdentifierCheck);
 const forwardReplay = [];
 for (const name of newNames) forwardReplay.push({ name, ...(await jouer(baseline.db, name)) });
-ok('les deux corrections forward sont idempotentes', forwardReplay.length === 2 && forwardReplay.every((r) => r.ok),
+ok('les dix-sept corrections forward sont idempotentes', forwardReplay.length === 17 && forwardReplay.every((r) => r.ok),
   JSON.stringify(forwardReplay.filter((r) => !r.ok)));
 
 console.log('\n  5. Contrôles du catalogue après application');
@@ -218,6 +233,110 @@ ok('deux politiques PLM canoniques après normalisation', policyCount === 2, Str
 const ingestDef = await scalar(baseline.db,
   "SELECT pg_get_functiondef('public.tracefab_ingest_plm_erp_payload(uuid,text,jsonb,uuid)'::regprocedure) AS value");
 ok('ingestion PLM/ERP vérifie le rôle de session', ingestDef.includes('session_user') && ingestDef.includes('ingest_role_not_allowed'));
+ok('ingestion PLM/ERP refuse une organisation différente du tenant actif', ingestDef.includes('active_tenant_mismatch'));
+const activeTenantPolicies = await scalar(baseline.db, `
+  SELECT count(*)::int AS value FROM pg_policies
+  WHERE schemaname='public'
+    AND tablename IN ('plm_erp_integrations','plm_erp_sync_jobs')
+    AND (coalesce(qual,'') LIKE '%tracefab_in_active_tenant%'
+      OR coalesce(with_check,'') LIKE '%tracefab_in_active_tenant%')
+`);
+ok('les quatre politiques RLS PLM/ERP appliquent le tenant actif', activeTenantPolicies === 4, String(activeTenantPolicies));
+const productTenantPolicies = await scalar(baseline.db, `
+  SELECT count(*)::int AS value FROM pg_policies
+  WHERE schemaname='public'
+    AND (
+      (tablename='tracefab_products' AND policyname IN ('products_select_brand','products_insert_brand','products_update_brand'))
+      OR (tablename='dpp_records' AND policyname='dpp_select_brand')
+      OR (tablename='product_pef_assessments' AND policyname IN ('product_pef_select_org','product_pef_mutate_brand'))
+      OR (tablename='product_green_claims' AND policyname IN ('product_claims_select_org','product_claims_mutate_brand'))
+      OR (tablename='dpp_claims' AND policyname='dpp_claims_private_select')
+      OR (tablename='dpp_lifecycle_events' AND policyname='dpp_events_private_select')
+      OR (tablename='dpp_resolvable_identifiers' AND policyname='dpp_identity_private_select')
+      OR (tablename='product_materials' AND policyname='product_materials_select_authorized')
+    )
+    AND (coalesce(qual,'') LIKE '%tracefab_in_active_tenant%'
+      OR coalesce(with_check,'') LIKE '%tracefab_in_active_tenant%')
+`);
+ok('les 12 politiques produit/DPP/PEF/claims/matières appliquent le tenant actif',
+  productTenantPolicies === 12, String(productTenantPolicies));
+const guardedFunctions = await scalar(baseline.db, `
+  SELECT count(*)::int AS value FROM pg_proc p
+  JOIN pg_namespace n ON n.oid=p.pronamespace
+  WHERE n.nspname='public' AND p.prosecdef
+    AND p.proname IN (
+      'tracefab_add_dpp_claim','tracefab_add_dpp_event','tracefab_add_product_identifier',
+      'tracefab_audit_product_green_claims','tracefab_create_dpp_identity',
+      'tracefab_link_dpp_claim_evidence','tracefab_replace_dpp_identity',
+      'tracefab_update_product_identifier','tracefab_add_product_material',
+      'tracefab_material_visible_via_product','tracefab_update_product_material'
+    )
+    AND p.prosrc LIKE '%tracefab_in_active_tenant%'
+`);
+ok('les 11 fonctions SECURITY DEFINER exposées ciblées vérifient le tenant actif',
+  guardedFunctions === 11, String(guardedFunctions));
+const definerTenantGuards = await scalar(baseline.db, `
+  SELECT count(*)::int AS value FROM pg_proc p
+  JOIN pg_namespace n ON n.oid=p.pronamespace
+  WHERE n.nspname='public' AND p.prosecdef
+    AND p.proname IN (
+      'tracefab_add_supply_chain_link','tracefab_create_supply_chain_node',
+      'tracefab_update_supply_chain_node','tracefab_delete_supply_chain_node',
+      'tracefab_update_supply_chain_link','tracefab_delete_supply_chain_link',
+      'tracefab_allocate_tc_quantity','tracefab_calculate_product_pef',
+      'tracefab_compute_dpp_readiness','tracefab_compute_product_quality',
+      'tracefab_create_data_request','tracefab_create_product',
+      'tracefab_reconcile_mass_balance','tracefab_set_dpp_publication',
+      'tracefab_start_product_revision','tracefab_update_product_data',
+      'tracefab_bind_schema','tracefab_get_product_traceability',
+      'tracefab_mark_dpp_ready_to_publish'
+    )
+    AND p.prosrc LIKE '%tracefab_require_active_tenant_%'
+`);
+ok('les 19 fonctions SECURITY DEFINER exposées vérifient le tenant actif',
+  definerTenantGuards === 19, String(definerTenantGuards));
+const helperExecute = await scalar(baseline.db, `
+  SELECT (
+    NOT has_function_privilege('tracefab_app','public.tracefab_require_active_tenant_for_organization(uuid)','EXECUTE')
+    AND NOT has_function_privilege('tracefab_app','public.tracefab_require_active_tenant_for_product(uuid)','EXECUTE')
+    AND NOT has_function_privilege('tracefab_app','public.tracefab_require_active_tenant_for_dpp_record(uuid)','EXECUTE')
+    AND NOT has_function_privilege('tracefab_app','public.tracefab_require_active_tenant_for_supply_chain_link(uuid)','EXECUTE')
+    AND NOT has_function_privilege('tracefab_app','public.tracefab_require_active_tenant_for_tc_allocation(uuid,uuid)','EXECUTE')
+    AND NOT has_function_privilege('tracefab_app','public.tracefab_require_active_tenant_for_schema_subject(text,uuid)','EXECUTE')
+  )::int AS value
+`);
+ok('tracefab_app ne peut pas appeler directement les six helpers de garde',
+  helperExecute === 1, String(helperExecute));
+const completionGuard = await scalar(baseline.db, `
+  SELECT (NOT has_function_privilege(
+    'tracefab_app',
+    'public.tracefab_calculate_product_data_completion(uuid)',
+    'EXECUTE'
+  ))::int AS value
+`);
+ok('le calcul interne de complétude reste non exécutable par tracefab_app',
+  completionGuard === 1, String(completionGuard));
+const publicDppPolicies = await scalar(baseline.db, `
+  SELECT count(*)::int AS value FROM pg_policies
+  WHERE schemaname='public'
+    AND policyname IN (
+      'products_select_public','dpp_select_public','dpp_events_public_select',
+      'dpp_identity_public_select','product_identifiers_select_public',
+      'product_materials_select_public','product_pef_select_public'
+    )
+    AND coalesce(qual,'') LIKE '%tracefab_public_context%'
+`);
+ok('les 7 politiques publiques de lecture restent présentes et explicites',
+  publicDppPolicies === 7, String(publicDppPolicies));
+const sourceSystemCheck = await scalar(baseline.db, `
+  SELECT pg_get_constraintdef(oid) AS value FROM pg_constraint
+  WHERE conrelid='public.plm_erp_sync_jobs'::regclass
+    AND conname='plm_erp_sync_jobs_source_system_check'
+`);
+ok('la contrainte des jobs accepte generic_csv, infor_fashion et l alias historique gs1',
+  sourceSystemCheck.includes('generic_csv')
+    && sourceSystemCheck.includes('infor_fashion')
+    && /'gs1'(?:::text)?/.test(sourceSystemCheck), sourceSystemCheck);
 const invitationDef = await scalar(baseline.db,
   "SELECT pg_get_functiondef('public.tracefab_validate_member_invitation_role()'::regprocedure) AS value");
 ok('invitation fournisseur vérifie le rattachement et le statut de relation',
@@ -250,4 +369,4 @@ if (echecs) {
   console.error(`  ${echecs} échec(s) sur ${verifies}.`);
   process.exit(1);
 }
-console.log(`  ${verifies} vérifications passées — baseline 56, pending historiques 13 + 2 corrections forward PLM/GS1 et graphe, 1 écart PLM documenté, aucun resolve ni réécriture de checksum.`);
+console.log(`  ${verifies} vérifications passées — baseline 56, pending historiques 13 + 17 corrections forward PLM/GS1, graphe, tenant actif, DPP, fournisseurs, qualité, documents et worker/public, 1 écart PLM documenté, aucun resolve ni réécriture de checksum.`);

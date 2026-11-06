@@ -4,7 +4,7 @@
  *
  * Ce script est en lecture seule : il ne se connecte a aucune base et
  * n'applique rien. Il verifie que les 56 migrations reussies gardent leurs
- * checksums, identifie les 13 migrations absentes et ordonne leur deploiement.
+ * checksums, identifie les 13 migrations historiques absentes et ordonne leur deploiement avec les corrections forward.
  *
  * Regle d'execution : Préproduction d'abord ; Production uniquement apres
  * verification complete de Préproduction. Aucun resolve n'est requis ni admis.
@@ -110,6 +110,156 @@ const lignesForward = (name) => {
       action: 'APPLIQUER APRÈS LA CORRECTION PLM/GS1, EN PRÉPRODUCTION PUIS PRODUCTION',
     };
   }
+  if (name === '20261105160000_active_tenant_product_materials_rls') {
+    return {
+      ...base,
+      effect: 'borner les relations produit-matière au tenant actif tout en conservant les partages fournisseur pour les produits du tenant actif',
+      evidence: 'test direct sous tracefab_app : membre A+B, A actif, une relation product_materials de B était visible via la branche partagée de la politique SELECT ; helper material_visible_via_product ignorait aussi le tenant actif',
+      risk: 'préserver les matières partagées sans exposer la composition d’un produit d’un autre tenant ; CREATE OR REPLACE conserve OID/propriétaire/ACL',
+      prerequisite: '20261105150000 terminée ; vérifier les fonctions SECURITY DEFINER d’ajout/mise à jour de matières et la visibilité partagée',
+      action: 'APPLIQUER APRÈS LE BORNAGE DES CLAIMS/IDENTITÉS DPP, EN PRÉPRODUCTION PUIS PRODUCTION APRÈS VALIDATION COMPLÈTE',
+    };
+  }
+  if (name === '20261105220000_active_tenant_quality_cap_guards') {
+    return {
+      ...base,
+      effect: 'exiger le tenant actif de la marque pour créer/revoir un CAP et du fournisseur pour soumettre la remédiation',
+      evidence: 'les trois fonctions SECURITY DEFINER contrôlaient le rôle ou l’adhésion sans vérifier le tenant actif ; les routes sont maintenant bornées à la partie concernée et testées en PostgreSQL',
+      risk: 'CREATE OR REPLACE doit préserver OID, propriétaire et ACL ; le helper reste non exécutable par tracefab_app',
+      prerequisite: '20261105210000 terminée ; vérifier la création sous marque active, puis les refus de soumission fournisseur et de revue marque hors tenant',
+      action: 'APPLIQUER APRÈS LES GARDES PROFIL/PASSEPORT FOURNISSEUR, EN PRÉPRODUCTION PUIS PRODUCTION APRÈS VALIDATION COMPLÈTE',
+    };
+  }
+  if (name === '20261105230000_active_tenant_invite_document_passport_guards') {
+    return {
+      ...base,
+      effect: 'lier les invitations fournisseur, l’enregistrement des documents, le démarrage des scans et la revue des demandes de passeport au tenant actif',
+      evidence: 'tests de routes et d’intégration : le tenant marque/fournisseur propriétaire est résolu explicitement et armé dans les transactions appelantes',
+      risk: 'CREATE OR REPLACE doit préserver OID, propriétaire et ACL ; les chemins de scan doivent réarmer le tenant à chaque transaction',
+      prerequisite: '20261105220000 terminée ; vérifier invitations, upload, scan et revue de passeport sur PostgreSQL 17',
+      action: 'APPLIQUER APRÈS LES GARDES CAP QUALITÉ, EN PRÉPRODUCTION PUIS PRODUCTION APRÈS VALIDATION COMPLÈTE',
+    };
+  }
+  if (name === '20261105235900_active_tenant_policy_and_worker_closure') {
+    return {
+      ...base,
+      effect: 'recalculer et borner les politiques RLS restantes au tenant actif, sécuriser les fonctions documentaires et transférer les traitements globaux de notification à l’identité worker non connectable',
+      evidence: 'inventaire PostgreSQL pg_policies, contrôles de postconditions, tests négatifs directs des fonctions documentaires, tests worker non falsifiable et contrôle du contexte public',
+      risk: 'migration à forte portée : réécrit dynamiquement les prédicats RLS et change le propriétaire de trois fonctions ; revue catalogue/ACL obligatoire avant tout déploiement réel',
+      prerequisite: '20261105230000 terminée ; comparer le nombre de politiques et les expressions USING/WITH CHECK avant/après, vérifier OID/propriétaires/ACL, puis exécuter les tests RLS, documentaires, worker et public',
+      action: 'APPLIQUER APRÈS LES GARDES INVITATIONS/DOCUMENTS/PASSEPORTS, EN PRÉPRODUCTION PUIS PRODUCTION APRÈS VALIDATION COMPLÈTE',
+    };
+  }
+  if (name === '20261105240000_active_tenant_supplier_quality_guard') {
+    return {
+      ...base,
+      effect: 'exiger le tenant fournisseur actif pour calculer et muter les scores/anomalies de qualité fournisseur',
+      evidence: 'test PostgreSQL direct : le calcul passe sous le tenant fournisseur propriétaire et échoue active_tenant_mismatch depuis un autre tenant',
+      risk: 'CREATE OR REPLACE doit préserver OID, propriétaire et ACL ; le helper reste non exécutable par tracefab_app',
+      prerequisite: '20261105230000 terminée ; vérifier le parcours positif test_neon_quality_flow et le refus inter-tenant',
+      action: 'APPLIQUER APRÈS LES GARDES INVITATIONS/DOCUMENTS/PASSEPORTS, EN PRÉPRODUCTION PUIS PRODUCTION APRÈS VALIDATION COMPLÈTE',
+    };
+  }
+  if (name === '20261106000000_active_tenant_supplier_passport_guards') {
+    return {
+      ...base,
+      effect: 'rétablir immédiatement après les migrations historiques tardives la garde du tenant actif dans les deux fonctions SECURITY DEFINER de passeport fournisseur',
+      evidence: 'pg_get_functiondef vérifie la garde après BEGIN ; les tests PostgreSQL 17 couvrent le refus inter-tenant et le parcours fournisseur positif',
+      risk: 'CREATE OR REPLACE doit préserver OID, propriétaire et ACL ; le helper ne doit jamais être exécutable directement par tracefab_app',
+      prerequisite: '20261105235900 et 20261105240000 terminées ; vérifier les deux fonctions sur le schéma canonique après les scénarios de migration tardive',
+      action: 'APPLIQUER APRÈS LA FERMETURE RLS/WORKER ET LES GARDES QUALITÉ FOURNISSEUR, EN PRÉPRODUCTION PUIS PRODUCTION APRÈS VALIDATION COMPLÈTE',
+    };
+  }
+  if (name === '20261105210000_active_tenant_supplier_profile_passport_guards') {
+    return {
+      ...base,
+      effect: 'exiger le tenant fournisseur actif pour modifier/soumettre le profil et créer/modifier le passeport fournisseur',
+      evidence: 'les fonctions SECURITY DEFINER vérifiaient seulement l’appartenance ; les quatre routes de profil fournisseur sont désormais armées avec un tenant supplier explicite et testées avec un troisième tenant',
+      risk: 'CREATE OR REPLACE doit préserver OID, propriétaire et ACL ; le helper reste non exécutable par tracefab_app',
+      prerequisite: '20261105200000 terminée ; vérifier les quatre refus SQL directs inter-tenant et les parcours fournisseur positifs',
+      action: 'APPLIQUER APRÈS LES GARDES MATIÈRES/CERTIFICATIONS, EN PRÉPRODUCTION PUIS PRODUCTION APRÈS VALIDATION COMPLÈTE',
+    };
+  }
+  if (name === '20261105200000_active_tenant_material_certification_guards') {
+    return {
+      ...base,
+      effect: 'exiger le tenant actif pour créer/modifier une matière et enregistrer/modifier une certification',
+      evidence: 'les routes matériaux étaient déjà bornées ; les quatre fonctions SECURITY DEFINER vérifiaient seulement l’appartenance ; les routes certifications sont maintenant liées au tenant fournisseur explicite',
+      risk: 'CREATE OR REPLACE doit préserver OID, propriétaire et ACL ; le helper reste non exécutable par tracefab_app',
+      prerequisite: '20261105190000 terminée ; vérifier les quatre refus SQL directs inter-tenant et les parcours fournisseurs positifs',
+      action: 'APPLIQUER APRÈS LES GARDES QUALITÉ/COLLECTE, EN PRÉPRODUCTION PUIS PRODUCTION APRÈS VALIDATION COMPLÈTE',
+    };
+  }
+  if (name === '20261105190000_active_tenant_quality_collection_guards') {
+    return {
+      ...base,
+      effect: 'exiger le tenant actif dans les sept fonctions SECURITY DEFINER de qualité et collecte : anomalies, items/demandes, soumission/réponse fournisseur et revue marque',
+      evidence: 'inspection PostgreSQL des fonctions SECURITY DEFINER exécutables par tracefab_app : les contrôles de rôle vérifiaient l’appartenance mais pas le tenant actif ; routes concernées mises à jour et tests multi-tenant négatifs ajoutés',
+      risk: 'CREATE OR REPLACE doit préserver OID, propriétaire et ACL ; les helpers de garde restent non exécutables par tracefab_app',
+      prerequisite: '20261105180000 terminée ; vérifier les sept refus SQL directs inter-tenant et les parcours HTTP armant le tenant de la partie concernée',
+      action: 'APPLIQUER APRÈS LA GARDE D’ENREGISTREMENT TC, EN PRÉPRODUCTION PUIS PRODUCTION APRÈS VALIDATION COMPLÈTE',
+    };
+  }
+  if (name === '20261105180000_active_tenant_tc_registration_guard') {
+    return {
+      ...base,
+      effect: 'exiger que le tenant actif soit vendeur ou acheteur dans tracefab_register_transaction_certificate, y compris en appel SQL direct',
+      evidence: 'la route vérifiait déjà que le tenant actif est une partie, mais la fonction SECURITY DEFINER ne répétait pas ce contrôle ; un membre multi-tenant pouvait appeler la fonction directement avec deux tiers',
+      risk: 'CREATE OR REPLACE dynamique doit préserver OID, propriétaire et ACL ; ne pas empêcher un vendeur ou acheteur actif autorisé de déclarer le certificat',
+      prerequisite: '20261105170000 terminée ; vérifier le parcours positif vendeur actif et le refus direct lorsque le tenant actif n’est ni vendeur ni acheteur',
+      action: 'APPLIQUER APRÈS LES GARDES DES 19 FONCTIONS SECURITY DEFINER, EN PRÉPRODUCTION PUIS PRODUCTION APRÈS VALIDATION COMPLÈTE',
+    };
+  }
+  if (name === '20261105170000_active_tenant_security_definer_guards') {
+    return {
+      ...base,
+      effect: 'imposer le tenant actif dans les 19 fonctions SECURITY DEFINER exposées au runtime : graphe, PEF, DPP, qualité, collecte, produits, mass-balance, publication, schémas',
+      evidence: 'audit SQL des définitions SECURITY DEFINER et des routes appelantes ; la migration injecte des gardes typées dans les fonctions sans renommer les objets',
+      risk: 'CREATE OR REPLACE doit préserver les OID, propriétaires et ACL ; helpers INVOKER sans EXECUTE PUBLIC ni tracefab_app ; préserver les opérations partagées fournisseur et les transitions publiques',
+      prerequisite: '20261105160000 terminée ; valider les contextes brand/supplier, les routes schema-bindings, les appels worker/public et les 19 postconditions pg_get_functiondef',
+      action: 'APPLIQUER APRÈS LE BORNAGE DES COMPOSITIONS PRODUIT-MATIÈRE, EN PRÉPRODUCTION PUIS PRODUCTION APRÈS VALIDATION COMPLÈTE',
+    };
+  }
+  if (name === '20261105150000_active_tenant_dpp_claims_identity_rls') {
+    return {
+      ...base,
+      effect: 'borner les lectures privées des claims, événements et identités DPP au tenant du produit ; refuser les fonctions SECURITY DEFINER exposées à l’API hors tenant actif',
+      evidence: 'test direct sous tracefab_app : membre A+B, A actif, lecture de 1 claim et 1 identité privée de B ; pg_get_functiondef confirme plusieurs fonctions DPP/identité sans garde tenant',
+      risk: 'CREATE OR REPLACE doit préserver OID, propriétaire et ACL ; ne pas ajouter de garde à tracefab_calculate_product_data_completion, fonction interne appelée par trigger et non exécutable par tracefab_app',
+      prerequisite: '20261105140000 terminée ; vérifier les fonctions SECURITY DEFINER, leurs ACL et les politiques publiques DPP avant/après',
+      action: 'APPLIQUER APRÈS LE BORNAGE DES ALLÉGATIONS VERTES, EN PRÉPRODUCTION PUIS PRODUCTION APRÈS VALIDATION COMPLÈTE',
+    };
+  }
+  if (name === '20261105140000_active_tenant_green_claims_rls') {
+    return {
+      ...base,
+      effect: 'borner les lectures et mutations des allégations vertes de marque au tenant actif',
+      evidence: 'test direct sous tracefab_app sur Neon isolé : un membre de A et B, A actif, lisait 1 allégation privée appartenant à B',
+      risk: 'politique privée ; ne pas introduire de lecture publique et vérifier le contexte actif des routes green claims',
+      prerequisite: '20261105130000 terminée ; vérifier les routes de claims et la politique RLS sous tracefab_app',
+      action: 'APPLIQUER APRÈS LE BORNAGE RLS PRODUITS/DPP/PEF, EN PRÉPRODUCTION PUIS PRODUCTION APRÈS VALIDATION COMPLÈTE',
+    };
+  }
+  if (name === '20261105130000_active_tenant_product_dpp_pef_rls') {
+    return {
+      ...base,
+      effect: 'borner les lectures privées produits, DPP et PEF au tenant actif, sans toucher aux politiques publiques',
+      evidence: 'test direct sous tracefab_app sur Neon isolé : A actif ne voit aucune ligne produit/DPP/PEF de B ; B actif voit les trois',
+      risk: 'les routes catalogue/DPP/PEF doivent armer le tenant actif ; préserver les partages fournisseur et les lectures publiques',
+      prerequisite: '20261105120000 terminée ; vérifier les contextes actifs des routes produit/DPP/PEF et les politiques publiques avant/après',
+      action: 'APPLIQUER APRÈS LE BORNAGE DE L’INGESTION PLM/ERP, EN PRÉPRODUCTION PUIS PRODUCTION APRÈS VALIDATION COMPLÈTE',
+    };
+  }
+  if (name === '20261105120000_active_tenant_plm_ingest_enforcement') {
+    return {
+      ...base,
+      effect: 'refuser les imports SECURITY DEFINER hors tenant actif, borner la RLS des intégrations/jobs PLM et accepter tous les types de source API',
+      evidence: 'test multi-tenant direct sous tracefab_app : tenant A autorisé, B refusé en fonction et RLS ; CI test:p105:ingestion à obtenir',
+      risk: 'CREATE OR REPLACE SECURITY DEFINER conserve OID, propriétaire et ACL ; prérequis tracefab_app et tracefab_in_active_tenant présents',
+      prerequisite: '20261104100000 terminée ; vérifier le propriétaire neondb_owner, les ACL, la RLS, les rôles tracefab_app et les types source_system avant puis après',
+      action: 'APPLIQUER APRÈS LA CORRECTION SUPPLY-CHAIN, EN PRÉPRODUCTION PUIS PRODUCTION APRÈS VALIDATION COMPLÈTE',
+    };
+  }
   return base;
 };
 const lines = [
@@ -119,7 +269,7 @@ const lines = [
 const errors = [];
 const warnings = [];
 const phases = [
-  { label: 'PREPRODUCTION', command: 'npx prisma migrate deploy', gate: '13 migrations historiques pending + 2 corrections forward ordonnées (PLM/GS1, puis graphe) ; 1 variance checksum documentée et éprouvée par test Prisma ; aucun resolve' },
+  { label: 'PREPRODUCTION', command: 'npx prisma migrate deploy', gate: '13 migrations historiques pending + 17 corrections forward ordonnées (PLM/GS1, graphe, tenant actif PLM/ERP, RLS produits/DPP/PEF, allégations vertes, claims/identités DPP, compositions produit-matière, 19 fonctions SECURITY DEFINER, enregistrement TC, politiques RLS restantes et fermeture worker/public) ; 1 variance checksum documentée et éprouvée par test Prisma ; aucun resolve' },
   { label: 'PRODUCTION', command: 'npx prisma migrate deploy', gate: 'Préproduction validée et catalogue vérifié' },
 ];
 function violationsFor(planLines, phaseList = phases) {
@@ -145,8 +295,23 @@ if (pending.length !== 13) errors.push(`migrations historiques en attente attend
 if (JSON.stringify(newNames) !== JSON.stringify([
   '20261104090000_plm_integrations_and_gs1_constraints',
   '20261104100000_supply_chain_status_enum_casts',
+  '20261105120000_active_tenant_plm_ingest_enforcement',
+  '20261105130000_active_tenant_product_dpp_pef_rls',
+  '20261105140000_active_tenant_green_claims_rls',
+  '20261105150000_active_tenant_dpp_claims_identity_rls',
+  '20261105160000_active_tenant_product_materials_rls',
+  '20261105170000_active_tenant_security_definer_guards',
+  '20261105180000_active_tenant_tc_registration_guard',
+  '20261105190000_active_tenant_quality_collection_guards',
+  '20261105200000_active_tenant_material_certification_guards',
+  '20261105210000_active_tenant_supplier_profile_passport_guards',
+  '20261105220000_active_tenant_quality_cap_guards',
+  '20261105230000_active_tenant_invite_document_passport_guards',
+  '20261105235900_active_tenant_policy_and_worker_closure',
+  '20261105240000_active_tenant_supplier_quality_guard',
+  '20261106000000_active_tenant_supplier_passport_guards',
 ])) {
-  errors.push(`les deux corrections forward PLM/GS1 puis graphe sont attendues, obtenu ${JSON.stringify(newNames)}`);
+  errors.push(`les dix-sept corrections forward PLM/GS1, graphe, tenant actif, RLS produits/DPP/PEF, allégations vertes, claims/identités DPP, compositions produit-matière, gardes SECURITY DEFINER, enregistrement TC, qualité/collecte, matières/certifications, profil fournisseur, CAP qualité, invitations/documents/passeports et qualité fournisseur sont attendues, obtenu ${JSON.stringify(newNames)}`);
 }
 if (ROLLED_BACK_ATTEMPTS.length !== 2) errors.push('le snapshot doit conserver deux tentatives annulees');
 for (const name of outOfBand) {
@@ -225,7 +390,7 @@ if (markdown) {
   console.log('\n## Déjà appliquées hors bande — ne pas rejouer');
   for (const name of outOfBand) console.log(`- ${name}: ${HORS_BANDE[name].join(', ')}`);
   console.log('\n## Séquence d’exécution');
-  console.log('1. PRÉPRODUCTION : npx prisma migrate status — 13 migrations historiques pending + 2 corrections forward PLM/GS1 puis graphe ; 1 écart historique documenté, aucun resolve.');
+  console.log('1. PRÉPRODUCTION : npx prisma migrate status — 13 migrations historiques pending + 16 corrections forward PLM/GS1, graphe, tenant actif, RLS produits/DPP/PEF, allégations vertes, claims/identités DPP, compositions produit-matière, gardes SECURITY DEFINER, enregistrement TC, qualité/collecte, matières/certifications, profil fournisseur, CAP qualité, puis fermeture RLS/worker/public ; 1 écart historique documenté, aucun resolve.');
   console.log('2. PRÉPRODUCTION : npx prisma migrate deploy, puis contrôles catalogue et tests.');
   console.log('3. PRODUCTION : même commande uniquement après validation complète de Préproduction.');
   console.log(`\nHistorique : ${appliedViaPrisma} via Prisma + ${outOfBand.length} hors bande, ${pending.length} migrations historiques absentes + ${newNames.length} correction(s) forward, ${ROLLED_BACK_ATTEMPTS.length} tentatives annulées déjà suivies d'une réussite.`);
@@ -257,4 +422,4 @@ if (errors.length) {
   for (const error of errors) console.error(`  - ${error}`);
   process.exit(1);
 }
-console.log('\nPlan cohérent : 51 via Prisma + 5 hors bande, 13 migrations historiques en attente + 2 corrections forward PLM/GS1 puis graphe, 1 écart historique documenté, aucun resolve ni changement de checksum.');
+console.log('\nPlan cohérent : 51 via Prisma + 5 hors bande, 13 migrations historiques en attente + 16 corrections forward PLM/GS1, graphe, tenant actif, RLS produits/DPP/PEF, allégations vertes, claims/identités DPP, compositions produit-matière, gardes SECURITY DEFINER, TC, qualité/collecte, matières/certifications, profil fournisseur, CAP, invitations/documents/passeports, qualité fournisseur et fermeture RLS/worker/public, 1 écart historique documenté, aucun resolve ni changement de checksum.');
