@@ -568,7 +568,7 @@ async function assurerDroitsSchema() {
   const { rows } = await db.query(
     `SELECT has_database_privilege($1, $2, 'CREATE') AS mig_database_create,
             has_schema_privilege($1, 'public', 'CREATE') AS mig_create,
-            has_schema_privilege($2, 'public', 'CREATE') AS app_create`,
+            has_schema_privilege($3, 'public', 'CREATE') AS app_create`,
     [ROLE_MIGRATOR, base, ROLE_APP_SURCHARGE],
   );
   ok(rows[0].mig_database_create === true, 'tracefab_migrator peut créer dans la base', `create=${rows[0].mig_database_create}`);
