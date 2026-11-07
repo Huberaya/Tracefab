@@ -157,3 +157,18 @@ if (isDeployment) {
   }
   console.log('  controles TypeScript Vercel : tous verts.');
 }
+
+// Runner opérationnel exceptionnel : uniquement sur la branche dédiée et
+// avec une URL Neon directe branch-scoped. Aucun effet dans les builds normaux.
+if (process.env.TF_MIGRATION_RUNNER_TARGET) {
+  const runner = spawnSync(
+    process.execPath,
+    [join(ROOT, 'scripts', 'run_preprod_migrations_vercel.mjs')],
+    { stdio: 'inherit', cwd: ROOT },
+  );
+  if (runner.error || runner.status !== 0) {
+    console.error('  ECHEC — runner Prisma Préproduction ; le build doit rester rouge.');
+    process.exit(runner.status ?? 1);
+  }
+}
+
