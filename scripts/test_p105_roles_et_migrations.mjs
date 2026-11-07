@@ -33,6 +33,7 @@ import pg from 'pg';
 import { sslDepuisUrl } from './lib/pg-ssl.mjs';
 import { ROLE_APP, ROLE_MIGRATOR, ROLE_WORKER, etatRole } from './lib/tracefab_roles.mjs';
 import { verrouillerCluster } from './lib/ephemeral-db.mjs';
+import { diagnosticProvisionnement } from './lib/diagnostic_provisionnement.mjs';
 
 const urlAdmin = (process.env.DATABASE_URL || '').trim();
 if (!urlAdmin) {
@@ -118,8 +119,10 @@ try {
   };
   verrou = await verrouillerCluster({ urlProprietaire: urlAdmin });
   const prov1 = lancer(['scripts/provisionner_roles_db.mjs'], envProv);
+  for (const ligne of diagnosticProvisionnement(prov1, 1)) console.error(`  ${ligne}`);
   ok(prov1.status === 0, 'B3.1 provisioning initial réussi', `sortie ${prov1.status}`);
   const prov2 = lancer(['scripts/provisionner_roles_db.mjs'], envProv);
+  for (const ligne of diagnosticProvisionnement(prov2, 2)) console.error(`  ${ligne}`);
   ok(prov2.status === 0, 'B3.1 re-provisioning réussi (idempotent)', `sortie ${prov2.status}`);
   const alterEmis = /durci/.test(prov2.stdout);
   ok(!alterEmis, 'B3.1 le re-provisioning n émet AUCUN ALTER ROLE', alterEmis ? 'un durcissement a eu lieu' : 'aucune instruction ALTER');
