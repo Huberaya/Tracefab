@@ -86,15 +86,47 @@ Le job d'intégration PostgreSQL est vert. Il exerce les accès inter-tenant pos
 
 **Conclusion réseau :** les runners GitHub peuvent récupérer et exécuter le moteur officiel Prisma. Il n'est pas nécessaire d'attendre le filtrage réseau du Codespace pour poursuivre les tests CI.
 
-### Vérification Prisma CLI sur Neon — preuve positive non obtenue
+### Prisma CLI réel sur Neon — validation complète avec le rôle migrateur
 
-La branche Neon de validation `br-sweet-king-b1n2f4u6` présente bien 73 lignes d'historique : 71 migrations réussies, 2 tentatives annulées, 0 inachevée. Toutefois, l'inventaire actuel de ses rôles ne contient que `tracefab_app`, `tracefab_worker` et `neondb_owner` ; `tracefab_migrator` y est absent. Les 71 lignes ne prouvent donc pas une exécution avec l'identité migrateur attendue.
+**Preuve positive obtenue le 07/11/2026** sur la branche Neon non-production `br-broad-fog-b1rgt68c` (branche de validation issue du snapshot de référence, ni Production ni Préproduction).
 
-Les tentatives CLI consultables dans les sessions Vercel n'apportent pas de preuve positive sur Neon : `prisma migrate status` a terminé avec le code 1 sur la connexion Préproduction ; la tentative `prisma migrate deploy` de la session la plus récente a également terminé avec le code 1. Les sessions étant arrêtées, leurs journaux détaillés ne sont plus récupérables. Je ne revendique donc pas que les 15 migrations ont été appliquées par Prisma sur Neon : cette affirmation précédente est retirée faute de preuve de commande concluante et d'identité effective.
+État initial de cette branche :
+- 56 migrations réussies, 2 tentatives historiques annulées, 0 inachevée ;
+- 30 migrations du dépôt en attente ;
+- 51 relations, 131 routines et 27 types autonomes détenus par `neondb_owner`.
 
-**Preuves CLI qui restent valides :** Prisma 6.19.3 a appliqué les 86 migrations sur PostgreSQL 17 jetable dans GitHub Actions ; le test dédié du checksum est vert. La preuve Neon actuelle est le rejeu SQL distinct, décrit ci-dessous. Aucune commande Prisma concluante sur Neon avec `tracefab_migrator` n'est établie.
+Provisionnement du rôle dédié sur cette seule branche :
+- `tracefab_migrator` : LOGIN, NOSUPERUSER, BYPASSRLS, CREATEROLE, NOCREATEDB, INHERIT ;
+- transfert de propriété des relations, routines et types publics existants vers `tracefab_migrator`, en excluant les objets d'extension ;
+- les fonctions worker restent détenues par `tracefab_worker` ;
+- aucun droit ni appartenance d'escalade n'a été accordé à `tracefab_app`.
 
-La création d'une branche Neon de validation supplémentaire a été refusée par Neon (`branches limit exceeded`). Aucune branche existante n'a été supprimée pour contourner cette limite.
+Depuis un environnement Vercel isolé, avec le CLI officiel Prisma 6.19.3 et une connexion Neon directe non poolée sous `tracefab_migrator` :
+
+1. `prisma migrate status` initial : connexion réussie, 30 migrations pending détectées ;
+2. `prisma migrate deploy` : code de sortie 0, les 30 migrations ont été appliquées ;
+3. `prisma migrate status` final : code 0, `Database schema is up to date!` ;
+4. second `prisma migrate deploy` : code 0, `No pending migrations to apply.`.
+
+Lecture directe de `_prisma_migrations` après exécution :
+- 88 lignes au total ;
+- 86 migrations réussies et distinctes, correspondant exactement aux 86 dossiers du dépôt ;
+- 2 tentatives annulées historiques (`20261010120000_publication_explicite`, `20261017120000_active_tenant_context)), chacune suivie d'une ligne réussie ;
+- 0 migration inachevée.
+
+Contrôles du catalogue après le vrai déploiement Prisma :
+- 53 tables métier avec RLS activé et FORCE RLS ; la seule table sans RLS est `_prisma_migrations` ;
+- 127 fonctions SECURITY DEFINER, toutes avec `search_path` fixé et 0 exécution accordée à PUBLIC ;
+- 87 politiques avec garde active-tenant ;
+- registre runtime : 92 entrées ;
+- 54 relations et 137 routines détenues par `tracefab_migrator`, 10 fonctions détenues par `tracefab_worker`, 27 types détenus par `tracefab_migrator` ;
+- `tracefab_app` reste LOGIN, NOSUPERUSER, NOBYPASSRLS, NOCREATEROLE, NOCREATEDB ; il n'est membre ni du migrateur, ni du worker, ni de `neondb_owner` ;
+- `tracefab_worker` reste NOLOGIN, NOSUPERUSER, NOBYPASSRLS, NOCREATEROLE, NOCREATEDB ;
+- HMAC strict reste désactivé et aucune clé HMAC n'est provisionnée : ce point reste un blocage distinct pour l'activation du mode strict.
+
+Le checksum historique de `20261006210000_plm_erp_gs1_interoperability` est resté `c944ce0c21f128b8ee8c919de58179d4f25fdf3d2f7f087dacbca615b89c3861`. Aucun `migrate resolve`, UPDATE ou DELETE de `_prisma_migrations` n'a été utilisé.
+
+**Limite de portée :** cette preuve valide le moteur Prisma, le rôle migrateur, le transfert de propriété et les 30 migrations sur une branche Neon de validation. Elle ne constitue pas une migration de Production ou Préproduction ; ces deux environnements restent inchangés et leurs rôles réels restent à provisionner.
 
 ### Rejeu SQL — projet Neon isolé / PostgreSQL 18.6
 
