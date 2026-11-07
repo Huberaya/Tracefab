@@ -16,7 +16,7 @@ Le blocage restant est l'identité de migration dans les environnements réels :
 - SHA du code audité avant l'ajout de ce rapport : `9a0fa5add34dc97dd321ee6c31ebac4c5f41ceda`.
 - CI Prisma : run `42389872681`, succès.
 - Intégration PostgreSQL : run `42389872683`, succès.
-- Aucun merge, aucun déploiement Production, aucun déploiement Vercel manuel, aucun changement de secret, `migrate resolve`, écriture manuelle de `_prisma_migrations`, ni migration Production/Préproduction. Le statut Vercel du commit documentaire était `pending` au dernier contrôle (Preview automatique éventuel, sans action manuelle de déploiement).
+- Aucun merge, aucun déploiement Production, aucun déploiement Vercel manuel, aucun changement de secret, `migrate resolve`, écriture manuelle de `_prisma_migrations`, ni migration Production/Préproduction. Le commit documentaire a reçu un déploiement Vercel Preview `READY` (alias `tracefab-git-fix-n-ad44d4-baya-ibraimmayoanouedu-8164s-projects.vercel.app`) ; aucun déploiement `target=production` ni alias Production n'existe pour ce SHA.
 
 ## Inventaire des migrations
 
