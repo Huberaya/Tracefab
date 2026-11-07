@@ -51,7 +51,7 @@ const cli = [
 ].find((path) => existsSync(path));
 if (!cli) refuse('CLI Prisma local introuvable.');
 
-function prisma(args, label) {
+function execute(args, label) {
   console.log(`\n========== ${label} ==========`);
   const result = spawnSync(process.execPath, [cli, ...args], {
     cwd: ROOT,
@@ -61,19 +61,37 @@ function prisma(args, label) {
   });
   if (result.stdout) process.stdout.write(result.stdout);
   if (result.stderr) process.stderr.write(result.stderr);
+  return {
+    status: result.status,
+    error: result.error,
+    output: `${result.stdout || ''}\n${result.stderr || ''}`,
+  };
+}
+
+function prisma(args, label) {
+  const result = execute(args, label);
   if (result.error || result.status !== 0) {
     refuse(`${label} a échoué (code ${result.status ?? 'inconnu'}).`);
   }
-  return `${result.stdout || ''}\n${result.stderr || ''}`;
+  return result.output;
 }
 
 console.log('Runner Prisma TraceFab — Préproduction Neon');
 console.log(`Branche: ${EXPECTED_BRANCH} ; rôle: ${EXPECTED_ROLE} ; base: ${EXPECTED_DATABASE}`);
 console.log('L’URL de connexion est masquée.');
 
-const before = prisma(['migrate', 'status'], '1/4 — migrate status avant');
-if (!/not yet been applied|following migration|pending/i.test(before)) {
-  refuse('le status initial ne signale pas de migrations en attente ; arrêt préventif.');
+const initial = execute(['migrate', 'status'], '1/4 — migrate status avant');
+if (initial.error) refuse('le status initial n’a pas pu démarrer.');
+if (!/Following migrations have not yet been applied:/i.test(initial.output)) {
+  refuse(`le status initial ne confirme pas l’état attendu (code ${initial.status}).`);
+}
+const pendingNames = initial.output.match(/^\\d{14}_[a-z0-9_]+$/gm) || [];
+console.log(`Migrations pending mesurées avant deploy : ${pendingNames.length}`);
+if (initial.status !== 0 && pendingNames.length !== 30) {
+  refuse(`le status initial retourne ${initial.status} et ${pendingNames.length} migrations pending au lieu de 30.`);
+}
+if (initial.status !== 0 && pendingNames.length === 30) {
+  console.log('Le code 1 est attendu ici : Prisma signale les migrations pending avant deploy.');
 }
 
 const deploy = prisma(['migrate', 'deploy'], '2/4 — migrate deploy');
