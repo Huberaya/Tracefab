@@ -122,11 +122,11 @@ L'écart de provenance octet pour octet reste ouvert. Le test Prisma 6.19.3 prou
 Lecture directe des rôles PostgreSQL :
 
 - Production : `tracefab_migrator` absent ; `tracefab_worker` absent.
-- Préproduction : `tracefab_migrator` existe, mais est LOGIN, NOBYPASSRLS, NOCREATEROLE, NOCREATEDB. Il ne respecte donc pas le contrat migrateur.
+- Préproduction : `tracefab_migrator` existe, mais est LOGIN, NOBYPASSRLS, NOCREATEROLE, NOCREATEDB. Il peut se connecter et utiliser le schéma `public`, mais n'a ni privilège CREATE sur la base ni CREATE sur le schéma `public`. Il ne respecte donc pas le contrat migrateur.
 - Dans les deux environnements, `tracefab_app` reste non privilégié : NOBYPASSRLS, NOCREATEROLE, NOCREATEDB. Il n'est membre ni de `tracefab_migrator` ni de `tracefab_worker`.
 - `neondb_owner` est un rôle d'administration BYPASSRLS/CREATEROLE ; l'utiliser comme substitut permanent au migrateur contournerait la séparation de privilèges recherchée.
 
-Le contrat cible du migrateur est : LOGIN, NOSUPERUSER, BYPASSRLS, CREATEROLE, NOCREATEDB, INHERIT. Le runtime `tracefab_app` doit rester NOBYPASSRLS et NOCREATEROLE.
+Le contrat cible du migrateur est : LOGIN, NOSUPERUSER, BYPASSRLS, CREATEROLE, NOCREATEDB, INHERIT, CONNECT sur la base, CREATE sur la base et USAGE + CREATE sur le schéma `public`. Le runtime `tracefab_app` doit rester NOBYPASSRLS et NOCREATEROLE.
 
 Aucun changement de rôle n'a été fait en Production ou Préproduction. Aucun secret de connexion direct Production/Préproduction n'a été créé ou modifié.
 
