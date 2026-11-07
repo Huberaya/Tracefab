@@ -30,7 +30,7 @@ Les 17 ajouts sont les deux migrations forward PLM/GS1 du 04/11 et les quinze mi
 
 ### Historique réel Production et Préproduction
 
-Lecture directe après le déploiement Préproduction :
+Lecture directe après le déploiement Prisma sur la branche Neon Préproduction `br-square-bread-b1gu7jk7` (projet `autumn-breeze-47342493) :
 
 | Environnement | Lignes `_prisma_migrations` | Succès distincts | Tentatives annulées historiques | Inachevées | Pending |
 |---|---:|---:|---:|---:|---:|
@@ -228,7 +228,7 @@ Les fonctions `pgcrypto` détenues par `cloud_admin` gardent leur EXECUTE PUBLIC
 2. Historique Préproduction final : 88 lignes, 86 succès distincts, 2 tentatives annulées historiques, 0 inachevée, 0 pending. Les 86 noms réussis correspondent exactement aux 86 dossiers du dépôt.
 3. Catalogue Préproduction : 53 tables métier avec RLS et FORCE RLS (seule `_prisma_migrations` est exemptée) ; 127 fonctions SECURITY DEFINER, toutes avec `search_path` fixé et 0 exécution PUBLIC ; 134 politiques, dont 87 active-tenant ; registre runtime 92 entrées ; 10 fonctions détenues par `tracefab_worker`. `tracefab_app` reste NOBYPASSRLS/NOCREATEROLE, sans CREATE base/schéma et incapable de SET ROLE vers migrateur, worker ou propriétaire. `tracefab_worker` reste NOLOGIN/NOBYPASSRLS. Test RLS réel Préproduction, sans écriture : sous `tracefab_app`, un membre actif voit 1 produit de son tenant ; le même utilisateur basculé vers un tenant sans appartenance voit 0 produit. Sans contexte tenant, il voit également 0 produit. La transaction de test a été annulée.
 4. HMAC strict reste désactivé (`strict=false`) et aucune clé n'est provisionnée ; c'est un gate distinct.
-5. Le secret de connexion migrateur utilisé par le runner a été invalidé par rotation du mot de passe. La variable Vercel branch-scoped a été remplacée par une URL factice et le drapeau runner par `disabled`. Le build de nettoyage est séparé ; aucun déploiement Production n'a été fait.
+5. Le secret de connexion migrateur utilisé par le runner a été invalidé par rotation du mot de passe. La variable Vercel branch-scoped a été remplacée par une URL factice et le drapeau runner par `disabled`. Déploiement Prisma réussi : `dpl_G1J1VCkEu3eaZyCPxmxuX8djF2xg` (commit `9da0ff3`). Déploiement de nettoyage READY : `dpl_8siH4i7nM9My6sfcmfyFaycwZVro` (commit `434d0a8`), alias de branche réaffecté au build sans secret. La Preview est SSO-protégée ; l'ancien mot de passe est invalide. Aucun déploiement Production.
 6. La PR #110 reste ouverte et non fusionnée. Le contrôle RLS SQL avec `tracefab_app` est concluant ; les smoke tests API/UI Préproduction restent à faire avant toute promotion. Production reste inchangée : rôle migrateur absent et 30 migrations pending. Ne pas appliquer Production avant revue et validation du code compatible.
 
 Le blocage réseau du CDN Prisma est contourné : le runner Vercel a téléchargé et exécuté le vrai moteur Prisma 6.19.3. Aucun délai administrateur réseau n'est nécessaire pour les migrations Préproduction.
