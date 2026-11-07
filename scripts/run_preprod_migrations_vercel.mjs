@@ -85,7 +85,7 @@ if (initial.error) refuse('le status initial n’a pas pu démarrer.');
 if (!/Following migrations have not yet been applied:/i.test(initial.output)) {
   refuse(`le status initial ne confirme pas l’état attendu (code ${initial.status}).`);
 }
-const pendingNames = initial.output.match(/^\\d{14}_[a-z0-9_]+$/gm) || [];
+const pendingNames = initial.output.match(/^\d{14}_[a-z0-9_]+$/gm) || [];
 console.log(`Migrations pending mesurées avant deploy : ${pendingNames.length}`);
 if (initial.status !== 0 && pendingNames.length !== 30) {
   refuse(`le status initial retourne ${initial.status} et ${pendingNames.length} migrations pending au lieu de 30.`);
