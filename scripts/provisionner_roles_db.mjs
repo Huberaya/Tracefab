@@ -375,6 +375,13 @@ async function transfererObjetsPublic(proprietaireSource) {
         FROM pg_catalog.pg_class c
         JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
        WHERE n.nspname = 'public' AND c.relkind IN ('r','p','v','m','S','f')
+         AND NOT EXISTS (
+           SELECT 1 FROM pg_catalog.pg_depend d
+            WHERE d.classid = 'pg_catalog.pg_class'::pg_catalog.regclass
+              AND d.objid = c.oid
+              AND d.refclassid = 'pg_catalog.pg_extension'::pg_catalog.regclass
+              AND d.deptype = 'e'
+         )
       UNION ALL
       SELECT 'routine', pg_catalog.pg_get_userbyid(p.proowner),
              EXISTS (
@@ -440,6 +447,13 @@ async function transfererObjetsPublic(proprietaireSource) {
      WHERE n.nspname = 'public'
        AND c.relkind IN ('S','v','m','f','r','p')
        AND c.relowner = (SELECT oid FROM pg_catalog.pg_roles WHERE rolname = $1)
+       AND NOT EXISTS (
+         SELECT 1 FROM pg_catalog.pg_depend d
+          WHERE d.classid = 'pg_catalog.pg_class'::pg_catalog.regclass
+            AND d.objid = c.oid
+            AND d.refclassid = 'pg_catalog.pg_extension'::pg_catalog.regclass
+            AND d.deptype = 'e'
+       )
      ORDER BY CASE c.relkind WHEN 'S' THEN 0 WHEN 'v' THEN 1 WHEN 'm' THEN 2
                              WHEN 'f' THEN 3 WHEN 'r' THEN 4 ELSE 5 END,
               c.relname
