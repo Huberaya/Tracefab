@@ -159,36 +159,39 @@ Pour `20261006210000_plm_erp_gs1_interoperability` :
 
 L'écart de provenance octet pour octet reste ouvert. Le test Prisma 6.19.3 prouve que le checksum historique est conservé pendant l'application d'une migration pending. Aucun `migrate resolve` ni réécriture de l'historique n'est justifié.
 
-## Défaut supplémentaire du provisioning migrateur — mesuré le 07/11
+## Défaut de propriété des objets et correctif du provisioning — mesuré le 07/11
 
-Le contrat du rôle ne se limite pas à ses attributs et aux droits du schéma. Les migrations pending doivent aussi modifier des objets déjà existants.
+Le contrat du rôle ne se limite pas à ses attributs et aux droits du schéma. Les migrations pending doivent aussi modifier les objets déjà existants.
 
 ### Mesure sur les bases réelles (lecture seule)
 
-| Environnement | Propriétaire du schéma public | Propriétaire de la base | Objets publics possédés par neondb_owner | Objets possédés par tracefab_migrator |
+| Environnement | Propriétaire du schéma public | Propriétaire de la base | Relations publiques détenues par neondb_owner | Relations détenues par tracefab_migrator |
 |---|---|---|---:|---:|
 | Production | pg_database_owner | neondb_owner | 51 | 0 |
 | Préproduction | pg_database_owner | neondb_owner | 51 | 0 |
 
-La migration 20261028120100 et les migrations active-tenant modifient des tables/fonctions existantes. Le simple fait de donner CREATE sur le schéma ne confère pas le droit ALTER sur une table détenue par un autre rôle.
+L'inventaire complémentaire montre également 131 routines et 27 types autonomes détenus par `neondb_owner` dans chaque environnement. La migration 20261028120100 et les migrations active-tenant modifient ces objets existants. Donner uniquement CREATE sur le schéma ne confère pas le droit ALTER sur une table/fonction/type détenu par un autre rôle.
 
-### Test contrôlé sur la branche de validation existante
+### Test contrôlé de la stratégie de propriété
 
-La création d'une nouvelle branche Neon a été refusée par la limite de branches. Le test a donc utilisé la branche non-production `br-sweet-king-b1n2f4u6`, déjà dédiée à la validation (71 migrations réussies, 2 annulées).
+Sur la branche non-production `br-sweet-king-b1n2f4u6`, un premier test a démontré que le transfert du seul schéma `public` ne suffit pas : `ALTER TABLE public.tracefab_products` sous `tracefab_migrator` échouait avec SQLSTATE `42501` (`must be owner of table`). La transaction de sonde a été annulée.
 
-- Le rôle `tracefab_migrator` y a été créé par l'API Neon.
-- Les attributs BYPASSRLS et CREATEROLE ont été posés ; NOSUPERUSER, NOCREATEDB, LOGIN et INHERIT sont restés conformes.
-- Le schéma `public` a été transféré à `tracefab_migrator`, avec USAGE/CREATE.
-- Le test atomique `ALTER TABLE public.tracefab_products ADD COLUMN …` puis DROP, exécuté sous `tracefab_migrator`, a échoué avec SQLSTATE `42501` : **`must be owner of table tracefab_products`**. La transaction a été annulée ; aucune colonne de test n'a été conservée.
-- `tracefab_migrator` ne peut pas endosser `neondb_owner` (`pg_has_role(..., 'SET') = false`).
+La stratégie complète a ensuite été éprouvée :
+- rôle migrateur dédié avec LOGIN, NOSUPERUSER, BYPASSRLS, CREATEROLE, NOCREATEDB, INHERIT ;
+- appartenance administrative limitée dans le sens `neondb_owner -> tracefab_migrator`, SET explicite, INHERIT=false ; aucune appartenance inverse migrateur -> propriétaire ;
+- CONNECT + CREATE sur la base, propriétaire du schéma public et USAGE/CREATE sur le schéma ;
+- transfert sélectif des relations, routines et types publics détenus par `neondb_owner` vers le migrateur, en excluant les objets d'extension et en conservant les fonctions déjà détenues par `tracefab_worker` ;
+- le migrateur a ensuite réussi un ALTER TABLE sur une table préexistante ; aucune colonne de sonde n'a été conservée.
 
-Cette branche de validation est désormais modifiée par ce probe de rôle et ne doit plus être traitée comme un témoin vierge. Production et Préproduction n'ont reçu aucune de ces modifications.
+Sur cette branche de validation, le catalogue final du probe compte 54 relations, 135 routines et 27 types détenus par le migrateur, ainsi que 6 fonctions détenues par le worker. Cette branche est modifiée et n'est plus un témoin vierge.
 
-### Conséquence
+### Correctif code
 
-Le script `scripts/provisionner_roles_db.mjs` crée/vérifie les rôles et transfère le propriétaire du schéma `public`, mais ne transfère pas la propriété des objets préexistants. Le test P10.5 vérifie la chaîne sur une base vierge où le migrateur crée lui-même les objets ; il ne prouve pas le droit ALTER sur les 51 objets déjà détenus par `neondb_owner`.
+`scripts/provisionner_roles_db.mjs` implémente désormais cette stratégie et vérifie les postconditions. Les attributs non-SUPERUSER peuvent être corrigés par un exécutant CREATEROLE (le changement de SUPERUSER reste réservé à un SUPERUSER) avec le drapeau explicite `TF_CORRIGER_ATTRIBUTS=oui`. Le transfert refuse les objets publics détenus par un troisième rôle et ne modifie pas les appartenances de `tracefab_app).
 
-**Nouveau bloqueur P0 :** définir et tester une stratégie sûre pour que le migrateur puisse modifier les objets existants, sans donner d'appartenance d'administration à `tracefab_app), sans rendre les fonctions SECURITY DEFINER moins sûres et sans transférer aveuglément la propriété de toutes les fonctions. Les options (transfert sélectif de propriété ou rôle de connexion avec SET ROLE encadré) doivent être éprouvées sur une branche isolée avant tout provisionnement Préproduction.
+Le test P10.5 a été étendu : il crée avant provisioning une table, une fonction et un ENUM appartenant à l'administrateur, vérifie leur transfert au migrateur, puis exécute ALTER TABLE et CREATE OR REPLACE FUNCTION sous le migrateur avant de supprimer les fixtures. La dernière correction de syntaxe du test a été poussée ; CI #1806 est en cours de vérification.
+
+**Conclusion :** la stratégie d'ownership est désormais démontrée sur Neon et intégrée au script. Le bloqueur n'est plus l'absence de solution technique ; c'est l'exécution contrôlée du provisioning sur les environnements réels, qui n'a pas encore été faite.
 
 ## Blocage réel : rôles Production / Préproduction
 
