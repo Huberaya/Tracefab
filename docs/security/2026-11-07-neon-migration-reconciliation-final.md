@@ -86,11 +86,15 @@ Le job d'intégration PostgreSQL est vert. Il exerce les accès inter-tenant pos
 
 **Conclusion réseau :** les runners GitHub peuvent récupérer et exécuter le moteur officiel Prisma. Il n'est pas nécessaire d'attendre le filtrage réseau du Codespace pour poursuivre les tests CI.
 
-### Prisma CLI réel sur Neon — branche de validation existante
+### Vérification Prisma CLI sur Neon — preuve positive non obtenue
 
-Sur la branche Neon de validation `br-sweet-king-b1n2f4u6`, le vrai CLI Prisma 6.19.3 a appliqué les 15 migrations alors pending sur une base issue du snapshot de référence : code de sortie 0, `migrate status` indique `Database schema is up to date!`, puis un second `migrate deploy` indique `No pending migrations to apply.`. L'état final observé est de 71 migrations réussies, 2 tentatives historiques annulées et 0 migration inachevée.
+La branche Neon de validation `br-sweet-king-b1n2f4u6` présente bien 73 lignes d'historique : 71 migrations réussies, 2 tentatives annulées, 0 inachevée. Toutefois, l'inventaire actuel de ses rôles ne contient que `tracefab_app`, `tracefab_worker` et `neondb_owner` ; `tracefab_migrator` y est absent. Les 71 lignes ne prouvent donc pas une exécution avec l'identité migrateur attendue.
 
-Cette preuve couvre la chaîne jusqu'à 71 migrations sur Neon avec le vrai moteur Prisma. Elle ne couvre pas les quinze migrations active-tenant ajoutées ensuite ; celles-ci sont couvertes par le rejeu SQL Neon 18.6 ci-dessous et par le déploiement Prisma 86/86 sur PostgreSQL 17 jetable.
+Les tentatives CLI consultables dans les sessions Vercel n'apportent pas de preuve positive sur Neon : `prisma migrate status` a terminé avec le code 1 sur la connexion Préproduction ; la tentative `prisma migrate deploy` de la session la plus récente a également terminé avec le code 1. Les sessions étant arrêtées, leurs journaux détaillés ne sont plus récupérables. Je ne revendique donc pas que les 15 migrations ont été appliquées par Prisma sur Neon : cette affirmation précédente est retirée faute de preuve de commande concluante et d'identité effective.
+
+**Preuves CLI qui restent valides :** Prisma 6.19.3 a appliqué les 86 migrations sur PostgreSQL 17 jetable dans GitHub Actions ; le test dédié du checksum est vert. La preuve Neon actuelle est le rejeu SQL distinct, décrit ci-dessous. Aucune commande Prisma concluante sur Neon avec `tracefab_migrator` n'est établie.
+
+La création d'une branche Neon de validation supplémentaire a été refusée par Neon (`branches limit exceeded`). Aucune branche existante n'a été supprimée pour contourner cette limite.
 
 ### Rejeu SQL — projet Neon isolé / PostgreSQL 18.6
 
