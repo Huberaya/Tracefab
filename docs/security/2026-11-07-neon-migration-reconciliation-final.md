@@ -30,7 +30,7 @@ Les 17 ajouts sont les deux migrations forward PLM/GS1 du 04/11 et les quinze mi
 
 ### Historique réel Production et Préproduction
 
-Lecture directe après le déploiement Prisma sur la branche Neon Préproduction `br-square-bread-b1gu7jk7` (projet `autumn-breeze-47342493) :
+Lecture directe après le déploiement Prisma sur la branche Neon Préproduction `br-square-bread-b1gu7jk7` (projet `autumn-breeze-47342493`) :
 
 | Environnement | Lignes `_prisma_migrations` | Succès distincts | Tentatives annulées historiques | Inachevées | Pending |
 |---|---:|---:|---:|---:|---:|
