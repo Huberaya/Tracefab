@@ -1,0 +1,1790 @@
+{
+  "mission": "P10.8 — preuves outbox sur PostgreSQL 17.11 reel",
+  "genere_le": "2026-11-07T16:08:58.431Z",
+  "url_administration": "postgresql://<jetable>@127.0.0.1:55432/postgres",
+  "methode": "Connexions metier REELLES tracefab_app (session_user=current_user), jamais SET ROLE pour simuler une session ; superutilisateur reserve a la creation de la base, aux migrations, aux fixtures et a la simulation de crash.",
+  "chaine_canonique": {
+    "refs": [
+      "main",
+      "#113",
+      "#114",
+      "HEAD (correctif P10.8)"
+    ],
+    "migrations": [
+      {
+        "nom": "20260923130000_tracefab_neon_initial",
+        "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+        "sha256": "6c755b436b9effd1a860dc5d07fb02bc1c38c405229fd4adb16d8c4582a14102"
+      },
+      {
+        "nom": "20260923140000_tracefab_clerk_context",
+        "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+        "sha256": "534dc2d4a166c647c333314d3f5fa1e3f79b7b7a38bc0b45656177aded18771a"
+      },
+      {
+        "nom": "20260923150000_fix_invitation_acceptance",
+        "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+        "sha256": "89847200c5f5ae04802dda82047648499c20d955013f0fce8e06538230679196"
+      },
+      {
+        "nom": "20260923160000_tracefab_product_api_functions",
+        "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+        "sha256": "2153575d97dd82df6b5bd36257cd7cabed16c2493fabe56c5e62d524b5ee5d70"
+      },
+      {
+        "nom": "20260923170000_fix_data_collection_workflow_context",
+        "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+        "sha256": "cebd301a044d4d713b5738028f3d3697e6099868467f54685500882a9fd3fc0e"
+      },
+      {
+        "nom": "20260923180000_fix_data_response_progress_guard",
+        "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+        "sha256": "e1456e2fb8dc1f952ff335c54becbc603416f7ddb8d9e2200e8dacd7991ca08f"
+      },
+      {
+        "nom": "20260923190000_tracefab_notification_outbox",
+        "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+        "sha256": "0ddde924c3fc022e7c1c208c18ffc9790bbb11db643849421b0db86afdcc0d8b"
+      },
+      {
+        "nom": "20260923200000_tracefab_collection_reminders",
+        "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+        "sha256": "cce36f145c0de802b3c233a0d5a2bc7d6d321b0d96752bb961736d2c5a00ce7e"
+      },
+      {
+        "nom": "20261005090000_supplier_portal_advanced_hardening",
+        "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+        "sha256": "13581e6c99a7c649e2a2e47280126362342b93adfcb45b6ec8161489455fc422"
+      },
+      {
+        "nom": "20261005100000_supplier_invitation_compatibility",
+        "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+        "sha256": "3626074357755fdef4d158894c70580e89f3e4c728be604050efde599e3e26d5"
+      },
+      {
+        "nom": "20261006100000_security_force_rls_and_document_access",
+        "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+        "sha256": "ee73157701cf4134c2498d31a552bfb0ce1c9851cf34536b50505accd9b3bcaf"
+      },
+      {
+        "nom": "20261006110000_quality_center_shared_access",
+        "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+        "sha256": "64256414f28d96c3a55facd94d5adeb82d5252993538d2d63c38cc558154e4fe"
+      },
+      {
+        "nom": "20261006113000_clerk_directory_membership_sync",
+        "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+        "sha256": "6e4f38601f2ed6c31164cb27f9c4dbc1bab841c57ec8cfab330ac8122aae7ba3"
+      },
+      {
+        "nom": "20261006120000_data_collection_bridge_and_quality_automation",
+        "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+        "sha256": "a784cc042bc3f44b2f6c692d84cb5ebeff42608ca2829d03ad714497eb8e2c61"
+      },
+      {
+        "nom": "20261006120000_external_schema_bindings",
+        "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+        "sha256": "df965ab28aa24b035576662da9552146f4b77c27a994da62466bc76344063c8d"
+      },
+      {
+        "nom": "20261006123000_clerk_sync_security_functions",
+        "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+        "sha256": "f6732d8d578831e7253fb0b17751cda4cc9d1048705a3b1f5542efb29a9db805"
+      },
+      {
+        "nom": "20261006130000_tracefab_manual_data_request_reminders",
+        "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+        "sha256": "17a756ec1c70027ca7e34ee415be5d933dea2e4ce017af3863f96e1d9469e7c6"
+      },
+      {
+        "nom": "20261006140000_supply_chain_traceability_api",
+        "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+        "sha256": "3aec3897c43e026afc003b9fbb17a8cbc2f631d82f26f1e44add598ed6c938c9"
+      },
+      {
+        "nom": "20261006160000_dpp_readiness_exposure",
+        "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+        "sha256": "bacfe553ee18fa61626925f5c069f0d5a48909612a518dbdb8e1a2aaff64d6bc"
+      },
+      {
+        "nom": "20261006180000_supplier_self_onboarding",
+        "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+        "sha256": "b9e3f5ea1b8d3f956ba2525d5c1d69ecd872fbee8ec1b6501fefb28c7ae73b1d"
+      },
+      {
+        "nom": "20261006190000_catalog_import_export",
+        "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+        "sha256": "036dc97d63f11b9972c4900f1c5646f9785a99bed205d2cc38868ad8db38e196"
+      },
+      {
+        "nom": "20261006200000_catalog_import_kind",
+        "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+        "sha256": "d5241ea690e133703a4584cfb8d80e3281f4935a3fc914ba06c8ab3b60fa799b"
+      },
+      {
+        "nom": "20261006200000_document_ai_automated_verification",
+        "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+        "sha256": "0eb5036c85c26b9009776702c190d1db5cb123f261e4223ea601e2fe4625d4ca"
+      },
+      {
+        "nom": "20261006210000_plm_erp_gs1_interoperability",
+        "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+        "sha256": "6a8d03eb507b824e2a308d7e29113478d60d726255fcc1883cef56c506783044"
+      },
+      {
+        "nom": "20261006220000_esg_pef_footprint_engine",
+        "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+        "sha256": "2d4f41bf4c2922c9cdc8ca6634c54572d11563c9e48d0f480a8760d8d81edc42"
+      },
+      {
+        "nom": "20261006220000_production_hardening",
+        "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+        "sha256": "66ce9341c7efa7cdaa1b15ba56e2fb6253dea0c3816cfa451b6574609a02b8f9"
+      },
+      {
+        "nom": "20261006230000_green_claims_anti_greenwashing_engine",
+        "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+        "sha256": "8430fc08710247140de7afaec8d14a2dd56027e15039ddf95b2f45aa7b97b816"
+      },
+      {
+        "nom": "20261006240000_quality_corrective_action_plans_cap",
+        "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+        "sha256": "fad3c6ba25db488b23a8675eee5b59c78ad94bf34360bb1b79116fe47787c67f"
+      },
+      {
+        "nom": "20261006250000_universal_supplier_passport",
+        "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+        "sha256": "cbb5af324a9fd23a85e8d828c1c12495aff3cd91b29d007478b8d00ad783f6f8"
+      },
+      {
+        "nom": "20261006260000_mass_balance_anti_fraud_engine",
+        "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+        "sha256": "d0328a36291e20799ab9b2934d130bcb191e2762b219f3173a0d3b1d48c7a36e"
+      },
+      {
+        "nom": "20261007100000_security_definer_execute_hardening",
+        "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+        "sha256": "61e18ea4c858e003e7505c18f738436d09261a44214feab457bf1f1414ac79b8"
+      },
+      {
+        "nom": "20261007120000_force_rls_schema_bindings",
+        "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+        "sha256": "c1f8585dd9b84a96996c042817e5a76adde1ac3163fedd3ab525e5d3c7ec483b"
+      },
+      {
+        "nom": "20261008100000_rate_limit_counters",
+        "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+        "sha256": "7d7b7a6cb9bb6ea824ff57c1ab418dd4ee77d40cc74fc457ae2c02c7eff0cabe"
+      },
+      {
+        "nom": "20261009120000_fix_materials_policy_recursion",
+        "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+        "sha256": "44c230dc2f9c403da5a05613c6ba1af8924268b657b046640549beb3e0ac4131"
+      },
+      {
+        "nom": "20261009180000_public_read_context",
+        "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+        "sha256": "9100ed08cef28aac0ab2971a6cd83daa1a71b133624e1ba898699e8c80c5b4c9"
+      },
+      {
+        "nom": "20261010120000_publication_explicite",
+        "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+        "sha256": "8b741eab1ff17cb8aaed5f6fc02217209ec84ed44bcbc4617ec7c53ec8cddae6"
+      },
+      {
+        "nom": "20261012120000_close_public_execute_gap",
+        "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+        "sha256": "4f6e710f543950838c796b10985745490165b354142abf35ad40d5b0111248a6"
+      },
+      {
+        "nom": "20261014100000_revoke_material_visible_public",
+        "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+        "sha256": "ff6d95415e4d7f1fcf8bb7087278d2d93c3fe1b8b142e126c3ce06a41ab1ee04"
+      },
+      {
+        "nom": "20261014110000_revoke_dpp_functions_public",
+        "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+        "sha256": "0a141838e80d480373032570638011d079d4402986b522962b7d64edd997633c"
+      },
+      {
+        "nom": "20261014120000_close_global_default_function_execute",
+        "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+        "sha256": "cfb6ebac4a6035855d476962c11ade0d3f10df43ebe029dedd0a7c7e2d54de1c"
+      },
+      {
+        "nom": "20261014130000_revoke_public_schema_privileges",
+        "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+        "sha256": "c6df54676462efca2f061e274f5c74f777e079a683fabd6542a083f5c0c6fe95"
+      },
+      {
+        "nom": "20261014140000_remove_public_supplier_passport_share_token",
+        "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+        "sha256": "d73f1c2d3cf2d175e413603c37952c577d67b75bbf4da9a41fa5180378f1cab7"
+      },
+      {
+        "nom": "20261016130000_dynamic_dpp_lifecycle",
+        "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+        "sha256": "10b7d8627b1811fcf2fc3a29864a21ac3d2be853e1a6a04d5318aa2175e55998"
+      },
+      {
+        "nom": "20261016150000_dpp_claim_evidence_chain",
+        "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+        "sha256": "8c3e0f1e77a0b052a4fcbf62e06c9d9c4c2170f15e8d03634e1b38268458d260"
+      },
+      {
+        "nom": "20261016170000_dpp_resolvable_identity",
+        "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+        "sha256": "f9406fbe10d07e4110596ef6e856345fd0fa0866a3b1b6014ba96288904f3d8f"
+      },
+      {
+        "nom": "20261017100000_fix_document_lifecycle_access",
+        "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+        "sha256": "7cc1cbfd98a798ba2cad60de88225fac3401d0e491414fe11df14918125778a6"
+      },
+      {
+        "nom": "20261017120000_active_tenant_context",
+        "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+        "sha256": "e15c0786ca0b666aebd9662c007dd4fbaba9304017c5ed1bfe5ef5681289c8bd"
+      },
+      {
+        "nom": "20261017120000_harden_dpp_table_privileges",
+        "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+        "sha256": "5366746f7ff72ca64b88472fbda95ff47e000c85dd72e1f84559bd61caea6607"
+      },
+      {
+        "nom": "20261017150000_harden_finalize_ops_gate",
+        "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+        "sha256": "bee1dbce49735b2030593b57590c4b6874f124369bb9bb774e7db3df9c65179b"
+      },
+      {
+        "nom": "20261019120000_restreindre_dml_role_applicatif",
+        "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+        "sha256": "19dc214f731ecf47e42d44c82e0b13aa2020a19b8f7a0a3d81f4bf6e08c33a49"
+      },
+      {
+        "nom": "20261019140000_restreindre_suppression_compteurs_debit",
+        "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+        "sha256": "1120041bd9f6aa6907a09d380a94edf95449d7b055860e83f2e28973e50c333a"
+      },
+      {
+        "nom": "20261019160000_retablir_dml_tables_ecrites_directement",
+        "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+        "sha256": "477789e475f0a8009ade2e9444ff279991b6e3176ac38b267ced7afb72bb9842"
+      },
+      {
+        "nom": "20261020120000_structured_supply_chain_graph_membership",
+        "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+        "sha256": "1e42d60bf6d808616b806993a15fbc41f6691e2370ecd7a6a9a67dabfa950614"
+      },
+      {
+        "nom": "20261021120000_limit_app_function_execute",
+        "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+        "sha256": "e9f00fb17be91ece1925d159e8b128146fdb9eddb0f7d986202e7cc2ae299b6c"
+      },
+      {
+        "nom": "20261021130000_reconcile_runtime_dml_and_migration_history",
+        "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+        "sha256": "ec998cc29967613d8fe299cf038a88b0b81d64896aa4ed76affecaa652249983"
+      },
+      {
+        "nom": "20261021170000_dpp_readiness_truthful_gates",
+        "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+        "sha256": "3ead8852d9adf5c550e12c6d00665cdf8ef845694bdcb268cc8ab88219519269"
+      },
+      {
+        "nom": "20261023120000_revoke_app_default_dml",
+        "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+        "sha256": "fa6bcc2447b5e9da0f68c8ff284e63677b3ceaa7aae1e3f95c8e3dd1cadbea04"
+      },
+      {
+        "nom": "20261027100000_dpp_quality_gate_requires_assessment",
+        "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+        "sha256": "2389767489968dff735392922373afeb1c1cb77c4abdb1d43ad9ac14ecff8fd5"
+      },
+      {
+        "nom": "20261027130000_dpp_review_preservation_and_publication_coherence",
+        "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+        "sha256": "53fee8be3f0e0a79ab395ee6de7b5e0e4562f5d5a8c0f6476761d3363c3e5727"
+      },
+      {
+        "nom": "20261028120000_runtime_function_registry",
+        "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+        "sha256": "54e1679cf9d7b8e0d66200e6e943b3dc2e7e26d8187bb00b6ddf3f480f9ca4e0"
+      },
+      {
+        "nom": "20261028120100_worker_identity_not_forgeable",
+        "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+        "sha256": "7adbab6591cc50144061f65b556012b8d14c00e83f537b004384b2cee9b7e2c1"
+      },
+      {
+        "nom": "20261028120200_document_reserved_fields_internal_only",
+        "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+        "sha256": "e19bcff17a337986c2a969964ddc947b0b43b6a565716bbe258389095527b500"
+      },
+      {
+        "nom": "20261028130000_product_computed_fields_column_scoped",
+        "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+        "sha256": "19b34a90620a6eb449938dc751a26d684013d98926deb38ad817b71dfc2964c3"
+      },
+      {
+        "nom": "20261028140000_supplier_invitation_owner_relationship_scope",
+        "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+        "sha256": "6a94aea73674b5cfeef9611284afdf8895c3f6b8de28d8376ab472f32bb6b21c"
+      },
+      {
+        "nom": "20261028150000_reconcile_plm_erp_sync_job_policies",
+        "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+        "sha256": "989ab45407f48fe4326c31ed38b1bf9ffc7e3a68da6afc998a9cc003734a93fa"
+      },
+      {
+        "nom": "20261029180000_plm_erp_sync_jobs_policy_dedup",
+        "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+        "sha256": "896dfad2f465908a8299f3639eb246292ba1b806ae13bfd3b3cf6218fdf6801f"
+      },
+      {
+        "nom": "20261030140000_ingest_payload_role_guard_and_acl",
+        "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+        "sha256": "d35c3ed56a2447f1bdd5be76839f6051af4589902e664781beda95ae96c75267"
+      },
+      {
+        "nom": "20261031120000_identite_hmac_liee_au_contexte",
+        "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+        "sha256": "48ec239a8dde15fb25b34a37727f3c93cbab83865e298634e3e4ea6b07124ff2"
+      },
+      {
+        "nom": "20261102120000_identite_stricte_email_et_rotation",
+        "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+        "sha256": "30c24ef2b6b424a302ebe9de091ade96fb8a63177c0b5ce76f36048315a609aa"
+      },
+      {
+        "nom": "20261105180000_active_tenant_access_guards",
+        "ref": "HEAD",
+        "sha256": "4f55f443ad2e0f3208ccec2a5e4cada65205d3482ed29c162c3fd7dfe8f6c4ad"
+      },
+      {
+        "nom": "20261106120000_p107_hmac_forme_canonique_et_ttl",
+        "ref": "HEAD",
+        "sha256": "e66c470618cd2f35555306f1e0fef000959bcda47f535ceb9cf36f6170c4258b"
+      },
+      {
+        "nom": "20261106130000_identite_systeme_signee",
+        "ref": "refs/remotes/audit/pr114-nouveau",
+        "sha256": "e29a9ebd1a201898d0cde0282c914892469ae436dccfeb4ac9274cc18b02406b"
+      },
+      {
+        "nom": "20261107120000_p108_outbox_proprietaire_et_dependances",
+        "ref": "HEAD (nouvelle migration P10.8)",
+        "sha256": "6bf720822f7a361bf2703a85c7583e66f056f05e5303a6c910ce783f0e7d31dc"
+      }
+    ],
+    "total": 73
+  },
+  "reproductions": [
+    {
+      "id": "S1_114_seule",
+      "refs": [
+        "main",
+        "#114"
+      ],
+      "correctif_applique": false,
+      "migrations_appliquees": 70,
+      "empreintes": [
+        "20260923130000_tracefab_neon_initial:6c755b436b9e",
+        "20260923140000_tracefab_clerk_context:534dc2d4a166",
+        "20260923150000_fix_invitation_acceptance:89847200c5f5",
+        "20260923160000_tracefab_product_api_functions:2153575d97dd",
+        "20260923170000_fix_data_collection_workflow_context:cebd301a044d",
+        "20260923180000_fix_data_response_progress_guard:e1456e2fb8dc",
+        "20260923190000_tracefab_notification_outbox:0ddde924c3fc",
+        "20260923200000_tracefab_collection_reminders:cce36f145c0d",
+        "20261005090000_supplier_portal_advanced_hardening:13581e6c99a7",
+        "20261005100000_supplier_invitation_compatibility:362607435775",
+        "20261006100000_security_force_rls_and_document_access:ee73157701cf",
+        "20261006110000_quality_center_shared_access:64256414f28d",
+        "20261006113000_clerk_directory_membership_sync:6e4f38601f2e",
+        "20261006120000_data_collection_bridge_and_quality_automation:a784cc042bc3",
+        "20261006120000_external_schema_bindings:df965ab28aa2",
+        "20261006123000_clerk_sync_security_functions:f6732d8d5788",
+        "20261006130000_tracefab_manual_data_request_reminders:17a756ec1c70",
+        "20261006140000_supply_chain_traceability_api:3aec3897c43e",
+        "20261006160000_dpp_readiness_exposure:bacfe553ee18",
+        "20261006180000_supplier_self_onboarding:b9e3f5ea1b8d",
+        "20261006190000_catalog_import_export:036dc97d63f1",
+        "20261006200000_catalog_import_kind:d5241ea690e1",
+        "20261006200000_document_ai_automated_verification:0eb5036c85c2",
+        "20261006210000_plm_erp_gs1_interoperability:6a8d03eb507b",
+        "20261006220000_esg_pef_footprint_engine:2d4f41bf4c29",
+        "20261006220000_production_hardening:66ce9341c7ef",
+        "20261006230000_green_claims_anti_greenwashing_engine:8430fc087102",
+        "20261006240000_quality_corrective_action_plans_cap:fad3c6ba25db",
+        "20261006250000_universal_supplier_passport:cbb5af324a9f",
+        "20261006260000_mass_balance_anti_fraud_engine:d0328a36291e",
+        "20261007100000_security_definer_execute_hardening:61e18ea4c858",
+        "20261007120000_force_rls_schema_bindings:c1f8585dd9b8",
+        "20261008100000_rate_limit_counters:7d7b7a6cb9bb",
+        "20261009120000_fix_materials_policy_recursion:44c230dc2f9c",
+        "20261009180000_public_read_context:9100ed08cef2",
+        "20261010120000_publication_explicite:8b741eab1ff1",
+        "20261012120000_close_public_execute_gap:4f6e710f5439",
+        "20261014100000_revoke_material_visible_public:ff6d95415e4d",
+        "20261014110000_revoke_dpp_functions_public:0a141838e80d",
+        "20261014120000_close_global_default_function_execute:cfb6ebac4a60",
+        "20261014130000_revoke_public_schema_privileges:c6df54676462",
+        "20261014140000_remove_public_supplier_passport_share_token:d73f1c2d3cf2",
+        "20261016130000_dynamic_dpp_lifecycle:10b7d8627b18",
+        "20261016150000_dpp_claim_evidence_chain:8c3e0f1e77a0",
+        "20261016170000_dpp_resolvable_identity:f9406fbe10d0",
+        "20261017100000_fix_document_lifecycle_access:7cc1cbfd98a7",
+        "20261017120000_active_tenant_context:e15c0786ca0b",
+        "20261017120000_harden_dpp_table_privileges:5366746f7ff7",
+        "20261017150000_harden_finalize_ops_gate:bee1dbce4973",
+        "20261019120000_restreindre_dml_role_applicatif:19dc214f731e",
+        "20261019140000_restreindre_suppression_compteurs_debit:1120041bd9f6",
+        "20261019160000_retablir_dml_tables_ecrites_directement:477789e475f0",
+        "20261020120000_structured_supply_chain_graph_membership:1e42d60bf6d8",
+        "20261021120000_limit_app_function_execute:e9f00fb17be9",
+        "20261021130000_reconcile_runtime_dml_and_migration_history:ec998cc29967",
+        "20261021170000_dpp_readiness_truthful_gates:3ead8852d9ad",
+        "20261023120000_revoke_app_default_dml:fa6bcc2447b5",
+        "20261027100000_dpp_quality_gate_requires_assessment:238976748996",
+        "20261027130000_dpp_review_preservation_and_publication_coherence:53fee8be3f0e",
+        "20261028120000_runtime_function_registry:54e1679cf9d7",
+        "20261028120100_worker_identity_not_forgeable:7adbab6591cc",
+        "20261028120200_document_reserved_fields_internal_only:e19bcff17a33",
+        "20261028130000_product_computed_fields_column_scoped:19b34a90620a",
+        "20261028140000_supplier_invitation_owner_relationship_scope:6a94aea73674",
+        "20261028150000_reconcile_plm_erp_sync_job_policies:989ab45407f4",
+        "20261029180000_plm_erp_sync_jobs_policy_dedup:896dfad2f465",
+        "20261030140000_ingest_payload_role_guard_and_acl:d35c3ed56a24",
+        "20261031120000_identite_hmac_liee_au_contexte:48ec239a8dde",
+        "20261102120000_identite_stricte_email_et_rotation:30c24ef2b6b4",
+        "20261106130000_identite_systeme_signee:e29a9ebd1a20"
+      ],
+      "resultat": "PASS",
+      "sqlstate": "42501",
+      "observe": "42501 permission denied for function tracefab_identite_systeme"
+    },
+    {
+      "id": "S2_111_et_114",
+      "refs": [
+        "#111",
+        "#114"
+      ],
+      "correctif_applique": false,
+      "migrations_appliquees": 87,
+      "empreintes": [
+        "20260923130000_tracefab_neon_initial:6c755b436b9e",
+        "20260923140000_tracefab_clerk_context:534dc2d4a166",
+        "20260923150000_fix_invitation_acceptance:89847200c5f5",
+        "20260923160000_tracefab_product_api_functions:2153575d97dd",
+        "20260923170000_fix_data_collection_workflow_context:cebd301a044d",
+        "20260923180000_fix_data_response_progress_guard:e1456e2fb8dc",
+        "20260923190000_tracefab_notification_outbox:0ddde924c3fc",
+        "20260923200000_tracefab_collection_reminders:cce36f145c0d",
+        "20261005090000_supplier_portal_advanced_hardening:560356c203df",
+        "20261005100000_supplier_invitation_compatibility:362607435775",
+        "20261006100000_security_force_rls_and_document_access:ee73157701cf",
+        "20261006110000_quality_center_shared_access:64256414f28d",
+        "20261006113000_clerk_directory_membership_sync:6e4f38601f2e",
+        "20261006120000_data_collection_bridge_and_quality_automation:a784cc042bc3",
+        "20261006120000_external_schema_bindings:df965ab28aa2",
+        "20261006123000_clerk_sync_security_functions:f6732d8d5788",
+        "20261006130000_tracefab_manual_data_request_reminders:17a756ec1c70",
+        "20261006140000_supply_chain_traceability_api:3aec3897c43e",
+        "20261006160000_dpp_readiness_exposure:bacfe553ee18",
+        "20261006180000_supplier_self_onboarding:b9e3f5ea1b8d",
+        "20261006190000_catalog_import_export:036dc97d63f1",
+        "20261006200000_catalog_import_kind:d5241ea690e1",
+        "20261006200000_document_ai_automated_verification:0eb5036c85c2",
+        "20261006210000_plm_erp_gs1_interoperability:6a8d03eb507b",
+        "20261006220000_esg_pef_footprint_engine:2d4f41bf4c29",
+        "20261006220000_production_hardening:66ce9341c7ef",
+        "20261006230000_green_claims_anti_greenwashing_engine:8430fc087102",
+        "20261006240000_quality_corrective_action_plans_cap:fad3c6ba25db",
+        "20261006250000_universal_supplier_passport:cbb5af324a9f",
+        "20261006260000_mass_balance_anti_fraud_engine:d0328a36291e",
+        "20261007100000_security_definer_execute_hardening:61e18ea4c858",
+        "20261007120000_force_rls_schema_bindings:c1f8585dd9b8",
+        "20261008100000_rate_limit_counters:7d7b7a6cb9bb",
+        "20261009120000_fix_materials_policy_recursion:44c230dc2f9c",
+        "20261009180000_public_read_context:c12ee3330308",
+        "20261010120000_publication_explicite:8b741eab1ff1",
+        "20261012120000_close_public_execute_gap:4f6e710f5439",
+        "20261014100000_revoke_material_visible_public:ff6d95415e4d",
+        "20261014110000_revoke_dpp_functions_public:0a141838e80d",
+        "20261014120000_close_global_default_function_execute:cfb6ebac4a60",
+        "20261014130000_revoke_public_schema_privileges:c6df54676462",
+        "20261014140000_remove_public_supplier_passport_share_token:d73f1c2d3cf2",
+        "20261016130000_dynamic_dpp_lifecycle:10b7d8627b18",
+        "20261016150000_dpp_claim_evidence_chain:8c3e0f1e77a0",
+        "20261016170000_dpp_resolvable_identity:f9406fbe10d0",
+        "20261017100000_fix_document_lifecycle_access:7cc1cbfd98a7",
+        "20261017120000_active_tenant_context:e15c0786ca0b",
+        "20261017120000_harden_dpp_table_privileges:5366746f7ff7",
+        "20261017150000_harden_finalize_ops_gate:bee1dbce4973",
+        "20261019120000_restreindre_dml_role_applicatif:19dc214f731e",
+        "20261019140000_restreindre_suppression_compteurs_debit:1120041bd9f6",
+        "20261019160000_retablir_dml_tables_ecrites_directement:477789e475f0",
+        "20261020120000_structured_supply_chain_graph_membership:1e42d60bf6d8",
+        "20261021120000_limit_app_function_execute:e9f00fb17be9",
+        "20261021130000_reconcile_runtime_dml_and_migration_history:ec998cc29967",
+        "20261021170000_dpp_readiness_truthful_gates:3ead8852d9ad",
+        "20261023120000_revoke_app_default_dml:fa6bcc2447b5",
+        "20261027100000_dpp_quality_gate_requires_assessment:238976748996",
+        "20261027130000_dpp_review_preservation_and_publication_coherence:53fee8be3f0e",
+        "20261028120000_runtime_function_registry:54e1679cf9d7",
+        "20261028120100_worker_identity_not_forgeable:f65b95741282",
+        "20261028120200_document_reserved_fields_internal_only:51a0743abe42",
+        "20261028130000_product_computed_fields_column_scoped:e11403751fc3",
+        "20261028140000_supplier_invitation_owner_relationship_scope:6a94aea73674",
+        "20261028150000_reconcile_plm_erp_sync_job_policies:989ab45407f4",
+        "20261029180000_plm_erp_sync_jobs_policy_dedup:896dfad2f465",
+        "20261030140000_ingest_payload_role_guard_and_acl:17a9029caa56",
+        "20261031120000_identite_hmac_liee_au_contexte:29c29e1233d7",
+        "20261102120000_identite_stricte_email_et_rotation:30c24ef2b6b4",
+        "20261104090000_plm_integrations_and_gs1_constraints:a040be467aaa",
+        "20261104100000_supply_chain_status_enum_casts:418d4d8d4978",
+        "20261105120000_active_tenant_plm_ingest_enforcement:40f37608024b",
+        "20261105130000_active_tenant_product_dpp_pef_rls:cf38feb4a862",
+        "20261105140000_active_tenant_green_claims_rls:eadc14967cc9",
+        "20261105150000_active_tenant_dpp_claims_identity_rls:392c1e0358bc",
+        "20261105160000_active_tenant_product_materials_rls:7787349c0350",
+        "20261105170000_active_tenant_security_definer_guards:667e1f29a7b1",
+        "20261105180000_active_tenant_tc_registration_guard:5d59326faae7",
+        "20261105190000_active_tenant_quality_collection_guards:71d7ad89c68f",
+        "20261105200000_active_tenant_material_certification_guards:f26f6d9d520c",
+        "20261105210000_active_tenant_supplier_profile_passport_guards:dc5fd776d7d4",
+        "20261105220000_active_tenant_quality_cap_guards:7af5c8e86671",
+        "20261105230000_active_tenant_invite_document_passport_guards:5f8b3f953f4b",
+        "20261105235900_active_tenant_policy_and_worker_closure:75f800b7f842",
+        "20261105240000_active_tenant_supplier_quality_guard:c06f18684eee",
+        "20261106000000_active_tenant_supplier_passport_guards:e266e512b445",
+        "20261106130000_identite_systeme_signee:e29a9ebd1a20"
+      ],
+      "resultat": "PASS",
+      "sqlstate": null,
+      "observe": "1 ligne(s), status=processing"
+    },
+    {
+      "id": "S3_canonique_sans_correctif",
+      "refs": [
+        "main",
+        "#113",
+        "#114"
+      ],
+      "correctif_applique": false,
+      "migrations_appliquees": 72,
+      "empreintes": [
+        "20260923130000_tracefab_neon_initial:6c755b436b9e",
+        "20260923140000_tracefab_clerk_context:534dc2d4a166",
+        "20260923150000_fix_invitation_acceptance:89847200c5f5",
+        "20260923160000_tracefab_product_api_functions:2153575d97dd",
+        "20260923170000_fix_data_collection_workflow_context:cebd301a044d",
+        "20260923180000_fix_data_response_progress_guard:e1456e2fb8dc",
+        "20260923190000_tracefab_notification_outbox:0ddde924c3fc",
+        "20260923200000_tracefab_collection_reminders:cce36f145c0d",
+        "20261005090000_supplier_portal_advanced_hardening:13581e6c99a7",
+        "20261005100000_supplier_invitation_compatibility:362607435775",
+        "20261006100000_security_force_rls_and_document_access:ee73157701cf",
+        "20261006110000_quality_center_shared_access:64256414f28d",
+        "20261006113000_clerk_directory_membership_sync:6e4f38601f2e",
+        "20261006120000_data_collection_bridge_and_quality_automation:a784cc042bc3",
+        "20261006120000_external_schema_bindings:df965ab28aa2",
+        "20261006123000_clerk_sync_security_functions:f6732d8d5788",
+        "20261006130000_tracefab_manual_data_request_reminders:17a756ec1c70",
+        "20261006140000_supply_chain_traceability_api:3aec3897c43e",
+        "20261006160000_dpp_readiness_exposure:bacfe553ee18",
+        "20261006180000_supplier_self_onboarding:b9e3f5ea1b8d",
+        "20261006190000_catalog_import_export:036dc97d63f1",
+        "20261006200000_catalog_import_kind:d5241ea690e1",
+        "20261006200000_document_ai_automated_verification:0eb5036c85c2",
+        "20261006210000_plm_erp_gs1_interoperability:6a8d03eb507b",
+        "20261006220000_esg_pef_footprint_engine:2d4f41bf4c29",
+        "20261006220000_production_hardening:66ce9341c7ef",
+        "20261006230000_green_claims_anti_greenwashing_engine:8430fc087102",
+        "20261006240000_quality_corrective_action_plans_cap:fad3c6ba25db",
+        "20261006250000_universal_supplier_passport:cbb5af324a9f",
+        "20261006260000_mass_balance_anti_fraud_engine:d0328a36291e",
+        "20261007100000_security_definer_execute_hardening:61e18ea4c858",
+        "20261007120000_force_rls_schema_bindings:c1f8585dd9b8",
+        "20261008100000_rate_limit_counters:7d7b7a6cb9bb",
+        "20261009120000_fix_materials_policy_recursion:44c230dc2f9c",
+        "20261009180000_public_read_context:9100ed08cef2",
+        "20261010120000_publication_explicite:8b741eab1ff1",
+        "20261012120000_close_public_execute_gap:4f6e710f5439",
+        "20261014100000_revoke_material_visible_public:ff6d95415e4d",
+        "20261014110000_revoke_dpp_functions_public:0a141838e80d",
+        "20261014120000_close_global_default_function_execute:cfb6ebac4a60",
+        "20261014130000_revoke_public_schema_privileges:c6df54676462",
+        "20261014140000_remove_public_supplier_passport_share_token:d73f1c2d3cf2",
+        "20261016130000_dynamic_dpp_lifecycle:10b7d8627b18",
+        "20261016150000_dpp_claim_evidence_chain:8c3e0f1e77a0",
+        "20261016170000_dpp_resolvable_identity:f9406fbe10d0",
+        "20261017100000_fix_document_lifecycle_access:7cc1cbfd98a7",
+        "20261017120000_active_tenant_context:e15c0786ca0b",
+        "20261017120000_harden_dpp_table_privileges:5366746f7ff7",
+        "20261017150000_harden_finalize_ops_gate:bee1dbce4973",
+        "20261019120000_restreindre_dml_role_applicatif:19dc214f731e",
+        "20261019140000_restreindre_suppression_compteurs_debit:1120041bd9f6",
+        "20261019160000_retablir_dml_tables_ecrites_directement:477789e475f0",
+        "20261020120000_structured_supply_chain_graph_membership:1e42d60bf6d8",
+        "20261021120000_limit_app_function_execute:e9f00fb17be9",
+        "20261021130000_reconcile_runtime_dml_and_migration_history:ec998cc29967",
+        "20261021170000_dpp_readiness_truthful_gates:3ead8852d9ad",
+        "20261023120000_revoke_app_default_dml:fa6bcc2447b5",
+        "20261027100000_dpp_quality_gate_requires_assessment:238976748996",
+        "20261027130000_dpp_review_preservation_and_publication_coherence:53fee8be3f0e",
+        "20261028120000_runtime_function_registry:54e1679cf9d7",
+        "20261028120100_worker_identity_not_forgeable:7adbab6591cc",
+        "20261028120200_document_reserved_fields_internal_only:e19bcff17a33",
+        "20261028130000_product_computed_fields_column_scoped:19b34a90620a",
+        "20261028140000_supplier_invitation_owner_relationship_scope:6a94aea73674",
+        "20261028150000_reconcile_plm_erp_sync_job_policies:989ab45407f4",
+        "20261029180000_plm_erp_sync_jobs_policy_dedup:896dfad2f465",
+        "20261030140000_ingest_payload_role_guard_and_acl:d35c3ed56a24",
+        "20261031120000_identite_hmac_liee_au_contexte:48ec239a8dde",
+        "20261102120000_identite_stricte_email_et_rotation:30c24ef2b6b4",
+        "20261105180000_active_tenant_access_guards:4f55f443ad2e",
+        "20261106120000_p107_hmac_forme_canonique_et_ttl:e66c470618cd",
+        "20261106130000_identite_systeme_signee:e29a9ebd1a20"
+      ],
+      "resultat": "PASS",
+      "sqlstate": "42501",
+      "observe": "42501 permission denied for function tracefab_identite_systeme"
+    },
+    {
+      "id": "S3b_canonique_avec_correctif",
+      "refs": [
+        "main",
+        "#113",
+        "#114"
+      ],
+      "correctif_applique": true,
+      "migrations_appliquees": 73,
+      "empreintes": [
+        "20260923130000_tracefab_neon_initial:6c755b436b9e",
+        "20260923140000_tracefab_clerk_context:534dc2d4a166",
+        "20260923150000_fix_invitation_acceptance:89847200c5f5",
+        "20260923160000_tracefab_product_api_functions:2153575d97dd",
+        "20260923170000_fix_data_collection_workflow_context:cebd301a044d",
+        "20260923180000_fix_data_response_progress_guard:e1456e2fb8dc",
+        "20260923190000_tracefab_notification_outbox:0ddde924c3fc",
+        "20260923200000_tracefab_collection_reminders:cce36f145c0d",
+        "20261005090000_supplier_portal_advanced_hardening:13581e6c99a7",
+        "20261005100000_supplier_invitation_compatibility:362607435775",
+        "20261006100000_security_force_rls_and_document_access:ee73157701cf",
+        "20261006110000_quality_center_shared_access:64256414f28d",
+        "20261006113000_clerk_directory_membership_sync:6e4f38601f2e",
+        "20261006120000_data_collection_bridge_and_quality_automation:a784cc042bc3",
+        "20261006120000_external_schema_bindings:df965ab28aa2",
+        "20261006123000_clerk_sync_security_functions:f6732d8d5788",
+        "20261006130000_tracefab_manual_data_request_reminders:17a756ec1c70",
+        "20261006140000_supply_chain_traceability_api:3aec3897c43e",
+        "20261006160000_dpp_readiness_exposure:bacfe553ee18",
+        "20261006180000_supplier_self_onboarding:b9e3f5ea1b8d",
+        "20261006190000_catalog_import_export:036dc97d63f1",
+        "20261006200000_catalog_import_kind:d5241ea690e1",
+        "20261006200000_document_ai_automated_verification:0eb5036c85c2",
+        "20261006210000_plm_erp_gs1_interoperability:6a8d03eb507b",
+        "20261006220000_esg_pef_footprint_engine:2d4f41bf4c29",
+        "20261006220000_production_hardening:66ce9341c7ef",
+        "20261006230000_green_claims_anti_greenwashing_engine:8430fc087102",
+        "20261006240000_quality_corrective_action_plans_cap:fad3c6ba25db",
+        "20261006250000_universal_supplier_passport:cbb5af324a9f",
+        "20261006260000_mass_balance_anti_fraud_engine:d0328a36291e",
+        "20261007100000_security_definer_execute_hardening:61e18ea4c858",
+        "20261007120000_force_rls_schema_bindings:c1f8585dd9b8",
+        "20261008100000_rate_limit_counters:7d7b7a6cb9bb",
+        "20261009120000_fix_materials_policy_recursion:44c230dc2f9c",
+        "20261009180000_public_read_context:9100ed08cef2",
+        "20261010120000_publication_explicite:8b741eab1ff1",
+        "20261012120000_close_public_execute_gap:4f6e710f5439",
+        "20261014100000_revoke_material_visible_public:ff6d95415e4d",
+        "20261014110000_revoke_dpp_functions_public:0a141838e80d",
+        "20261014120000_close_global_default_function_execute:cfb6ebac4a60",
+        "20261014130000_revoke_public_schema_privileges:c6df54676462",
+        "20261014140000_remove_public_supplier_passport_share_token:d73f1c2d3cf2",
+        "20261016130000_dynamic_dpp_lifecycle:10b7d8627b18",
+        "20261016150000_dpp_claim_evidence_chain:8c3e0f1e77a0",
+        "20261016170000_dpp_resolvable_identity:f9406fbe10d0",
+        "20261017100000_fix_document_lifecycle_access:7cc1cbfd98a7",
+        "20261017120000_active_tenant_context:e15c0786ca0b",
+        "20261017120000_harden_dpp_table_privileges:5366746f7ff7",
+        "20261017150000_harden_finalize_ops_gate:bee1dbce4973",
+        "20261019120000_restreindre_dml_role_applicatif:19dc214f731e",
+        "20261019140000_restreindre_suppression_compteurs_debit:1120041bd9f6",
+        "20261019160000_retablir_dml_tables_ecrites_directement:477789e475f0",
+        "20261020120000_structured_supply_chain_graph_membership:1e42d60bf6d8",
+        "20261021120000_limit_app_function_execute:e9f00fb17be9",
+        "20261021130000_reconcile_runtime_dml_and_migration_history:ec998cc29967",
+        "20261021170000_dpp_readiness_truthful_gates:3ead8852d9ad",
+        "20261023120000_revoke_app_default_dml:fa6bcc2447b5",
+        "20261027100000_dpp_quality_gate_requires_assessment:238976748996",
+        "20261027130000_dpp_review_preservation_and_publication_coherence:53fee8be3f0e",
+        "20261028120000_runtime_function_registry:54e1679cf9d7",
+        "20261028120100_worker_identity_not_forgeable:7adbab6591cc",
+        "20261028120200_document_reserved_fields_internal_only:e19bcff17a33",
+        "20261028130000_product_computed_fields_column_scoped:19b34a90620a",
+        "20261028140000_supplier_invitation_owner_relationship_scope:6a94aea73674",
+        "20261028150000_reconcile_plm_erp_sync_job_policies:989ab45407f4",
+        "20261029180000_plm_erp_sync_jobs_policy_dedup:896dfad2f465",
+        "20261030140000_ingest_payload_role_guard_and_acl:d35c3ed56a24",
+        "20261031120000_identite_hmac_liee_au_contexte:48ec239a8dde",
+        "20261102120000_identite_stricte_email_et_rotation:30c24ef2b6b4",
+        "20261105180000_active_tenant_access_guards:4f55f443ad2e",
+        "20261106120000_p107_hmac_forme_canonique_et_ttl:e66c470618cd",
+        "20261106130000_identite_systeme_signee:e29a9ebd1a20",
+        "20261107120000_p108_outbox_proprietaire_et_dependances:6bf720822f7a"
+      ],
+      "resultat": "PASS",
+      "sqlstate": null,
+      "observe": "1 ligne(s), status=processing"
+    }
+  ],
+  "causes_racines": [
+    {
+      "id": "R1_rls_sans_worker",
+      "libelle": "Propriete pleine SANS correctif : predicat executable mais RLS UPDATE exige worker -> 0 ligne silencieuse",
+      "sql": "SELECT * FROM public.tracefab_claim_notification_outbox(1); -- politique: (CURRENT_USER = 'tracefab_worker')",
+      "role_actif": "tracefab_app",
+      "session": {
+        "cu": "tracefab_app",
+        "su": "tracefab_app",
+        "super": false,
+        "bypassrls": false
+      },
+      "rls": {
+        "rls": true,
+        "force": true,
+        "politiques": 3
+      },
+      "attendu": "0 ligne(s), sans erreur (defaut SILENCIEUX)",
+      "observe": "0 ligne(s)",
+      "sqlstate": null,
+      "message_erreur": null,
+      "preuve_absence_elevation": true,
+      "preuve_rls_active": true,
+      "statut": "PASS",
+      "correctif_applique": false,
+      "modele": "propriete_pleine_migrateur",
+      "migrations": 72
+    },
+    {
+      "id": "R2_rls_avec_worker",
+      "libelle": "Propriete pleine + correctif : claim revendique 1 ligne (current_user=tracefab_worker)",
+      "sql": "SELECT * FROM public.tracefab_claim_notification_outbox(1); -- politique: (CURRENT_USER = 'tracefab_worker')",
+      "role_actif": "tracefab_app",
+      "session": {
+        "cu": "tracefab_app",
+        "su": "tracefab_app",
+        "super": false,
+        "bypassrls": false
+      },
+      "rls": {
+        "rls": true,
+        "force": true,
+        "politiques": 3
+      },
+      "attendu": "1 ligne(s), sans erreur",
+      "observe": "1 ligne(s)",
+      "sqlstate": null,
+      "message_erreur": null,
+      "preuve_absence_elevation": true,
+      "preuve_rls_active": true,
+      "statut": "PASS",
+      "correctif_applique": true,
+      "modele": "propriete_pleine_migrateur",
+      "migrations": 73
+    }
+  ],
+  "scenarios": [
+    {
+      "id": "S1_114_seule",
+      "libelle": "claim reel avec jeton systeme valide — SANS correctif",
+      "sql": "SELECT set_config('tracefab.identity_systeme', <jeton valide>, false); SELECT * FROM public.tracefab_claim_notification_outbox(1);",
+      "role_actif": "tracefab_app",
+      "session": {
+        "cu": "tracefab_app",
+        "su": "tracefab_app",
+        "super": false,
+        "bypassrls": false
+      },
+      "rls": {
+        "rls": true,
+        "force": true,
+        "politiques": 3
+      },
+      "attendu": "SQLSTATE 42501 (permission denied for function tracefab_identite_systeme)",
+      "observe": "42501 permission denied for function tracefab_identite_systeme",
+      "sqlstate": "42501",
+      "message_erreur": "permission denied for function tracefab_identite_systeme",
+      "preuve_absence_elevation": true,
+      "preuve_rls_active": true,
+      "statut": "PASS"
+    },
+    {
+      "id": "S2_111_et_114",
+      "libelle": "claim reel avec jeton systeme valide — SANS correctif",
+      "sql": "SELECT set_config('tracefab.identity_systeme', <jeton valide>, false); SELECT * FROM public.tracefab_claim_notification_outbox(1);",
+      "role_actif": "tracefab_app",
+      "session": {
+        "cu": "tracefab_app",
+        "su": "tracefab_app",
+        "super": false,
+        "bypassrls": false
+      },
+      "rls": {
+        "rls": true,
+        "force": true,
+        "politiques": 3
+      },
+      "attendu": "claim >= 1 ligne, sans erreur",
+      "observe": "1 ligne(s), status=processing",
+      "sqlstate": null,
+      "message_erreur": null,
+      "preuve_absence_elevation": true,
+      "preuve_rls_active": true,
+      "statut": "PASS"
+    },
+    {
+      "id": "S3_canonique_sans_correctif",
+      "libelle": "claim reel avec jeton systeme valide — SANS correctif",
+      "sql": "SELECT set_config('tracefab.identity_systeme', <jeton valide>, false); SELECT * FROM public.tracefab_claim_notification_outbox(1);",
+      "role_actif": "tracefab_app",
+      "session": {
+        "cu": "tracefab_app",
+        "su": "tracefab_app",
+        "super": false,
+        "bypassrls": false
+      },
+      "rls": {
+        "rls": true,
+        "force": true,
+        "politiques": 3
+      },
+      "attendu": "SQLSTATE 42501 (permission denied for function tracefab_identite_systeme)",
+      "observe": "42501 permission denied for function tracefab_identite_systeme",
+      "sqlstate": "42501",
+      "message_erreur": "permission denied for function tracefab_identite_systeme",
+      "preuve_absence_elevation": true,
+      "preuve_rls_active": true,
+      "statut": "PASS"
+    },
+    {
+      "id": "S3b_canonique_avec_correctif",
+      "libelle": "claim reel avec jeton systeme valide — AVEC correctif",
+      "sql": "SELECT set_config('tracefab.identity_systeme', <jeton valide>, false); SELECT * FROM public.tracefab_claim_notification_outbox(1);",
+      "role_actif": "tracefab_app",
+      "session": {
+        "cu": "tracefab_app",
+        "su": "tracefab_app",
+        "super": false,
+        "bypassrls": false
+      },
+      "rls": {
+        "rls": true,
+        "force": true,
+        "politiques": 3
+      },
+      "attendu": "claim >= 1 ligne, sans erreur",
+      "observe": "1 ligne(s), status=processing",
+      "sqlstate": null,
+      "message_erreur": null,
+      "preuve_absence_elevation": true,
+      "preuve_rls_active": true,
+      "statut": "PASS"
+    },
+    {
+      "id": "R1_rls_sans_worker",
+      "libelle": "Propriete pleine SANS correctif : predicat executable mais RLS UPDATE exige worker -> 0 ligne silencieuse",
+      "sql": "SELECT * FROM public.tracefab_claim_notification_outbox(1); -- politique: (CURRENT_USER = 'tracefab_worker')",
+      "role_actif": "tracefab_app",
+      "session": {
+        "cu": "tracefab_app",
+        "su": "tracefab_app",
+        "super": false,
+        "bypassrls": false
+      },
+      "rls": {
+        "rls": true,
+        "force": true,
+        "politiques": 3
+      },
+      "attendu": "0 ligne(s), sans erreur (defaut SILENCIEUX)",
+      "observe": "0 ligne(s)",
+      "sqlstate": null,
+      "message_erreur": null,
+      "preuve_absence_elevation": true,
+      "preuve_rls_active": true,
+      "statut": "PASS"
+    },
+    {
+      "id": "R2_rls_avec_worker",
+      "libelle": "Propriete pleine + correctif : claim revendique 1 ligne (current_user=tracefab_worker)",
+      "sql": "SELECT * FROM public.tracefab_claim_notification_outbox(1); -- politique: (CURRENT_USER = 'tracefab_worker')",
+      "role_actif": "tracefab_app",
+      "session": {
+        "cu": "tracefab_app",
+        "su": "tracefab_app",
+        "super": false,
+        "bypassrls": false
+      },
+      "rls": {
+        "rls": true,
+        "force": true,
+        "politiques": 3
+      },
+      "attendu": "1 ligne(s), sans erreur",
+      "observe": "1 ligne(s)",
+      "sqlstate": null,
+      "message_erreur": null,
+      "preuve_absence_elevation": true,
+      "preuve_rls_active": true,
+      "statut": "PASS"
+    },
+    {
+      "id": "C1_creation_outbox",
+      "libelle": "Outbox creee, RLS active ET forcee, 3 politiques intactes",
+      "sql": "SELECT relrowsecurity, relforcerowsecurity FROM pg_class WHERE oid='public.tracefab_notification_outbox'::regclass; SELECT policyname,cmd FROM pg_policies WHERE tablename='tracefab_notification_outbox';",
+      "role_actif": "tracefab_app",
+      "session": {
+        "cu": "tracefab_app",
+        "su": "tracefab_app",
+        "super": false,
+        "bypassrls": false
+      },
+      "rls": {
+        "rls": true,
+        "force": true,
+        "politiques": 3
+      },
+      "attendu": "rls=true, force=true, 3 politiques",
+      "observe": "{\"rls\":true,\"force\":true,\"pol\":3}",
+      "sqlstate": null,
+      "message_erreur": null,
+      "preuve_absence_elevation": true,
+      "preuve_rls_active": true,
+      "statut": "PASS"
+    },
+    {
+      "id": "C2_insertion_evennement_autorise",
+      "libelle": "Injection de 3 evenements par la voie d administration, health worker lisible",
+      "sql": "SELECT * FROM public.tracefab_notification_outbox_health()",
+      "role_actif": "tracefab_app",
+      "session": {
+        "cu": "tracefab_app",
+        "su": "tracefab_app",
+        "super": false,
+        "bypassrls": false
+      },
+      "rls": {
+        "rls": true,
+        "force": true,
+        "politiques": 3
+      },
+      "attendu": "health accessible au runtime avec jeton systeme, sans erreur",
+      "observe": "{\"pending\":3,\"processing\":0,\"sent\":0,\"failed\":0,\"ready\":3,\"staleProcessing\":0,\"exhausted\":0,\"oldestReadyAt\":\"2026-11-07T16:08:55.718Z\"}",
+      "sqlstate": null,
+      "message_erreur": null,
+      "preuve_absence_elevation": true,
+      "preuve_rls_active": true,
+      "statut": "PASS"
+    },
+    {
+      "id": "C3_claim_autorise",
+      "libelle": "Claim par le role applicatif prevu, avec contexte systeme valide",
+      "sql": "SELECT * FROM public.tracefab_claim_notification_outbox(1)",
+      "role_actif": "tracefab_app",
+      "session": {
+        "cu": "tracefab_app",
+        "su": "tracefab_app",
+        "super": false,
+        "bypassrls": false
+      },
+      "rls": {
+        "rls": true,
+        "force": true,
+        "politiques": 3
+      },
+      "attendu": "3 lignes processing, attempts=1",
+      "observe": "3 lignes ; processing/1,processing/1,processing/1",
+      "sqlstate": null,
+      "message_erreur": null,
+      "preuve_absence_elevation": true,
+      "preuve_rls_active": true,
+      "statut": "PASS"
+    },
+    {
+      "id": "C4_claim_concurrent_2_workers",
+      "libelle": "Deux workers / deux transactions concurrentes : une seule revendication par ligne",
+      "sql": "BEGIN; SELECT * FROM tracefab_claim_notification_outbox(1); -- T1 et T2 en parallele, FOR UPDATE SKIP LOCKED",
+      "role_actif": "tracefab_app (2 connexions)",
+      "session": [
+        {
+          "cu": "tracefab_app",
+          "su": "tracefab_app",
+          "super": false,
+          "bypassrls": false
+        },
+        {
+          "cu": "tracefab_app",
+          "su": "tracefab_app",
+          "super": false,
+          "bypassrls": false
+        }
+      ],
+      "rls": {
+        "rls": true,
+        "force": true,
+        "politiques": 3
+      },
+      "attendu": "deux transactions concurrentes : 2 lignes distinctes revendiquees (FOR UPDATE SKIP LOCKED), une seule revendication par ligne",
+      "observe": "T1=40000000-0000-4000-8000-000000000001 T2=40000000-0000-4000-8000-000000000002",
+      "sqlstate": null,
+      "message_erreur": null,
+      "preuve_absence_elevation": true,
+      "preuve_rls_active": true,
+      "statut": "PASS"
+    },
+    {
+      "id": "C5_complete_autorise",
+      "libelle": "Complete par le role applicatif avec jeton systeme valide",
+      "sql": "SELECT * FROM tracefab_claim_notification_outbox(1); SELECT * FROM tracefab_complete_notification_outbox(<id>,'sent','p108-provider',NULL,now());",
+      "role_actif": "tracefab_app",
+      "session": {
+        "cu": "tracefab_app",
+        "su": "tracefab_app",
+        "super": false,
+        "bypassrls": false
+      },
+      "rls": {
+        "rls": true,
+        "force": true,
+        "politiques": 3
+      },
+      "attendu": "complete -> status='sent', sent_at renseigne",
+      "observe": "status=sent provider=p108-provider",
+      "sqlstate": null,
+      "message_erreur": null,
+      "preuve_absence_elevation": true,
+      "preuve_rls_active": true,
+      "statut": "PASS"
+    },
+    {
+      "id": "C6_complete_role_non_autorise",
+      "libelle": "Complete par tracefab_migrator (non superutilisateur) : refuse",
+      "sql": "SELECT * FROM public.tracefab_complete_notification_outbox($1,'sent','p108-provider',NULL,now())",
+      "role_actif": "tracefab_migrator",
+      "session": {
+        "cu": "tracefab_migrator",
+        "su": "tracefab_migrator",
+        "super": false,
+        "bypassrls": false
+      },
+      "rls": {
+        "rls": true,
+        "force": true,
+        "politiques": 3
+      },
+      "attendu": "SQLSTATE 42501 permission denied for function tracefab_complete_notification_outbox",
+      "observe": "42501 permission denied for function tracefab_complete_notification_outbox",
+      "sqlstate": "42501",
+      "message_erreur": "permission denied for function tracefab_complete_notification_outbox",
+      "preuve_absence_elevation": true,
+      "preuve_rls_active": true,
+      "statut": "PASS"
+    },
+    {
+      "id": "C7_modification_directe_interdite",
+      "libelle": "UPDATE direct de l outbox par tracefab_app : refuse",
+      "sql": "UPDATE public.tracefab_notification_outbox SET status='sent' WHERE id=<id>",
+      "role_actif": "tracefab_app",
+      "session": {
+        "cu": "tracefab_app",
+        "su": "tracefab_app",
+        "super": false,
+        "bypassrls": false
+      },
+      "rls": {
+        "rls": true,
+        "force": true,
+        "politiques": 3
+      },
+      "attendu": "SQLSTATE 42501 permission denied for table tracefab_notification_outbox",
+      "observe": "42501 permission denied for table tracefab_notification_outbox",
+      "sqlstate": "42501",
+      "message_erreur": "permission denied for table tracefab_notification_outbox",
+      "preuve_absence_elevation": true,
+      "preuve_rls_active": true,
+      "statut": "PASS"
+    },
+    {
+      "id": "C8_acces_inter_tenant",
+      "libelle": "Session du tenant A : ligne A visible, ligne B invisible (RLS)",
+      "sql": "SELECT set_config('tracefab.user_id', <user A>, false); SELECT id FROM tracefab_notification_outbox WHERE recipient_organization_id IN (<A>,<B>);",
+      "role_actif": "tracefab_app",
+      "session": {
+        "cu": "tracefab_app",
+        "su": "tracefab_app",
+        "super": false,
+        "bypassrls": false
+      },
+      "rls": {
+        "rls": true,
+        "force": true,
+        "politiques": 3
+      },
+      "attendu": "1 seule ligne (organisation A), aucune ligne de B",
+      "observe": "1 ligne(s) : a0000000-0000-4000-8000-000000000001",
+      "sqlstate": null,
+      "message_erreur": null,
+      "preuve_absence_elevation": true,
+      "preuve_rls_active": true,
+      "statut": "PASS"
+    },
+    {
+      "id": "C9_sans_contexte_refuse",
+      "libelle": "Claim sans jeton systeme en mode systeme_strict : refuse",
+      "sql": "SELECT set_config('tracefab.identity_systeme','',false); SELECT * FROM tracefab_claim_notification_outbox(1);",
+      "role_actif": "tracefab_app",
+      "session": {
+        "cu": "tracefab_app",
+        "su": "tracefab_app",
+        "super": false,
+        "bypassrls": false
+      },
+      "rls": {
+        "rls": true,
+        "force": true,
+        "politiques": 3
+      },
+      "attendu": "SQLSTATE 42501 authentication_required",
+      "observe": "42501 authentication_required",
+      "sqlstate": "42501",
+      "message_erreur": "authentication_required",
+      "preuve_absence_elevation": true,
+      "preuve_rls_active": true,
+      "statut": "PASS"
+    },
+    {
+      "id": "C10_avec_contexte_passe",
+      "libelle": "Claim avec jeton systeme valide : accepte",
+      "sql": "SELECT * FROM public.tracefab_claim_notification_outbox(1)",
+      "role_actif": "tracefab_app",
+      "session": {
+        "cu": "tracefab_app",
+        "su": "tracefab_app",
+        "super": false,
+        "bypassrls": false
+      },
+      "rls": {
+        "rls": true,
+        "force": true,
+        "politiques": 3
+      },
+      "attendu": "1 ligne processing",
+      "observe": "1 ligne(s) status=processing",
+      "sqlstate": null,
+      "message_erreur": null,
+      "preuve_absence_elevation": true,
+      "preuve_rls_active": true,
+      "statut": "PASS"
+    },
+    {
+      "id": "C11_complete_repete",
+      "libelle": "Complete repete sur une ligne deja envoyee : refuse explicitement",
+      "sql": "SELECT * FROM tracefab_complete_notification_outbox(<deja sent>,'sent','x',NULL,now());",
+      "role_actif": "tracefab_app",
+      "session": {
+        "cu": "tracefab_app",
+        "su": "tracefab_app",
+        "super": false,
+        "bypassrls": false
+      },
+      "rls": {
+        "rls": true,
+        "force": true,
+        "politiques": 3
+      },
+      "attendu": "SQLSTATE P0001 notification_outbox_item_not_processing",
+      "observe": "P0001 notification_outbox_item_not_processing",
+      "sqlstate": "P0001",
+      "message_erreur": "notification_outbox_item_not_processing",
+      "preuve_absence_elevation": true,
+      "preuve_rls_active": true,
+      "statut": "PASS"
+    },
+    {
+      "id": "C12_rollback_apres_claim",
+      "libelle": "Rollback apres claim : la ligne reste pending, attempts inchange",
+      "sql": "BEGIN; SELECT * FROM tracefab_claim_notification_outbox(1); ROLLBACK; SELECT status,attempts FROM tracefab_notification_outbox WHERE id=<id>;",
+      "role_actif": "tracefab_app",
+      "session": {
+        "cu": "tracefab_app",
+        "su": "tracefab_app",
+        "super": false,
+        "bypassrls": false
+      },
+      "rls": {
+        "rls": true,
+        "force": true,
+        "politiques": 3
+      },
+      "attendu": "apres ROLLBACK : 3 pending, 0 processing, attempts inchange",
+      "observe": "{\"pending\":3,\"processing\":0}",
+      "sqlstate": null,
+      "message_erreur": null,
+      "preuve_absence_elevation": true,
+      "preuve_rls_active": true,
+      "statut": "PASS"
+    },
+    {
+      "id": "C13_crash_entre_claim_et_complete",
+      "libelle": "Crash simule entre claim et complete : claim COMMIT, aucun complete, ligne processing",
+      "sql": "SELECT * FROM tracefab_claim_notification_outbox(1); COMMIT; -- puis crash, aucun complete",
+      "role_actif": "tracefab_app",
+      "session": {
+        "cu": "tracefab_app",
+        "su": "tracefab_app",
+        "super": false,
+        "bypassrls": false
+      },
+      "rls": {
+        "rls": true,
+        "force": true,
+        "politiques": 3
+      },
+      "attendu": "1 ligne processing, verrou horodate, aucun complete",
+      "observe": "{\"status\":\"processing\",\"attempts\":1,\"locked_at\":true}",
+      "sqlstate": null,
+      "message_erreur": null,
+      "preuve_absence_elevation": true,
+      "preuve_rls_active": true,
+      "statut": "PASS"
+    },
+    {
+      "id": "C14_retry_apres_timeout",
+      "libelle": "Reprise apres expiration du bail : reclaim de la ligne expiree, attempts incremente",
+      "sql": "ADMIN: UPDATE ... SET locked_at=now()-interval '16 minutes'; SELECT * FROM tracefab_claim_notification_outbox(1);",
+      "role_actif": "tracefab_app",
+      "session": {
+        "cu": "tracefab_app",
+        "su": "tracefab_app",
+        "super": false,
+        "bypassrls": false
+      },
+      "rls": {
+        "rls": true,
+        "force": true,
+        "politiques": 3
+      },
+      "attendu": "ligne reclamable apres expiration, attempts >= 2",
+      "observe": "1 ligne(s) attempts=2",
+      "sqlstate": null,
+      "message_erreur": null,
+      "preuve_absence_elevation": true,
+      "preuve_rls_active": true,
+      "statut": "PASS"
+    },
+    {
+      "id": "C15_reprise_apres_echec",
+      "libelle": "Reprise apres echec (status=failed, attempts=2, available_at echue)",
+      "sql": "ADMIN: status='failed', attempts=2 ; SELECT * FROM tracefab_claim_notification_outbox(5);",
+      "role_actif": "tracefab_app",
+      "session": {
+        "cu": "tracefab_app",
+        "su": "tracefab_app",
+        "super": false,
+        "bypassrls": false
+      },
+      "rls": {
+        "rls": true,
+        "force": true,
+        "politiques": 3
+      },
+      "attendu": "ligne en echec reclamable, attempts=3",
+      "observe": "[{\"id\":\"40000000-0000-4000-8000-000000000002\",\"a\":3},{\"id\":\"40000000-0000-4000-8000-000000000003\",\"a\":1}]",
+      "sqlstate": null,
+      "message_erreur": null,
+      "preuve_absence_elevation": true,
+      "preuve_rls_active": true,
+      "statut": "PASS"
+    },
+    {
+      "id": "C16_doublon_evenement",
+      "libelle": "Doublon de event_key : contrainte unique, refuse",
+      "sql": "INSERT INTO tracefab_notification_outbox(... event_key = <deja present> ...)",
+      "role_actif": "postgres",
+      "session": {
+        "cu": "postgres",
+        "su": "postgres",
+        "super": true,
+        "bypassrls": true
+      },
+      "rls": {
+        "rls": true,
+        "force": true,
+        "politiques": 3
+      },
+      "attendu": "SQLSTATE 23505 unique_violation (event_key)",
+      "observe": "23505 duplicate key value violates unique constraint \"tracefab_notification_outbox_event_key_key\"",
+      "sqlstate": "23505",
+      "message_erreur": "duplicate key value violates unique constraint \"tracefab_notification_outbox_event_key_key\"",
+      "preuve_absence_elevation": false,
+      "preuve_rls_active": true,
+      "statut": "PASS"
+    },
+    {
+      "id": "C17_deux_organisations",
+      "libelle": "Claim de 2 evenements appartenant a 2 organisations differentes",
+      "sql": "SELECT * FROM tracefab_claim_notification_outbox(5);",
+      "role_actif": "tracefab_app",
+      "session": {
+        "cu": "tracefab_app",
+        "su": "tracefab_app",
+        "super": false,
+        "bypassrls": false
+      },
+      "rls": {
+        "rls": true,
+        "force": true,
+        "politiques": 3
+      },
+      "attendu": "au moins 2 organisations distinctes revendiquees par le worker",
+      "observe": "3 lignes, orgs=a0000000-0000-4000-8000-000000000001,b0000000-0000-4000-8000-000000000002",
+      "sqlstate": null,
+      "message_erreur": null,
+      "preuve_absence_elevation": true,
+      "preuve_rls_active": true,
+      "statut": "PASS"
+    },
+    {
+      "id": "C18_rls_active",
+      "libelle": "RLS active et forcee, 3 politiques, aucun superutilisateur metier",
+      "sql": "SELECT relrowsecurity, relforcerowsecurity FROM pg_class ...; SELECT count(*) FROM pg_policies ...",
+      "role_actif": "tracefab_app",
+      "session": {
+        "cu": "tracefab_app",
+        "su": "tracefab_app",
+        "super": false,
+        "bypassrls": false
+      },
+      "rls": {
+        "rls": true,
+        "force": true,
+        "politiques": 3
+      },
+      "attendu": "rls=true, force=true, 3 politiques",
+      "observe": "{\"rls\":true,\"force\":true,\"pol\":3}",
+      "sqlstate": null,
+      "message_erreur": null,
+      "preuve_absence_elevation": true,
+      "preuve_rls_active": true,
+      "statut": "PASS"
+    },
+    {
+      "id": "C19_elevation_refusee",
+      "libelle": "Tentative SET ROLE tracefab_worker par le runtime : refusee",
+      "sql": "SET ROLE tracefab_worker;",
+      "role_actif": "tracefab_app",
+      "session": {
+        "cu": "tracefab_app",
+        "su": "tracefab_app",
+        "super": false,
+        "bypassrls": false
+      },
+      "rls": {
+        "rls": true,
+        "force": true,
+        "politiques": 3
+      },
+      "attendu": "SQLSTATE 42501 permission denied to set role",
+      "observe": "42501 permission denied to set role \"tracefab_worker\"",
+      "sqlstate": "42501",
+      "message_erreur": "permission denied to set role \"tracefab_worker\"",
+      "preuve_absence_elevation": true,
+      "preuve_rls_active": true,
+      "statut": "PASS"
+    },
+    {
+      "id": "C20_set_role_vs_vraie_session",
+      "libelle": "SET ROLE nest PAS une session applicative : session_user reste postgres",
+      "sql": "SET ROLE tracefab_app; SELECT current_user, session_user;",
+      "role_actif": "postgres",
+      "session": {
+        "cu": "postgres",
+        "su": "postgres",
+        "super": true,
+        "bypassrls": true
+      },
+      "rls": {
+        "rls": true,
+        "force": true,
+        "politiques": 3
+      },
+      "attendu": "current_user=tracefab_app mais session_user=postgres (insuffisant)",
+      "observe": "{\"cu\":\"tracefab_app\",\"su\":\"postgres\"}",
+      "sqlstate": null,
+      "message_erreur": null,
+      "preuve_absence_elevation": false,
+      "preuve_rls_active": true,
+      "statut": "PASS"
+    },
+    {
+      "id": "C21_cles_illisibles_runtime",
+      "libelle": "Secret HMAC illisible par tracefab_app (RLS + privileges)",
+      "sql": "SELECT version,secret FROM public.tracefab_identity_cles;",
+      "role_actif": "tracefab_app",
+      "session": {
+        "cu": "tracefab_app",
+        "su": "tracefab_app",
+        "super": false,
+        "bypassrls": false
+      },
+      "rls": {
+        "rls": true,
+        "force": true,
+        "politiques": 3
+      },
+      "attendu": "aucun secret lisible (42501 ou 0 ligne RLS)",
+      "observe": "42501 permission denied for table tracefab_identity_cles",
+      "sqlstate": "42501",
+      "message_erreur": "permission denied for table tracefab_identity_cles",
+      "preuve_absence_elevation": true,
+      "preuve_rls_active": true,
+      "statut": "PASS"
+    },
+    {
+      "id": "H1_forme_canonique_suffixe",
+      "libelle": "HMAC systeme : Suffixe ajoutee : jeton a deux points refuse",
+      "sql": "SELECT public.tracefab_identite_systeme_jeton_valide(<jeton>);",
+      "role_actif": "tracefab_app",
+      "session": {
+        "cu": "tracefab_app",
+        "su": "tracefab_app",
+        "super": false,
+        "bypassrls": false
+      },
+      "rls": {
+        "rls": true,
+        "force": true,
+        "politiques": 3
+      },
+      "attendu": "verificateur = false",
+      "observe": "false",
+      "sqlstate": null,
+      "message_erreur": null,
+      "preuve_absence_elevation": true,
+      "preuve_rls_active": true,
+      "statut": "PASS"
+    },
+    {
+      "id": "H2_majuscules_mac",
+      "libelle": "HMAC systeme : MAC en majuscules refuse (forme canonique minuscule)",
+      "sql": "SELECT public.tracefab_identite_systeme_jeton_valide(<jeton>);",
+      "role_actif": "tracefab_app",
+      "session": {
+        "cu": "tracefab_app",
+        "su": "tracefab_app",
+        "super": false,
+        "bypassrls": false
+      },
+      "rls": {
+        "rls": true,
+        "force": true,
+        "politiques": 3
+      },
+      "attendu": "verificateur = false",
+      "observe": "false",
+      "sqlstate": null,
+      "message_erreur": null,
+      "preuve_absence_elevation": true,
+      "preuve_rls_active": true,
+      "statut": "PASS"
+    },
+    {
+      "id": "H3_expiration_600s",
+      "libelle": "HMAC systeme : Expiration a now()+601 s refusee (horloge de la base)",
+      "sql": "SELECT public.tracefab_identite_systeme_jeton_valide(<jeton>);",
+      "role_actif": "tracefab_app",
+      "session": {
+        "cu": "tracefab_app",
+        "su": "tracefab_app",
+        "super": false,
+        "bypassrls": false
+      },
+      "rls": {
+        "rls": true,
+        "force": true,
+        "politiques": 3
+      },
+      "attendu": "verificateur = false",
+      "observe": "false",
+      "sqlstate": null,
+      "message_erreur": null,
+      "preuve_absence_elevation": true,
+      "preuve_rls_active": true,
+      "statut": "PASS"
+    },
+    {
+      "id": "H4_mac_falsifie",
+      "libelle": "HMAC systeme : MAC falsifie refuse",
+      "sql": "SELECT public.tracefab_identite_systeme_jeton_valide(<jeton>);",
+      "role_actif": "tracefab_app",
+      "session": {
+        "cu": "tracefab_app",
+        "su": "tracefab_app",
+        "super": false,
+        "bypassrls": false
+      },
+      "rls": {
+        "rls": true,
+        "force": true,
+        "politiques": 3
+      },
+      "attendu": "verificateur = false",
+      "observe": "false",
+      "sqlstate": null,
+      "message_erreur": null,
+      "preuve_absence_elevation": true,
+      "preuve_rls_active": true,
+      "statut": "PASS"
+    },
+    {
+      "id": "H5_expire",
+      "libelle": "HMAC systeme : Jeton expire refuse",
+      "sql": "SELECT public.tracefab_identite_systeme_jeton_valide(<jeton>);",
+      "role_actif": "tracefab_app",
+      "session": {
+        "cu": "tracefab_app",
+        "su": "tracefab_app",
+        "super": false,
+        "bypassrls": false
+      },
+      "rls": {
+        "rls": true,
+        "force": true,
+        "politiques": 3
+      },
+      "attendu": "verificateur = false",
+      "observe": "false",
+      "sqlstate": null,
+      "message_erreur": null,
+      "preuve_absence_elevation": true,
+      "preuve_rls_active": true,
+      "statut": "PASS"
+    },
+    {
+      "id": "H6_valide",
+      "libelle": "HMAC systeme : Jeton canonique valide accepte",
+      "sql": "SELECT public.tracefab_identite_systeme_jeton_valide(<jeton>);",
+      "role_actif": "tracefab_app",
+      "session": {
+        "cu": "tracefab_app",
+        "su": "tracefab_app",
+        "super": false,
+        "bypassrls": false
+      },
+      "rls": {
+        "rls": true,
+        "force": true,
+        "politiques": 3
+      },
+      "attendu": "verificateur = true",
+      "observe": "true",
+      "sqlstate": null,
+      "message_erreur": null,
+      "preuve_absence_elevation": true,
+      "preuve_rls_active": true,
+      "statut": "PASS"
+    },
+    {
+      "id": "H6b_borne_599s",
+      "libelle": "HMAC systeme : Expiration a now()+599 s acceptee (borne inferieure du plafond)",
+      "sql": "SELECT public.tracefab_identite_systeme_jeton_valide(<jeton>);",
+      "role_actif": "tracefab_app",
+      "session": {
+        "cu": "tracefab_app",
+        "su": "tracefab_app",
+        "super": false,
+        "bypassrls": false
+      },
+      "rls": {
+        "rls": true,
+        "force": true,
+        "politiques": 3
+      },
+      "attendu": "verificateur = true",
+      "observe": "true",
+      "sqlstate": null,
+      "message_erreur": null,
+      "preuve_absence_elevation": true,
+      "preuve_rls_active": true,
+      "statut": "PASS"
+    },
+    {
+      "id": "H7_rotation_sans_coupure",
+      "libelle": "Rotation : jeton signe par ANCIENNE cle accepte pendant le chevauchement",
+      "sql": "ADMIN: INSERT cle v99002 active ; SELECT tracefab_identite_systeme_jeton_valide(<jeton ancienne cle>);",
+      "role_actif": "tracefab_app",
+      "session": {
+        "cu": "tracefab_app",
+        "su": "tracefab_app",
+        "super": false,
+        "bypassrls": false
+      },
+      "rls": {
+        "rls": true,
+        "force": true,
+        "politiques": 3
+      },
+      "attendu": "true (ancienne cle active)",
+      "observe": "true",
+      "sqlstate": null,
+      "message_erreur": null,
+      "preuve_absence_elevation": true,
+      "preuve_rls_active": true,
+      "statut": "PASS"
+    },
+    {
+      "id": "H8_revocation_immediate",
+      "libelle": "Revocation : jeton de la cle revoquee refuse immediatement",
+      "sql": "ADMIN: UPDATE ... SET actif=false ; SELECT tracefab_identite_systeme_jeton_valide(<jeton revoque>);",
+      "role_actif": "tracefab_app",
+      "session": {
+        "cu": "tracefab_app",
+        "su": "tracefab_app",
+        "super": false,
+        "bypassrls": false
+      },
+      "rls": {
+        "rls": true,
+        "force": true,
+        "politiques": 3
+      },
+      "attendu": "false",
+      "observe": "false",
+      "sqlstate": null,
+      "message_erreur": null,
+      "preuve_absence_elevation": true,
+      "preuve_rls_active": true,
+      "statut": "PASS"
+    },
+    {
+      "id": "H9_fail_closed_et_nouvelle_cle",
+      "libelle": "Apres revocation, seule la nouvelle cle valide ; claim sans jeton toujours refuse",
+      "sql": "SELECT tracefab_identite_systeme_jeton_valide(<nouvelle cle>); SELECT * FROM tracefab_claim_notification_outbox(1) sans jeton;",
+      "role_actif": "tracefab_app",
+      "session": {
+        "cu": "tracefab_app",
+        "su": "tracefab_app",
+        "super": false,
+        "bypassrls": false
+      },
+      "rls": {
+        "rls": true,
+        "force": true,
+        "politiques": 3
+      },
+      "attendu": "nouvelle cle=true ET claim sans jeton=42501",
+      "observe": "{\"valide\":true,\"refus\":\"42501\"}",
+      "sqlstate": null,
+      "message_erreur": null,
+      "preuve_absence_elevation": true,
+      "preuve_rls_active": true,
+      "statut": "PASS"
+    },
+    {
+      "id": "H10_guc_transactionnel",
+      "libelle": "GUC transactionnel : jeton pose en SET LOCAL ne survit pas au COMMIT",
+      "sql": "BEGIN; SELECT set_config('tracefab.identity_systeme',<jeton>,true); COMMIT; SELECT * FROM tracefab_claim_notification_outbox(1);",
+      "role_actif": "tracefab_app",
+      "session": {
+        "cu": "tracefab_app",
+        "su": "tracefab_app",
+        "super": false,
+        "bypassrls": false
+      },
+      "rls": {
+        "rls": true,
+        "force": true,
+        "politiques": 3
+      },
+      "attendu": "apres COMMIT : 42501 authentication_required",
+      "observe": "{\"refus\":\"42501\"}",
+      "sqlstate": null,
+      "message_erreur": null,
+      "preuve_absence_elevation": true,
+      "preuve_rls_active": true,
+      "statut": "PASS"
+    },
+    {
+      "id": "H11_jeton_utilisateur_lie_org",
+      "libelle": "Jeton utilisateur signe pour A refuse quand le contexte org est B",
+      "sql": "SELECT tracefab_identity_jeton_utilisateur(<jeton org A>) avec tracefab.active_organization_id=<B>;",
+      "role_actif": "tracefab_app",
+      "session": {
+        "cu": "tracefab_app",
+        "su": "tracefab_app",
+        "super": false,
+        "bypassrls": false
+      },
+      "rls": {
+        "rls": true,
+        "force": true,
+        "politiques": 3
+      },
+      "attendu": "NULL (jeton non lie au contexte)",
+      "observe": "null",
+      "sqlstate": null,
+      "message_erreur": null,
+      "preuve_absence_elevation": true,
+      "preuve_rls_active": true,
+      "statut": "PASS"
+    },
+    {
+      "id": "I1_correctif_idempotent",
+      "libelle": "Reapplication de la migration corrective sur la meme base : SQL reussi, postconditions conservees",
+      "sql": "RE-EXECUTION de 20261107120000_p108_outbox_proprietaire_et_dependances/migration.sql",
+      "role_actif": "postgres (application de migration, cluster jetable)",
+      "session": null,
+      "rls": null,
+      "attendu": "aucune erreur, 3/3 fonctions outbox toujours possedees par tracefab_worker",
+      "observe": "SQL REUSSI ; transferees=3/3 ; 1er passage=73 migrations",
+      "sqlstate": null,
+      "message_erreur": null,
+      "preuve_absence_elevation": false,
+      "preuve_rls_active": false,
+      "statut": "PASS"
+    },
+    {
+      "id": "I2_correctif_par_role_non_superutilisateur",
+      "libelle": "Correctif applique par tracefab_migrator (NOSUPERUSER/NOBYPASSRLS) : reussi sans elevation permanente",
+      "sql": "EXECUTION de la migration corrective via une connexion tracefab_migrator",
+      "role_actif": "tracefab_migrator",
+      "session": {
+        "cu": "tracefab_migrator",
+        "su": "tracefab_migrator",
+        "super": false,
+        "bypassrls": false
+      },
+      "rls": null,
+      "attendu": "SQL reussi, 3/3 fonctions outbox possedees par tracefab_worker, session non superutilisee",
+      "observe": "SQL REUSSI ; 3/3 ; chaine=72 migrations",
+      "sqlstate": null,
+      "message_erreur": null,
+      "preuve_absence_elevation": true,
+      "preuve_rls_active": false,
+      "statut": "PASS"
+    }
+  ],
+  "agregats": {
+    "total": 41,
+    "PASS": 41,
+    "FAIL": 0,
+    "BLOCKED": 0,
+    "NOT_RUN": 0
+  },
+  "preuve_superutilisateur_jamais_metier": true,
+  "preuve_rls_active": 39
+}

@@ -277,8 +277,12 @@
     "p107:chaines": "node scripts/harnais_p107_chaines.mjs",
     "p107:outbox": "node scripts/harnais_p107_outbox.mjs",
     "p107:antirejeu": "node scripts/harnais_p107_antirejeu.mjs",
+    "p108:pg17": "bash scripts/p108_pg17_demarrer.sh",
+    "p108:chaines": "node scripts/harnais_p108_chaines.mjs",
+    "p108:outbox": "node scripts/harnais_p108_outbox.mjs",
     "test:tenant:matrix": "node scripts/test_route_tenant_matrix.mjs",
-    "test:tenant:autorisations": "node scripts/test_matrice_autorisations.mjs"
+    "test:tenant:autorisations": "node scripts/test_matrice_autorisations.mjs",
+    "p108:ci": "node scripts/harnais_p108_ci.mjs"
   },
   "devDependencies": {
     "@electric-sql/pglite": "^0.5.12",

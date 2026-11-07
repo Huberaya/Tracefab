@@ -1,0 +1,3218 @@
+{
+  "schema": "tracefab-p108-chaine-migrations-v1",
+  "date": "2026-11-07T16:08:46.954Z",
+  "environnement": "PostgreSQL 17.11 REEL, base jetable locale (aucune base distante)",
+  "version_postgresql_mesuree": "PostgreSQL 17.11 on x86_64-pc-linux-gnu, compiled by gcc (Ubuntu 7.5.0-3ubuntu1~18.04) 7.5.0, 64-bit",
+  "methode": "DROP DATABASE / CREATE DATABASE / CREATE EXTENSION / application sequentielle par une connexion d administration du cluster jetable",
+  "collisions_historiques_acceptees": [
+    "20261006120000",
+    "20261006200000",
+    "20261006220000",
+    "20261017120000"
+  ],
+  "noms_identiques_contenus_differents": [
+    {
+      "nom": "20261005090000_supplier_portal_advanced_hardening",
+      "empreintes": {
+        "main": "13581e6c99a7c649e2a2e47280126362342b93adfcb45b6ec8161489455fc422",
+        "#110": "560356c203df6d460f8488f44bdf1ce582d3f609eae1b4acd329ad3cd686bbb7",
+        "#111": "560356c203df6d460f8488f44bdf1ce582d3f609eae1b4acd329ad3cd686bbb7",
+        "#112": "560356c203df6d460f8488f44bdf1ce582d3f609eae1b4acd329ad3cd686bbb7",
+        "#113": "13581e6c99a7c649e2a2e47280126362342b93adfcb45b6ec8161489455fc422",
+        "#114": "13581e6c99a7c649e2a2e47280126362342b93adfcb45b6ec8161489455fc422",
+        "#114-ancien": "13581e6c99a7c649e2a2e47280126362342b93adfcb45b6ec8161489455fc422"
+      }
+    },
+    {
+      "nom": "20261009180000_public_read_context",
+      "empreintes": {
+        "main": "9100ed08cef28aac0ab2971a6cd83daa1a71b133624e1ba898699e8c80c5b4c9",
+        "#110": "c12ee33303084b6710284139786058b8d088b2619d92372ea57f282e86480d04",
+        "#111": "c12ee33303084b6710284139786058b8d088b2619d92372ea57f282e86480d04",
+        "#112": "c12ee33303084b6710284139786058b8d088b2619d92372ea57f282e86480d04",
+        "#113": "9100ed08cef28aac0ab2971a6cd83daa1a71b133624e1ba898699e8c80c5b4c9",
+        "#114": "9100ed08cef28aac0ab2971a6cd83daa1a71b133624e1ba898699e8c80c5b4c9",
+        "#114-ancien": "9100ed08cef28aac0ab2971a6cd83daa1a71b133624e1ba898699e8c80c5b4c9"
+      }
+    },
+    {
+      "nom": "20261028120100_worker_identity_not_forgeable",
+      "empreintes": {
+        "main": "7adbab6591cc50144061f65b556012b8d14c00e83f537b004384b2cee9b7e2c1",
+        "#110": "f65b95741282319543342ca27fdb7e363e2eb0fbc3b6218fa0df196eafdba0b1",
+        "#111": "f65b95741282319543342ca27fdb7e363e2eb0fbc3b6218fa0df196eafdba0b1",
+        "#112": "f65b95741282319543342ca27fdb7e363e2eb0fbc3b6218fa0df196eafdba0b1",
+        "#113": "7adbab6591cc50144061f65b556012b8d14c00e83f537b004384b2cee9b7e2c1",
+        "#114": "7adbab6591cc50144061f65b556012b8d14c00e83f537b004384b2cee9b7e2c1",
+        "#114-ancien": "7adbab6591cc50144061f65b556012b8d14c00e83f537b004384b2cee9b7e2c1"
+      }
+    },
+    {
+      "nom": "20261028120200_document_reserved_fields_internal_only",
+      "empreintes": {
+        "main": "e19bcff17a337986c2a969964ddc947b0b43b6a565716bbe258389095527b500",
+        "#110": "51a0743abe427d57711e1b86877179cecbe29812dff1970bc533e4a6c5d2d552",
+        "#111": "51a0743abe427d57711e1b86877179cecbe29812dff1970bc533e4a6c5d2d552",
+        "#112": "51a0743abe427d57711e1b86877179cecbe29812dff1970bc533e4a6c5d2d552",
+        "#113": "e19bcff17a337986c2a969964ddc947b0b43b6a565716bbe258389095527b500",
+        "#114": "e19bcff17a337986c2a969964ddc947b0b43b6a565716bbe258389095527b500",
+        "#114-ancien": "e19bcff17a337986c2a969964ddc947b0b43b6a565716bbe258389095527b500"
+      }
+    },
+    {
+      "nom": "20261028130000_product_computed_fields_column_scoped",
+      "empreintes": {
+        "main": "19b34a90620a6eb449938dc751a26d684013d98926deb38ad817b71dfc2964c3",
+        "#110": "e11403751fc35c8635c1645d1825d5386a0da012a45a04936a3887a1c5120955",
+        "#111": "e11403751fc35c8635c1645d1825d5386a0da012a45a04936a3887a1c5120955",
+        "#112": "e11403751fc35c8635c1645d1825d5386a0da012a45a04936a3887a1c5120955",
+        "#113": "19b34a90620a6eb449938dc751a26d684013d98926deb38ad817b71dfc2964c3",
+        "#114": "19b34a90620a6eb449938dc751a26d684013d98926deb38ad817b71dfc2964c3",
+        "#114-ancien": "19b34a90620a6eb449938dc751a26d684013d98926deb38ad817b71dfc2964c3"
+      }
+    },
+    {
+      "nom": "20261030140000_ingest_payload_role_guard_and_acl",
+      "empreintes": {
+        "main": "d35c3ed56a2447f1bdd5be76839f6051af4589902e664781beda95ae96c75267",
+        "#110": "17a9029caa56fd02cb4249247fbc709adfdca3154f37ce96e717dc22da9891f0",
+        "#111": "17a9029caa56fd02cb4249247fbc709adfdca3154f37ce96e717dc22da9891f0",
+        "#112": "17a9029caa56fd02cb4249247fbc709adfdca3154f37ce96e717dc22da9891f0",
+        "#113": "d35c3ed56a2447f1bdd5be76839f6051af4589902e664781beda95ae96c75267",
+        "#114": "d35c3ed56a2447f1bdd5be76839f6051af4589902e664781beda95ae96c75267",
+        "#114-ancien": "d35c3ed56a2447f1bdd5be76839f6051af4589902e664781beda95ae96c75267"
+      }
+    },
+    {
+      "nom": "20261031120000_identite_hmac_liee_au_contexte",
+      "empreintes": {
+        "main": "48ec239a8dde15fb25b34a37727f3c93cbab83865e298634e3e4ea6b07124ff2",
+        "#110": "29c29e1233d7db6a8e4fc3e19aa170e009fec3b9caaa1a6d487288b04341c448",
+        "#111": "29c29e1233d7db6a8e4fc3e19aa170e009fec3b9caaa1a6d487288b04341c448",
+        "#112": "29c29e1233d7db6a8e4fc3e19aa170e009fec3b9caaa1a6d487288b04341c448",
+        "#113": "48ec239a8dde15fb25b34a37727f3c93cbab83865e298634e3e4ea6b07124ff2",
+        "#114": "48ec239a8dde15fb25b34a37727f3c93cbab83865e298634e3e4ea6b07124ff2",
+        "#114-ancien": "48ec239a8dde15fb25b34a37727f3c93cbab83865e298634e3e4ea6b07124ff2"
+      }
+    }
+  ],
+  "renommages_entre_commits": {
+    "ref_ancienne": "537bc310d0b6e857c4f74ec0017a130987b22497",
+    "ref_actuelle": "f0aeb51cb52ce778f7f9a5e857438603d81fa5ad",
+    "disparus": [
+      "20261105120000_identite_systeme_signee"
+    ],
+    "apparus": [
+      "20261106130000_identite_systeme_signee"
+    ],
+    "meme_contenu": "contenu modifie en plus du renommage"
+  },
+  "scenarios": [
+    {
+      "scenario": "S1_114_seule",
+      "refs": [
+        "main",
+        "#114"
+      ],
+      "totale": 70,
+      "appliquees": 70,
+      "migrations_echouees": [],
+      "collisions": [
+        {
+          "horodatage": "20261006120000",
+          "n": 2
+        },
+        {
+          "horodatage": "20261006200000",
+          "n": 2
+        },
+        {
+          "horodatage": "20261006220000",
+          "n": 2
+        },
+        {
+          "horodatage": "20261017120000",
+          "n": 2
+        }
+      ],
+      "empreinte_chaine": "46e484c403090b456d3ac4c2c027058a972f1292a77c19dbc4e6fb2587389a8c",
+      "version_postgresql": "PostgreSQL 17.11 on x86_64-pc-linux-gnu, compiled by gcc (Ubuntu 7.5.0-3ubuntu1~18.04) 7.5.0, 64-bit",
+      "secdef": 127,
+      "tables_force_rls": 53,
+      "migrations": [
+        {
+          "nom": "20260923130000_tracefab_neon_initial",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "6c755b436b9effd1a860dc5d07fb02bc1c38c405229fd4adb16d8c4582a14102"
+        },
+        {
+          "nom": "20260923140000_tracefab_clerk_context",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "534dc2d4a166c647c333314d3f5fa1e3f79b7b7a38bc0b45656177aded18771a"
+        },
+        {
+          "nom": "20260923150000_fix_invitation_acceptance",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "89847200c5f5ae04802dda82047648499c20d955013f0fce8e06538230679196"
+        },
+        {
+          "nom": "20260923160000_tracefab_product_api_functions",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "2153575d97dd82df6b5bd36257cd7cabed16c2493fabe56c5e62d524b5ee5d70"
+        },
+        {
+          "nom": "20260923170000_fix_data_collection_workflow_context",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "cebd301a044d4d713b5738028f3d3697e6099868467f54685500882a9fd3fc0e"
+        },
+        {
+          "nom": "20260923180000_fix_data_response_progress_guard",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "e1456e2fb8dc1f952ff335c54becbc603416f7ddb8d9e2200e8dacd7991ca08f"
+        },
+        {
+          "nom": "20260923190000_tracefab_notification_outbox",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "0ddde924c3fc022e7c1c208c18ffc9790bbb11db643849421b0db86afdcc0d8b"
+        },
+        {
+          "nom": "20260923200000_tracefab_collection_reminders",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "cce36f145c0de802b3c233a0d5a2bc7d6d321b0d96752bb961736d2c5a00ce7e"
+        },
+        {
+          "nom": "20261005090000_supplier_portal_advanced_hardening",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "13581e6c99a7c649e2a2e47280126362342b93adfcb45b6ec8161489455fc422"
+        },
+        {
+          "nom": "20261005100000_supplier_invitation_compatibility",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "3626074357755fdef4d158894c70580e89f3e4c728be604050efde599e3e26d5"
+        },
+        {
+          "nom": "20261006100000_security_force_rls_and_document_access",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "ee73157701cf4134c2498d31a552bfb0ce1c9851cf34536b50505accd9b3bcaf"
+        },
+        {
+          "nom": "20261006110000_quality_center_shared_access",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "64256414f28d96c3a55facd94d5adeb82d5252993538d2d63c38cc558154e4fe"
+        },
+        {
+          "nom": "20261006113000_clerk_directory_membership_sync",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "6e4f38601f2ed6c31164cb27f9c4dbc1bab841c57ec8cfab330ac8122aae7ba3"
+        },
+        {
+          "nom": "20261006120000_data_collection_bridge_and_quality_automation",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "a784cc042bc3f44b2f6c692d84cb5ebeff42608ca2829d03ad714497eb8e2c61"
+        },
+        {
+          "nom": "20261006120000_external_schema_bindings",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "df965ab28aa24b035576662da9552146f4b77c27a994da62466bc76344063c8d"
+        },
+        {
+          "nom": "20261006123000_clerk_sync_security_functions",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "f6732d8d578831e7253fb0b17751cda4cc9d1048705a3b1f5542efb29a9db805"
+        },
+        {
+          "nom": "20261006130000_tracefab_manual_data_request_reminders",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "17a756ec1c70027ca7e34ee415be5d933dea2e4ce017af3863f96e1d9469e7c6"
+        },
+        {
+          "nom": "20261006140000_supply_chain_traceability_api",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "3aec3897c43e026afc003b9fbb17a8cbc2f631d82f26f1e44add598ed6c938c9"
+        },
+        {
+          "nom": "20261006160000_dpp_readiness_exposure",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "bacfe553ee18fa61626925f5c069f0d5a48909612a518dbdb8e1a2aaff64d6bc"
+        },
+        {
+          "nom": "20261006180000_supplier_self_onboarding",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "b9e3f5ea1b8d3f956ba2525d5c1d69ecd872fbee8ec1b6501fefb28c7ae73b1d"
+        },
+        {
+          "nom": "20261006190000_catalog_import_export",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "036dc97d63f11b9972c4900f1c5646f9785a99bed205d2cc38868ad8db38e196"
+        },
+        {
+          "nom": "20261006200000_catalog_import_kind",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "d5241ea690e133703a4584cfb8d80e3281f4935a3fc914ba06c8ab3b60fa799b"
+        },
+        {
+          "nom": "20261006200000_document_ai_automated_verification",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "0eb5036c85c26b9009776702c190d1db5cb123f261e4223ea601e2fe4625d4ca"
+        },
+        {
+          "nom": "20261006210000_plm_erp_gs1_interoperability",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "6a8d03eb507b824e2a308d7e29113478d60d726255fcc1883cef56c506783044"
+        },
+        {
+          "nom": "20261006220000_esg_pef_footprint_engine",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "2d4f41bf4c2922c9cdc8ca6634c54572d11563c9e48d0f480a8760d8d81edc42"
+        },
+        {
+          "nom": "20261006220000_production_hardening",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "66ce9341c7efa7cdaa1b15ba56e2fb6253dea0c3816cfa451b6574609a02b8f9"
+        },
+        {
+          "nom": "20261006230000_green_claims_anti_greenwashing_engine",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "8430fc08710247140de7afaec8d14a2dd56027e15039ddf95b2f45aa7b97b816"
+        },
+        {
+          "nom": "20261006240000_quality_corrective_action_plans_cap",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "fad3c6ba25db488b23a8675eee5b59c78ad94bf34360bb1b79116fe47787c67f"
+        },
+        {
+          "nom": "20261006250000_universal_supplier_passport",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "cbb5af324a9fd23a85e8d828c1c12495aff3cd91b29d007478b8d00ad783f6f8"
+        },
+        {
+          "nom": "20261006260000_mass_balance_anti_fraud_engine",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "d0328a36291e20799ab9b2934d130bcb191e2762b219f3173a0d3b1d48c7a36e"
+        },
+        {
+          "nom": "20261007100000_security_definer_execute_hardening",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "61e18ea4c858e003e7505c18f738436d09261a44214feab457bf1f1414ac79b8"
+        },
+        {
+          "nom": "20261007120000_force_rls_schema_bindings",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "c1f8585dd9b84a96996c042817e5a76adde1ac3163fedd3ab525e5d3c7ec483b"
+        },
+        {
+          "nom": "20261008100000_rate_limit_counters",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "7d7b7a6cb9bb6ea824ff57c1ab418dd4ee77d40cc74fc457ae2c02c7eff0cabe"
+        },
+        {
+          "nom": "20261009120000_fix_materials_policy_recursion",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "44c230dc2f9c403da5a05613c6ba1af8924268b657b046640549beb3e0ac4131"
+        },
+        {
+          "nom": "20261009180000_public_read_context",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "9100ed08cef28aac0ab2971a6cd83daa1a71b133624e1ba898699e8c80c5b4c9"
+        },
+        {
+          "nom": "20261010120000_publication_explicite",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "8b741eab1ff17cb8aaed5f6fc02217209ec84ed44bcbc4617ec7c53ec8cddae6"
+        },
+        {
+          "nom": "20261012120000_close_public_execute_gap",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "4f6e710f543950838c796b10985745490165b354142abf35ad40d5b0111248a6"
+        },
+        {
+          "nom": "20261014100000_revoke_material_visible_public",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "ff6d95415e4d7f1fcf8bb7087278d2d93c3fe1b8b142e126c3ce06a41ab1ee04"
+        },
+        {
+          "nom": "20261014110000_revoke_dpp_functions_public",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "0a141838e80d480373032570638011d079d4402986b522962b7d64edd997633c"
+        },
+        {
+          "nom": "20261014120000_close_global_default_function_execute",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "cfb6ebac4a6035855d476962c11ade0d3f10df43ebe029dedd0a7c7e2d54de1c"
+        },
+        {
+          "nom": "20261014130000_revoke_public_schema_privileges",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "c6df54676462efca2f061e274f5c74f777e079a683fabd6542a083f5c0c6fe95"
+        },
+        {
+          "nom": "20261014140000_remove_public_supplier_passport_share_token",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "d73f1c2d3cf2d175e413603c37952c577d67b75bbf4da9a41fa5180378f1cab7"
+        },
+        {
+          "nom": "20261016130000_dynamic_dpp_lifecycle",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "10b7d8627b1811fcf2fc3a29864a21ac3d2be853e1a6a04d5318aa2175e55998"
+        },
+        {
+          "nom": "20261016150000_dpp_claim_evidence_chain",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "8c3e0f1e77a0b052a4fcbf62e06c9d9c4c2170f15e8d03634e1b38268458d260"
+        },
+        {
+          "nom": "20261016170000_dpp_resolvable_identity",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "f9406fbe10d07e4110596ef6e856345fd0fa0866a3b1b6014ba96288904f3d8f"
+        },
+        {
+          "nom": "20261017100000_fix_document_lifecycle_access",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "7cc1cbfd98a798ba2cad60de88225fac3401d0e491414fe11df14918125778a6"
+        },
+        {
+          "nom": "20261017120000_active_tenant_context",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "e15c0786ca0b666aebd9662c007dd4fbaba9304017c5ed1bfe5ef5681289c8bd"
+        },
+        {
+          "nom": "20261017120000_harden_dpp_table_privileges",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "5366746f7ff72ca64b88472fbda95ff47e000c85dd72e1f84559bd61caea6607"
+        },
+        {
+          "nom": "20261017150000_harden_finalize_ops_gate",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "bee1dbce49735b2030593b57590c4b6874f124369bb9bb774e7db3df9c65179b"
+        },
+        {
+          "nom": "20261019120000_restreindre_dml_role_applicatif",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "19dc214f731ecf47e42d44c82e0b13aa2020a19b8f7a0a3d81f4bf6e08c33a49"
+        },
+        {
+          "nom": "20261019140000_restreindre_suppression_compteurs_debit",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "1120041bd9f6aa6907a09d380a94edf95449d7b055860e83f2e28973e50c333a"
+        },
+        {
+          "nom": "20261019160000_retablir_dml_tables_ecrites_directement",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "477789e475f0a8009ade2e9444ff279991b6e3176ac38b267ced7afb72bb9842"
+        },
+        {
+          "nom": "20261020120000_structured_supply_chain_graph_membership",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "1e42d60bf6d808616b806993a15fbc41f6691e2370ecd7a6a9a67dabfa950614"
+        },
+        {
+          "nom": "20261021120000_limit_app_function_execute",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "e9f00fb17be91ece1925d159e8b128146fdb9eddb0f7d986202e7cc2ae299b6c"
+        },
+        {
+          "nom": "20261021130000_reconcile_runtime_dml_and_migration_history",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "ec998cc29967613d8fe299cf038a88b0b81d64896aa4ed76affecaa652249983"
+        },
+        {
+          "nom": "20261021170000_dpp_readiness_truthful_gates",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "3ead8852d9adf5c550e12c6d00665cdf8ef845694bdcb268cc8ab88219519269"
+        },
+        {
+          "nom": "20261023120000_revoke_app_default_dml",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "fa6bcc2447b5e9da0f68c8ff284e63677b3ceaa7aae1e3f95c8e3dd1cadbea04"
+        },
+        {
+          "nom": "20261027100000_dpp_quality_gate_requires_assessment",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "2389767489968dff735392922373afeb1c1cb77c4abdb1d43ad9ac14ecff8fd5"
+        },
+        {
+          "nom": "20261027130000_dpp_review_preservation_and_publication_coherence",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "53fee8be3f0e0a79ab395ee6de7b5e0e4562f5d5a8c0f6476761d3363c3e5727"
+        },
+        {
+          "nom": "20261028120000_runtime_function_registry",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "54e1679cf9d7b8e0d66200e6e943b3dc2e7e26d8187bb00b6ddf3f480f9ca4e0"
+        },
+        {
+          "nom": "20261028120100_worker_identity_not_forgeable",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "7adbab6591cc50144061f65b556012b8d14c00e83f537b004384b2cee9b7e2c1"
+        },
+        {
+          "nom": "20261028120200_document_reserved_fields_internal_only",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "e19bcff17a337986c2a969964ddc947b0b43b6a565716bbe258389095527b500"
+        },
+        {
+          "nom": "20261028130000_product_computed_fields_column_scoped",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "19b34a90620a6eb449938dc751a26d684013d98926deb38ad817b71dfc2964c3"
+        },
+        {
+          "nom": "20261028140000_supplier_invitation_owner_relationship_scope",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "6a94aea73674b5cfeef9611284afdf8895c3f6b8de28d8376ab472f32bb6b21c"
+        },
+        {
+          "nom": "20261028150000_reconcile_plm_erp_sync_job_policies",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "989ab45407f48fe4326c31ed38b1bf9ffc7e3a68da6afc998a9cc003734a93fa"
+        },
+        {
+          "nom": "20261029180000_plm_erp_sync_jobs_policy_dedup",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "896dfad2f465908a8299f3639eb246292ba1b806ae13bfd3b3cf6218fdf6801f"
+        },
+        {
+          "nom": "20261030140000_ingest_payload_role_guard_and_acl",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "d35c3ed56a2447f1bdd5be76839f6051af4589902e664781beda95ae96c75267"
+        },
+        {
+          "nom": "20261031120000_identite_hmac_liee_au_contexte",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "48ec239a8dde15fb25b34a37727f3c93cbab83865e298634e3e4ea6b07124ff2"
+        },
+        {
+          "nom": "20261102120000_identite_stricte_email_et_rotation",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "30c24ef2b6b424a302ebe9de091ade96fb8a63177c0b5ce76f36048315a609aa"
+        },
+        {
+          "nom": "20261106130000_identite_systeme_signee",
+          "ref": "refs/remotes/audit/pr114-nouveau",
+          "sha256": "e29a9ebd1a201898d0cde0282c914892469ae436dccfeb4ac9274cc18b02406b"
+        }
+      ]
+    },
+    {
+      "scenario": "S2_111_seule",
+      "refs": [
+        "main",
+        "#111"
+      ],
+      "totale": 86,
+      "appliquees": 86,
+      "migrations_echouees": [],
+      "collisions": [
+        {
+          "horodatage": "20261006120000",
+          "n": 2
+        },
+        {
+          "horodatage": "20261006200000",
+          "n": 2
+        },
+        {
+          "horodatage": "20261006220000",
+          "n": 2
+        },
+        {
+          "horodatage": "20261017120000",
+          "n": 2
+        }
+      ],
+      "empreinte_chaine": "b0a48f673cfaffc6dc14bc17eab0a2d83828c95708c19c469b903e1c7b8c818c",
+      "version_postgresql": "PostgreSQL 17.11 on x86_64-pc-linux-gnu, compiled by gcc (Ubuntu 7.5.0-3ubuntu1~18.04) 7.5.0, 64-bit",
+      "secdef": 126,
+      "tables_force_rls": 53,
+      "migrations": [
+        {
+          "nom": "20260923130000_tracefab_neon_initial",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "6c755b436b9effd1a860dc5d07fb02bc1c38c405229fd4adb16d8c4582a14102"
+        },
+        {
+          "nom": "20260923140000_tracefab_clerk_context",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "534dc2d4a166c647c333314d3f5fa1e3f79b7b7a38bc0b45656177aded18771a"
+        },
+        {
+          "nom": "20260923150000_fix_invitation_acceptance",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "89847200c5f5ae04802dda82047648499c20d955013f0fce8e06538230679196"
+        },
+        {
+          "nom": "20260923160000_tracefab_product_api_functions",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "2153575d97dd82df6b5bd36257cd7cabed16c2493fabe56c5e62d524b5ee5d70"
+        },
+        {
+          "nom": "20260923170000_fix_data_collection_workflow_context",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "cebd301a044d4d713b5738028f3d3697e6099868467f54685500882a9fd3fc0e"
+        },
+        {
+          "nom": "20260923180000_fix_data_response_progress_guard",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "e1456e2fb8dc1f952ff335c54becbc603416f7ddb8d9e2200e8dacd7991ca08f"
+        },
+        {
+          "nom": "20260923190000_tracefab_notification_outbox",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "0ddde924c3fc022e7c1c208c18ffc9790bbb11db643849421b0db86afdcc0d8b"
+        },
+        {
+          "nom": "20260923200000_tracefab_collection_reminders",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "cce36f145c0de802b3c233a0d5a2bc7d6d321b0d96752bb961736d2c5a00ce7e"
+        },
+        {
+          "nom": "20261005090000_supplier_portal_advanced_hardening",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "13581e6c99a7c649e2a2e47280126362342b93adfcb45b6ec8161489455fc422"
+        },
+        {
+          "nom": "20261005100000_supplier_invitation_compatibility",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "3626074357755fdef4d158894c70580e89f3e4c728be604050efde599e3e26d5"
+        },
+        {
+          "nom": "20261006100000_security_force_rls_and_document_access",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "ee73157701cf4134c2498d31a552bfb0ce1c9851cf34536b50505accd9b3bcaf"
+        },
+        {
+          "nom": "20261006110000_quality_center_shared_access",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "64256414f28d96c3a55facd94d5adeb82d5252993538d2d63c38cc558154e4fe"
+        },
+        {
+          "nom": "20261006113000_clerk_directory_membership_sync",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "6e4f38601f2ed6c31164cb27f9c4dbc1bab841c57ec8cfab330ac8122aae7ba3"
+        },
+        {
+          "nom": "20261006120000_data_collection_bridge_and_quality_automation",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "a784cc042bc3f44b2f6c692d84cb5ebeff42608ca2829d03ad714497eb8e2c61"
+        },
+        {
+          "nom": "20261006120000_external_schema_bindings",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "df965ab28aa24b035576662da9552146f4b77c27a994da62466bc76344063c8d"
+        },
+        {
+          "nom": "20261006123000_clerk_sync_security_functions",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "f6732d8d578831e7253fb0b17751cda4cc9d1048705a3b1f5542efb29a9db805"
+        },
+        {
+          "nom": "20261006130000_tracefab_manual_data_request_reminders",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "17a756ec1c70027ca7e34ee415be5d933dea2e4ce017af3863f96e1d9469e7c6"
+        },
+        {
+          "nom": "20261006140000_supply_chain_traceability_api",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "3aec3897c43e026afc003b9fbb17a8cbc2f631d82f26f1e44add598ed6c938c9"
+        },
+        {
+          "nom": "20261006160000_dpp_readiness_exposure",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "bacfe553ee18fa61626925f5c069f0d5a48909612a518dbdb8e1a2aaff64d6bc"
+        },
+        {
+          "nom": "20261006180000_supplier_self_onboarding",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "b9e3f5ea1b8d3f956ba2525d5c1d69ecd872fbee8ec1b6501fefb28c7ae73b1d"
+        },
+        {
+          "nom": "20261006190000_catalog_import_export",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "036dc97d63f11b9972c4900f1c5646f9785a99bed205d2cc38868ad8db38e196"
+        },
+        {
+          "nom": "20261006200000_catalog_import_kind",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "d5241ea690e133703a4584cfb8d80e3281f4935a3fc914ba06c8ab3b60fa799b"
+        },
+        {
+          "nom": "20261006200000_document_ai_automated_verification",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "0eb5036c85c26b9009776702c190d1db5cb123f261e4223ea601e2fe4625d4ca"
+        },
+        {
+          "nom": "20261006210000_plm_erp_gs1_interoperability",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "6a8d03eb507b824e2a308d7e29113478d60d726255fcc1883cef56c506783044"
+        },
+        {
+          "nom": "20261006220000_esg_pef_footprint_engine",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "2d4f41bf4c2922c9cdc8ca6634c54572d11563c9e48d0f480a8760d8d81edc42"
+        },
+        {
+          "nom": "20261006220000_production_hardening",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "66ce9341c7efa7cdaa1b15ba56e2fb6253dea0c3816cfa451b6574609a02b8f9"
+        },
+        {
+          "nom": "20261006230000_green_claims_anti_greenwashing_engine",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "8430fc08710247140de7afaec8d14a2dd56027e15039ddf95b2f45aa7b97b816"
+        },
+        {
+          "nom": "20261006240000_quality_corrective_action_plans_cap",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "fad3c6ba25db488b23a8675eee5b59c78ad94bf34360bb1b79116fe47787c67f"
+        },
+        {
+          "nom": "20261006250000_universal_supplier_passport",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "cbb5af324a9fd23a85e8d828c1c12495aff3cd91b29d007478b8d00ad783f6f8"
+        },
+        {
+          "nom": "20261006260000_mass_balance_anti_fraud_engine",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "d0328a36291e20799ab9b2934d130bcb191e2762b219f3173a0d3b1d48c7a36e"
+        },
+        {
+          "nom": "20261007100000_security_definer_execute_hardening",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "61e18ea4c858e003e7505c18f738436d09261a44214feab457bf1f1414ac79b8"
+        },
+        {
+          "nom": "20261007120000_force_rls_schema_bindings",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "c1f8585dd9b84a96996c042817e5a76adde1ac3163fedd3ab525e5d3c7ec483b"
+        },
+        {
+          "nom": "20261008100000_rate_limit_counters",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "7d7b7a6cb9bb6ea824ff57c1ab418dd4ee77d40cc74fc457ae2c02c7eff0cabe"
+        },
+        {
+          "nom": "20261009120000_fix_materials_policy_recursion",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "44c230dc2f9c403da5a05613c6ba1af8924268b657b046640549beb3e0ac4131"
+        },
+        {
+          "nom": "20261009180000_public_read_context",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "9100ed08cef28aac0ab2971a6cd83daa1a71b133624e1ba898699e8c80c5b4c9"
+        },
+        {
+          "nom": "20261010120000_publication_explicite",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "8b741eab1ff17cb8aaed5f6fc02217209ec84ed44bcbc4617ec7c53ec8cddae6"
+        },
+        {
+          "nom": "20261012120000_close_public_execute_gap",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "4f6e710f543950838c796b10985745490165b354142abf35ad40d5b0111248a6"
+        },
+        {
+          "nom": "20261014100000_revoke_material_visible_public",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "ff6d95415e4d7f1fcf8bb7087278d2d93c3fe1b8b142e126c3ce06a41ab1ee04"
+        },
+        {
+          "nom": "20261014110000_revoke_dpp_functions_public",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "0a141838e80d480373032570638011d079d4402986b522962b7d64edd997633c"
+        },
+        {
+          "nom": "20261014120000_close_global_default_function_execute",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "cfb6ebac4a6035855d476962c11ade0d3f10df43ebe029dedd0a7c7e2d54de1c"
+        },
+        {
+          "nom": "20261014130000_revoke_public_schema_privileges",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "c6df54676462efca2f061e274f5c74f777e079a683fabd6542a083f5c0c6fe95"
+        },
+        {
+          "nom": "20261014140000_remove_public_supplier_passport_share_token",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "d73f1c2d3cf2d175e413603c37952c577d67b75bbf4da9a41fa5180378f1cab7"
+        },
+        {
+          "nom": "20261016130000_dynamic_dpp_lifecycle",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "10b7d8627b1811fcf2fc3a29864a21ac3d2be853e1a6a04d5318aa2175e55998"
+        },
+        {
+          "nom": "20261016150000_dpp_claim_evidence_chain",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "8c3e0f1e77a0b052a4fcbf62e06c9d9c4c2170f15e8d03634e1b38268458d260"
+        },
+        {
+          "nom": "20261016170000_dpp_resolvable_identity",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "f9406fbe10d07e4110596ef6e856345fd0fa0866a3b1b6014ba96288904f3d8f"
+        },
+        {
+          "nom": "20261017100000_fix_document_lifecycle_access",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "7cc1cbfd98a798ba2cad60de88225fac3401d0e491414fe11df14918125778a6"
+        },
+        {
+          "nom": "20261017120000_active_tenant_context",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "e15c0786ca0b666aebd9662c007dd4fbaba9304017c5ed1bfe5ef5681289c8bd"
+        },
+        {
+          "nom": "20261017120000_harden_dpp_table_privileges",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "5366746f7ff72ca64b88472fbda95ff47e000c85dd72e1f84559bd61caea6607"
+        },
+        {
+          "nom": "20261017150000_harden_finalize_ops_gate",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "bee1dbce49735b2030593b57590c4b6874f124369bb9bb774e7db3df9c65179b"
+        },
+        {
+          "nom": "20261019120000_restreindre_dml_role_applicatif",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "19dc214f731ecf47e42d44c82e0b13aa2020a19b8f7a0a3d81f4bf6e08c33a49"
+        },
+        {
+          "nom": "20261019140000_restreindre_suppression_compteurs_debit",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "1120041bd9f6aa6907a09d380a94edf95449d7b055860e83f2e28973e50c333a"
+        },
+        {
+          "nom": "20261019160000_retablir_dml_tables_ecrites_directement",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "477789e475f0a8009ade2e9444ff279991b6e3176ac38b267ced7afb72bb9842"
+        },
+        {
+          "nom": "20261020120000_structured_supply_chain_graph_membership",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "1e42d60bf6d808616b806993a15fbc41f6691e2370ecd7a6a9a67dabfa950614"
+        },
+        {
+          "nom": "20261021120000_limit_app_function_execute",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "e9f00fb17be91ece1925d159e8b128146fdb9eddb0f7d986202e7cc2ae299b6c"
+        },
+        {
+          "nom": "20261021130000_reconcile_runtime_dml_and_migration_history",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "ec998cc29967613d8fe299cf038a88b0b81d64896aa4ed76affecaa652249983"
+        },
+        {
+          "nom": "20261021170000_dpp_readiness_truthful_gates",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "3ead8852d9adf5c550e12c6d00665cdf8ef845694bdcb268cc8ab88219519269"
+        },
+        {
+          "nom": "20261023120000_revoke_app_default_dml",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "fa6bcc2447b5e9da0f68c8ff284e63677b3ceaa7aae1e3f95c8e3dd1cadbea04"
+        },
+        {
+          "nom": "20261027100000_dpp_quality_gate_requires_assessment",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "2389767489968dff735392922373afeb1c1cb77c4abdb1d43ad9ac14ecff8fd5"
+        },
+        {
+          "nom": "20261027130000_dpp_review_preservation_and_publication_coherence",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "53fee8be3f0e0a79ab395ee6de7b5e0e4562f5d5a8c0f6476761d3363c3e5727"
+        },
+        {
+          "nom": "20261028120000_runtime_function_registry",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "54e1679cf9d7b8e0d66200e6e943b3dc2e7e26d8187bb00b6ddf3f480f9ca4e0"
+        },
+        {
+          "nom": "20261028120100_worker_identity_not_forgeable",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "7adbab6591cc50144061f65b556012b8d14c00e83f537b004384b2cee9b7e2c1"
+        },
+        {
+          "nom": "20261028120200_document_reserved_fields_internal_only",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "e19bcff17a337986c2a969964ddc947b0b43b6a565716bbe258389095527b500"
+        },
+        {
+          "nom": "20261028130000_product_computed_fields_column_scoped",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "19b34a90620a6eb449938dc751a26d684013d98926deb38ad817b71dfc2964c3"
+        },
+        {
+          "nom": "20261028140000_supplier_invitation_owner_relationship_scope",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "6a94aea73674b5cfeef9611284afdf8895c3f6b8de28d8376ab472f32bb6b21c"
+        },
+        {
+          "nom": "20261028150000_reconcile_plm_erp_sync_job_policies",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "989ab45407f48fe4326c31ed38b1bf9ffc7e3a68da6afc998a9cc003734a93fa"
+        },
+        {
+          "nom": "20261029180000_plm_erp_sync_jobs_policy_dedup",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "896dfad2f465908a8299f3639eb246292ba1b806ae13bfd3b3cf6218fdf6801f"
+        },
+        {
+          "nom": "20261030140000_ingest_payload_role_guard_and_acl",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "d35c3ed56a2447f1bdd5be76839f6051af4589902e664781beda95ae96c75267"
+        },
+        {
+          "nom": "20261031120000_identite_hmac_liee_au_contexte",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "48ec239a8dde15fb25b34a37727f3c93cbab83865e298634e3e4ea6b07124ff2"
+        },
+        {
+          "nom": "20261102120000_identite_stricte_email_et_rotation",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "30c24ef2b6b424a302ebe9de091ade96fb8a63177c0b5ce76f36048315a609aa"
+        },
+        {
+          "nom": "20261104090000_plm_integrations_and_gs1_constraints",
+          "ref": "refs/remotes/audit/pr111",
+          "sha256": "a040be467aaaa289822ec5fadd1dd8c6885744b4bb31120276ea0b0be6f3c2bb"
+        },
+        {
+          "nom": "20261104100000_supply_chain_status_enum_casts",
+          "ref": "refs/remotes/audit/pr111",
+          "sha256": "418d4d8d4978e1b19ea5e19402e77135798ac70b1bbcfe8f149ab7a4eba8c606"
+        },
+        {
+          "nom": "20261105120000_active_tenant_plm_ingest_enforcement",
+          "ref": "refs/remotes/audit/pr111",
+          "sha256": "40f37608024bbedaafd8e5a3d814f0f1a7cf82319647e0b265bc1aed56f27802"
+        },
+        {
+          "nom": "20261105130000_active_tenant_product_dpp_pef_rls",
+          "ref": "refs/remotes/audit/pr111",
+          "sha256": "cf38feb4a8625d6529b09a88be4f7b40d6a701cceef8ed57bc73f40982ce838f"
+        },
+        {
+          "nom": "20261105140000_active_tenant_green_claims_rls",
+          "ref": "refs/remotes/audit/pr111",
+          "sha256": "eadc14967cc9486ca28a3dab0ea2cafbc101684392af4e753b0c8302e8c2184c"
+        },
+        {
+          "nom": "20261105150000_active_tenant_dpp_claims_identity_rls",
+          "ref": "refs/remotes/audit/pr111",
+          "sha256": "392c1e0358bcc43e49de77ca87bd9397ec835c97e9caad3f25539f96c1f38110"
+        },
+        {
+          "nom": "20261105160000_active_tenant_product_materials_rls",
+          "ref": "refs/remotes/audit/pr111",
+          "sha256": "7787349c03507f13a364ec3c1bc0bff6a29bea6a8a3eff86c8780328f12eb7e7"
+        },
+        {
+          "nom": "20261105170000_active_tenant_security_definer_guards",
+          "ref": "refs/remotes/audit/pr111",
+          "sha256": "667e1f29a7b15a66670932f590eb58259468d2ca2e894f653cfda8fbabc8943b"
+        },
+        {
+          "nom": "20261105180000_active_tenant_tc_registration_guard",
+          "ref": "refs/remotes/audit/pr111",
+          "sha256": "5d59326faae7fed87e72fe0aa2374625296db79a45b760a2da594f5647be74bb"
+        },
+        {
+          "nom": "20261105190000_active_tenant_quality_collection_guards",
+          "ref": "refs/remotes/audit/pr111",
+          "sha256": "71d7ad89c68fa8a7b6c7fdb7e2cd5409531ed0c091e0e72c12f8df2410d2a83c"
+        },
+        {
+          "nom": "20261105200000_active_tenant_material_certification_guards",
+          "ref": "refs/remotes/audit/pr111",
+          "sha256": "f26f6d9d520cf0aabd23ea64339465f7644e94c4b5dd03a3c8838d380bdf193b"
+        },
+        {
+          "nom": "20261105210000_active_tenant_supplier_profile_passport_guards",
+          "ref": "refs/remotes/audit/pr111",
+          "sha256": "dc5fd776d7d4f34fa236d2b378ff9d76778de025714c2c0e0b1ed385ea2089a7"
+        },
+        {
+          "nom": "20261105220000_active_tenant_quality_cap_guards",
+          "ref": "refs/remotes/audit/pr111",
+          "sha256": "7af5c8e86671f3338b5c466ad86a974ce9c4da4e460ca703aaa4b8783c9102f8"
+        },
+        {
+          "nom": "20261105230000_active_tenant_invite_document_passport_guards",
+          "ref": "refs/remotes/audit/pr111",
+          "sha256": "5f8b3f953f4bdbc85c716d710ef3125c6810232487d3b66861fccff583da8a80"
+        },
+        {
+          "nom": "20261105235900_active_tenant_policy_and_worker_closure",
+          "ref": "refs/remotes/audit/pr111",
+          "sha256": "75f800b7f842c171e50714652b39fecc8fc281504d68816667921407e267ae9c"
+        },
+        {
+          "nom": "20261105240000_active_tenant_supplier_quality_guard",
+          "ref": "refs/remotes/audit/pr111",
+          "sha256": "c06f18684eee66df4f69de2d50c337fc920218b6b78d62753be0327b5d6d76b2"
+        },
+        {
+          "nom": "20261106000000_active_tenant_supplier_passport_guards",
+          "ref": "refs/remotes/audit/pr111",
+          "sha256": "e266e512b445e51242792d3ae0aa791561e1079625b09134b5c5dae9e81377f9"
+        }
+      ]
+    },
+    {
+      "scenario": "S3_111_et_114",
+      "refs": [
+        "main",
+        "#111",
+        "#114"
+      ],
+      "totale": 87,
+      "appliquees": 87,
+      "migrations_echouees": [],
+      "collisions": [
+        {
+          "horodatage": "20261006120000",
+          "n": 2
+        },
+        {
+          "horodatage": "20261006200000",
+          "n": 2
+        },
+        {
+          "horodatage": "20261006220000",
+          "n": 2
+        },
+        {
+          "horodatage": "20261017120000",
+          "n": 2
+        }
+      ],
+      "empreinte_chaine": "7c109b474e2dd6173d40dd0eb3a5c4092efd90890572756c4b6e5bdc28e99dd1",
+      "version_postgresql": "PostgreSQL 17.11 on x86_64-pc-linux-gnu, compiled by gcc (Ubuntu 7.5.0-3ubuntu1~18.04) 7.5.0, 64-bit",
+      "secdef": 128,
+      "tables_force_rls": 53,
+      "migrations": [
+        {
+          "nom": "20260923130000_tracefab_neon_initial",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "6c755b436b9effd1a860dc5d07fb02bc1c38c405229fd4adb16d8c4582a14102"
+        },
+        {
+          "nom": "20260923140000_tracefab_clerk_context",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "534dc2d4a166c647c333314d3f5fa1e3f79b7b7a38bc0b45656177aded18771a"
+        },
+        {
+          "nom": "20260923150000_fix_invitation_acceptance",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "89847200c5f5ae04802dda82047648499c20d955013f0fce8e06538230679196"
+        },
+        {
+          "nom": "20260923160000_tracefab_product_api_functions",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "2153575d97dd82df6b5bd36257cd7cabed16c2493fabe56c5e62d524b5ee5d70"
+        },
+        {
+          "nom": "20260923170000_fix_data_collection_workflow_context",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "cebd301a044d4d713b5738028f3d3697e6099868467f54685500882a9fd3fc0e"
+        },
+        {
+          "nom": "20260923180000_fix_data_response_progress_guard",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "e1456e2fb8dc1f952ff335c54becbc603416f7ddb8d9e2200e8dacd7991ca08f"
+        },
+        {
+          "nom": "20260923190000_tracefab_notification_outbox",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "0ddde924c3fc022e7c1c208c18ffc9790bbb11db643849421b0db86afdcc0d8b"
+        },
+        {
+          "nom": "20260923200000_tracefab_collection_reminders",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "cce36f145c0de802b3c233a0d5a2bc7d6d321b0d96752bb961736d2c5a00ce7e"
+        },
+        {
+          "nom": "20261005090000_supplier_portal_advanced_hardening",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "13581e6c99a7c649e2a2e47280126362342b93adfcb45b6ec8161489455fc422"
+        },
+        {
+          "nom": "20261005100000_supplier_invitation_compatibility",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "3626074357755fdef4d158894c70580e89f3e4c728be604050efde599e3e26d5"
+        },
+        {
+          "nom": "20261006100000_security_force_rls_and_document_access",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "ee73157701cf4134c2498d31a552bfb0ce1c9851cf34536b50505accd9b3bcaf"
+        },
+        {
+          "nom": "20261006110000_quality_center_shared_access",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "64256414f28d96c3a55facd94d5adeb82d5252993538d2d63c38cc558154e4fe"
+        },
+        {
+          "nom": "20261006113000_clerk_directory_membership_sync",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "6e4f38601f2ed6c31164cb27f9c4dbc1bab841c57ec8cfab330ac8122aae7ba3"
+        },
+        {
+          "nom": "20261006120000_data_collection_bridge_and_quality_automation",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "a784cc042bc3f44b2f6c692d84cb5ebeff42608ca2829d03ad714497eb8e2c61"
+        },
+        {
+          "nom": "20261006120000_external_schema_bindings",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "df965ab28aa24b035576662da9552146f4b77c27a994da62466bc76344063c8d"
+        },
+        {
+          "nom": "20261006123000_clerk_sync_security_functions",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "f6732d8d578831e7253fb0b17751cda4cc9d1048705a3b1f5542efb29a9db805"
+        },
+        {
+          "nom": "20261006130000_tracefab_manual_data_request_reminders",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "17a756ec1c70027ca7e34ee415be5d933dea2e4ce017af3863f96e1d9469e7c6"
+        },
+        {
+          "nom": "20261006140000_supply_chain_traceability_api",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "3aec3897c43e026afc003b9fbb17a8cbc2f631d82f26f1e44add598ed6c938c9"
+        },
+        {
+          "nom": "20261006160000_dpp_readiness_exposure",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "bacfe553ee18fa61626925f5c069f0d5a48909612a518dbdb8e1a2aaff64d6bc"
+        },
+        {
+          "nom": "20261006180000_supplier_self_onboarding",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "b9e3f5ea1b8d3f956ba2525d5c1d69ecd872fbee8ec1b6501fefb28c7ae73b1d"
+        },
+        {
+          "nom": "20261006190000_catalog_import_export",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "036dc97d63f11b9972c4900f1c5646f9785a99bed205d2cc38868ad8db38e196"
+        },
+        {
+          "nom": "20261006200000_catalog_import_kind",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "d5241ea690e133703a4584cfb8d80e3281f4935a3fc914ba06c8ab3b60fa799b"
+        },
+        {
+          "nom": "20261006200000_document_ai_automated_verification",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "0eb5036c85c26b9009776702c190d1db5cb123f261e4223ea601e2fe4625d4ca"
+        },
+        {
+          "nom": "20261006210000_plm_erp_gs1_interoperability",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "6a8d03eb507b824e2a308d7e29113478d60d726255fcc1883cef56c506783044"
+        },
+        {
+          "nom": "20261006220000_esg_pef_footprint_engine",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "2d4f41bf4c2922c9cdc8ca6634c54572d11563c9e48d0f480a8760d8d81edc42"
+        },
+        {
+          "nom": "20261006220000_production_hardening",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "66ce9341c7efa7cdaa1b15ba56e2fb6253dea0c3816cfa451b6574609a02b8f9"
+        },
+        {
+          "nom": "20261006230000_green_claims_anti_greenwashing_engine",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "8430fc08710247140de7afaec8d14a2dd56027e15039ddf95b2f45aa7b97b816"
+        },
+        {
+          "nom": "20261006240000_quality_corrective_action_plans_cap",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "fad3c6ba25db488b23a8675eee5b59c78ad94bf34360bb1b79116fe47787c67f"
+        },
+        {
+          "nom": "20261006250000_universal_supplier_passport",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "cbb5af324a9fd23a85e8d828c1c12495aff3cd91b29d007478b8d00ad783f6f8"
+        },
+        {
+          "nom": "20261006260000_mass_balance_anti_fraud_engine",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "d0328a36291e20799ab9b2934d130bcb191e2762b219f3173a0d3b1d48c7a36e"
+        },
+        {
+          "nom": "20261007100000_security_definer_execute_hardening",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "61e18ea4c858e003e7505c18f738436d09261a44214feab457bf1f1414ac79b8"
+        },
+        {
+          "nom": "20261007120000_force_rls_schema_bindings",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "c1f8585dd9b84a96996c042817e5a76adde1ac3163fedd3ab525e5d3c7ec483b"
+        },
+        {
+          "nom": "20261008100000_rate_limit_counters",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "7d7b7a6cb9bb6ea824ff57c1ab418dd4ee77d40cc74fc457ae2c02c7eff0cabe"
+        },
+        {
+          "nom": "20261009120000_fix_materials_policy_recursion",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "44c230dc2f9c403da5a05613c6ba1af8924268b657b046640549beb3e0ac4131"
+        },
+        {
+          "nom": "20261009180000_public_read_context",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "9100ed08cef28aac0ab2971a6cd83daa1a71b133624e1ba898699e8c80c5b4c9"
+        },
+        {
+          "nom": "20261010120000_publication_explicite",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "8b741eab1ff17cb8aaed5f6fc02217209ec84ed44bcbc4617ec7c53ec8cddae6"
+        },
+        {
+          "nom": "20261012120000_close_public_execute_gap",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "4f6e710f543950838c796b10985745490165b354142abf35ad40d5b0111248a6"
+        },
+        {
+          "nom": "20261014100000_revoke_material_visible_public",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "ff6d95415e4d7f1fcf8bb7087278d2d93c3fe1b8b142e126c3ce06a41ab1ee04"
+        },
+        {
+          "nom": "20261014110000_revoke_dpp_functions_public",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "0a141838e80d480373032570638011d079d4402986b522962b7d64edd997633c"
+        },
+        {
+          "nom": "20261014120000_close_global_default_function_execute",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "cfb6ebac4a6035855d476962c11ade0d3f10df43ebe029dedd0a7c7e2d54de1c"
+        },
+        {
+          "nom": "20261014130000_revoke_public_schema_privileges",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "c6df54676462efca2f061e274f5c74f777e079a683fabd6542a083f5c0c6fe95"
+        },
+        {
+          "nom": "20261014140000_remove_public_supplier_passport_share_token",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "d73f1c2d3cf2d175e413603c37952c577d67b75bbf4da9a41fa5180378f1cab7"
+        },
+        {
+          "nom": "20261016130000_dynamic_dpp_lifecycle",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "10b7d8627b1811fcf2fc3a29864a21ac3d2be853e1a6a04d5318aa2175e55998"
+        },
+        {
+          "nom": "20261016150000_dpp_claim_evidence_chain",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "8c3e0f1e77a0b052a4fcbf62e06c9d9c4c2170f15e8d03634e1b38268458d260"
+        },
+        {
+          "nom": "20261016170000_dpp_resolvable_identity",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "f9406fbe10d07e4110596ef6e856345fd0fa0866a3b1b6014ba96288904f3d8f"
+        },
+        {
+          "nom": "20261017100000_fix_document_lifecycle_access",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "7cc1cbfd98a798ba2cad60de88225fac3401d0e491414fe11df14918125778a6"
+        },
+        {
+          "nom": "20261017120000_active_tenant_context",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "e15c0786ca0b666aebd9662c007dd4fbaba9304017c5ed1bfe5ef5681289c8bd"
+        },
+        {
+          "nom": "20261017120000_harden_dpp_table_privileges",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "5366746f7ff72ca64b88472fbda95ff47e000c85dd72e1f84559bd61caea6607"
+        },
+        {
+          "nom": "20261017150000_harden_finalize_ops_gate",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "bee1dbce49735b2030593b57590c4b6874f124369bb9bb774e7db3df9c65179b"
+        },
+        {
+          "nom": "20261019120000_restreindre_dml_role_applicatif",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "19dc214f731ecf47e42d44c82e0b13aa2020a19b8f7a0a3d81f4bf6e08c33a49"
+        },
+        {
+          "nom": "20261019140000_restreindre_suppression_compteurs_debit",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "1120041bd9f6aa6907a09d380a94edf95449d7b055860e83f2e28973e50c333a"
+        },
+        {
+          "nom": "20261019160000_retablir_dml_tables_ecrites_directement",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "477789e475f0a8009ade2e9444ff279991b6e3176ac38b267ced7afb72bb9842"
+        },
+        {
+          "nom": "20261020120000_structured_supply_chain_graph_membership",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "1e42d60bf6d808616b806993a15fbc41f6691e2370ecd7a6a9a67dabfa950614"
+        },
+        {
+          "nom": "20261021120000_limit_app_function_execute",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "e9f00fb17be91ece1925d159e8b128146fdb9eddb0f7d986202e7cc2ae299b6c"
+        },
+        {
+          "nom": "20261021130000_reconcile_runtime_dml_and_migration_history",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "ec998cc29967613d8fe299cf038a88b0b81d64896aa4ed76affecaa652249983"
+        },
+        {
+          "nom": "20261021170000_dpp_readiness_truthful_gates",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "3ead8852d9adf5c550e12c6d00665cdf8ef845694bdcb268cc8ab88219519269"
+        },
+        {
+          "nom": "20261023120000_revoke_app_default_dml",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "fa6bcc2447b5e9da0f68c8ff284e63677b3ceaa7aae1e3f95c8e3dd1cadbea04"
+        },
+        {
+          "nom": "20261027100000_dpp_quality_gate_requires_assessment",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "2389767489968dff735392922373afeb1c1cb77c4abdb1d43ad9ac14ecff8fd5"
+        },
+        {
+          "nom": "20261027130000_dpp_review_preservation_and_publication_coherence",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "53fee8be3f0e0a79ab395ee6de7b5e0e4562f5d5a8c0f6476761d3363c3e5727"
+        },
+        {
+          "nom": "20261028120000_runtime_function_registry",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "54e1679cf9d7b8e0d66200e6e943b3dc2e7e26d8187bb00b6ddf3f480f9ca4e0"
+        },
+        {
+          "nom": "20261028120100_worker_identity_not_forgeable",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "7adbab6591cc50144061f65b556012b8d14c00e83f537b004384b2cee9b7e2c1"
+        },
+        {
+          "nom": "20261028120200_document_reserved_fields_internal_only",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "e19bcff17a337986c2a969964ddc947b0b43b6a565716bbe258389095527b500"
+        },
+        {
+          "nom": "20261028130000_product_computed_fields_column_scoped",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "19b34a90620a6eb449938dc751a26d684013d98926deb38ad817b71dfc2964c3"
+        },
+        {
+          "nom": "20261028140000_supplier_invitation_owner_relationship_scope",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "6a94aea73674b5cfeef9611284afdf8895c3f6b8de28d8376ab472f32bb6b21c"
+        },
+        {
+          "nom": "20261028150000_reconcile_plm_erp_sync_job_policies",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "989ab45407f48fe4326c31ed38b1bf9ffc7e3a68da6afc998a9cc003734a93fa"
+        },
+        {
+          "nom": "20261029180000_plm_erp_sync_jobs_policy_dedup",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "896dfad2f465908a8299f3639eb246292ba1b806ae13bfd3b3cf6218fdf6801f"
+        },
+        {
+          "nom": "20261030140000_ingest_payload_role_guard_and_acl",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "d35c3ed56a2447f1bdd5be76839f6051af4589902e664781beda95ae96c75267"
+        },
+        {
+          "nom": "20261031120000_identite_hmac_liee_au_contexte",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "48ec239a8dde15fb25b34a37727f3c93cbab83865e298634e3e4ea6b07124ff2"
+        },
+        {
+          "nom": "20261102120000_identite_stricte_email_et_rotation",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "30c24ef2b6b424a302ebe9de091ade96fb8a63177c0b5ce76f36048315a609aa"
+        },
+        {
+          "nom": "20261104090000_plm_integrations_and_gs1_constraints",
+          "ref": "refs/remotes/audit/pr111",
+          "sha256": "a040be467aaaa289822ec5fadd1dd8c6885744b4bb31120276ea0b0be6f3c2bb"
+        },
+        {
+          "nom": "20261104100000_supply_chain_status_enum_casts",
+          "ref": "refs/remotes/audit/pr111",
+          "sha256": "418d4d8d4978e1b19ea5e19402e77135798ac70b1bbcfe8f149ab7a4eba8c606"
+        },
+        {
+          "nom": "20261105120000_active_tenant_plm_ingest_enforcement",
+          "ref": "refs/remotes/audit/pr111",
+          "sha256": "40f37608024bbedaafd8e5a3d814f0f1a7cf82319647e0b265bc1aed56f27802"
+        },
+        {
+          "nom": "20261105130000_active_tenant_product_dpp_pef_rls",
+          "ref": "refs/remotes/audit/pr111",
+          "sha256": "cf38feb4a8625d6529b09a88be4f7b40d6a701cceef8ed57bc73f40982ce838f"
+        },
+        {
+          "nom": "20261105140000_active_tenant_green_claims_rls",
+          "ref": "refs/remotes/audit/pr111",
+          "sha256": "eadc14967cc9486ca28a3dab0ea2cafbc101684392af4e753b0c8302e8c2184c"
+        },
+        {
+          "nom": "20261105150000_active_tenant_dpp_claims_identity_rls",
+          "ref": "refs/remotes/audit/pr111",
+          "sha256": "392c1e0358bcc43e49de77ca87bd9397ec835c97e9caad3f25539f96c1f38110"
+        },
+        {
+          "nom": "20261105160000_active_tenant_product_materials_rls",
+          "ref": "refs/remotes/audit/pr111",
+          "sha256": "7787349c03507f13a364ec3c1bc0bff6a29bea6a8a3eff86c8780328f12eb7e7"
+        },
+        {
+          "nom": "20261105170000_active_tenant_security_definer_guards",
+          "ref": "refs/remotes/audit/pr111",
+          "sha256": "667e1f29a7b15a66670932f590eb58259468d2ca2e894f653cfda8fbabc8943b"
+        },
+        {
+          "nom": "20261105180000_active_tenant_tc_registration_guard",
+          "ref": "refs/remotes/audit/pr111",
+          "sha256": "5d59326faae7fed87e72fe0aa2374625296db79a45b760a2da594f5647be74bb"
+        },
+        {
+          "nom": "20261105190000_active_tenant_quality_collection_guards",
+          "ref": "refs/remotes/audit/pr111",
+          "sha256": "71d7ad89c68fa8a7b6c7fdb7e2cd5409531ed0c091e0e72c12f8df2410d2a83c"
+        },
+        {
+          "nom": "20261105200000_active_tenant_material_certification_guards",
+          "ref": "refs/remotes/audit/pr111",
+          "sha256": "f26f6d9d520cf0aabd23ea64339465f7644e94c4b5dd03a3c8838d380bdf193b"
+        },
+        {
+          "nom": "20261105210000_active_tenant_supplier_profile_passport_guards",
+          "ref": "refs/remotes/audit/pr111",
+          "sha256": "dc5fd776d7d4f34fa236d2b378ff9d76778de025714c2c0e0b1ed385ea2089a7"
+        },
+        {
+          "nom": "20261105220000_active_tenant_quality_cap_guards",
+          "ref": "refs/remotes/audit/pr111",
+          "sha256": "7af5c8e86671f3338b5c466ad86a974ce9c4da4e460ca703aaa4b8783c9102f8"
+        },
+        {
+          "nom": "20261105230000_active_tenant_invite_document_passport_guards",
+          "ref": "refs/remotes/audit/pr111",
+          "sha256": "5f8b3f953f4bdbc85c716d710ef3125c6810232487d3b66861fccff583da8a80"
+        },
+        {
+          "nom": "20261105235900_active_tenant_policy_and_worker_closure",
+          "ref": "refs/remotes/audit/pr111",
+          "sha256": "75f800b7f842c171e50714652b39fecc8fc281504d68816667921407e267ae9c"
+        },
+        {
+          "nom": "20261105240000_active_tenant_supplier_quality_guard",
+          "ref": "refs/remotes/audit/pr111",
+          "sha256": "c06f18684eee66df4f69de2d50c337fc920218b6b78d62753be0327b5d6d76b2"
+        },
+        {
+          "nom": "20261106000000_active_tenant_supplier_passport_guards",
+          "ref": "refs/remotes/audit/pr111",
+          "sha256": "e266e512b445e51242792d3ae0aa791561e1079625b09134b5c5dae9e81377f9"
+        },
+        {
+          "nom": "20261106130000_identite_systeme_signee",
+          "ref": "refs/remotes/audit/pr114-nouveau",
+          "sha256": "e29a9ebd1a201898d0cde0282c914892469ae436dccfeb4ac9274cc18b02406b"
+        }
+      ]
+    },
+    {
+      "scenario": "S4_complet_avec_113",
+      "refs": [
+        "main",
+        "#113",
+        "#114"
+      ],
+      "totale": 72,
+      "appliquees": 72,
+      "migrations_echouees": [],
+      "collisions": [
+        {
+          "horodatage": "20261006120000",
+          "n": 2
+        },
+        {
+          "horodatage": "20261006200000",
+          "n": 2
+        },
+        {
+          "horodatage": "20261006220000",
+          "n": 2
+        },
+        {
+          "horodatage": "20261017120000",
+          "n": 2
+        }
+      ],
+      "empreinte_chaine": "954405f523774d4d311f9b0ecc70abb58f9093a67a4af39ed365b2a6433115e8",
+      "version_postgresql": "PostgreSQL 17.11 on x86_64-pc-linux-gnu, compiled by gcc (Ubuntu 7.5.0-3ubuntu1~18.04) 7.5.0, 64-bit",
+      "secdef": 130,
+      "tables_force_rls": 53,
+      "migrations": [
+        {
+          "nom": "20260923130000_tracefab_neon_initial",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "6c755b436b9effd1a860dc5d07fb02bc1c38c405229fd4adb16d8c4582a14102"
+        },
+        {
+          "nom": "20260923140000_tracefab_clerk_context",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "534dc2d4a166c647c333314d3f5fa1e3f79b7b7a38bc0b45656177aded18771a"
+        },
+        {
+          "nom": "20260923150000_fix_invitation_acceptance",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "89847200c5f5ae04802dda82047648499c20d955013f0fce8e06538230679196"
+        },
+        {
+          "nom": "20260923160000_tracefab_product_api_functions",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "2153575d97dd82df6b5bd36257cd7cabed16c2493fabe56c5e62d524b5ee5d70"
+        },
+        {
+          "nom": "20260923170000_fix_data_collection_workflow_context",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "cebd301a044d4d713b5738028f3d3697e6099868467f54685500882a9fd3fc0e"
+        },
+        {
+          "nom": "20260923180000_fix_data_response_progress_guard",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "e1456e2fb8dc1f952ff335c54becbc603416f7ddb8d9e2200e8dacd7991ca08f"
+        },
+        {
+          "nom": "20260923190000_tracefab_notification_outbox",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "0ddde924c3fc022e7c1c208c18ffc9790bbb11db643849421b0db86afdcc0d8b"
+        },
+        {
+          "nom": "20260923200000_tracefab_collection_reminders",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "cce36f145c0de802b3c233a0d5a2bc7d6d321b0d96752bb961736d2c5a00ce7e"
+        },
+        {
+          "nom": "20261005090000_supplier_portal_advanced_hardening",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "13581e6c99a7c649e2a2e47280126362342b93adfcb45b6ec8161489455fc422"
+        },
+        {
+          "nom": "20261005100000_supplier_invitation_compatibility",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "3626074357755fdef4d158894c70580e89f3e4c728be604050efde599e3e26d5"
+        },
+        {
+          "nom": "20261006100000_security_force_rls_and_document_access",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "ee73157701cf4134c2498d31a552bfb0ce1c9851cf34536b50505accd9b3bcaf"
+        },
+        {
+          "nom": "20261006110000_quality_center_shared_access",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "64256414f28d96c3a55facd94d5adeb82d5252993538d2d63c38cc558154e4fe"
+        },
+        {
+          "nom": "20261006113000_clerk_directory_membership_sync",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "6e4f38601f2ed6c31164cb27f9c4dbc1bab841c57ec8cfab330ac8122aae7ba3"
+        },
+        {
+          "nom": "20261006120000_data_collection_bridge_and_quality_automation",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "a784cc042bc3f44b2f6c692d84cb5ebeff42608ca2829d03ad714497eb8e2c61"
+        },
+        {
+          "nom": "20261006120000_external_schema_bindings",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "df965ab28aa24b035576662da9552146f4b77c27a994da62466bc76344063c8d"
+        },
+        {
+          "nom": "20261006123000_clerk_sync_security_functions",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "f6732d8d578831e7253fb0b17751cda4cc9d1048705a3b1f5542efb29a9db805"
+        },
+        {
+          "nom": "20261006130000_tracefab_manual_data_request_reminders",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "17a756ec1c70027ca7e34ee415be5d933dea2e4ce017af3863f96e1d9469e7c6"
+        },
+        {
+          "nom": "20261006140000_supply_chain_traceability_api",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "3aec3897c43e026afc003b9fbb17a8cbc2f631d82f26f1e44add598ed6c938c9"
+        },
+        {
+          "nom": "20261006160000_dpp_readiness_exposure",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "bacfe553ee18fa61626925f5c069f0d5a48909612a518dbdb8e1a2aaff64d6bc"
+        },
+        {
+          "nom": "20261006180000_supplier_self_onboarding",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "b9e3f5ea1b8d3f956ba2525d5c1d69ecd872fbee8ec1b6501fefb28c7ae73b1d"
+        },
+        {
+          "nom": "20261006190000_catalog_import_export",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "036dc97d63f11b9972c4900f1c5646f9785a99bed205d2cc38868ad8db38e196"
+        },
+        {
+          "nom": "20261006200000_catalog_import_kind",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "d5241ea690e133703a4584cfb8d80e3281f4935a3fc914ba06c8ab3b60fa799b"
+        },
+        {
+          "nom": "20261006200000_document_ai_automated_verification",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "0eb5036c85c26b9009776702c190d1db5cb123f261e4223ea601e2fe4625d4ca"
+        },
+        {
+          "nom": "20261006210000_plm_erp_gs1_interoperability",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "6a8d03eb507b824e2a308d7e29113478d60d726255fcc1883cef56c506783044"
+        },
+        {
+          "nom": "20261006220000_esg_pef_footprint_engine",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "2d4f41bf4c2922c9cdc8ca6634c54572d11563c9e48d0f480a8760d8d81edc42"
+        },
+        {
+          "nom": "20261006220000_production_hardening",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "66ce9341c7efa7cdaa1b15ba56e2fb6253dea0c3816cfa451b6574609a02b8f9"
+        },
+        {
+          "nom": "20261006230000_green_claims_anti_greenwashing_engine",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "8430fc08710247140de7afaec8d14a2dd56027e15039ddf95b2f45aa7b97b816"
+        },
+        {
+          "nom": "20261006240000_quality_corrective_action_plans_cap",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "fad3c6ba25db488b23a8675eee5b59c78ad94bf34360bb1b79116fe47787c67f"
+        },
+        {
+          "nom": "20261006250000_universal_supplier_passport",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "cbb5af324a9fd23a85e8d828c1c12495aff3cd91b29d007478b8d00ad783f6f8"
+        },
+        {
+          "nom": "20261006260000_mass_balance_anti_fraud_engine",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "d0328a36291e20799ab9b2934d130bcb191e2762b219f3173a0d3b1d48c7a36e"
+        },
+        {
+          "nom": "20261007100000_security_definer_execute_hardening",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "61e18ea4c858e003e7505c18f738436d09261a44214feab457bf1f1414ac79b8"
+        },
+        {
+          "nom": "20261007120000_force_rls_schema_bindings",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "c1f8585dd9b84a96996c042817e5a76adde1ac3163fedd3ab525e5d3c7ec483b"
+        },
+        {
+          "nom": "20261008100000_rate_limit_counters",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "7d7b7a6cb9bb6ea824ff57c1ab418dd4ee77d40cc74fc457ae2c02c7eff0cabe"
+        },
+        {
+          "nom": "20261009120000_fix_materials_policy_recursion",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "44c230dc2f9c403da5a05613c6ba1af8924268b657b046640549beb3e0ac4131"
+        },
+        {
+          "nom": "20261009180000_public_read_context",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "9100ed08cef28aac0ab2971a6cd83daa1a71b133624e1ba898699e8c80c5b4c9"
+        },
+        {
+          "nom": "20261010120000_publication_explicite",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "8b741eab1ff17cb8aaed5f6fc02217209ec84ed44bcbc4617ec7c53ec8cddae6"
+        },
+        {
+          "nom": "20261012120000_close_public_execute_gap",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "4f6e710f543950838c796b10985745490165b354142abf35ad40d5b0111248a6"
+        },
+        {
+          "nom": "20261014100000_revoke_material_visible_public",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "ff6d95415e4d7f1fcf8bb7087278d2d93c3fe1b8b142e126c3ce06a41ab1ee04"
+        },
+        {
+          "nom": "20261014110000_revoke_dpp_functions_public",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "0a141838e80d480373032570638011d079d4402986b522962b7d64edd997633c"
+        },
+        {
+          "nom": "20261014120000_close_global_default_function_execute",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "cfb6ebac4a6035855d476962c11ade0d3f10df43ebe029dedd0a7c7e2d54de1c"
+        },
+        {
+          "nom": "20261014130000_revoke_public_schema_privileges",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "c6df54676462efca2f061e274f5c74f777e079a683fabd6542a083f5c0c6fe95"
+        },
+        {
+          "nom": "20261014140000_remove_public_supplier_passport_share_token",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "d73f1c2d3cf2d175e413603c37952c577d67b75bbf4da9a41fa5180378f1cab7"
+        },
+        {
+          "nom": "20261016130000_dynamic_dpp_lifecycle",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "10b7d8627b1811fcf2fc3a29864a21ac3d2be853e1a6a04d5318aa2175e55998"
+        },
+        {
+          "nom": "20261016150000_dpp_claim_evidence_chain",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "8c3e0f1e77a0b052a4fcbf62e06c9d9c4c2170f15e8d03634e1b38268458d260"
+        },
+        {
+          "nom": "20261016170000_dpp_resolvable_identity",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "f9406fbe10d07e4110596ef6e856345fd0fa0866a3b1b6014ba96288904f3d8f"
+        },
+        {
+          "nom": "20261017100000_fix_document_lifecycle_access",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "7cc1cbfd98a798ba2cad60de88225fac3401d0e491414fe11df14918125778a6"
+        },
+        {
+          "nom": "20261017120000_active_tenant_context",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "e15c0786ca0b666aebd9662c007dd4fbaba9304017c5ed1bfe5ef5681289c8bd"
+        },
+        {
+          "nom": "20261017120000_harden_dpp_table_privileges",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "5366746f7ff72ca64b88472fbda95ff47e000c85dd72e1f84559bd61caea6607"
+        },
+        {
+          "nom": "20261017150000_harden_finalize_ops_gate",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "bee1dbce49735b2030593b57590c4b6874f124369bb9bb774e7db3df9c65179b"
+        },
+        {
+          "nom": "20261019120000_restreindre_dml_role_applicatif",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "19dc214f731ecf47e42d44c82e0b13aa2020a19b8f7a0a3d81f4bf6e08c33a49"
+        },
+        {
+          "nom": "20261019140000_restreindre_suppression_compteurs_debit",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "1120041bd9f6aa6907a09d380a94edf95449d7b055860e83f2e28973e50c333a"
+        },
+        {
+          "nom": "20261019160000_retablir_dml_tables_ecrites_directement",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "477789e475f0a8009ade2e9444ff279991b6e3176ac38b267ced7afb72bb9842"
+        },
+        {
+          "nom": "20261020120000_structured_supply_chain_graph_membership",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "1e42d60bf6d808616b806993a15fbc41f6691e2370ecd7a6a9a67dabfa950614"
+        },
+        {
+          "nom": "20261021120000_limit_app_function_execute",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "e9f00fb17be91ece1925d159e8b128146fdb9eddb0f7d986202e7cc2ae299b6c"
+        },
+        {
+          "nom": "20261021130000_reconcile_runtime_dml_and_migration_history",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "ec998cc29967613d8fe299cf038a88b0b81d64896aa4ed76affecaa652249983"
+        },
+        {
+          "nom": "20261021170000_dpp_readiness_truthful_gates",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "3ead8852d9adf5c550e12c6d00665cdf8ef845694bdcb268cc8ab88219519269"
+        },
+        {
+          "nom": "20261023120000_revoke_app_default_dml",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "fa6bcc2447b5e9da0f68c8ff284e63677b3ceaa7aae1e3f95c8e3dd1cadbea04"
+        },
+        {
+          "nom": "20261027100000_dpp_quality_gate_requires_assessment",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "2389767489968dff735392922373afeb1c1cb77c4abdb1d43ad9ac14ecff8fd5"
+        },
+        {
+          "nom": "20261027130000_dpp_review_preservation_and_publication_coherence",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "53fee8be3f0e0a79ab395ee6de7b5e0e4562f5d5a8c0f6476761d3363c3e5727"
+        },
+        {
+          "nom": "20261028120000_runtime_function_registry",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "54e1679cf9d7b8e0d66200e6e943b3dc2e7e26d8187bb00b6ddf3f480f9ca4e0"
+        },
+        {
+          "nom": "20261028120100_worker_identity_not_forgeable",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "7adbab6591cc50144061f65b556012b8d14c00e83f537b004384b2cee9b7e2c1"
+        },
+        {
+          "nom": "20261028120200_document_reserved_fields_internal_only",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "e19bcff17a337986c2a969964ddc947b0b43b6a565716bbe258389095527b500"
+        },
+        {
+          "nom": "20261028130000_product_computed_fields_column_scoped",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "19b34a90620a6eb449938dc751a26d684013d98926deb38ad817b71dfc2964c3"
+        },
+        {
+          "nom": "20261028140000_supplier_invitation_owner_relationship_scope",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "6a94aea73674b5cfeef9611284afdf8895c3f6b8de28d8376ab472f32bb6b21c"
+        },
+        {
+          "nom": "20261028150000_reconcile_plm_erp_sync_job_policies",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "989ab45407f48fe4326c31ed38b1bf9ffc7e3a68da6afc998a9cc003734a93fa"
+        },
+        {
+          "nom": "20261029180000_plm_erp_sync_jobs_policy_dedup",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "896dfad2f465908a8299f3639eb246292ba1b806ae13bfd3b3cf6218fdf6801f"
+        },
+        {
+          "nom": "20261030140000_ingest_payload_role_guard_and_acl",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "d35c3ed56a2447f1bdd5be76839f6051af4589902e664781beda95ae96c75267"
+        },
+        {
+          "nom": "20261031120000_identite_hmac_liee_au_contexte",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "48ec239a8dde15fb25b34a37727f3c93cbab83865e298634e3e4ea6b07124ff2"
+        },
+        {
+          "nom": "20261102120000_identite_stricte_email_et_rotation",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "30c24ef2b6b424a302ebe9de091ade96fb8a63177c0b5ce76f36048315a609aa"
+        },
+        {
+          "nom": "20261105180000_active_tenant_access_guards",
+          "ref": "HEAD",
+          "sha256": "4f55f443ad2e0f3208ccec2a5e4cada65205d3482ed29c162c3fd7dfe8f6c4ad"
+        },
+        {
+          "nom": "20261106120000_p107_hmac_forme_canonique_et_ttl",
+          "ref": "HEAD",
+          "sha256": "e66c470618cd2f35555306f1e0fef000959bcda47f535ceb9cf36f6170c4258b"
+        },
+        {
+          "nom": "20261106130000_identite_systeme_signee",
+          "ref": "refs/remotes/audit/pr114-nouveau",
+          "sha256": "e29a9ebd1a201898d0cde0282c914892469ae436dccfeb4ac9274cc18b02406b"
+        }
+      ]
+    },
+    {
+      "scenario": "S5_canonique_definitive",
+      "refs": [
+        "main",
+        "#113",
+        "#114"
+      ],
+      "totale": 73,
+      "appliquees": 73,
+      "migrations_echouees": [],
+      "collisions": [
+        {
+          "horodatage": "20261006120000",
+          "n": 2
+        },
+        {
+          "horodatage": "20261006200000",
+          "n": 2
+        },
+        {
+          "horodatage": "20261006220000",
+          "n": 2
+        },
+        {
+          "horodatage": "20261017120000",
+          "n": 2
+        }
+      ],
+      "empreinte_chaine": "64d26a68af371c34f088c45ce687c578e659770a1c5000b97b74704c24153c8a",
+      "version_postgresql": "PostgreSQL 17.11 on x86_64-pc-linux-gnu, compiled by gcc (Ubuntu 7.5.0-3ubuntu1~18.04) 7.5.0, 64-bit",
+      "secdef": 130,
+      "tables_force_rls": 53,
+      "migrations": [
+        {
+          "nom": "20260923130000_tracefab_neon_initial",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "6c755b436b9effd1a860dc5d07fb02bc1c38c405229fd4adb16d8c4582a14102"
+        },
+        {
+          "nom": "20260923140000_tracefab_clerk_context",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "534dc2d4a166c647c333314d3f5fa1e3f79b7b7a38bc0b45656177aded18771a"
+        },
+        {
+          "nom": "20260923150000_fix_invitation_acceptance",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "89847200c5f5ae04802dda82047648499c20d955013f0fce8e06538230679196"
+        },
+        {
+          "nom": "20260923160000_tracefab_product_api_functions",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "2153575d97dd82df6b5bd36257cd7cabed16c2493fabe56c5e62d524b5ee5d70"
+        },
+        {
+          "nom": "20260923170000_fix_data_collection_workflow_context",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "cebd301a044d4d713b5738028f3d3697e6099868467f54685500882a9fd3fc0e"
+        },
+        {
+          "nom": "20260923180000_fix_data_response_progress_guard",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "e1456e2fb8dc1f952ff335c54becbc603416f7ddb8d9e2200e8dacd7991ca08f"
+        },
+        {
+          "nom": "20260923190000_tracefab_notification_outbox",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "0ddde924c3fc022e7c1c208c18ffc9790bbb11db643849421b0db86afdcc0d8b"
+        },
+        {
+          "nom": "20260923200000_tracefab_collection_reminders",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "cce36f145c0de802b3c233a0d5a2bc7d6d321b0d96752bb961736d2c5a00ce7e"
+        },
+        {
+          "nom": "20261005090000_supplier_portal_advanced_hardening",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "13581e6c99a7c649e2a2e47280126362342b93adfcb45b6ec8161489455fc422"
+        },
+        {
+          "nom": "20261005100000_supplier_invitation_compatibility",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "3626074357755fdef4d158894c70580e89f3e4c728be604050efde599e3e26d5"
+        },
+        {
+          "nom": "20261006100000_security_force_rls_and_document_access",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "ee73157701cf4134c2498d31a552bfb0ce1c9851cf34536b50505accd9b3bcaf"
+        },
+        {
+          "nom": "20261006110000_quality_center_shared_access",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "64256414f28d96c3a55facd94d5adeb82d5252993538d2d63c38cc558154e4fe"
+        },
+        {
+          "nom": "20261006113000_clerk_directory_membership_sync",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "6e4f38601f2ed6c31164cb27f9c4dbc1bab841c57ec8cfab330ac8122aae7ba3"
+        },
+        {
+          "nom": "20261006120000_data_collection_bridge_and_quality_automation",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "a784cc042bc3f44b2f6c692d84cb5ebeff42608ca2829d03ad714497eb8e2c61"
+        },
+        {
+          "nom": "20261006120000_external_schema_bindings",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "df965ab28aa24b035576662da9552146f4b77c27a994da62466bc76344063c8d"
+        },
+        {
+          "nom": "20261006123000_clerk_sync_security_functions",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "f6732d8d578831e7253fb0b17751cda4cc9d1048705a3b1f5542efb29a9db805"
+        },
+        {
+          "nom": "20261006130000_tracefab_manual_data_request_reminders",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "17a756ec1c70027ca7e34ee415be5d933dea2e4ce017af3863f96e1d9469e7c6"
+        },
+        {
+          "nom": "20261006140000_supply_chain_traceability_api",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "3aec3897c43e026afc003b9fbb17a8cbc2f631d82f26f1e44add598ed6c938c9"
+        },
+        {
+          "nom": "20261006160000_dpp_readiness_exposure",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "bacfe553ee18fa61626925f5c069f0d5a48909612a518dbdb8e1a2aaff64d6bc"
+        },
+        {
+          "nom": "20261006180000_supplier_self_onboarding",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "b9e3f5ea1b8d3f956ba2525d5c1d69ecd872fbee8ec1b6501fefb28c7ae73b1d"
+        },
+        {
+          "nom": "20261006190000_catalog_import_export",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "036dc97d63f11b9972c4900f1c5646f9785a99bed205d2cc38868ad8db38e196"
+        },
+        {
+          "nom": "20261006200000_catalog_import_kind",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "d5241ea690e133703a4584cfb8d80e3281f4935a3fc914ba06c8ab3b60fa799b"
+        },
+        {
+          "nom": "20261006200000_document_ai_automated_verification",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "0eb5036c85c26b9009776702c190d1db5cb123f261e4223ea601e2fe4625d4ca"
+        },
+        {
+          "nom": "20261006210000_plm_erp_gs1_interoperability",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "6a8d03eb507b824e2a308d7e29113478d60d726255fcc1883cef56c506783044"
+        },
+        {
+          "nom": "20261006220000_esg_pef_footprint_engine",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "2d4f41bf4c2922c9cdc8ca6634c54572d11563c9e48d0f480a8760d8d81edc42"
+        },
+        {
+          "nom": "20261006220000_production_hardening",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "66ce9341c7efa7cdaa1b15ba56e2fb6253dea0c3816cfa451b6574609a02b8f9"
+        },
+        {
+          "nom": "20261006230000_green_claims_anti_greenwashing_engine",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "8430fc08710247140de7afaec8d14a2dd56027e15039ddf95b2f45aa7b97b816"
+        },
+        {
+          "nom": "20261006240000_quality_corrective_action_plans_cap",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "fad3c6ba25db488b23a8675eee5b59c78ad94bf34360bb1b79116fe47787c67f"
+        },
+        {
+          "nom": "20261006250000_universal_supplier_passport",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "cbb5af324a9fd23a85e8d828c1c12495aff3cd91b29d007478b8d00ad783f6f8"
+        },
+        {
+          "nom": "20261006260000_mass_balance_anti_fraud_engine",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "d0328a36291e20799ab9b2934d130bcb191e2762b219f3173a0d3b1d48c7a36e"
+        },
+        {
+          "nom": "20261007100000_security_definer_execute_hardening",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "61e18ea4c858e003e7505c18f738436d09261a44214feab457bf1f1414ac79b8"
+        },
+        {
+          "nom": "20261007120000_force_rls_schema_bindings",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "c1f8585dd9b84a96996c042817e5a76adde1ac3163fedd3ab525e5d3c7ec483b"
+        },
+        {
+          "nom": "20261008100000_rate_limit_counters",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "7d7b7a6cb9bb6ea824ff57c1ab418dd4ee77d40cc74fc457ae2c02c7eff0cabe"
+        },
+        {
+          "nom": "20261009120000_fix_materials_policy_recursion",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "44c230dc2f9c403da5a05613c6ba1af8924268b657b046640549beb3e0ac4131"
+        },
+        {
+          "nom": "20261009180000_public_read_context",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "9100ed08cef28aac0ab2971a6cd83daa1a71b133624e1ba898699e8c80c5b4c9"
+        },
+        {
+          "nom": "20261010120000_publication_explicite",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "8b741eab1ff17cb8aaed5f6fc02217209ec84ed44bcbc4617ec7c53ec8cddae6"
+        },
+        {
+          "nom": "20261012120000_close_public_execute_gap",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "4f6e710f543950838c796b10985745490165b354142abf35ad40d5b0111248a6"
+        },
+        {
+          "nom": "20261014100000_revoke_material_visible_public",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "ff6d95415e4d7f1fcf8bb7087278d2d93c3fe1b8b142e126c3ce06a41ab1ee04"
+        },
+        {
+          "nom": "20261014110000_revoke_dpp_functions_public",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "0a141838e80d480373032570638011d079d4402986b522962b7d64edd997633c"
+        },
+        {
+          "nom": "20261014120000_close_global_default_function_execute",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "cfb6ebac4a6035855d476962c11ade0d3f10df43ebe029dedd0a7c7e2d54de1c"
+        },
+        {
+          "nom": "20261014130000_revoke_public_schema_privileges",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "c6df54676462efca2f061e274f5c74f777e079a683fabd6542a083f5c0c6fe95"
+        },
+        {
+          "nom": "20261014140000_remove_public_supplier_passport_share_token",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "d73f1c2d3cf2d175e413603c37952c577d67b75bbf4da9a41fa5180378f1cab7"
+        },
+        {
+          "nom": "20261016130000_dynamic_dpp_lifecycle",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "10b7d8627b1811fcf2fc3a29864a21ac3d2be853e1a6a04d5318aa2175e55998"
+        },
+        {
+          "nom": "20261016150000_dpp_claim_evidence_chain",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "8c3e0f1e77a0b052a4fcbf62e06c9d9c4c2170f15e8d03634e1b38268458d260"
+        },
+        {
+          "nom": "20261016170000_dpp_resolvable_identity",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "f9406fbe10d07e4110596ef6e856345fd0fa0866a3b1b6014ba96288904f3d8f"
+        },
+        {
+          "nom": "20261017100000_fix_document_lifecycle_access",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "7cc1cbfd98a798ba2cad60de88225fac3401d0e491414fe11df14918125778a6"
+        },
+        {
+          "nom": "20261017120000_active_tenant_context",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "e15c0786ca0b666aebd9662c007dd4fbaba9304017c5ed1bfe5ef5681289c8bd"
+        },
+        {
+          "nom": "20261017120000_harden_dpp_table_privileges",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "5366746f7ff72ca64b88472fbda95ff47e000c85dd72e1f84559bd61caea6607"
+        },
+        {
+          "nom": "20261017150000_harden_finalize_ops_gate",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "bee1dbce49735b2030593b57590c4b6874f124369bb9bb774e7db3df9c65179b"
+        },
+        {
+          "nom": "20261019120000_restreindre_dml_role_applicatif",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "19dc214f731ecf47e42d44c82e0b13aa2020a19b8f7a0a3d81f4bf6e08c33a49"
+        },
+        {
+          "nom": "20261019140000_restreindre_suppression_compteurs_debit",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "1120041bd9f6aa6907a09d380a94edf95449d7b055860e83f2e28973e50c333a"
+        },
+        {
+          "nom": "20261019160000_retablir_dml_tables_ecrites_directement",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "477789e475f0a8009ade2e9444ff279991b6e3176ac38b267ced7afb72bb9842"
+        },
+        {
+          "nom": "20261020120000_structured_supply_chain_graph_membership",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "1e42d60bf6d808616b806993a15fbc41f6691e2370ecd7a6a9a67dabfa950614"
+        },
+        {
+          "nom": "20261021120000_limit_app_function_execute",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "e9f00fb17be91ece1925d159e8b128146fdb9eddb0f7d986202e7cc2ae299b6c"
+        },
+        {
+          "nom": "20261021130000_reconcile_runtime_dml_and_migration_history",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "ec998cc29967613d8fe299cf038a88b0b81d64896aa4ed76affecaa652249983"
+        },
+        {
+          "nom": "20261021170000_dpp_readiness_truthful_gates",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "3ead8852d9adf5c550e12c6d00665cdf8ef845694bdcb268cc8ab88219519269"
+        },
+        {
+          "nom": "20261023120000_revoke_app_default_dml",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "fa6bcc2447b5e9da0f68c8ff284e63677b3ceaa7aae1e3f95c8e3dd1cadbea04"
+        },
+        {
+          "nom": "20261027100000_dpp_quality_gate_requires_assessment",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "2389767489968dff735392922373afeb1c1cb77c4abdb1d43ad9ac14ecff8fd5"
+        },
+        {
+          "nom": "20261027130000_dpp_review_preservation_and_publication_coherence",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "53fee8be3f0e0a79ab395ee6de7b5e0e4562f5d5a8c0f6476761d3363c3e5727"
+        },
+        {
+          "nom": "20261028120000_runtime_function_registry",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "54e1679cf9d7b8e0d66200e6e943b3dc2e7e26d8187bb00b6ddf3f480f9ca4e0"
+        },
+        {
+          "nom": "20261028120100_worker_identity_not_forgeable",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "7adbab6591cc50144061f65b556012b8d14c00e83f537b004384b2cee9b7e2c1"
+        },
+        {
+          "nom": "20261028120200_document_reserved_fields_internal_only",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "e19bcff17a337986c2a969964ddc947b0b43b6a565716bbe258389095527b500"
+        },
+        {
+          "nom": "20261028130000_product_computed_fields_column_scoped",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "19b34a90620a6eb449938dc751a26d684013d98926deb38ad817b71dfc2964c3"
+        },
+        {
+          "nom": "20261028140000_supplier_invitation_owner_relationship_scope",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "6a94aea73674b5cfeef9611284afdf8895c3f6b8de28d8376ab472f32bb6b21c"
+        },
+        {
+          "nom": "20261028150000_reconcile_plm_erp_sync_job_policies",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "989ab45407f48fe4326c31ed38b1bf9ffc7e3a68da6afc998a9cc003734a93fa"
+        },
+        {
+          "nom": "20261029180000_plm_erp_sync_jobs_policy_dedup",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "896dfad2f465908a8299f3639eb246292ba1b806ae13bfd3b3cf6218fdf6801f"
+        },
+        {
+          "nom": "20261030140000_ingest_payload_role_guard_and_acl",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "d35c3ed56a2447f1bdd5be76839f6051af4589902e664781beda95ae96c75267"
+        },
+        {
+          "nom": "20261031120000_identite_hmac_liee_au_contexte",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "48ec239a8dde15fb25b34a37727f3c93cbab83865e298634e3e4ea6b07124ff2"
+        },
+        {
+          "nom": "20261102120000_identite_stricte_email_et_rotation",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "30c24ef2b6b424a302ebe9de091ade96fb8a63177c0b5ce76f36048315a609aa"
+        },
+        {
+          "nom": "20261105180000_active_tenant_access_guards",
+          "ref": "HEAD",
+          "sha256": "4f55f443ad2e0f3208ccec2a5e4cada65205d3482ed29c162c3fd7dfe8f6c4ad"
+        },
+        {
+          "nom": "20261106120000_p107_hmac_forme_canonique_et_ttl",
+          "ref": "HEAD",
+          "sha256": "e66c470618cd2f35555306f1e0fef000959bcda47f535ceb9cf36f6170c4258b"
+        },
+        {
+          "nom": "20261106130000_identite_systeme_signee",
+          "ref": "refs/remotes/audit/pr114-nouveau",
+          "sha256": "e29a9ebd1a201898d0cde0282c914892469ae436dccfeb4ac9274cc18b02406b"
+        },
+        {
+          "nom": "20261107120000_p108_outbox_proprietaire_et_dependances",
+          "ref": "HEAD (migration corrective P10.8)",
+          "sha256": "6bf720822f7a361bf2703a85c7583e66f056f05e5303a6c910ce783f0e7d31dc"
+        }
+      ]
+    },
+    {
+      "scenario": "T1_111_et_ancienne_114",
+      "refs": [
+        "main",
+        "#111",
+        "#114-ancien"
+      ],
+      "totale": 87,
+      "appliquees": 87,
+      "migrations_echouees": [],
+      "collisions": [
+        {
+          "horodatage": "20261006120000",
+          "n": 2
+        },
+        {
+          "horodatage": "20261006200000",
+          "n": 2
+        },
+        {
+          "horodatage": "20261006220000",
+          "n": 2
+        },
+        {
+          "horodatage": "20261017120000",
+          "n": 2
+        },
+        {
+          "horodatage": "20261105120000",
+          "n": 2
+        }
+      ],
+      "empreinte_chaine": "183fa18cf9d68b252399ea6a13ae3c8049080bd7dc9ed04d3dde65e16d29dba5",
+      "version_postgresql": "PostgreSQL 17.11 on x86_64-pc-linux-gnu, compiled by gcc (Ubuntu 7.5.0-3ubuntu1~18.04) 7.5.0, 64-bit",
+      "secdef": 128,
+      "tables_force_rls": 53,
+      "migrations": [
+        {
+          "nom": "20260923130000_tracefab_neon_initial",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "6c755b436b9effd1a860dc5d07fb02bc1c38c405229fd4adb16d8c4582a14102"
+        },
+        {
+          "nom": "20260923140000_tracefab_clerk_context",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "534dc2d4a166c647c333314d3f5fa1e3f79b7b7a38bc0b45656177aded18771a"
+        },
+        {
+          "nom": "20260923150000_fix_invitation_acceptance",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "89847200c5f5ae04802dda82047648499c20d955013f0fce8e06538230679196"
+        },
+        {
+          "nom": "20260923160000_tracefab_product_api_functions",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "2153575d97dd82df6b5bd36257cd7cabed16c2493fabe56c5e62d524b5ee5d70"
+        },
+        {
+          "nom": "20260923170000_fix_data_collection_workflow_context",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "cebd301a044d4d713b5738028f3d3697e6099868467f54685500882a9fd3fc0e"
+        },
+        {
+          "nom": "20260923180000_fix_data_response_progress_guard",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "e1456e2fb8dc1f952ff335c54becbc603416f7ddb8d9e2200e8dacd7991ca08f"
+        },
+        {
+          "nom": "20260923190000_tracefab_notification_outbox",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "0ddde924c3fc022e7c1c208c18ffc9790bbb11db643849421b0db86afdcc0d8b"
+        },
+        {
+          "nom": "20260923200000_tracefab_collection_reminders",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "cce36f145c0de802b3c233a0d5a2bc7d6d321b0d96752bb961736d2c5a00ce7e"
+        },
+        {
+          "nom": "20261005090000_supplier_portal_advanced_hardening",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "13581e6c99a7c649e2a2e47280126362342b93adfcb45b6ec8161489455fc422"
+        },
+        {
+          "nom": "20261005100000_supplier_invitation_compatibility",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "3626074357755fdef4d158894c70580e89f3e4c728be604050efde599e3e26d5"
+        },
+        {
+          "nom": "20261006100000_security_force_rls_and_document_access",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "ee73157701cf4134c2498d31a552bfb0ce1c9851cf34536b50505accd9b3bcaf"
+        },
+        {
+          "nom": "20261006110000_quality_center_shared_access",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "64256414f28d96c3a55facd94d5adeb82d5252993538d2d63c38cc558154e4fe"
+        },
+        {
+          "nom": "20261006113000_clerk_directory_membership_sync",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "6e4f38601f2ed6c31164cb27f9c4dbc1bab841c57ec8cfab330ac8122aae7ba3"
+        },
+        {
+          "nom": "20261006120000_data_collection_bridge_and_quality_automation",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "a784cc042bc3f44b2f6c692d84cb5ebeff42608ca2829d03ad714497eb8e2c61"
+        },
+        {
+          "nom": "20261006120000_external_schema_bindings",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "df965ab28aa24b035576662da9552146f4b77c27a994da62466bc76344063c8d"
+        },
+        {
+          "nom": "20261006123000_clerk_sync_security_functions",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "f6732d8d578831e7253fb0b17751cda4cc9d1048705a3b1f5542efb29a9db805"
+        },
+        {
+          "nom": "20261006130000_tracefab_manual_data_request_reminders",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "17a756ec1c70027ca7e34ee415be5d933dea2e4ce017af3863f96e1d9469e7c6"
+        },
+        {
+          "nom": "20261006140000_supply_chain_traceability_api",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "3aec3897c43e026afc003b9fbb17a8cbc2f631d82f26f1e44add598ed6c938c9"
+        },
+        {
+          "nom": "20261006160000_dpp_readiness_exposure",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "bacfe553ee18fa61626925f5c069f0d5a48909612a518dbdb8e1a2aaff64d6bc"
+        },
+        {
+          "nom": "20261006180000_supplier_self_onboarding",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "b9e3f5ea1b8d3f956ba2525d5c1d69ecd872fbee8ec1b6501fefb28c7ae73b1d"
+        },
+        {
+          "nom": "20261006190000_catalog_import_export",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "036dc97d63f11b9972c4900f1c5646f9785a99bed205d2cc38868ad8db38e196"
+        },
+        {
+          "nom": "20261006200000_catalog_import_kind",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "d5241ea690e133703a4584cfb8d80e3281f4935a3fc914ba06c8ab3b60fa799b"
+        },
+        {
+          "nom": "20261006200000_document_ai_automated_verification",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "0eb5036c85c26b9009776702c190d1db5cb123f261e4223ea601e2fe4625d4ca"
+        },
+        {
+          "nom": "20261006210000_plm_erp_gs1_interoperability",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "6a8d03eb507b824e2a308d7e29113478d60d726255fcc1883cef56c506783044"
+        },
+        {
+          "nom": "20261006220000_esg_pef_footprint_engine",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "2d4f41bf4c2922c9cdc8ca6634c54572d11563c9e48d0f480a8760d8d81edc42"
+        },
+        {
+          "nom": "20261006220000_production_hardening",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "66ce9341c7efa7cdaa1b15ba56e2fb6253dea0c3816cfa451b6574609a02b8f9"
+        },
+        {
+          "nom": "20261006230000_green_claims_anti_greenwashing_engine",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "8430fc08710247140de7afaec8d14a2dd56027e15039ddf95b2f45aa7b97b816"
+        },
+        {
+          "nom": "20261006240000_quality_corrective_action_plans_cap",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "fad3c6ba25db488b23a8675eee5b59c78ad94bf34360bb1b79116fe47787c67f"
+        },
+        {
+          "nom": "20261006250000_universal_supplier_passport",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "cbb5af324a9fd23a85e8d828c1c12495aff3cd91b29d007478b8d00ad783f6f8"
+        },
+        {
+          "nom": "20261006260000_mass_balance_anti_fraud_engine",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "d0328a36291e20799ab9b2934d130bcb191e2762b219f3173a0d3b1d48c7a36e"
+        },
+        {
+          "nom": "20261007100000_security_definer_execute_hardening",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "61e18ea4c858e003e7505c18f738436d09261a44214feab457bf1f1414ac79b8"
+        },
+        {
+          "nom": "20261007120000_force_rls_schema_bindings",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "c1f8585dd9b84a96996c042817e5a76adde1ac3163fedd3ab525e5d3c7ec483b"
+        },
+        {
+          "nom": "20261008100000_rate_limit_counters",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "7d7b7a6cb9bb6ea824ff57c1ab418dd4ee77d40cc74fc457ae2c02c7eff0cabe"
+        },
+        {
+          "nom": "20261009120000_fix_materials_policy_recursion",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "44c230dc2f9c403da5a05613c6ba1af8924268b657b046640549beb3e0ac4131"
+        },
+        {
+          "nom": "20261009180000_public_read_context",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "9100ed08cef28aac0ab2971a6cd83daa1a71b133624e1ba898699e8c80c5b4c9"
+        },
+        {
+          "nom": "20261010120000_publication_explicite",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "8b741eab1ff17cb8aaed5f6fc02217209ec84ed44bcbc4617ec7c53ec8cddae6"
+        },
+        {
+          "nom": "20261012120000_close_public_execute_gap",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "4f6e710f543950838c796b10985745490165b354142abf35ad40d5b0111248a6"
+        },
+        {
+          "nom": "20261014100000_revoke_material_visible_public",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "ff6d95415e4d7f1fcf8bb7087278d2d93c3fe1b8b142e126c3ce06a41ab1ee04"
+        },
+        {
+          "nom": "20261014110000_revoke_dpp_functions_public",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "0a141838e80d480373032570638011d079d4402986b522962b7d64edd997633c"
+        },
+        {
+          "nom": "20261014120000_close_global_default_function_execute",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "cfb6ebac4a6035855d476962c11ade0d3f10df43ebe029dedd0a7c7e2d54de1c"
+        },
+        {
+          "nom": "20261014130000_revoke_public_schema_privileges",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "c6df54676462efca2f061e274f5c74f777e079a683fabd6542a083f5c0c6fe95"
+        },
+        {
+          "nom": "20261014140000_remove_public_supplier_passport_share_token",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "d73f1c2d3cf2d175e413603c37952c577d67b75bbf4da9a41fa5180378f1cab7"
+        },
+        {
+          "nom": "20261016130000_dynamic_dpp_lifecycle",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "10b7d8627b1811fcf2fc3a29864a21ac3d2be853e1a6a04d5318aa2175e55998"
+        },
+        {
+          "nom": "20261016150000_dpp_claim_evidence_chain",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "8c3e0f1e77a0b052a4fcbf62e06c9d9c4c2170f15e8d03634e1b38268458d260"
+        },
+        {
+          "nom": "20261016170000_dpp_resolvable_identity",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "f9406fbe10d07e4110596ef6e856345fd0fa0866a3b1b6014ba96288904f3d8f"
+        },
+        {
+          "nom": "20261017100000_fix_document_lifecycle_access",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "7cc1cbfd98a798ba2cad60de88225fac3401d0e491414fe11df14918125778a6"
+        },
+        {
+          "nom": "20261017120000_active_tenant_context",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "e15c0786ca0b666aebd9662c007dd4fbaba9304017c5ed1bfe5ef5681289c8bd"
+        },
+        {
+          "nom": "20261017120000_harden_dpp_table_privileges",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "5366746f7ff72ca64b88472fbda95ff47e000c85dd72e1f84559bd61caea6607"
+        },
+        {
+          "nom": "20261017150000_harden_finalize_ops_gate",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "bee1dbce49735b2030593b57590c4b6874f124369bb9bb774e7db3df9c65179b"
+        },
+        {
+          "nom": "20261019120000_restreindre_dml_role_applicatif",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "19dc214f731ecf47e42d44c82e0b13aa2020a19b8f7a0a3d81f4bf6e08c33a49"
+        },
+        {
+          "nom": "20261019140000_restreindre_suppression_compteurs_debit",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "1120041bd9f6aa6907a09d380a94edf95449d7b055860e83f2e28973e50c333a"
+        },
+        {
+          "nom": "20261019160000_retablir_dml_tables_ecrites_directement",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "477789e475f0a8009ade2e9444ff279991b6e3176ac38b267ced7afb72bb9842"
+        },
+        {
+          "nom": "20261020120000_structured_supply_chain_graph_membership",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "1e42d60bf6d808616b806993a15fbc41f6691e2370ecd7a6a9a67dabfa950614"
+        },
+        {
+          "nom": "20261021120000_limit_app_function_execute",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "e9f00fb17be91ece1925d159e8b128146fdb9eddb0f7d986202e7cc2ae299b6c"
+        },
+        {
+          "nom": "20261021130000_reconcile_runtime_dml_and_migration_history",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "ec998cc29967613d8fe299cf038a88b0b81d64896aa4ed76affecaa652249983"
+        },
+        {
+          "nom": "20261021170000_dpp_readiness_truthful_gates",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "3ead8852d9adf5c550e12c6d00665cdf8ef845694bdcb268cc8ab88219519269"
+        },
+        {
+          "nom": "20261023120000_revoke_app_default_dml",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "fa6bcc2447b5e9da0f68c8ff284e63677b3ceaa7aae1e3f95c8e3dd1cadbea04"
+        },
+        {
+          "nom": "20261027100000_dpp_quality_gate_requires_assessment",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "2389767489968dff735392922373afeb1c1cb77c4abdb1d43ad9ac14ecff8fd5"
+        },
+        {
+          "nom": "20261027130000_dpp_review_preservation_and_publication_coherence",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "53fee8be3f0e0a79ab395ee6de7b5e0e4562f5d5a8c0f6476761d3363c3e5727"
+        },
+        {
+          "nom": "20261028120000_runtime_function_registry",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "54e1679cf9d7b8e0d66200e6e943b3dc2e7e26d8187bb00b6ddf3f480f9ca4e0"
+        },
+        {
+          "nom": "20261028120100_worker_identity_not_forgeable",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "7adbab6591cc50144061f65b556012b8d14c00e83f537b004384b2cee9b7e2c1"
+        },
+        {
+          "nom": "20261028120200_document_reserved_fields_internal_only",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "e19bcff17a337986c2a969964ddc947b0b43b6a565716bbe258389095527b500"
+        },
+        {
+          "nom": "20261028130000_product_computed_fields_column_scoped",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "19b34a90620a6eb449938dc751a26d684013d98926deb38ad817b71dfc2964c3"
+        },
+        {
+          "nom": "20261028140000_supplier_invitation_owner_relationship_scope",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "6a94aea73674b5cfeef9611284afdf8895c3f6b8de28d8376ab472f32bb6b21c"
+        },
+        {
+          "nom": "20261028150000_reconcile_plm_erp_sync_job_policies",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "989ab45407f48fe4326c31ed38b1bf9ffc7e3a68da6afc998a9cc003734a93fa"
+        },
+        {
+          "nom": "20261029180000_plm_erp_sync_jobs_policy_dedup",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "896dfad2f465908a8299f3639eb246292ba1b806ae13bfd3b3cf6218fdf6801f"
+        },
+        {
+          "nom": "20261030140000_ingest_payload_role_guard_and_acl",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "d35c3ed56a2447f1bdd5be76839f6051af4589902e664781beda95ae96c75267"
+        },
+        {
+          "nom": "20261031120000_identite_hmac_liee_au_contexte",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "48ec239a8dde15fb25b34a37727f3c93cbab83865e298634e3e4ea6b07124ff2"
+        },
+        {
+          "nom": "20261102120000_identite_stricte_email_et_rotation",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "30c24ef2b6b424a302ebe9de091ade96fb8a63177c0b5ce76f36048315a609aa"
+        },
+        {
+          "nom": "20261104090000_plm_integrations_and_gs1_constraints",
+          "ref": "refs/remotes/audit/pr111",
+          "sha256": "a040be467aaaa289822ec5fadd1dd8c6885744b4bb31120276ea0b0be6f3c2bb"
+        },
+        {
+          "nom": "20261104100000_supply_chain_status_enum_casts",
+          "ref": "refs/remotes/audit/pr111",
+          "sha256": "418d4d8d4978e1b19ea5e19402e77135798ac70b1bbcfe8f149ab7a4eba8c606"
+        },
+        {
+          "nom": "20261105120000_active_tenant_plm_ingest_enforcement",
+          "ref": "refs/remotes/audit/pr111",
+          "sha256": "40f37608024bbedaafd8e5a3d814f0f1a7cf82319647e0b265bc1aed56f27802"
+        },
+        {
+          "nom": "20261105120000_identite_systeme_signee",
+          "ref": "refs/remotes/audit/pr114",
+          "sha256": "7d760742e033b7ca9045471db917526c304a2ac1187e470182fd83f25d5240c9"
+        },
+        {
+          "nom": "20261105130000_active_tenant_product_dpp_pef_rls",
+          "ref": "refs/remotes/audit/pr111",
+          "sha256": "cf38feb4a8625d6529b09a88be4f7b40d6a701cceef8ed57bc73f40982ce838f"
+        },
+        {
+          "nom": "20261105140000_active_tenant_green_claims_rls",
+          "ref": "refs/remotes/audit/pr111",
+          "sha256": "eadc14967cc9486ca28a3dab0ea2cafbc101684392af4e753b0c8302e8c2184c"
+        },
+        {
+          "nom": "20261105150000_active_tenant_dpp_claims_identity_rls",
+          "ref": "refs/remotes/audit/pr111",
+          "sha256": "392c1e0358bcc43e49de77ca87bd9397ec835c97e9caad3f25539f96c1f38110"
+        },
+        {
+          "nom": "20261105160000_active_tenant_product_materials_rls",
+          "ref": "refs/remotes/audit/pr111",
+          "sha256": "7787349c03507f13a364ec3c1bc0bff6a29bea6a8a3eff86c8780328f12eb7e7"
+        },
+        {
+          "nom": "20261105170000_active_tenant_security_definer_guards",
+          "ref": "refs/remotes/audit/pr111",
+          "sha256": "667e1f29a7b15a66670932f590eb58259468d2ca2e894f653cfda8fbabc8943b"
+        },
+        {
+          "nom": "20261105180000_active_tenant_tc_registration_guard",
+          "ref": "refs/remotes/audit/pr111",
+          "sha256": "5d59326faae7fed87e72fe0aa2374625296db79a45b760a2da594f5647be74bb"
+        },
+        {
+          "nom": "20261105190000_active_tenant_quality_collection_guards",
+          "ref": "refs/remotes/audit/pr111",
+          "sha256": "71d7ad89c68fa8a7b6c7fdb7e2cd5409531ed0c091e0e72c12f8df2410d2a83c"
+        },
+        {
+          "nom": "20261105200000_active_tenant_material_certification_guards",
+          "ref": "refs/remotes/audit/pr111",
+          "sha256": "f26f6d9d520cf0aabd23ea64339465f7644e94c4b5dd03a3c8838d380bdf193b"
+        },
+        {
+          "nom": "20261105210000_active_tenant_supplier_profile_passport_guards",
+          "ref": "refs/remotes/audit/pr111",
+          "sha256": "dc5fd776d7d4f34fa236d2b378ff9d76778de025714c2c0e0b1ed385ea2089a7"
+        },
+        {
+          "nom": "20261105220000_active_tenant_quality_cap_guards",
+          "ref": "refs/remotes/audit/pr111",
+          "sha256": "7af5c8e86671f3338b5c466ad86a974ce9c4da4e460ca703aaa4b8783c9102f8"
+        },
+        {
+          "nom": "20261105230000_active_tenant_invite_document_passport_guards",
+          "ref": "refs/remotes/audit/pr111",
+          "sha256": "5f8b3f953f4bdbc85c716d710ef3125c6810232487d3b66861fccff583da8a80"
+        },
+        {
+          "nom": "20261105235900_active_tenant_policy_and_worker_closure",
+          "ref": "refs/remotes/audit/pr111",
+          "sha256": "75f800b7f842c171e50714652b39fecc8fc281504d68816667921407e267ae9c"
+        },
+        {
+          "nom": "20261105240000_active_tenant_supplier_quality_guard",
+          "ref": "refs/remotes/audit/pr111",
+          "sha256": "c06f18684eee66df4f69de2d50c337fc920218b6b78d62753be0327b5d6d76b2"
+        },
+        {
+          "nom": "20261106000000_active_tenant_supplier_passport_guards",
+          "ref": "refs/remotes/audit/pr111",
+          "sha256": "e266e512b445e51242792d3ae0aa791561e1079625b09134b5c5dae9e81377f9"
+        }
+      ]
+    },
+    {
+      "scenario": "T2_110_112_113_114",
+      "refs": [
+        "main",
+        "#110",
+        "#112",
+        "#113",
+        "#114"
+      ],
+      "totale": 94,
+      "appliquees": 94,
+      "migrations_echouees": [],
+      "collisions": [
+        {
+          "horodatage": "20261006120000",
+          "n": 2
+        },
+        {
+          "horodatage": "20261006200000",
+          "n": 2
+        },
+        {
+          "horodatage": "20261006220000",
+          "n": 2
+        },
+        {
+          "horodatage": "20261017120000",
+          "n": 2
+        },
+        {
+          "horodatage": "20261105180000",
+          "n": 2
+        }
+      ],
+      "empreinte_chaine": "7775b1bce0906fe5907e5d6cccbd22b97e937899f76617dbb25050949607bb18",
+      "version_postgresql": "PostgreSQL 17.11 on x86_64-pc-linux-gnu, compiled by gcc (Ubuntu 7.5.0-3ubuntu1~18.04) 7.5.0, 64-bit",
+      "secdef": 131,
+      "tables_force_rls": 53,
+      "migrations": [
+        {
+          "nom": "20260923130000_tracefab_neon_initial",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "6c755b436b9effd1a860dc5d07fb02bc1c38c405229fd4adb16d8c4582a14102"
+        },
+        {
+          "nom": "20260923140000_tracefab_clerk_context",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "534dc2d4a166c647c333314d3f5fa1e3f79b7b7a38bc0b45656177aded18771a"
+        },
+        {
+          "nom": "20260923150000_fix_invitation_acceptance",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "89847200c5f5ae04802dda82047648499c20d955013f0fce8e06538230679196"
+        },
+        {
+          "nom": "20260923160000_tracefab_product_api_functions",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "2153575d97dd82df6b5bd36257cd7cabed16c2493fabe56c5e62d524b5ee5d70"
+        },
+        {
+          "nom": "20260923170000_fix_data_collection_workflow_context",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "cebd301a044d4d713b5738028f3d3697e6099868467f54685500882a9fd3fc0e"
+        },
+        {
+          "nom": "20260923180000_fix_data_response_progress_guard",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "e1456e2fb8dc1f952ff335c54becbc603416f7ddb8d9e2200e8dacd7991ca08f"
+        },
+        {
+          "nom": "20260923190000_tracefab_notification_outbox",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "0ddde924c3fc022e7c1c208c18ffc9790bbb11db643849421b0db86afdcc0d8b"
+        },
+        {
+          "nom": "20260923200000_tracefab_collection_reminders",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "cce36f145c0de802b3c233a0d5a2bc7d6d321b0d96752bb961736d2c5a00ce7e"
+        },
+        {
+          "nom": "20261005090000_supplier_portal_advanced_hardening",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "13581e6c99a7c649e2a2e47280126362342b93adfcb45b6ec8161489455fc422"
+        },
+        {
+          "nom": "20261005100000_supplier_invitation_compatibility",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "3626074357755fdef4d158894c70580e89f3e4c728be604050efde599e3e26d5"
+        },
+        {
+          "nom": "20261006100000_security_force_rls_and_document_access",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "ee73157701cf4134c2498d31a552bfb0ce1c9851cf34536b50505accd9b3bcaf"
+        },
+        {
+          "nom": "20261006110000_quality_center_shared_access",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "64256414f28d96c3a55facd94d5adeb82d5252993538d2d63c38cc558154e4fe"
+        },
+        {
+          "nom": "20261006113000_clerk_directory_membership_sync",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "6e4f38601f2ed6c31164cb27f9c4dbc1bab841c57ec8cfab330ac8122aae7ba3"
+        },
+        {
+          "nom": "20261006120000_data_collection_bridge_and_quality_automation",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "a784cc042bc3f44b2f6c692d84cb5ebeff42608ca2829d03ad714497eb8e2c61"
+        },
+        {
+          "nom": "20261006120000_external_schema_bindings",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "df965ab28aa24b035576662da9552146f4b77c27a994da62466bc76344063c8d"
+        },
+        {
+          "nom": "20261006123000_clerk_sync_security_functions",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "f6732d8d578831e7253fb0b17751cda4cc9d1048705a3b1f5542efb29a9db805"
+        },
+        {
+          "nom": "20261006130000_tracefab_manual_data_request_reminders",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "17a756ec1c70027ca7e34ee415be5d933dea2e4ce017af3863f96e1d9469e7c6"
+        },
+        {
+          "nom": "20261006140000_supply_chain_traceability_api",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "3aec3897c43e026afc003b9fbb17a8cbc2f631d82f26f1e44add598ed6c938c9"
+        },
+        {
+          "nom": "20261006160000_dpp_readiness_exposure",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "bacfe553ee18fa61626925f5c069f0d5a48909612a518dbdb8e1a2aaff64d6bc"
+        },
+        {
+          "nom": "20261006180000_supplier_self_onboarding",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "b9e3f5ea1b8d3f956ba2525d5c1d69ecd872fbee8ec1b6501fefb28c7ae73b1d"
+        },
+        {
+          "nom": "20261006190000_catalog_import_export",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "036dc97d63f11b9972c4900f1c5646f9785a99bed205d2cc38868ad8db38e196"
+        },
+        {
+          "nom": "20261006200000_catalog_import_kind",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "d5241ea690e133703a4584cfb8d80e3281f4935a3fc914ba06c8ab3b60fa799b"
+        },
+        {
+          "nom": "20261006200000_document_ai_automated_verification",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "0eb5036c85c26b9009776702c190d1db5cb123f261e4223ea601e2fe4625d4ca"
+        },
+        {
+          "nom": "20261006210000_plm_erp_gs1_interoperability",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "6a8d03eb507b824e2a308d7e29113478d60d726255fcc1883cef56c506783044"
+        },
+        {
+          "nom": "20261006220000_esg_pef_footprint_engine",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "2d4f41bf4c2922c9cdc8ca6634c54572d11563c9e48d0f480a8760d8d81edc42"
+        },
+        {
+          "nom": "20261006220000_production_hardening",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "66ce9341c7efa7cdaa1b15ba56e2fb6253dea0c3816cfa451b6574609a02b8f9"
+        },
+        {
+          "nom": "20261006230000_green_claims_anti_greenwashing_engine",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "8430fc08710247140de7afaec8d14a2dd56027e15039ddf95b2f45aa7b97b816"
+        },
+        {
+          "nom": "20261006240000_quality_corrective_action_plans_cap",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "fad3c6ba25db488b23a8675eee5b59c78ad94bf34360bb1b79116fe47787c67f"
+        },
+        {
+          "nom": "20261006250000_universal_supplier_passport",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "cbb5af324a9fd23a85e8d828c1c12495aff3cd91b29d007478b8d00ad783f6f8"
+        },
+        {
+          "nom": "20261006260000_mass_balance_anti_fraud_engine",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "d0328a36291e20799ab9b2934d130bcb191e2762b219f3173a0d3b1d48c7a36e"
+        },
+        {
+          "nom": "20261007100000_security_definer_execute_hardening",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "61e18ea4c858e003e7505c18f738436d09261a44214feab457bf1f1414ac79b8"
+        },
+        {
+          "nom": "20261007120000_force_rls_schema_bindings",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "c1f8585dd9b84a96996c042817e5a76adde1ac3163fedd3ab525e5d3c7ec483b"
+        },
+        {
+          "nom": "20261008100000_rate_limit_counters",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "7d7b7a6cb9bb6ea824ff57c1ab418dd4ee77d40cc74fc457ae2c02c7eff0cabe"
+        },
+        {
+          "nom": "20261009120000_fix_materials_policy_recursion",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "44c230dc2f9c403da5a05613c6ba1af8924268b657b046640549beb3e0ac4131"
+        },
+        {
+          "nom": "20261009180000_public_read_context",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "9100ed08cef28aac0ab2971a6cd83daa1a71b133624e1ba898699e8c80c5b4c9"
+        },
+        {
+          "nom": "20261010120000_publication_explicite",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "8b741eab1ff17cb8aaed5f6fc02217209ec84ed44bcbc4617ec7c53ec8cddae6"
+        },
+        {
+          "nom": "20261012120000_close_public_execute_gap",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "4f6e710f543950838c796b10985745490165b354142abf35ad40d5b0111248a6"
+        },
+        {
+          "nom": "20261014100000_revoke_material_visible_public",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "ff6d95415e4d7f1fcf8bb7087278d2d93c3fe1b8b142e126c3ce06a41ab1ee04"
+        },
+        {
+          "nom": "20261014110000_revoke_dpp_functions_public",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "0a141838e80d480373032570638011d079d4402986b522962b7d64edd997633c"
+        },
+        {
+          "nom": "20261014120000_close_global_default_function_execute",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "cfb6ebac4a6035855d476962c11ade0d3f10df43ebe029dedd0a7c7e2d54de1c"
+        },
+        {
+          "nom": "20261014130000_revoke_public_schema_privileges",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "c6df54676462efca2f061e274f5c74f777e079a683fabd6542a083f5c0c6fe95"
+        },
+        {
+          "nom": "20261014140000_remove_public_supplier_passport_share_token",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "d73f1c2d3cf2d175e413603c37952c577d67b75bbf4da9a41fa5180378f1cab7"
+        },
+        {
+          "nom": "20261016130000_dynamic_dpp_lifecycle",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "10b7d8627b1811fcf2fc3a29864a21ac3d2be853e1a6a04d5318aa2175e55998"
+        },
+        {
+          "nom": "20261016150000_dpp_claim_evidence_chain",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "8c3e0f1e77a0b052a4fcbf62e06c9d9c4c2170f15e8d03634e1b38268458d260"
+        },
+        {
+          "nom": "20261016170000_dpp_resolvable_identity",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "f9406fbe10d07e4110596ef6e856345fd0fa0866a3b1b6014ba96288904f3d8f"
+        },
+        {
+          "nom": "20261017100000_fix_document_lifecycle_access",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "7cc1cbfd98a798ba2cad60de88225fac3401d0e491414fe11df14918125778a6"
+        },
+        {
+          "nom": "20261017120000_active_tenant_context",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "e15c0786ca0b666aebd9662c007dd4fbaba9304017c5ed1bfe5ef5681289c8bd"
+        },
+        {
+          "nom": "20261017120000_harden_dpp_table_privileges",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "5366746f7ff72ca64b88472fbda95ff47e000c85dd72e1f84559bd61caea6607"
+        },
+        {
+          "nom": "20261017150000_harden_finalize_ops_gate",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "bee1dbce49735b2030593b57590c4b6874f124369bb9bb774e7db3df9c65179b"
+        },
+        {
+          "nom": "20261019120000_restreindre_dml_role_applicatif",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "19dc214f731ecf47e42d44c82e0b13aa2020a19b8f7a0a3d81f4bf6e08c33a49"
+        },
+        {
+          "nom": "20261019140000_restreindre_suppression_compteurs_debit",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "1120041bd9f6aa6907a09d380a94edf95449d7b055860e83f2e28973e50c333a"
+        },
+        {
+          "nom": "20261019160000_retablir_dml_tables_ecrites_directement",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "477789e475f0a8009ade2e9444ff279991b6e3176ac38b267ced7afb72bb9842"
+        },
+        {
+          "nom": "20261020120000_structured_supply_chain_graph_membership",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "1e42d60bf6d808616b806993a15fbc41f6691e2370ecd7a6a9a67dabfa950614"
+        },
+        {
+          "nom": "20261021120000_limit_app_function_execute",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "e9f00fb17be91ece1925d159e8b128146fdb9eddb0f7d986202e7cc2ae299b6c"
+        },
+        {
+          "nom": "20261021130000_reconcile_runtime_dml_and_migration_history",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "ec998cc29967613d8fe299cf038a88b0b81d64896aa4ed76affecaa652249983"
+        },
+        {
+          "nom": "20261021170000_dpp_readiness_truthful_gates",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "3ead8852d9adf5c550e12c6d00665cdf8ef845694bdcb268cc8ab88219519269"
+        },
+        {
+          "nom": "20261023120000_revoke_app_default_dml",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "fa6bcc2447b5e9da0f68c8ff284e63677b3ceaa7aae1e3f95c8e3dd1cadbea04"
+        },
+        {
+          "nom": "20261027100000_dpp_quality_gate_requires_assessment",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "2389767489968dff735392922373afeb1c1cb77c4abdb1d43ad9ac14ecff8fd5"
+        },
+        {
+          "nom": "20261027130000_dpp_review_preservation_and_publication_coherence",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "53fee8be3f0e0a79ab395ee6de7b5e0e4562f5d5a8c0f6476761d3363c3e5727"
+        },
+        {
+          "nom": "20261028120000_runtime_function_registry",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "54e1679cf9d7b8e0d66200e6e943b3dc2e7e26d8187bb00b6ddf3f480f9ca4e0"
+        },
+        {
+          "nom": "20261028120100_worker_identity_not_forgeable",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "7adbab6591cc50144061f65b556012b8d14c00e83f537b004384b2cee9b7e2c1"
+        },
+        {
+          "nom": "20261028120200_document_reserved_fields_internal_only",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "e19bcff17a337986c2a969964ddc947b0b43b6a565716bbe258389095527b500"
+        },
+        {
+          "nom": "20261028130000_product_computed_fields_column_scoped",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "19b34a90620a6eb449938dc751a26d684013d98926deb38ad817b71dfc2964c3"
+        },
+        {
+          "nom": "20261028140000_supplier_invitation_owner_relationship_scope",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "6a94aea73674b5cfeef9611284afdf8895c3f6b8de28d8376ab472f32bb6b21c"
+        },
+        {
+          "nom": "20261028150000_reconcile_plm_erp_sync_job_policies",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "989ab45407f48fe4326c31ed38b1bf9ffc7e3a68da6afc998a9cc003734a93fa"
+        },
+        {
+          "nom": "20261029180000_plm_erp_sync_jobs_policy_dedup",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "896dfad2f465908a8299f3639eb246292ba1b806ae13bfd3b3cf6218fdf6801f"
+        },
+        {
+          "nom": "20261030140000_ingest_payload_role_guard_and_acl",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "d35c3ed56a2447f1bdd5be76839f6051af4589902e664781beda95ae96c75267"
+        },
+        {
+          "nom": "20261031120000_identite_hmac_liee_au_contexte",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "48ec239a8dde15fb25b34a37727f3c93cbab83865e298634e3e4ea6b07124ff2"
+        },
+        {
+          "nom": "20261102120000_identite_stricte_email_et_rotation",
+          "ref": "788df22019c0d2b39301678ecfbc43ac868561bf",
+          "sha256": "30c24ef2b6b424a302ebe9de091ade96fb8a63177c0b5ce76f36048315a609aa"
+        },
+        {
+          "nom": "20261104090000_plm_integrations_and_gs1_constraints",
+          "ref": "refs/remotes/audit/pr110-nouveau",
+          "sha256": "a040be467aaaa289822ec5fadd1dd8c6885744b4bb31120276ea0b0be6f3c2bb"
+        },
+        {
+          "nom": "20261104100000_supply_chain_status_enum_casts",
+          "ref": "refs/remotes/audit/pr110-nouveau",
+          "sha256": "418d4d8d4978e1b19ea5e19402e77135798ac70b1bbcfe8f149ab7a4eba8c606"
+        },
+        {
+          "nom": "20261105120000_active_tenant_plm_ingest_enforcement",
+          "ref": "refs/remotes/audit/pr110-nouveau",
+          "sha256": "40f37608024bbedaafd8e5a3d814f0f1a7cf82319647e0b265bc1aed56f27802"
+        },
+        {
+          "nom": "20261105130000_active_tenant_product_dpp_pef_rls",
+          "ref": "refs/remotes/audit/pr110-nouveau",
+          "sha256": "cf38feb4a8625d6529b09a88be4f7b40d6a701cceef8ed57bc73f40982ce838f"
+        },
+        {
+          "nom": "20261105140000_active_tenant_green_claims_rls",
+          "ref": "refs/remotes/audit/pr110-nouveau",
+          "sha256": "eadc14967cc9486ca28a3dab0ea2cafbc101684392af4e753b0c8302e8c2184c"
+        },
+        {
+          "nom": "20261105150000_active_tenant_dpp_claims_identity_rls",
+          "ref": "refs/remotes/audit/pr110-nouveau",
+          "sha256": "392c1e0358bcc43e49de77ca87bd9397ec835c97e9caad3f25539f96c1f38110"
+        },
+        {
+          "nom": "20261105160000_active_tenant_product_materials_rls",
+          "ref": "refs/remotes/audit/pr110-nouveau",
+          "sha256": "7787349c03507f13a364ec3c1bc0bff6a29bea6a8a3eff86c8780328f12eb7e7"
+        },
+        {
+          "nom": "20261105170000_active_tenant_security_definer_guards",
+          "ref": "refs/remotes/audit/pr110-nouveau",
+          "sha256": "667e1f29a7b15a66670932f590eb58259468d2ca2e894f653cfda8fbabc8943b"
+        },
+        {
+          "nom": "20261105180000_active_tenant_access_guards",
+          "ref": "HEAD",
+          "sha256": "4f55f443ad2e0f3208ccec2a5e4cada65205d3482ed29c162c3fd7dfe8f6c4ad"
+        },
+        {
+          "nom": "20261105180000_active_tenant_tc_registration_guard",
+          "ref": "refs/remotes/audit/pr110-nouveau",
+          "sha256": "5d59326faae7fed87e72fe0aa2374625296db79a45b760a2da594f5647be74bb"
+        },
+        {
+          "nom": "20261105190000_active_tenant_quality_collection_guards",
+          "ref": "refs/remotes/audit/pr110-nouveau",
+          "sha256": "71d7ad89c68fa8a7b6c7fdb7e2cd5409531ed0c091e0e72c12f8df2410d2a83c"
+        },
+        {
+          "nom": "20261105200000_active_tenant_material_certification_guards",
+          "ref": "refs/remotes/audit/pr110-nouveau",
+          "sha256": "f26f6d9d520cf0aabd23ea64339465f7644e94c4b5dd03a3c8838d380bdf193b"
+        },
+        {
+          "nom": "20261105210000_active_tenant_supplier_profile_passport_guards",
+          "ref": "refs/remotes/audit/pr110-nouveau",
+          "sha256": "dc5fd776d7d4f34fa236d2b378ff9d76778de025714c2c0e0b1ed385ea2089a7"
+        },
+        {
+          "nom": "20261105220000_active_tenant_quality_cap_guards",
+          "ref": "refs/remotes/audit/pr110-nouveau",
+          "sha256": "7af5c8e86671f3338b5c466ad86a974ce9c4da4e460ca703aaa4b8783c9102f8"
+        },
+        {
+          "nom": "20261105230000_active_tenant_invite_document_passport_guards",
+          "ref": "refs/remotes/audit/pr110-nouveau",
+          "sha256": "5f8b3f953f4bdbc85c716d710ef3125c6810232487d3b66861fccff583da8a80"
+        },
+        {
+          "nom": "20261105235900_active_tenant_policy_and_worker_closure",
+          "ref": "refs/remotes/audit/pr110-nouveau",
+          "sha256": "75f800b7f842c171e50714652b39fecc8fc281504d68816667921407e267ae9c"
+        },
+        {
+          "nom": "20261105240000_active_tenant_supplier_quality_guard",
+          "ref": "refs/remotes/audit/pr110-nouveau",
+          "sha256": "c06f18684eee66df4f69de2d50c337fc920218b6b78d62753be0327b5d6d76b2"
+        },
+        {
+          "nom": "20261105250000_active_tenant_document_material_access",
+          "ref": "refs/remotes/audit/pr112",
+          "sha256": "dc7671c45a5fa84241ab6e2a6e6818ff0604cb2c72658ddced8f22bd1ff27f66"
+        },
+        {
+          "nom": "20261105260000_runtime_user_email_definer_guard",
+          "ref": "refs/remotes/audit/pr112",
+          "sha256": "89220540da94bcfd5af7b1d5e48cc25958a988f4eae969a0514a198d218e827d"
+        },
+        {
+          "nom": "20261105270000_runtime_read_users_and_registry",
+          "ref": "refs/remotes/audit/pr112",
+          "sha256": "7dc0f8c01303391ead690e4f8c286fc745d12d8b959a79fc437f79ebe76022d4"
+        },
+        {
+          "nom": "20261105280000_active_tenant_document_indirect_paths",
+          "ref": "refs/remotes/audit/pr112",
+          "sha256": "a262d065b2c0c6f887d9c0f8af64b6611fcaaca070ca9ad5a085d642aa63352b"
+        },
+        {
+          "nom": "20261106000000_active_tenant_supplier_passport_guards",
+          "ref": "refs/remotes/audit/pr110-nouveau",
+          "sha256": "e266e512b445e51242792d3ae0aa791561e1079625b09134b5c5dae9e81377f9"
+        },
+        {
+          "nom": "20261106120000_p107_hmac_forme_canonique_et_ttl",
+          "ref": "HEAD",
+          "sha256": "e66c470618cd2f35555306f1e0fef000959bcda47f535ceb9cf36f6170c4258b"
+        },
+        {
+          "nom": "20261106130000_identite_systeme_signee",
+          "ref": "refs/remotes/audit/pr114-nouveau",
+          "sha256": "e29a9ebd1a201898d0cde0282c914892469ae436dccfeb4ac9274cc18b02406b"
+        },
+        {
+          "nom": "20261107120000_p108_outbox_proprietaire_et_dependances",
+          "ref": "HEAD (migration corrective P10.8)",
+          "sha256": "6bf720822f7a361bf2703a85c7583e66f056f05e5303a6c910ce783f0e7d31dc"
+        }
+      ]
+    }
+  ],
+  "chaine_canonique": {
+    "nom": "S5_canonique_definitive",
+    "total": 73,
+    "appliquees": 73,
+    "collisions_nouvelles": [],
+    "empreinte": "64d26a68af371c34f088c45ce687c578e659770a1c5000b97b74704c24153c8a",
+    "ordre": "main(69) + #113(2) + #114(1, tete f0aeb51) + corrective P10.8(1) = 73"
+  }
+}

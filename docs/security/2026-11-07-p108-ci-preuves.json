@@ -1,0 +1,26 @@
+{
+  "schema": "tracefab-p108-ci-preuves-v1",
+  "mission": "P10.8 — preuves CI sur le SHA final",
+  "statut": "NOT RUN",
+  "note_methode": "Fichier d'observation : un commit ne peut pas contenir l'identifiant du run de CI que son propre push declenche. Ce squelette est versionne avec le code ; il est rempli dans l'espace de travail APRES la mesure CI sur le SHA final, sans nouveau commit, afin que le SHA final reste exactement celui que la CI a verifie. Les runs de l'ancien SHA 8846184735d8d27314b69ffc5f03511a6e5cfef9 (42372217777 / 42372217809) sont HISTORIQUES et ne prouvent PAS P10.8.",
+  "branche": "arena/0f697b3e-tracefab",
+  "sha_depart": "8846184735d8d27314b69ffc5f03511a6e5cfef9",
+  "sha_final": null,
+  "workflows": [],
+  "runs_historiques_non_retenus_comme_preuve": [
+    { "run_id": "42372217777", "sha": "8846184735d8d27314b69ffc5f03511a6e5cfef9", "motif": "SHA de depart P10.8, anterieur a la corrective" },
+    { "run_id": "42372217809", "sha": "8846184735d8d27314b69ffc5f03511a6e5cfef9", "motif": "SHA de depart P10.8, anterieur a la corrective" }
+  ],
+  "version_postgresql": null,
+  "jobs": [],
+  "etapes_ignorees": [],
+  "erreurs": [],
+  "checks_pr": null,
+  "mesures_harnais_ci": "docs/security/2026-11-07-p108-ci-mesures.json",
+  "environnements_dists": {
+    "vercel": "BLOCKED",
+    "neon": "BLOCKED",
+    "clerk": "BLOCKED",
+    "production": "BLOCKED"
+  }
+}

@@ -233,6 +233,16 @@ const REFUSED_WRITE_PROBE_DB_SUITES = [
  */
 const SELF_GUARDED_DB_TOOLS = [
   'scripts/db-deploy-throwaway.mjs',
+  // P10.8 : les trois harnais PostgreSQL 17.11 creent et detruissent leurs
+  // PROPRES bases `p108_*` dans un cluster jetable. Ils ecrivent (CREATE
+  // DATABASE, fixtures, modelisation des proprietaires) mais ne prennent
+  // JAMAIS une cible applicative fournie par l'operateur : `TF_P108_PG_URL`
+  // est classifiee par `requireThrowawayDb` au chargement du module, avec
+  // arret. La declaration n'est pas un blanc-seing : F2 relit le source et
+  // exige l'appel au chargement, sans `exitOnFailure: false`.
+  'scripts/harnais_p108_ci.mjs',
+  'scripts/harnais_p108_chaines.mjs',
+  'scripts/harnais_p108_outbox.mjs',
 ];
 
 /**

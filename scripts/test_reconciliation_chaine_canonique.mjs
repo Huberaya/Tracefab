@@ -1,10 +1,10 @@
 #!/usr/bin/env node
 /**
- * P10.7 — Chantier B : la CHAINE CANONIQUE reste coherente, SANS accès aux
+ * P10.8 (issu du Chantier B P10.7) : la CHAINE CANONIQUE reste coherente, SANS accès aux
  * refs distantes (ce test tourne dans la boucle CI `test:*`).
  *
  * Ce qu'il prouve :
- *   1. le manifeste est lisible, complet et annonce 73 entrees ;
+ *   1. le manifeste P10.8 est lisible, complet et annonce 73 entrees ;
  *   2. les 69 migrations deja appliquees sur `main` sont conservees BYTE POUR
  *      BYTE — aucune n'est renommee ni reecrite (interdiction de la mission) ;
  *   3. les entrees dont la source est le depot local ont une empreinte qui
@@ -12,7 +12,8 @@
  *      silence) ;
  *   4. aucune collision d'horodatage NOUVELLE : seules les quatre paires
  *      historiques acceptees par `verifier-horodatages-migrations.mjs` restent ;
- *   5. le correctif candidat outbox est present et son empreinte est exacte ;
+ *   5. le correctif P10.8 REEL est present, son empreinte est exacte, et
+ *      l'ancien candidat P10.7 (nom ambigu) a bien ete REMPLACE ;
  *   6. toutes les migrations du depot local figurent dans la chaine canonique ;
  *   7. les sept migrations historiques reecrites par #110/#111/#112 sont
  *      explicitement declarees exclues (pas d'oubli silencieux) ;
@@ -31,8 +32,9 @@ import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const MANIFESTE = path.join(ROOT, 'docs/security/2026-11-06-p107-chaine-canonique.json');
-const CORRECTIF = path.join(ROOT, 'docs/security/candidats/2026-11-06-proprietaire-outbox-identite-systeme.sql');
+const MANIFESTE = path.join(ROOT, 'docs/security/2026-11-07-p108-chaine-canonique.json');
+const MANIFESTE_P107 = path.join(ROOT, 'docs/security/2026-11-06-p107-chaine-canonique.json');
+const CORRECTIF = path.join(ROOT, 'prisma/migrations/20261107120000_p108_outbox_proprietaire_et_dependances/migration.sql');
 const MIGRATIONS = path.join(ROOT, 'prisma/migrations');
 
 let vertes = 0;
@@ -48,7 +50,8 @@ try { m = JSON.parse(fs.readFileSync(MANIFESTE, 'utf8')); }
 catch (e) { console.error(`  ECHEC manifeste illisible : ${e.message}`); process.exit(1); }
 
 console.log('\n  1. manifeste et compte');
-ok('schema attendu', m.schema === 'tracefab-p107-chaine-canonique-v1', m.schema);
+ok('schema attendu', m.schema === 'tracefab-p108-chaine-canonique-v1', m.schema);
+ok('le manifeste P10.7 historique est conserve sans reecriture', fs.existsSync(MANIFESTE_P107));
 ok('total annoncé = nombre d’entrées', m.total === m.entrees.length, `${m.total}/${m.entrees.length}`);
 ok('73 entrées dans la chaîne canonique', m.entrees.length === 73, String(m.entrees.length));
 ok('69 migrations historiques de main conservées',
@@ -86,10 +89,18 @@ ok('aucun renommage appliqué sur la chaîne canonique',
   m.renommages_aucun_sur_cette_chaine === true);
 
 console.log('\n  4. correctif candidat et exclusions');
-ok('correctif outbox présent dans la chaîne',
-  m.entrees.some((e) => e.source === 'candidat-local'));
-const correctif = m.entrees.find((e) => e.source === 'candidat-local');
+ok('correctif P10.8 réel présent dans la chaîne',
+  m.entrees.some((e) => e.source === 'correctif-p108'));
+const correctif = m.entrees.find((e) => e.source === 'correctif-p108');
 ok('empreinte du correctif exacte', !!correctif && correctif.sha256 === sha(CORRECTIF));
+ok('le correctif trie APRÈS #114 (aucune ambiguïté d’ordre)',
+  !!correctif && correctif.nom === '20261107120000_p108_outbox_proprietaire_et_dependances'
+  && m.entrees.at(-1).nom === correctif.nom, String(correctif?.nom));
+ok('ancien candidat 20261106120300 absent de la chaîne',
+  !m.entrees.some((e) => e.nom === '20261106120300_outbox_owner_identite_systeme'));
+ok('substitution du candidat explicitement documentée',
+  (m.remplace_candidat_p107 || {}).nouveau_nom === correctif?.nom
+  && /ambigu/i.test((m.remplace_candidat_p107 || {}).raison || ''));
 ok('sept migrations historiques réécrites par #110/#111/#112 déclarées',
   Array.isArray(m.migrations_historiques_reecrites_par_110_111_112)
   && m.migrations_historiques_reecrites_par_110_111_112.length === 7);
@@ -119,5 +130,5 @@ ok('empreinte de la migration #114 au format sha256',
   /^[0-9a-f]{64}$/.test((m.entrees.find((e) => e.nom === '20261106130000_identite_systeme_signee') || {}).sha256 || ''));
 
 console.log(`\n  Chaîne canonique : ${vertes} assertions, ${rouges} échec(s).`);
-console.log('  Ce test est statique ; l’application réelle est mesurée par p107:chaines.');
+console.log('  Ce test est statique ; l’application réelle est mesurée par p108:chaines / p108:outbox sur PostgreSQL 17.11.');
 process.exit(rouges === 0 ? 0 : 1);

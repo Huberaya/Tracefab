@@ -715,6 +715,21 @@ jobs:
         env:
           TF_EXIGER_LOCAL: oui
 
+      - name: 'P10.8 — outbox : claim / complete prouvés sur PostgreSQL 17.11 réel'
+        # Harnais AUTONOME (aucune ref Git d'audit) : il crée sa propre base
+        # jetable dans le service postgres:17, applique TOUTES les migrations
+        # du checkout dans l'ordre Prisma, puis exécute claim et complete par
+        # une VRAIE connexion `tracefab_app` (session_user = current_user,
+        # NOSUPERUSER, NOBYPASSRLS). Il vérifie le propriétaire worker, les ACL,
+        # RLS active/forcée et l'absence de lecture des clés. La version exacte
+        # du serveur est mesurée et consignée : PGlite 18.6 ne suffit pas.
+        # Aucune base distante, aucun secret, aucune élévation.
+        run: npm run p108:ci
+        env:
+          TF_P108_PG_URL: ${{ env.DATABASE_URL }}
+          TF_APP_PASSWORD: isolation_ci_jetable
+          TF_P108_ROLE_PASSWORD: isolation_ci_jetable
+
       - name: Privilèges SQL après migrations, avant le seed
         # Vérifie les GRANT conditionnels dans le scénario où tracefab_app
         # existe déjà, comme en production, avant que le seed n'accorde des droits.
