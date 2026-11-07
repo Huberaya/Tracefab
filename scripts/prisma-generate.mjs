@@ -160,7 +160,7 @@ if (isDeployment) {
 
 // Runner opérationnel exceptionnel : uniquement sur la branche dédiée et
 // avec une URL Neon directe branch-scoped. Aucun effet dans les builds normaux.
-if (process.env.TF_MIGRATION_RUNNER_TARGET) {
+if (process.env.TF_MIGRATION_RUNNER_TARGET === 'preproduction') {
   const runner = spawnSync(
     process.execPath,
     [join(ROOT, 'scripts', 'run_preprod_migrations_vercel.mjs')],
