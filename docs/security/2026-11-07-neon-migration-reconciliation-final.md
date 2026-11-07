@@ -2,11 +2,11 @@
 
 ## Verdict
 
-<NO-GO> **Production et Préproduction restent NO-GO pour l'application des 30 migrations en attente.**
+**GO Préproduction — 86/86 migrations appliquées avec Prisma 6.19.3, status à jour et second deploy sans opération. NO-GO Production — 30 migrations pending et rôle migrateur absent.**
 
 La barrière réseau qui empêchait le téléchargement du moteur Prisma dans le Codespace n'empêche plus les validations CI : le runner GitHub a installé et exécuté Prisma 6.19.3. Les 86 migrations de la branche passent sur PostgreSQL 17 jetable, et leurs 86 fichiers SQL ont également été rejoués sur un projet Neon 18.6 isolé.
 
-Le rôle migrateur est maintenant provisionné en Préproduction : attributs, privilèges de base/schéma et propriété des objets publics préexistants sont conformes. Un test SQL connecté comme `tracefab_migrator` a créé puis supprimé une table de contrôle. Les 30 migrations restent pending : aucun `prisma migrate deploy` n'a encore été exécuté sur la branche Préproduction. En Production, le rôle migrateur reste absent et aucun changement n'a été effectué.
+Le rôle migrateur et les objets publics ont été provisionnés en Préproduction, puis les 30 migrations pending ont été appliquées par le vrai CLI Prisma 6.19.3 depuis un runner Vercel Preview strictement branch-scoped. `migrate status` final confirme une base à jour ; le second `migrate deploy` est un no-op. Production reste inchangée : migrateur absent, 30 migrations pending.
 
 ## Références et périmètre
 
@@ -16,7 +16,7 @@ Le rôle migrateur est maintenant provisionné en Préproduction : attributs, pr
 - SHA du code audité avant l'ajout de ce rapport : `9a0fa5add34dc97dd321ee6c31ebac4c5f41ceda`.
 - CI Prisma : run `42389872681`, succès.
 - Intégration PostgreSQL : run `42389872683`, succès.
-- Aucun merge, aucun déploiement Production, aucun déploiement Vercel manuel, aucun changement de secret, `migrate resolve`, écriture manuelle de `_prisma_migrations`, ni migration Production/Préproduction. Une modification de privilèges/ownership a toutefois été effectuée en Préproduction le 07/11, documentée ci-dessous. Le commit documentaire a reçu un déploiement Vercel Preview `READY` (alias `tracefab-git-fix-n-ad44d4-baya-ibraimmayoanouedu-8164s-projects.vercel.app`) ; aucun déploiement `target=production` ni alias Production n'existe pour ce SHA.
+- Aucun merge ni déploiement Production. Un déploiement Vercel Preview manuel sur la branche opérationnelle `ops/tracefab-preprod-migrator-20261107` a exécuté le CLI Prisma 6.19.3 contre Préproduction uniquement. Le secret branch-scoped du migrateur a été invalidé par rotation du mot de passe puis remplacé par une URL factice ; le runner est désactivé. Aucun `migrate resolve` ni écriture manuelle dans `_prisma_migrations`. Production n'a reçu aucune modification.
 
 ## Inventaire des migrations
 
@@ -30,17 +30,18 @@ Les 17 ajouts sont les deux migrations forward PLM/GS1 du 04/11 et les quinze mi
 
 ### Historique réel Production et Préproduction
 
-Lecture directe de `_prisma_migrations` sur les deux branches Neon :
+Lecture directe après le déploiement Préproduction :
 
-- 58 lignes chacune ;
-- 56 lignes réussies et non annulées, correspondant à 56 noms de migration distincts ;
-- 2 tentatives annulées, chacune suivie d'une tentative réussie du même nom ;
-- 0 migration inachevée ;
-- les 58 lignes sont identiques entre Production et Préproduction, y compris checksums, dates et compteurs d'étapes.
+| Environnement | Lignes `_prisma_migrations` | Succès distincts | Tentatives annulées historiques | Inachevées | Pending |
+|---|---:|---:|---:|---:|---:|
+| Production | 58 | 56 | 2 | 0 | 30 |
+| Préproduction | 88 | 86 | 2 | 0 | 0 |
+
+Les deux tentatives annulées concernent `20261010120000_publication_explicite` et `20261017120000_active_tenant_context`. Elles ont chacune une ligne réussie ultérieure. Les 86 noms réussis en Préproduction correspondent exactement aux 86 dossiers de migration de la branche opérationnelle/dépôt ; aucun nom manquant ni inattendu.
 
 Les deux tentatives annulées concernent `20261010120000_publication_explicite` et `20261017120000_active_tenant_context`. Elles ont chacune une ligne réussie ultérieure : elles ne sont pas à résoudre ni à rejouer.
 
-**30 migrations sont en attente dans les deux environnements :**
+**30 migrations restent en attente en Production uniquement :**
 
 1. Historiques (13) :
    - `20261021170000_dpp_readiness_truthful_gates`
@@ -163,14 +164,14 @@ L'écart de provenance octet pour octet reste ouvert. Le test Prisma 6.19.3 prou
 
 Le contrat du rôle ne se limite pas à ses attributs et aux droits du schéma. Les migrations pending doivent aussi modifier les objets déjà existants.
 
-### Mesure sur les bases réelles (lecture seule)
+### Mesure initiale sur les bases réelles avant provisioning (lecture seule, 07/11)
 
 | Environnement | Propriétaire du schéma public | Propriétaire de la base | Relations publiques détenues par neondb_owner | Relations détenues par tracefab_migrator |
 |---|---|---|---:|---:|
 | Production | pg_database_owner | neondb_owner | 51 | 0 |
 | Préproduction | pg_database_owner | neondb_owner | 51 | 0 |
 
-L'inventaire complémentaire montre également 131 routines et 27 types autonomes détenus par `neondb_owner` dans chaque environnement. La migration 20261028120100 et les migrations active-tenant modifient ces objets existants. Donner uniquement CREATE sur le schéma ne confère pas le droit ALTER sur une table/fonction/type détenu par un autre rôle.
+L'inventaire initial montrait également 131 routines et 27 types autonomes détenus par `neondb_owner` dans chaque environnement. Après provisioning Préproduction, les 51 relations, 131 routines métier et 27 types autonomes sont détenus par `tracefab_migrator`. Production conserve les propriétaires initiaux. La migration 20261028120100 et les migrations active-tenant modifient ces objets existants ; CREATE seul sur le schéma n'aurait pas suffi.
 
 ### Test contrôlé de la stratégie de propriété
 
@@ -221,12 +222,13 @@ Les fonctions `pgcrypto` détenues par `cloud_admin` gardent leur EXECUTE PUBLIC
 
 ## Décision et suite
 
-**GO technique validé sur la branche Neon de référence ; NO-GO application Préproduction tant que la séquence Prisma réelle n'a pas été exécutée ; NO-GO Production.**
+**GO Préproduction — migration de base complète ; NO-GO Production.**
 
-1. Exécuter sur Préproduction le vrai CLI Prisma 6.19.3 : `migrate status`, `migrate deploy`, `migrate status`, puis second `migrate deploy` no-op. Contrôler les 30 migrations, les checksums, RLS, fonctions, worker, active-tenant et application.
-2. La connexion directe `tracefab_migrator` fonctionne via l'interface Neon ; il reste à l'injecter dans un runner protégé (GitHub Environment ou environnement Vercel isolé) sans exposer le secret à un build de PR non approuvé. Le Codespace n'est pas nécessaire.
-3. Faire relire/valider la PR #110 avant tout merge ou déploiement applicatif. La PR reste ouverte ; aucun merge n'a été effectué.
-4. Seulement après validation complète de Préproduction et du code compatible, provisionner le rôle migrateur en Production, transférer les objets publics selon le même contrôle fail-closed, puis appliquer les migrations Production.
-5. Garder HMAC strict désactivé jusqu'au provisionnement sécurisé de `TRACEFAB_IDENTITY_KEY` et à la preuve de couverture des routes signées.
+1. Preuve Prisma réelle sur Préproduction : `migrate status` initial a identifié exactement 30 migrations pending (code 1 attendu de Prisma) ; `migrate deploy` en a appliqué 30/30 ; le `migrate status` final affiche `Database schema is up to date!` ; le second `migrate deploy` affiche `No pending migrations to apply.` Le runner a terminé avec code 0.
+2. Historique Préproduction final : 88 lignes, 86 succès distincts, 2 tentatives annulées historiques, 0 inachevée, 0 pending. Les 86 noms réussis correspondent exactement aux 86 dossiers du dépôt.
+3. Catalogue Préproduction : 53 tables métier avec RLS et FORCE RLS (seule `_prisma_migrations` est exemptée) ; 127 fonctions SECURITY DEFINER, toutes avec `search_path` fixé et 0 exécution PUBLIC ; 134 politiques, dont 87 active-tenant ; registre runtime 92 entrées ; 10 fonctions détenues par `tracefab_worker`. `tracefab_app` reste NOBYPASSRLS/NOCREATEROLE, sans CREATE base/schéma et incapable de SET ROLE vers migrateur, worker ou propriétaire. `tracefab_worker` reste NOLOGIN/NOBYPASSRLS.
+4. HMAC strict reste désactivé (`strict=false`) et aucune clé n'est provisionnée ; c'est un gate distinct.
+5. Le secret de connexion migrateur utilisé par le runner a été invalidé par rotation du mot de passe. La variable Vercel branch-scoped a été remplacée par une URL factice et le drapeau runner par `disabled`. Le build de nettoyage est séparé ; aucun déploiement Production n'a été fait.
+6. La PR #110 reste ouverte et non fusionnée. Faire la revue applicative et les smoke tests Préproduction avec le runtime `tracefab_app` avant toute promotion. Production reste inchangée : rôle migrateur absent et 30 migrations pending. Ne pas appliquer Production avant revue et validation du code compatible.
 
-Le blocage réseau du CDN Prisma est contourné de manière sûre : l'exécution réelle Prisma a été faite depuis un environnement Vercel avec une connexion Neon directe. Il n'est pas nécessaire d'attendre l'administrateur réseau.
+Le blocage réseau du CDN Prisma est contourné : le runner Vercel a téléchargé et exécuté le vrai moteur Prisma 6.19.3. Aucun délai administrateur réseau n'est nécessaire pour les migrations Préproduction.
