@@ -195,26 +195,27 @@ Le test P10.5 a été étendu : il crée avant provisioning une table, une fonct
 
 ## Blocage réel : rôles Production / Préproduction
 
-Lecture directe des rôles PostgreSQL :
+Lecture directe des rôles PostgreSQL (bases réelles, lecture seule) :
 
 - Production : `tracefab_migrator` absent ; `tracefab_worker` absent.
-- Préproduction : `tracefab_migrator` existe, mais est LOGIN, NOBYPASSRLS, NOCREATEROLE, NOCREATEDB. Il peut se connecter et utiliser le schéma `public`, mais n'a ni privilège CREATE sur la base ni CREATE sur le schéma `public`. Il ne respecte donc pas le contrat migrateur.
+- Préproduction : `tracefab_migrator` existe, mais est LOGIN, NOBYPASSRLS, NOCREATEROLE, NOCREATEDB. Il peut se connecter et utiliser le schéma `public`, mais ne possède ni CREATE sur la base ni CREATE sur le schéma `public`.
+- Dans les deux environnements, les 51 relations, 131 routines et 27 types métier inventoriés sont détenus par `neondb_owner`, pas par le migrateur.
 - Dans les deux environnements, `tracefab_app` reste non privilégié : NOBYPASSRLS, NOCREATEROLE, NOCREATEDB. Il n'est membre ni de `tracefab_migrator` ni de `tracefab_worker`.
-- `neondb_owner` est un rôle d'administration BYPASSRLS/CREATEROLE ; l'utiliser comme substitut permanent au migrateur contournerait la séparation de privilèges recherchée.
+- `neondb_owner` est un rôle d'administration BYPASSRLS/CREATEROLE ; l'utiliser comme identité permanente de migration contournerait la séparation de privilèges recherchée.
 
-Le contrat cible des attributs du migrateur est : LOGIN, NOSUPERUSER, BYPASSRLS, CREATEROLE, NOCREATEDB, INHERIT, avec CONNECT sur la base et USAGE + CREATE sur le schéma `public`. Il doit aussi être propriétaire (ou disposer d'un mécanisme d'ownership équivalent, strictement testé) des objets qu'il modifie. Le runtime `tracefab_app` doit rester NOBYPASSRLS et NOCREATEROLE.
+Le contrat cible des attributs du migrateur est : LOGIN, NOSUPERUSER, BYPASSRLS, CREATEROLE, NOCREATEDB, INHERIT, CONNECT + CREATE sur la base (nécessaire au transfert du propriétaire du schéma), USAGE + CREATE sur le schéma `public`, et propriété des relations/routines/types publics qu'il doit modifier. Le correctif du script de provisioning et le test P10.5 couvrent désormais ce contrat. Le runtime `tracefab_app` reste NOBYPASSRLS et NOCREATEROLE.
 
-Aucun changement de rôle n'a été fait en Production ou Préproduction. Aucun secret de connexion direct Production/Préproduction n'a été créé ou modifié.
+Aucun changement de rôle, privilège, secret ou historique n'a été fait en Production ou Préproduction. La stratégie a été validée sur une branche Neon non-production avec le vrai CLI Prisma 6.19.3.
 
-## Décision et suite nécessaire
+## Décision et suite
 
-**NO-GO Production et Préproduction.** Les migrations SQL et les tests CI sont validés, mais l'identité réelle qui doit les exécuter n'est pas prête.
+**GO technique validé sur branche Neon de référence ; NO-GO Production et Préproduction tant que le provisionnement réel et la revue applicative ne sont pas terminés.**
 
-1. Provisionner/corriger le rôle `tracefab_migrator` en Préproduction selon le contrat ci-dessus, sans accorder de privilèges supplémentaires à `tracefab_app`.
-2. Provisionner son URL directe non poolée dans un environnement GitHub protégé, sans l'exposer dans les logs ou dans le dépôt.
-3. Sur une branche Neon jetable issue de Préproduction, exécuter avec le vrai CLI Prisma 6.19.3 : `migrate status`, `migrate deploy`, `migrate status`, puis un second `migrate deploy` sans migration pending. Vérifier les 30 migrations et le catalogue.
-4. Seulement après succès complet de Préproduction, provisionner le rôle/secret Production et répéter la procédure.
-5. Garder HMAC strict désactivé jusqu'au provisionnement sécurisé de `TRACEFAB_IDENTITY_KEY` et à la preuve de couverture des routes signées.
-6. Faire relire la PR #110 avant tout merge. Elle reste ouverte ; aucun merge ni déploiement n'a été effectué.
+1. Laisser terminer CI #1806 et obtenir le vert du test P10.5 qui simule des objets préexistants.
+2. Provisionner/corriger `tracefab_migrator` en Préproduction avec le script corrigé, via la connexion administrateur directe ; transférer les objets publics de `neondb_owner` au migrateur, sans toucher à `tracefab_app`.
+3. Exécuter sur Préproduction le vrai CLI Prisma 6.19.3 : `migrate status`, `migrate deploy`, `migrate status`, puis second `migrate deploy` no-op. Contrôler 86 migrations, checksums, RLS, fonctions, worker, active-tenant et application.
+4. Faire accepter le résultat Préproduction et faire relire/valider la PR #110 avant tout déploiement applicatif. La PR reste ouverte ; aucun merge n'a été effectué.
+5. Seulement après cette validation et le déploiement du code compatible, appliquer la même procédure à Production. Ne pas faire migrer Production avant le code qui dépend de ces nouvelles politiques et fonctions.
+6. Garder HMAC strict désactivé jusqu'au provisionnement sécurisé de `TRACEFAB_IDENTITY_KEY` et à la preuve de couverture des routes signées.
 
-La seule action manuelle désormais nécessaire n'est plus l'autorisation réseau du CDN Prisma : c'est le provisionnement sécurisé des rôles et des secrets de connexion des environnements réels.
+Le blocage réseau du CDN Prisma est contourné de manière sûre : l'exécution réelle Prisma a été faite depuis un environnement Vercel avec une connexion Neon directe. Il n'est pas nécessaire d'attendre l'administrateur réseau.
