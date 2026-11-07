@@ -127,6 +127,37 @@ Pour `20261006210000_plm_erp_gs1_interoperability` :
 
 L'écart de provenance octet pour octet reste ouvert. Le test Prisma 6.19.3 prouve que le checksum historique est conservé pendant l'application d'une migration pending. Aucun `migrate resolve` ni réécriture de l'historique n'est justifié.
 
+## Défaut supplémentaire du provisioning migrateur — mesuré le 07/11
+
+Le contrat du rôle ne se limite pas à ses attributs et aux droits du schéma. Les migrations pending doivent aussi modifier des objets déjà existants.
+
+### Mesure sur les bases réelles (lecture seule)
+
+| Environnement | Propriétaire du schéma public | Propriétaire de la base | Objets publics possédés par neondb_owner | Objets possédés par tracefab_migrator |
+|---|---|---|---:|---:|
+| Production | pg_database_owner | neondb_owner | 51 | 0 |
+| Préproduction | pg_database_owner | neondb_owner | 51 | 0 |
+
+La migration 20261028120100 et les migrations active-tenant modifient des tables/fonctions existantes. Le simple fait de donner CREATE sur le schéma ne confère pas le droit ALTER sur une table détenue par un autre rôle.
+
+### Test contrôlé sur la branche de validation existante
+
+La création d'une nouvelle branche Neon a été refusée par la limite de branches. Le test a donc utilisé la branche non-production `br-sweet-king-b1n2f4u6`, déjà dédiée à la validation (71 migrations réussies, 2 annulées).
+
+- Le rôle `tracefab_migrator` y a été créé par l'API Neon.
+- Les attributs BYPASSRLS et CREATEROLE ont été posés ; NOSUPERUSER, NOCREATEDB, LOGIN et INHERIT sont restés conformes.
+- Le schéma `public` a été transféré à `tracefab_migrator`, avec USAGE/CREATE.
+- Le test atomique `ALTER TABLE public.tracefab_products ADD COLUMN …` puis DROP, exécuté sous `tracefab_migrator`, a échoué avec SQLSTATE `42501` : **`must be owner of table tracefab_products`**. La transaction a été annulée ; aucune colonne de test n'a été conservée.
+- `tracefab_migrator` ne peut pas endosser `neondb_owner` (`pg_has_role(..., 'SET') = false`).
+
+Cette branche de validation est désormais modifiée par ce probe de rôle et ne doit plus être traitée comme un témoin vierge. Production et Préproduction n'ont reçu aucune de ces modifications.
+
+### Conséquence
+
+Le script `scripts/provisionner_roles_db.mjs` crée/vérifie les rôles et transfère le propriétaire du schéma `public`, mais ne transfère pas la propriété des objets préexistants. Le test P10.5 vérifie la chaîne sur une base vierge où le migrateur crée lui-même les objets ; il ne prouve pas le droit ALTER sur les 51 objets déjà détenus par `neondb_owner`.
+
+**Nouveau bloqueur P0 :** définir et tester une stratégie sûre pour que le migrateur puisse modifier les objets existants, sans donner d'appartenance d'administration à `tracefab_app), sans rendre les fonctions SECURITY DEFINER moins sûres et sans transférer aveuglément la propriété de toutes les fonctions. Les options (transfert sélectif de propriété ou rôle de connexion avec SET ROLE encadré) doivent être éprouvées sur une branche isolée avant tout provisionnement Préproduction.
+
 ## Blocage réel : rôles Production / Préproduction
 
 Lecture directe des rôles PostgreSQL :
@@ -136,7 +167,7 @@ Lecture directe des rôles PostgreSQL :
 - Dans les deux environnements, `tracefab_app` reste non privilégié : NOBYPASSRLS, NOCREATEROLE, NOCREATEDB. Il n'est membre ni de `tracefab_migrator` ni de `tracefab_worker`.
 - `neondb_owner` est un rôle d'administration BYPASSRLS/CREATEROLE ; l'utiliser comme substitut permanent au migrateur contournerait la séparation de privilèges recherchée.
 
-Le contrat cible du migrateur est : LOGIN, NOSUPERUSER, BYPASSRLS, CREATEROLE, NOCREATEDB, INHERIT, CONNECT sur la base, CREATE sur la base et USAGE + CREATE sur le schéma `public`. Le runtime `tracefab_app` doit rester NOBYPASSRLS et NOCREATEROLE.
+Le contrat cible des attributs du migrateur est : LOGIN, NOSUPERUSER, BYPASSRLS, CREATEROLE, NOCREATEDB, INHERIT, avec CONNECT sur la base et USAGE + CREATE sur le schéma `public`. Il doit aussi être propriétaire (ou disposer d'un mécanisme d'ownership équivalent, strictement testé) des objets qu'il modifie. Le runtime `tracefab_app` doit rester NOBYPASSRLS et NOCREATEROLE.
 
 Aucun changement de rôle n'a été fait en Production ou Préproduction. Aucun secret de connexion direct Production/Préproduction n'a été créé ou modifié.
 
