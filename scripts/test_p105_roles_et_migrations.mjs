@@ -126,6 +126,21 @@ try {
     TF_APP_PASSWORD: MDP_APP,
     TF_MIGRATOR_PASSWORD: MDP_MIG,
   };
+
+  // Simuler une base EXISTANTE : ces objets appartiennent à l'administrateur,
+  // pas au migrateur. Le provisioning doit transférer leur propriété avant
+  // que Prisma puisse ALTER TABLE / CREATE OR REPLACE FUNCTION.
+  const preexisting = new pg.Client({
+    connectionString: urlAdminBase,
+    ssl: sslDepuisUrl(urlAdminBase),
+    application_name: 'tracefab-p105-existing-owner-fixture',
+  });
+  await preexisting.connect();
+  await preexisting.query('CREATE TABLE public.tf_p105_existing_owner_probe (id integer PRIMARY KEY)');
+  await preexisting.query("CREATE TYPE public.tf_p105_existing_enum AS ENUM ('alpha', 'beta')");
+  await preexisting.query('CREATE FUNCTION public.tf_p105_existing_owner_probe_fn() RETURNS integer LANGUAGE sql IMMUTABLE AS $ SELECT 1 $');
+  await preexisting.query('REVOKE ALL ON FUNCTION public.tf_p105_existing_owner_probe_fn() FROM PUBLIC');
+  await preexisting.end();
   verrou = await verrouillerCluster({ urlProprietaire: urlAdmin });
   const prov1 = lancer(['scripts/provisionner_roles_db.mjs'], envProv);
   ok(prov1.status === 0, 'B3.1 provisioning initial réussi', `sortie ${prov1.status}`);
@@ -142,7 +157,43 @@ try {
   ok(schemaOwner === ROLE_MIGRATOR,
     'B3.1 le migrateur est propriétaire du schéma public de la base jetable',
     `owner=${schemaOwner ?? 'inconnu'}`);
+  const existingOwners = (await schemaProbe.query(`
+    SELECT
+      (SELECT pg_catalog.pg_get_userbyid(c.relowner)
+         FROM pg_catalog.pg_class c
+        WHERE c.oid = 'public.tf_p105_existing_owner_probe'::pg_catalog.regclass) AS table_owner,
+      (SELECT pg_catalog.pg_get_userbyid(t.typowner)
+         FROM pg_catalog.pg_type t
+         JOIN pg_catalog.pg_namespace n ON n.oid = t.typnamespace
+        WHERE n.nspname = 'public' AND t.typname = 'tf_p105_existing_enum') AS type_owner,
+      (SELECT pg_catalog.pg_get_userbyid(p.proowner)
+         FROM pg_catalog.pg_proc p
+         JOIN pg_catalog.pg_namespace n ON n.oid = p.pronamespace
+        WHERE n.nspname = 'public' AND p.proname = 'tf_p105_existing_owner_probe_fn') AS function_owner
+  `)).rows[0];
+  ok(existingOwners.table_owner === ROLE_MIGRATOR,
+    'B3.1 une table préexistante est transférée au migrateur', `owner=${existingOwners.table_owner}`);
+  ok(existingOwners.type_owner === ROLE_MIGRATOR,
+    'B3.1 un ENUM préexistant est transféré au migrateur', `owner=${existingOwners.type_owner}`);
+  ok(existingOwners.function_owner === ROLE_MIGRATOR,
+    'B3.1 une fonction préexistante est transférée au migrateur', `owner=${existingOwners.function_owner}`);
   await schemaProbe.end();
+
+  const migratorProbe = new pg.Client({
+    connectionString: url(ROLE_MIGRATOR),
+    ssl: sslDepuisUrl(url(ROLE_MIGRATOR)),
+    application_name: 'tracefab-p105-migrator-existing-owner-probe',
+  });
+  await migratorProbe.connect();
+  await migratorProbe.query('ALTER TABLE public.tf_p105_existing_owner_probe ADD COLUMN probe_value integer');
+  await migratorProbe.query('ALTER TABLE public.tf_p105_existing_owner_probe DROP COLUMN probe_value');
+  await migratorProbe.query('CREATE OR REPLACE FUNCTION public.tf_p105_existing_owner_probe_fn() RETURNS integer LANGUAGE sql IMMUTABLE AS $ SELECT 2 $');
+  await migratorProbe.query('DROP FUNCTION public.tf_p105_existing_owner_probe_fn()');
+  await migratorProbe.query('DROP TABLE public.tf_p105_existing_owner_probe');
+  await migratorProbe.query('DROP TYPE public.tf_p105_existing_enum');
+  await migratorProbe.end();
+  ok(true, 'B3.1 le migrateur peut modifier des objets préexistants (table, fonction, type)');
+
   const prov2 = lancer(['scripts/provisionner_roles_db.mjs'], envProv);
   ok(prov2.status === 0, 'B3.1 re-provisioning réussi (idempotent)', `sortie ${prov2.status}`);
   const alterEmis = /durci/.test(prov2.stdout);
