@@ -1,6 +1,6 @@
 {
   "schema": "tracefab-p107-antirejeu-v1",
-  "date": "2026-11-06T15:56:53.811Z",
+  "date": "2026-11-07T12:19:24.704Z",
   "environnement": "PGlite / PostgreSQL 18.6 jetable local",
   "migrations": 71,
   "version": "PostgreSQL 18.6 (PGlite 0.5.12) on wasm32-unknown-emscripten, compiled by emcc (",
