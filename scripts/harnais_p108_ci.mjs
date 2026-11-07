@@ -29,7 +29,12 @@ process.env.TF_P108_PG_URL ||= 'postgresql://postgres@127.0.0.1:55432/postgres';
 requireThrowawayDb({ variables: ['TF_P108_PG_URL'], purpose: 'harnais P10.8 — PostgreSQL 17.11 jetable' });
 
 const ROOT = path.resolve(import.meta.dirname || path.dirname(new URL(import.meta.url).pathname), '..');
-const SORTIE = path.join(ROOT, 'docs/security/2026-11-07-p108-ci-mesures.json');
+// En CI, ecrire dans le depot salirait `git status --porcelain` et ferait
+// echouer `test:garde-fous:neon` (code 2 : scenarios de revision NON JOUES).
+// La cible est donc configurable ; le workflow pose TF_P108_CI_SORTIE dans
+// runner.temp. Le rapport reste imprime dans le journal CI dans tous les cas.
+const SORTIE = process.env.TF_P108_CI_SORTIE
+  || path.join(ROOT, 'docs/security/2026-11-07-p108-ci-mesures.json');
 
 function chaineLocale() {
   const base = path.join(ROOT, 'prisma/migrations');
@@ -169,4 +174,14 @@ fs.writeFileSync(SORTIE, JSON.stringify(artefact, null, 2) + '\n');
 console.log(`\nP10.8 CI : ${pass} PASS / ${fail} FAIL — ${version}`);
 console.log(`Artefact : ${SORTIE}`);
 await admin.end();
+// Rangement : le cluster de CI est detruit avec le runner, mais un harnais
+// jetable ne doit laisser aucune base derriere lui, y compris en local.
+try {
+  const maintenance = await connecter('postgres');
+  await maintenance.query(`DROP DATABASE IF EXISTS ${DB} WITH (FORCE)`);
+  await maintenance.end();
+  console.log(`Base jetable ${DB} detruite.`);
+} catch (e) {
+  console.log(`Base jetable ${DB} non detruite (${String(e.message).slice(0, 120)}) — le cluster reste jetable.`);
+}
 if (fail > 0) process.exit(1);

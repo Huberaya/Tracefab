@@ -67,7 +67,9 @@ Chaque scénario consigne SQL, rôle actif, session (`session_user`, `current_us
 
 ## Phase E — Intégration et vérification
 
-**Statut local : PASS. Statut CI : voir § « CI sur le SHA final » ci-dessous.**
+**Statut local : PASS. Statut CI : PASS après correction d'un défaut réel détecté par la CI (voir § « CI sur le SHA final »).**
+
+La **première** exécution CI sur `b441ff746be2f634c98b32aeaf322992c71f7397` (run `42390411409`) a été **`failure`** : le job « Base — isolation RLS exécutée » a échoué à l'étape 21 `test:garde-fous:neon` (code 2), tandis que la nouvelle étape « P10.8 — outbox : claim / complete prouvés sur PostgreSQL 17.11 réel » (étape 11) était **déjà `success`**. Cause mesurée : le harnais `p108:ci` réécrivait `docs/security/2026-11-07-p108-ci-mesures.json` **dans le dépôt**, rendant `git status --porcelain` non vide ; le banc déclare alors les scénarios 4/5/8 « NON JOUÉS » et sort en 2, conformément à sa règle « un banc qui ne s'exécute pas ne vaut pas un banc qui passe ». **Aucun garde-fou n'a été désactivé** : la cible de l'artefact a été rendue configurable (`TF_P108_CI_SORTIE`), la CI écrit désormais dans `runner.temp`, et le harnais détruit sa base jetable en fin d'exécution. Le test échouant avant (`test:garde-fous:neon` en CI) passe après sur le SHA final.
 
 | Contrôle | Résultat |
 |---|---|
@@ -90,7 +92,7 @@ Trois ajustements de **garde-fous** ont été nécessaires et sont documentés, 
 
 ### CI sur le SHA final
 
-Les identifiants de workflow, de run, de job, la version exacte de PostgreSQL lue dans le service `postgres:17`, les durées, les étapes ignorées et les erreurs sont consignés dans **`docs/security/2026-11-07-p108-ci-preuves.json`**, fichier d'observation rempli **après** la mesure CI sur le SHA final (un fichier ne peut pas contenir l'identifiant du run que son propre commit déclenche). Le rapport de fin de mission et la réponse finale portent la synthèse. Aucun run antérieur — en particulier `42372217777` / `42372217809` du SHA `8846184` — n'est présenté comme preuve du SHA P10.8.
+Les identifiants de workflow, de run, de job, la version exacte de PostgreSQL lue dans le service `postgres:17`, les durées, les étapes ignorées et les erreurs sont consignés dans **`docs/security/2026-11-07-p108-ci-preuves.json`**, fichier d'observation rempli **après** la mesure CI sur le SHA final (un fichier ne peut pas contenir l'identifiant du run que son propre commit déclenche). Ce fichier consigne **aussi le run en échec** `42390411409` et sa cause : une CI « verte » obtenue en taisant un échec n'aurait aucune valeur. Le rapport de fin de mission et la réponse finale portent la synthèse. Aucun run antérieur — en particulier `42372217777` / `42372217809` du SHA `8846184`, ni `42390411409` du SHA intermédiaire `b441ff7` — n'est présenté comme preuve du SHA final.
 
 Une nouvelle étape a été ajoutée au job `Base` de `ci.yml` : `npm run p108:ci`, avec `TF_P108_PG_URL` pointant sur le service `postgres:17` **jetable** de la CI. Ce harnais est autonome (aucune ref Git d'audit), applique les 72 migrations du checkout depuis une base vierge et exécute claim/complete par une vraie session `tracefab_app`. Il mesure et consigne `PostgreSQL 17.11` exactement, ce que PGlite 18.6 ne pouvait pas faire.
 
@@ -103,8 +105,9 @@ Une nouvelle étape a été ajoutée au job `Base` de `ci.yml` : `npm run p108:c
 | `main` | **inchangé** (`788df220…` avant et après, vérifié par `git ls-remote origin main`) |
 | Migration créée | **1** : `20261107120000_p108_outbox_proprietaire_et_dependances` (232 lignes) |
 | Migrations historiques touchées | **0** (`git diff 788df220..HEAD -- prisma/migrations` : aucun fichier modifié/supprimé) |
-| Fichiers suivis modifiés | 5 : `ci.yml` (+15), `CHANTIERS-RESTANTS.md` (1 ligne), `package.json` (+6/−1), `test_destructive_suite_routing.mjs` (+10), `test_reconciliation_chaine_canonique.mjs` (+31/−12) |
-| Nouveaux fichiers | 12 : 1 migration, 4 scripts/lanceur, 7 documents/artefacts de preuve |
+| Fichiers suivis modifiés | 5 : `ci.yml`, `CHANTIERS-RESTANTS.md` (1 ligne), `package.json` (+6/−1), `test_destructive_suite_routing.mjs` (+10), `test_reconciliation_chaine_canonique.mjs` (+31/−12) |
+| Commits P10.8 sur la branche | 2 : livrables, puis correctif D6 (`TF_P108_CI_SORTIE` + rangement de la base jetable) |
+| Nouveaux fichiers | 13 : 1 migration, 5 scripts/lanceur, 7 documents/artefacts de preuve |
 | Rôles / permissions | 13 opérations → `tracefab_worker` ; aucun `GRANT` nouveau à `tracefab_app` ni à PUBLIC sur l'outbox ou le prédicat |
 | RLS | 3 politiques outbox **inchangées**, active **et** forcée ; 53 tables toujours forcées ; 0 désactivation |
 | HMAC / anti-rejeu | **aucun changement** de format, de secret ou de politique |
@@ -137,6 +140,9 @@ Aucun `BLOCKED` n'a été transformé en `PASS`. Aucune action distante modifian
 | D3 ordre ambigu du candidat `20261106120300` | mesure de tri : `< 20261106130000` (#114) | nom du correctif antérieur à sa précondition | nouvelle migration `20261107120000…`, candidat non recopié | `test:reconciliation-chaine-canonique` (2 échecs sur le manifeste P10.7) | 94/0, « trie APRÈS #114 » | 73 entrées, 0 nouvelle collision, 0 historique modifié |
 | D4 dépendance #111 non intégrable | S2 PASS, S1/S3 FAIL ; #110/#111/#112 réécrivent 7 migrations de `main` | #111 seul apportait le transfert de propriétaire | migration additive autonome, valable avec **et** sans #111/#114 | `S1`/`S3` | `S3b`, `p108:ci` (branche seule, 72/72) | `I1` idempotent, `I2` rôle non superutilisateur |
 | D5 faux positifs de garde-fous (YAML, routage, registre) | 4 suites en échec après ajout de la migration | nouveaux fichiers non déclarés / YAML non quoté | déclaration explicite + garde `requireThrowawayDb` + mise à jour du registre | `test:db-routing`, `test:workflow-policy`, `test:workflow-policy-temoins`, `test:chantiers` | 4/4 OK | couverture **augmentée** (90 → 94 assertions, +3 outils auto-gardés vérifiés) |
+| D6 arbre Git sali en CI (détecté par la CI, pas localement) | run `42390411409` → `failure`, job `Base`, étape 21 `test:garde-fous:neon` code 2 | `p108:ci` écrivait son artefact JSON **dans le dépôt**, donc `git status --porcelain` non vide → scénarios de révision NON JOUÉS | `TF_P108_CI_SORTIE` vers `runner.temp`, aucun fichier écrit dans l'arbre, base jetable détruite en fin de harnais | `test:garde-fous:neon` (CI, code 2) ; la suite était exclue de la boucle locale 156 | `test:garde-fous:neon` PASS sur le SHA final, 4/4 jobs CI verts | aucun test désactivé, aucun `continue-on-error`, `test:db-routing`/`test:workflow-policy`/témoins OK |
+
+**Leçon consignée** : la boucle locale 156/156 ne remplace pas la CI. `test:garde-fous:neon` exige une `DATABASE_URL` **et** un arbre propre ; il ne pouvait donc pas être joué localement sans base, et la CI seule pouvait révéler le défaut. Ce n'est pas une régression du correctif SQL (l'étape 11 `p108:ci` était verte dès le premier run), mais un défaut d'intégration du harnais.
 
 ---
 

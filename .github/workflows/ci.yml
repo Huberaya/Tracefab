@@ -729,6 +729,9 @@ jobs:
           TF_P108_PG_URL: ${{ env.DATABASE_URL }}
           TF_APP_PASSWORD: isolation_ci_jetable
           TF_P108_ROLE_PASSWORD: isolation_ci_jetable
+          # Hors du depot : un fichier ecrit dans l'arbre ferait echouer
+          # `test:garde-fous:neon` (arbre Git modifie -> scenarios NON JOUES).
+          TF_P108_CI_SORTIE: ${{ runner.temp }}/p108-ci-mesures.json
 
       - name: Privilèges SQL après migrations, avant le seed
         # Vérifie les GRANT conditionnels dans le scénario où tracefab_app
