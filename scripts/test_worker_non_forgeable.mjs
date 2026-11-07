@@ -30,6 +30,7 @@
  *                   catalogue — obligatoire
  * Sortie 0 = conforme, 1 = regression, 2 = environnement incomplet (NON EXECUTE).
  */
+import { randomUUID } from 'node:crypto';
 import { spawnSync } from 'node:child_process';
 import pg from 'pg';
 import { assertMemeCluster, assertRoleApplicatif } from './lib/identite_app.mjs';
@@ -61,8 +62,17 @@ const ok = (condition, libelle, detail) => {
 const app = new pg.Client({ connectionString: APP_URL, ssl: false });
 const admin = new pg.Client({ connectionString: ADMIN_URL, ssl: false });
 
-const compter = async (client, cible) =>
-  (await client.query(`select count(*)::int as n from ${cible}`)).rows[0].n;
+const compter = async (client, cible) => {
+  try {
+    return (await client.query(`select count(*)::int as n from ${cible}`)).rows[0].n;
+  } catch (error) {
+    // tracefab_app n'a volontairement aucun SELECT sur users. Le refus SQL
+    // 42501 est une protection plus forte que RLS=>0 ligne, et doit être
+    // compté comme inaccessible — sans accorder de SELECT direct sur users.
+    if (client === app && cible === 'public.users' && error.code === '42501') return 0;
+    throw error;
+  }
+};
 
 try {
   // R11 : les deux connexions doivent viser le MEME cluster, et la session
@@ -88,6 +98,22 @@ try {
   console.log(`Identite applicative : ${(await app.query('select current_user as u')).rows[0].u}\n`);
 
   const TABLES_SENSIBLES = ['public.organizations', 'public.users', 'public.organization_memberships'];
+
+  // Selon l'historique de provisioning, le SELECT applicatif peut être
+  // absent (état minimal) ou préexister. Dans les deux cas, la RLS reste la
+  // frontière : si le SELECT existe, il ne révèle que la ligne propre.
+  const appUsersSelect = await admin.query(
+    `select has_table_privilege('tracefab_app', 'public.users', 'SELECT') as allowed`,
+  );
+  const appPeutLireUsers = appUsersSelect.rows[0]?.allowed === true;
+  ok(
+    typeof appUsersSelect.rows[0]?.allowed === 'boolean',
+    'état ACL users déterminé sans ambiguïté',
+    JSON.stringify(appUsersSelect.rows[0]),
+  );
+  if (!appPeutLireUsers) {
+    ok(true, 'tracefab_app n’a aucun SELECT direct sur users (moindre privilège)');
+  }
 
   // --- 1. Sans contexte -----------------------------------------------------
   console.log('1. Sans contexte arme');
@@ -130,23 +156,76 @@ try {
     // c est ce que fait withTracefabTenantContext cote application.
     await app.query("select set_config('tracefab.user_id', $1, true)", [userId]);
     await app.query("select set_config('tracefab.user_email', $1, true)", [email.toLowerCase()]);
+    await app.query("select set_config('tracefab.active_organization_id', $1, true)", [org]);
     const vues = await app.query(
       'select count(*)::int as n from public.organizations where id = $1::uuid',
       [org],
     );
-    const autres = await app.query(
-      'select count(*)::int as n from public.organizations where id <> $1::uuid',
-      [org],
+    if (appPeutLireUsers) {
+      const utilisateursVisibles = await app.query(
+        'select id::text as id from public.users order by id',
+      );
+      ok(
+        utilisateursVisibles.rows.length === 1 && utilisateursVisibles.rows[0]?.id === userId,
+        'users_select_self limite le SELECT applicatif à sa propre identité',
+        `visibles=${utilisateursVisibles.rows.length}; identité=${userId}`,
+      );
+    }
+    const emailResolue = await app.query(
+      'select public.tracefab_current_user_email() as email',
     );
+    ok(
+      emailResolue.rows[0]?.email?.toLowerCase() === email.toLowerCase(),
+      'le resolver email lit users via SECURITY DEFINER worker sans SELECT applicatif',
+      emailResolue.rows[0]?.email ?? 'aucun email',
+    );
+    const adhesionsAttendues = await admin.query(
+      `select distinct organization_id::text as id
+         from public.organization_memberships
+        where user_id = $1::uuid and status = 'active'
+        order by 1`,
+      [userId],
+    );
+    const organisationsVisibles = await app.query(
+      'select id::text as id from public.organizations order by id',
+    );
+    const attendues = new Set(adhesionsAttendues.rows.map((row) => row.id));
+    const visibles = new Set(organisationsVisibles.rows.map((row) => row.id));
+    const inattendues = [...visibles].filter((id) => !attendues.has(id));
+    const manquantes = [...attendues].filter((id) => !visibles.has(id));
     ok(vues.rows[0].n === 1, 'le locataire legitime voit sa propre organisation', email);
-    ok(autres.rows[0].n === 0, 'il ne voit aucune autre organisation');
+    ok(
+      inattendues.length === 0 && manquantes.length === 0,
+      'le compte voit exactement les organisations auxquelles il est membre (sélecteur de tenant)',
+      `visibles=${[...visibles].length}; attendues=${[...attendues].length}; inattendues=${inattendues.length}; manquantes=${manquantes.length}`,
+    );
     await app.query('rollback');
   }
 
   // --- 4. Les six operations worker sous le role applicatif ----------------
   console.log('\n4. Operations systeme sous identite autorisee');
-  await app.query('begin');
+  // La sixieme fonction worker est appelee par le webhook Clerk pour resoudre
+  // l'organisation depuis son identifiant fournisseur. La fixture est creee
+  // par la fonction de synchronisation dans la MEME transaction, puis annulee.
+  const clerkOrgProbeKey = `org_worker_probe_${randomUUID()}`;
   try {
+    await app.query('begin');
+    const synced = await app.query(
+      `SELECT (tracefab_sync_clerk_organization(
+        $1, 'Worker probe', 'Worker probe', 'brand'::organization_type
+      )).id AS id`,
+      [clerkOrgProbeKey],
+    );
+    const expectedOrgId = synced.rows[0]?.id;
+    const resolved = await app.query(
+      'SELECT tracefab_clerk_organization_uuid($1) AS id',
+      [clerkOrgProbeKey],
+    );
+    ok(
+      Boolean(expectedOrgId) && resolved.rows[0]?.id === expectedOrgId,
+      'tracefab_clerk_organization_uuid resout une organisation via l identite worker',
+      String(resolved.rows[0]?.id),
+    );
     const upsert = await app.query(
       "select * from tracefab_upsert_clerk_user('t_worker_check', 'Controle@Example.FR', 'Controle')",
     );
@@ -171,7 +250,7 @@ try {
     const inconnue = await app.query("select tracefab_archive_clerk_organization('org_absente') as r");
     ok(inconnue.rows[0].r === false, 'tracefab_archive_clerk_organization rend false si inconnue');
   } finally {
-    await app.query('rollback');
+    await app.query('rollback').catch(() => {});
   }
   console.log('  info      transaction annulee : aucune donnee conservee');
   // Controle de parametres : hors transaction, parce qu'une erreur volontaire
@@ -216,32 +295,92 @@ try {
   // --- 7. Aucun elargissement de privilege ---------------------------------
   console.log('\n7. Aucun elargissement');
   const worker = await admin.query(
-    "select rolcanlogin, rolbypassrls, rolsuper, rolcreaterole, rolcreatedb from pg_roles where rolname = 'tracefab_worker'",
+    "select rolcanlogin, rolinherit, rolbypassrls, rolsuper, rolcreaterole, rolcreatedb from pg_roles where rolname = 'tracefab_worker'",
   );
   const w = worker.rows[0];
   ok(!!w, 'le role tracefab_worker existe');
   if (w) {
     ok(
-      !w.rolbypassrls && !w.rolsuper && !w.rolcreaterole && !w.rolcreatedb,
-      'tracefab_worker ne porte aucun attribut privilegie',
-      `bypassrls=${w.rolbypassrls} super=${w.rolsuper}`,
+      !w.rolcanlogin && !w.rolinherit && !w.rolbypassrls && !w.rolsuper && !w.rolcreaterole && !w.rolcreatedb,
+      'tracefab_worker est NOLOGIN, NOINHERIT, NOBYPASSRLS et sans attribut privilegie',
+      `login=${w.rolcanlogin} inherit=${w.rolinherit} bypassrls=${w.rolbypassrls} super=${w.rolsuper}`,
     );
   }
-  // Le worker ne doit rien pouvoir lire que l applicatif ne puisse lire : le
-  // seul sens qui compte est l anti-escalade.
-  const enPlus = await admin.query(
-    `select c.relname
-       from pg_class c
-       join pg_namespace n on n.oid = c.relnamespace
-      where n.nspname = 'public' and c.relkind in ('r','p')
-        and has_table_privilege('tracefab_worker', c.oid, 'SELECT')
-        and not has_table_privilege('tracefab_app', c.oid, 'SELECT')
-      order by 1`,
+
+  const fonctionsWorker = await admin.query(
+    `select p.proname, pg_get_userbyid(p.proowner) as owner,
+            has_function_privilege('tracefab_app', p.oid, 'EXECUTE') as app_exec,
+            EXISTS (
+              SELECT 1
+                FROM pg_catalog.aclexplode(
+                  coalesce(p.proacl, pg_catalog.acldefault('f', p.proowner))
+                ) a
+               WHERE a.grantee = 0 AND a.privilege_type = 'EXECUTE'
+            ) as public_exec
+       from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+      where n.nspname = 'public'
+        and p.proname in (
+          'tracefab_claim_notification_outbox',
+          'tracefab_complete_notification_outbox',
+          'tracefab_enqueue_due_data_request_reminders'
+        )
+      order by p.proname`,
   );
   ok(
-    enPlus.rowCount === 0,
-    'aucune table lisible par le worker seul',
-    enPlus.rows.map((r) => r.relname).join(', ') || 'aucune',
+    fonctionsWorker.rowCount === 3
+      && fonctionsWorker.rows.every((f) => f.owner === 'tracefab_worker' && f.app_exec && !f.public_exec),
+    'les trois operations globales de notification sont possedees par tracefab_worker et fermees a PUBLIC',
+    fonctionsWorker.rows.map((f) => `${f.proname}:${f.owner}/app=${f.app_exec}/public=${f.public_exec}`).join(', '),
+  );
+
+  const privilegesWorker = await admin.query(
+    `select
+       has_table_privilege('tracefab_worker', 'public.data_requests', 'SELECT') as requests_select,
+       has_table_privilege('tracefab_worker', 'public.users', 'SELECT') as users_select,
+       has_table_privilege('tracefab_worker', 'public.tracefab_notification_outbox', 'SELECT') as outbox_select,
+       has_table_privilege('tracefab_worker', 'public.tracefab_notification_outbox', 'INSERT') as outbox_insert,
+       has_table_privilege('tracefab_worker', 'public.tracefab_notification_outbox', 'UPDATE') as outbox_update,
+       has_table_privilege('tracefab_app', 'public.tracefab_notification_outbox', 'INSERT') as app_outbox_insert,
+       has_table_privilege('tracefab_app', 'public.tracefab_notification_outbox', 'UPDATE') as app_outbox_update,
+       has_function_privilege('tracefab_worker', 'public.tracefab_active_organization_id()', 'EXECUTE') as active_org_exec,
+       has_function_privilege('tracefab_worker', 'public.tracefab_in_active_tenant(uuid)', 'EXECUTE') as active_tenant_exec,
+       has_function_privilege('tracefab_worker', 'public.tracefab_can_access_org(uuid)', 'EXECUTE') as can_access_org_exec`,
+  );
+  const wp = privilegesWorker.rows[0];
+  ok(
+    wp.requests_select && wp.users_select && wp.outbox_select && wp.outbox_insert && wp.outbox_update
+      && !wp.app_outbox_insert && !wp.app_outbox_update
+      && wp.active_org_exec && wp.active_tenant_exec && wp.can_access_org_exec,
+    'le worker a les droits users/outbox/demandes et les helpers de prédicat RLS requis',
+    JSON.stringify(wp),
+  );
+  // Le worker est NOLOGIN/NOINHERIT et ne reçoit que les SELECT requis
+  // par ses fonctions système et les politiques RLS qu'elles évaluent.
+  // Ne pas confondre ACL de table et visibilité : l'app garde un SELECT
+  // relationnel sur users, mais users_select_self ne lui montre que soi-même.
+  const tablesSelectWorker = await admin.query(
+    `select c.relname
+       from pg_catalog.pg_class c
+       join pg_catalog.pg_namespace n on n.oid = c.relnamespace
+      where n.nspname = 'public' and c.relkind in ('r','p')
+        and has_table_privilege('tracefab_worker', c.oid, 'SELECT')
+      order by 1`,
+  );
+  const selectWorkerAttendu = [
+    'brand_supplier_relationships',
+    'data_requests',
+    'organization_invitations',
+    'organization_memberships',
+    'organizations',
+    'tracefab_identity_politique',
+    'tracefab_notification_outbox',
+    'users',
+  ];
+  const selectWorkerObserve = tablesSelectWorker.rows.map((r) => r.relname);
+  ok(
+    JSON.stringify(selectWorkerObserve) === JSON.stringify(selectWorkerAttendu),
+    'le worker ne lit que les huit tables explicitement requises (dont la politique d’identité lue par le resolver email)',
+    `observé=${selectWorkerObserve.join(',') || 'aucune'}`,
   );
 
   // --- 8. Le registre runtime est ferme ------------------------------------

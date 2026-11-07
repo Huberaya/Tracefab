@@ -129,10 +129,30 @@ for (const dossier of posterieurs) {
     grantsDirects.push(`${dossier}:${m[1]}`);
   }
 }
+const exceptionEmailWorker =
+  '20261105235900_active_tenant_policy_and_worker_closure:public.tracefab_current_user_email';
+const grantsDirectsNonAutorises = grantsDirects.filter((grant) => grant !== exceptionEmailWorker);
+const migrationEmailWorker = lire(path.join(
+  MIGRATIONS,
+  '20261105235900_active_tenant_policy_and_worker_closure',
+  'migration.sql',
+));
+const exceptionEmailWorkerSure =
+  nomsSeed.has('tracefab_current_user_email')
+  && migrationEmailWorker.includes('REVOKE ALL ON FUNCTION public.tracefab_current_user_email() FROM PUBLIC;')
+  && migrationEmailWorker.includes('GRANT EXECUTE ON FUNCTION public.tracefab_current_user_email() TO tracefab_app;')
+  && migrationEmailWorker.includes('ALTER FUNCTION public.tracefab_current_user_email() SECURITY DEFINER;')
+  && migrationEmailWorker.includes('ALTER FUNCTION public.tracefab_current_user_email() OWNER TO tracefab_worker;')
+  && migrationEmailWorker.includes('ALTER FUNCTION public.tracefab_current_user_email() SET search_path = pg_catalog, public;');
 ok(
-  grantsDirects.length === 0,
-  'aucune migration posterieure n accorde EXECUTE directement a tracefab_app',
-  grantsDirects.join(', ') || 'aucun',
+  grantsDirectsNonAutorises.length === 0,
+  'aucun GRANT EXECUTE direct hors exception worker email strictement bornee',
+  grantsDirectsNonAutorises.join(', ') || 'aucun',
+);
+ok(
+  !grantsDirects.includes(exceptionEmailWorker) || exceptionEmailWorkerSure,
+  'exception email worker : fonction deja au registre, SECURITY DEFINER worker, PUBLIC ferme, search_path fixe',
+  grantsDirects.includes(exceptionEmailWorker) ? 'exception vérifiée' : 'aucune exception utilisée',
 );
 console.log(`  info      ${ajouts.size} nom(s) ajoute(s) apres le registre`);
 

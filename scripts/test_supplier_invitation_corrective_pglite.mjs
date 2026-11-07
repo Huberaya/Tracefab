@@ -167,7 +167,7 @@ async function jouerTous(db) {
 }
 
 const corpsProd = corpsFonction(fs.readFileSync(FIXTURE_PROD, 'utf8'));
-const corpsDepot = corpsFonction(LIRE('20261005090000_supplier_portal_advanced_hardening'));
+const corpsDepot = corpsFonction(LIRE('20261005100000_supplier_invitation_compatibility'));
 const corpsCorrectif = corpsFonction(LIRE(CORRECTIVE));
 
 /* ==========================================================================

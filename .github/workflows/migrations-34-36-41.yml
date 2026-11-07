@@ -9,11 +9,14 @@ on:
   pull_request:
     paths:
       - 'scripts/test_migration_integration_34_36_41.sh'
+      - 'scripts/test_prisma_migrate_deploy_checksum_variance.mjs'
+      - 'scripts/test_plm_gs1_catalog_repair_postgres.mjs'
       - '.github/workflows/migrations-34-36-41.yml'
       - 'prisma/migrations/**'
   push:
     paths:
       - 'scripts/test_migration_integration_34_36_41.sh'
+      - 'scripts/test_prisma_migrate_deploy_checksum_variance.mjs'
       - '.github/workflows/migrations-34-36-41.yml'
       - 'prisma/migrations/**'
   workflow_dispatch:
@@ -78,8 +81,81 @@ jobs:
       - name: Generer le client Prisma
         run: npm run db:generate
 
+      - name: Prisma deploy — checksum historique divergent et pending
+        # Vérifie le vrai binaire Prisma sur le PostgreSQL 17 jetable :
+        # un checksum déjà enregistré ne doit pas être réécrit, et la migration
+        # suivante doit réellement s'appliquer. Le test crée son propre schéma
+        # isolé et le détruit ensuite. Aucune cible Neon/Vercel n'est utilisée.
+        run: npm run test:prisma:checksum-deploy
+        env:
+          TF_EXIGER_LOCAL: oui
+
+      - name: Réparation PLM/GS1 — PostgreSQL 17 réel jetable
+        run: npm run test:plm:gs1-repair-postgres
+        env:
+          TF_EXIGER_LOCAL: oui
+
       - name: Installer le client psql
         run: sudo apt-get update && sudo apt-get install -y postgresql-client
 
       - name: Intégration A (neuve) et B (10120000 tardif)
         run: bash scripts/test_migration_integration_34_36_41.sh
+
+      # Le scénario B applique volontairement 10120000/1414 après la chaîne
+      # courante pour éprouver la conservation des ACL. Il laisse donc un schéma
+      # de test non canonique (les CREATE OR REPLACE historiques précèdent alors
+      # les gardes tenant). On restaure le checkout et on reconstruit la base
+      # jetable complète avant les tests métier qui suivent.
+      - name: Restaurer le schéma canonique après les scénarios historiques
+        shell: bash
+        run: |
+          git reset --hard "$GITHUB_SHA"
+          node scripts/run-db-suite.mjs scripts/reinitialiser_base_jetable.mjs
+          node scripts/run-db-suite.mjs --verrou-cluster scripts/prepare_ci_db_role.mjs
+          node scripts/db-deploy-throwaway.mjs
+
+      - name: Inventaire RLS après migration #25 — compteurs et zéro non classé
+        shell: bash
+        run: |
+          psql -X --no-password -v ON_ERROR_STOP=1 -At -F '|' <<'SQL'
+          WITH policies AS (
+            SELECT tablename, policyname,
+                   coalesce(qual, '') || ' ' || coalesce(with_check, '') AS expression
+              FROM pg_catalog.pg_policies
+             WHERE schemaname = 'public'
+               AND tablename NOT IN (
+                 'organizations', 'organization_memberships',
+                 'organization_invitations', 'rate_limit_counters',
+                 'tracefab_schema_catalog', 'dpp_requirement_profiles',
+                 'green_claims_rules', 'pef_emission_factors'
+               )
+          )
+          SELECT
+            count(*) AS policies_total,
+            count(*) FILTER (WHERE expression ~* 'tracefab_in_active_tenant\(') AS active_tenant_policies,
+            count(*) FILTER (WHERE expression ~* 'tracefab_(is_org_member|has_org_role|can_access_org)\(') AS membership_helper_policies,
+            count(*) FILTER (WHERE expression ~* 'organization_memberships') AS direct_membership_policies,
+            count(*) FILTER (
+              WHERE (
+                expression ~* 'tracefab_(is_org_member|has_org_role|can_access_org)\('
+                AND expression !~* 'tracefab_in_active_tenant\('
+              ) OR (
+                expression ~* 'organization_memberships'
+                AND expression !~* 'tracefab_in_active_tenant\('
+              )
+            ) AS unresolved_policies
+          FROM policies;
+          SQL
+
+      # La commande Prisma migrate deploy ci-dessus applique toute la chaîne
+      # du checkout, dont 20261105235900_active_tenant_policy_and_worker_closure.
+      # Ces suites exécutent ensuite les assertions métier sous tracefab_app
+      # sur le même PostgreSQL 17 jetable, après provisionnement du rôle.
+      - name: Isolation tenant actif — positifs et refus inter-tenant PostgreSQL 17
+        run: node scripts/run-db-suite.mjs scripts/test_neon_active_tenant.mjs
+
+      - name: Identité worker non falsifiable — PostgreSQL 17
+        run: node scripts/run-db-suite.mjs scripts/test_worker_non_forgeable.mjs
+
+      - name: Isolation RLS inter-tenant — PostgreSQL 17
+        run: node scripts/run-db-suite.mjs scripts/test_neon_cross_tenant.mjs

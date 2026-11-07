@@ -63,13 +63,11 @@ export const APP_ROLE = 'tracefab_app';
 //   supplier_sites                api/_routes/supplier/sites/[siteId].ts:32            (supplier_sites.create, supplier_sites.update)
 //   tracefab_catalog_import_jobs  api/_routes/catalog/products/import.ts:138           (insert, update)
 //   tracefab_products             api/_lib/bulk-operations/bulk-importer.ts:97         (tracefab_products.create, tracefab_products.update)
-//   users                         RETIREE le 28/10/2026 — les ecritures passent
-//                                 desormais par tracefab_upsert_clerk_user et
-//                                 tracefab_ensure_clerk_user, possedees par
-//                                 tracefab_worker et declarees au registre
-//                                 runtime. Aucune ecriture directe ne subsiste
-//                                 dans api/ (verifie par
-//                                 test:tables-ecriture-directe).
+//   users                         RETIREE des ecritures directes le 28/10/2026.
+//                                 Les mutations passent par les fonctions
+//                                 SECURITY DEFINER possedees par tracefab_worker.
+//                                 Le SELECT applicatif reste borne par
+//                                 users_select_self sous RLS FORCE.
 //   documents                     RETIREE le 28/10/2026 — la bascule
 //                                 `uploaded -> scanning` passait par un UPDATE
 //                                 brut sous tracefab_app, qui pouvait poser
@@ -160,7 +158,7 @@ export const COLONNES_CALCULEES_PRODUIT = [
   'data_ready_at',
 ];
 
-export const COLONNES_ECRITURE_PRODUIT = [
+export const COLONNES_INSERT_PRODUIT = [
   'id',
   'brand_organization_id',
   'reference',
@@ -182,6 +180,26 @@ export const COLONNES_ECRITURE_PRODUIT = [
   'care_instructions',
   'last_data_updated_by',
 ];
+
+// UPDATE direct : exactement les colonnes écrites par les deux chemins Prisma
+// encore directs (bulk-importer et transitions de statut). Les identifiants,
+// le tenant, les métadonnées de création, le slug et les autres attributs sont
+// modifiés uniquement par les fonctions SECURITY DEFINER dédiées.
+export const COLONNES_UPDATE_PRODUIT = [
+  'name',
+  'category',
+  'status',
+  'sku',
+  'description',
+  'updated_at',
+  'weight_grams',
+  'country_of_manufacture',
+  'country_of_design',
+];
+
+// Alias historique conservé pour les scripts de contrôle existants : il désigne
+// désormais le périmètre INSERT, jamais le périmètre UPDATE.
+export const COLONNES_ECRITURE_PRODUIT = COLONNES_INSERT_PRODUIT;
 
 function quote(s) {
   return `'${String(s).replace(/'/g, "''")}'`;
@@ -469,8 +487,8 @@ export async function ensureAppRole(db, password, { role = APP_ROLE } = {}) {
     `GRANT CONNECT ON DATABASE "${base}" TO ${APP_ROLE}`,
     `GRANT USAGE ON SCHEMA public TO ${APP_ROLE}`,
     // LECTURE sur toutes les tables : le client Prisma lit directement, et la
-    // RLS — activee et forcee sur les 50 tables — filtre ce qui est visible.
-    // La lecture large est donc contenue ; l'ecriture large ne l'etait pas.
+    // RLS — activee et forcee sur les tables metier — filtre ce qui est visible.
+    // users reste lisible uniquement pour l'identite courante via users_select_self.
     `GRANT SELECT ON ALL TABLES IN SCHEMA public TO ${APP_ROLE}`,
     // Re-bootstrap must not restore runtime access to Prisma's control-plane ledger.
     `DO $bootstrap$ BEGIN
@@ -519,13 +537,32 @@ export async function ensureAppRole(db, password, { role = APP_ROLE } = {}) {
      END
      $grant_dml$;`,
     // `tracefab_products` : ecriture COLONNE PAR COLONNE, jamais au niveau
-    // table. Les champs calcules restent hors de portee du runtime.
-    `DO $$ BEGIN
+    // table. On retire aussi les anciennes ACL colonne avant de reaccorder
+    // INSERT (20 colonnes) et UPDATE (9 colonnes réellement écrites par api/).
+    `DO $bootstrap_products$
+     DECLARE
+       v_columns text;
+     BEGIN
        IF to_regclass('public.tracefab_products') IS NOT NULL THEN
-         EXECUTE 'REVOKE INSERT, UPDATE, DELETE, TRUNCATE ON public.tracefab_products FROM ${APP_ROLE}';
-         EXECUTE 'GRANT INSERT (${COLONNES_ECRITURE_PRODUIT.join(', ')}), UPDATE (${COLONNES_ECRITURE_PRODUIT.join(', ')}) ON public.tracefab_products TO ${APP_ROLE}';
+         SELECT string_agg(pg_catalog.format('%I', a.attname), ', ' ORDER BY a.attnum)
+           INTO v_columns
+           FROM pg_catalog.pg_attribute a
+          WHERE a.attrelid = 'public.tracefab_products'::regclass
+            AND a.attnum > 0
+            AND NOT a.attisdropped;
+         IF v_columns IS NOT NULL THEN
+           EXECUTE pg_catalog.format(
+             'REVOKE ALL PRIVILEGES (%s) ON TABLE public.tracefab_products FROM %I',
+             v_columns,
+             '${APP_ROLE}'
+           );
+         END IF;
+         EXECUTE 'REVOKE INSERT, UPDATE, DELETE, TRUNCATE ON TABLE public.tracefab_products FROM ${APP_ROLE}';
+         EXECUTE 'GRANT INSERT (${COLONNES_INSERT_PRODUIT.join(', ')}) ON TABLE public.tracefab_products TO ${APP_ROLE}';
+         EXECUTE 'GRANT UPDATE (${COLONNES_UPDATE_PRODUIT.join(', ')}) ON TABLE public.tracefab_products TO ${APP_ROLE}';
        END IF;
-     END $$;`,
+     END
+     $bootstrap_products$;`,
     `GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO ${APP_ROLE}`,
     // EXECUTE sur les fonctions : les nouveaux objets ne doivent pas en hériter.
     `ALTER DEFAULT PRIVILEGES FOR ROLE "${proprio}" REVOKE EXECUTE ON FUNCTIONS FROM PUBLIC`,
@@ -569,7 +606,7 @@ export async function ensureAppRole(db, password, { role = APP_ROLE } = {}) {
   console.log(
     `  droits applicatifs accordes a ${APP_ROLE} ` +
     `(lecture generale filtree par RLS ; ecriture directe limitee a ${TABLES_ECRITURE_DIRECTE.length} tables ; ` +
-      `tracefab_products en ecriture colonne par colonne (${COLONNES_ECRITURE_PRODUIT.length} colonnes, champs calcules exclus) ; ` +
+      `tracefab_products en ecriture colonne par colonne (INSERT ${COLONNES_INSERT_PRODUIT.length} / UPDATE ${COLONNES_UPDATE_PRODUIT.length}, champs calcules exclus) ; ` +
     `le reste des mutations par fonctions SECURITY DEFINER)`,
   );
 }

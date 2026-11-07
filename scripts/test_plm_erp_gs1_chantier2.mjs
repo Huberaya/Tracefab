@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { pageSource } from './lib/page_source.mjs';
+import './test_product_update_acl_scope.mjs';
 
 console.log('=== TEST SUITE CHANTIER 2: INTEROPÉRABILITÉ PLM/ERP & GS1 ===');
 
@@ -16,7 +17,70 @@ assert(migrationSql.includes('CREATE TABLE IF NOT EXISTS plm_erp_sync_jobs'), 'M
 assert(migrationSql.includes('ALTER TABLE plm_erp_integrations FORCE ROW LEVEL SECURITY;'), 'FORCE RLS required on integrations');
 assert(migrationSql.includes('ALTER TABLE plm_erp_sync_jobs FORCE ROW LEVEL SECURITY;'), 'FORCE RLS required on sync jobs');
 assert(migrationSql.includes('CREATE OR REPLACE FUNCTION tracefab_ingest_plm_erp_payload'), 'Stored procedure tracefab_ingest_plm_erp_payload required');
+
 assert(migrationSql.includes('gs1_digital_link'), 'Constraint must allow gs1_digital_link');
+
+const forwardSql = await readFile(
+  new URL('../prisma/migrations/20261104090000_plm_integrations_and_gs1_constraints/migration.sql', import.meta.url),
+  'utf8',
+);
+const identifierRoute = await readFile(
+  new URL('../api/_routes/products/[productId]/identifiers.ts', import.meta.url),
+  'utf8',
+);
+const integrationRoute = await readFile(
+  new URL('../api/_routes/integrations.ts', import.meta.url),
+  'utf8',
+);
+const integrationTypes = await readFile(
+  new URL('../api/_lib/plm-erp/types.ts', import.meta.url),
+  'utf8',
+);
+const sqlErrors = await readFile(
+  new URL('../api/_lib/sql-errors.ts', import.meta.url),
+  'utf8',
+);
+const addIdentifierFunctionIndex = forwardSql.indexOf('CREATE OR REPLACE FUNCTION tracefab_add_product_identifier');
+assert.notEqual(addIdentifierFunctionIndex, -1, 'Forward migration must update the SQL identifier helper');
+assert(integrationRoute.includes('isPlmErpSystemType'), 'Integration creation must validate system_type before SQL');
+assert(integrationRoute.includes('isPlmErpAuthType'), 'Integration creation must validate auth_type before SQL');
+assert(integrationTypes.includes('PLM_ERP_SYSTEM_TYPES') && integrationTypes.includes('PLM_ERP_AUTH_TYPES'), 'System/auth allowlists must be centralized');
+for (const constraint of [
+  'plm_erp_integrations_system_type_check',
+  'plm_erp_integrations_auth_type_check',
+  'plm_erp_integrations_name_check',
+  'plm_erp_integrations_status_check',
+  'product_identifiers_identifier_type_check',
+]) {
+  assert(sqlErrors.includes(constraint), `SQL business errors must map ${constraint} to a client error`);
+}
+const addIdentifierFunction = forwardSql.slice(addIdentifierFunctionIndex);
+for (const type of ['gtin', 'ean', 'upc', 'internal', 'gs1_digital_link', 'gln', 'gpc']) {
+  assert(addIdentifierFunction.includes(`'${type}'`), `SQL identifier helper must accept ${type}`);
+  assert(identifierRoute.includes(`'${type}'`), `API identifier route must accept ${type}`);
+}
+
+// P10.2 must remain compatible with the graph schema introduced on 20/10.
+// The migration is still pending on Neon: a direct INSERT into the old
+// supply_chain_nodes / supply_chain_links shape would violate graph_product_id
+// and the graph validation triggers when the migration is eventually applied.
+const ingestGuardMigration = await readFile(
+  new URL('../prisma/migrations/20261030140000_ingest_payload_role_guard_and_acl/migration.sql', import.meta.url),
+  'utf8',
+);
+assert.match(ingestGuardMigration, /SELECT id, version INTO v_product_id, v_product_version/,
+  'PLM ingestion must retain the product version');
+assert.match(ingestGuardMigration, /product_version,/,
+  'BOM rows must be scoped to the product version');
+assert.match(ingestGuardMigration, /FROM tracefab_create_supply_chain_node\(/,
+  'supply-chain nodes must be created through the graph helper');
+assert.match(ingestGuardMigration, /PERFORM tracefab_add_supply_chain_link\(/,
+  'supply-chain links must be created through the graph helper');
+assert.doesNotMatch(ingestGuardMigration, /INSERT INTO\s+supply_chain_nodes/i,
+  'must not bypass graph_product_id / node validation');
+assert.doesNotMatch(ingestGuardMigration, /INSERT INTO\s+supply_chain_links/i,
+  'must not bypass graph link validation');
+
 
 // 2. Verify GTIN Engine Module and Algorithm
 console.log('2. Checking GTIN Engine & Modulo-10 algorithm...');

@@ -55,20 +55,46 @@
 -- ============================================================================
 
 -- 1. L'identite worker -------------------------------------------------------
-DO $$
+-- Aucun SUPERUSER n'est requis : l'executant doit posseder CREATEROLE et les
+-- fonctions existantes. Le role worker est cree directement avec ses attributs
+-- minimaux. Un role preexistant non conforme est REFUSE, jamais « repare » par
+-- ALTER ROLE (qui exigerait un superutilisateur sur PostgreSQL 16+).
+DO $worker_role$
+DECLARE
+  v_role record;
+  v_executor record;
 BEGIN
-  IF NOT EXISTS (SELECT 1 FROM pg_catalog.pg_roles WHERE rolname = 'tracefab_worker') THEN
+  IF current_user = 'tracefab_app' THEN
+    RAISE EXCEPTION 'worker_migration_requires_admin_role';
+  END IF;
+
+  SELECT rolsuper, rolcreaterole
+    INTO v_executor
+    FROM pg_catalog.pg_roles
+   WHERE rolname = current_user;
+
+  IF NOT FOUND OR NOT (v_executor.rolsuper OR v_executor.rolcreaterole) THEN
+    RAISE EXCEPTION 'worker_role_creation_requires_createrole';
+  END IF;
+
+  SELECT rolcanlogin, rolsuper, rolbypassrls, rolcreaterole, rolcreatedb, rolinherit
+    INTO v_role
+    FROM pg_catalog.pg_roles
+   WHERE rolname = 'tracefab_worker';
+
+  IF NOT FOUND THEN
     CREATE ROLE tracefab_worker
-      NOLOGIN NOINHERIT NOBYPASSRLS NOSUPERUSER NOCREATEROLE NOCREATEDB;
-  ELSE
-    -- On ne touche pas a LOGIN : les environnements jetables rendent ce role
-    -- connectable pour eprouver les chemins worker, la production le cree ici,
-    -- donc NOLOGIN. Forcer NOLOGIN casserait la base de test sans rien apporter.
-    ALTER ROLE tracefab_worker
-      NOINHERIT NOBYPASSRLS NOSUPERUSER NOCREATEROLE NOCREATEDB;
+      NOLOGIN NOINHERIT NOSUPERUSER NOBYPASSRLS NOCREATEROLE NOCREATEDB;
+  ELSIF v_role.rolcanlogin
+     OR v_role.rolsuper
+     OR v_role.rolbypassrls
+     OR v_role.rolcreaterole
+     OR v_role.rolcreatedb
+     OR v_role.rolinherit THEN
+    RAISE EXCEPTION 'tracefab_worker_role_not_least_privilege';
   END IF;
 END
-$$;
+$worker_role$;
 
 -- 2. Les onze politiques ne lisent plus un GUC falsifiable -------------------
 --    Remplacement fait depuis le catalogue : aucune liste ecrite a la main ne
@@ -140,9 +166,9 @@ BEGIN
 END
 $$;
 
--- 4. Le worker garde l'usage du schema, et rien de plus ----------------------
-GRANT USAGE ON SCHEMA public TO tracefab_worker;
-REVOKE CREATE ON SCHEMA public FROM tracefab_worker;
+-- 4. Le worker reçoit temporairement CREATE pour devenir proprietaire
+--    des six fonctions. CREATE sera retire immediatement apres le transfert.
+GRANT USAGE, CREATE ON SCHEMA public TO tracefab_worker;
 
 -- 5. Les six operations systeme ----------------------------------------------
 --    Chacune : operation unique, parametree, `search_path` fige, aucune lecture
@@ -305,14 +331,59 @@ AS $$
 $$;
 
 -- 6. Propriete des fonctions : `tracefab_worker` -----------------------------
---    C'est ce transfert qui rend les politiques worker efficaces. Attribuer la
---    propriete d'un objet exige d'etre membre du role cible (ou superutilisateur).
---    L'octroi ci-dessous est donc technique et borne au role qui execute les
---    migrations ; il n'ouvre rien a `tracefab_app`.
-DO $$
+--    L'octroi explicite au role executant porte INHERIT + SET, sans ADMIN
+--    OPTION. PostgreSQL/Neon peut aussi conserver un octroi bootstrap ADMIN
+--    émis par un superutilisateur fournisseur ; cet octroi est distinct et
+--    ne donne aucun droit worker au role applicatif. Un role worker preexistant
+--    sans appartenance explicite ou bootstrap du migrateur est refuse.
+--    CREATE est temporairement accorde au worker car PostgreSQL l'exige pour
+--    ALTER FUNCTION ... OWNER TO ; il est retire juste apres.
+DO $worker_ownership$
+DECLARE
+  v_member_oid OID;
+  v_current_is_superuser BOOLEAN := false;
+  v_has_explicit BOOLEAN := false;
+  v_has_admin BOOLEAN := false;
 BEGIN
-  IF NOT pg_catalog.pg_has_role(current_user, 'tracefab_worker', 'MEMBER') THEN
-    EXECUTE pg_catalog.format('GRANT tracefab_worker TO %I', current_user);
+  SELECT oid, rolsuper INTO v_member_oid, v_current_is_superuser
+    FROM pg_catalog.pg_roles
+   WHERE rolname = current_user;
+
+  SELECT EXISTS (
+    SELECT 1
+      FROM pg_catalog.pg_auth_members m
+      JOIN pg_catalog.pg_roles granted ON granted.oid = m.roleid
+     WHERE granted.rolname = 'tracefab_worker'
+       AND m.member = v_member_oid
+       AND m.grantor = v_member_oid
+       AND m.inherit_option IS TRUE
+       AND m.set_option IS TRUE
+       AND m.admin_option IS FALSE
+  ) INTO v_has_explicit;
+
+  SELECT EXISTS (
+    SELECT 1
+      FROM pg_catalog.pg_auth_members m
+      JOIN pg_catalog.pg_roles granted ON granted.oid = m.roleid
+      JOIN pg_catalog.pg_roles grantor ON grantor.oid = m.grantor
+     WHERE granted.rolname = 'tracefab_worker'
+       AND m.member = v_member_oid
+       AND m.admin_option IS TRUE
+       AND m.inherit_option IS FALSE
+       AND m.set_option IS FALSE
+       AND (grantor.rolsuper OR grantor.rolcreaterole)
+  ) INTO v_has_admin;
+
+  IF NOT v_has_explicit THEN
+    IF NOT v_has_admin AND NOT v_current_is_superuser THEN
+      RAISE EXCEPTION 'worker_migration_executor_membership_missing'
+        USING HINT = 'Un rôle préexistant tracefab_worker doit être accordé au rôle de migration par un administrateur avant cette migration, sauf si l''exécutant est SUPERUSER.';
+    END IF;
+
+    EXECUTE pg_catalog.format(
+      'GRANT tracefab_worker TO %I WITH ADMIN FALSE, INHERIT TRUE, SET TRUE',
+      current_user
+    );
   END IF;
 
   EXECUTE 'ALTER FUNCTION public.tracefab_upsert_clerk_user(TEXT, TEXT, TEXT) OWNER TO tracefab_worker';
@@ -322,33 +393,93 @@ BEGIN
   EXECUTE 'ALTER FUNCTION public.tracefab_archive_clerk_organization(TEXT) OWNER TO tracefab_worker';
   EXECUTE 'ALTER FUNCTION public.tracefab_notification_outbox_health() OWNER TO tracefab_worker';
 END
-$$;
+$worker_ownership$;
 
--- 6 bis. L appartenance technique est retiree ---------------------------------
---    Attribuer la propriete d un objet exige d etre membre du role cible. Une
---    fois le transfert fait, cette appartenance ne sert plus : la laisser en
---    place donnerait au proprietaire des migrations un `SET ROLE tracefab_worker`
---    permanent, donc une identite de plus a defendre. On la retire.
---    Consequence a connaitre : une migration ULTERIEURE qui voudrait changer le
---    proprietaire d une de ces fonctions devra re-accorder l appartenance le
---    temps du transfert, puis la retirer de la meme facon.
-DO $$
+REVOKE CREATE ON SCHEMA public FROM tracefab_worker;
+
+-- Verification ferme : le role executant peut endosser worker ; l'application
+-- ne le peut jamais ; worker ne peut plus creer d'objets dans public.
+--
+-- PostgreSQL/Neon peut exposer DEUX lignes pour le meme couple membre/role :
+-- CREATE ROLE cree une appartenance bootstrap avec ADMIN OPTION (sur Neon,
+-- grantor = cloud_admin, INHERIT/SET = false), puis le GRANT ci-dessus ajoute
+-- l'appartenance explicite minimale (grantor = current_user, INHERIT/SET =
+-- true, ADMIN = false). La ligne bootstrap est geree par la plateforme et ne
+-- peut pas etre revoquee par neondb_owner. Le controle distingue donc les deux
+-- lignes au lieu de prendre arbitrairement la premiere avec SELECT INTO.
+DO $worker_verify$
+DECLARE
+  v_member_oid OID;
+  v_explicit_rows INTEGER := 0;
+  v_bootstrap_rows INTEGER := 0;
+  v_unexpected_rows INTEGER := 0;
 BEGIN
-  -- `pg_has_role` rend vrai pour un superutilisateur meme sans octroi explicite
-  -- (il est membre implicite de tout role). On interroge donc pg_auth_members :
-  -- seule une appartenance REELLEMENT accordee a quelque chose a retirer.
-  IF EXISTS (
-    SELECT 1
-      FROM pg_catalog.pg_auth_members m
-      JOIN pg_catalog.pg_roles r ON r.oid = m.member
-      JOIN pg_catalog.pg_roles c ON c.oid = m.roleid
-     WHERE r.rolname = current_user
-       AND c.rolname = 'tracefab_worker'
-  ) THEN
-    EXECUTE pg_catalog.format('REVOKE tracefab_worker FROM %I', current_user);
+  SELECT oid INTO v_member_oid
+    FROM pg_catalog.pg_roles
+   WHERE rolname = current_user;
+
+  SELECT
+    count(*) FILTER (
+      WHERE m.grantor = v_member_oid
+        AND m.inherit_option IS TRUE
+        AND m.set_option IS TRUE
+        AND m.admin_option IS FALSE
+    ),
+    count(*) FILTER (
+      WHERE m.admin_option IS TRUE
+        AND m.inherit_option IS FALSE
+        AND m.set_option IS FALSE
+        AND EXISTS (
+          SELECT 1
+            FROM pg_catalog.pg_roles grantor
+           WHERE grantor.oid = m.grantor
+             AND (grantor.rolsuper OR grantor.rolcreaterole)
+        )
+    ),
+    count(*) FILTER (
+      WHERE NOT (
+        (m.grantor = v_member_oid
+          AND m.inherit_option IS TRUE
+          AND m.set_option IS TRUE
+          AND m.admin_option IS FALSE)
+        OR
+        (m.admin_option IS TRUE
+          AND m.inherit_option IS FALSE
+          AND m.set_option IS FALSE
+          AND EXISTS (
+            SELECT 1
+              FROM pg_catalog.pg_roles grantor
+             WHERE grantor.oid = m.grantor
+               AND (grantor.rolsuper OR grantor.rolcreaterole)
+          ))
+      )
+    )
+    INTO v_explicit_rows, v_bootstrap_rows, v_unexpected_rows
+    FROM pg_catalog.pg_auth_members m
+    JOIN pg_catalog.pg_roles granted ON granted.oid = m.roleid
+    JOIN pg_catalog.pg_roles member ON member.oid = m.member
+   WHERE granted.rolname = 'tracefab_worker'
+     AND member.rolname = current_user;
+
+  IF v_explicit_rows <> 1
+     OR v_bootstrap_rows > 1
+     OR v_unexpected_rows <> 0 THEN
+    RAISE EXCEPTION 'worker_migration_membership_not_minimal'
+      USING DETAIL = pg_catalog.format(
+        'explicit=%s bootstrap=%s unexpected=%s',
+        v_explicit_rows, v_bootstrap_rows, v_unexpected_rows
+      );
+  END IF;
+
+  IF pg_catalog.pg_has_role('tracefab_app', 'tracefab_worker', 'MEMBER') THEN
+    RAISE EXCEPTION 'tracefab_app_must_not_be_worker_member';
+  END IF;
+
+  IF pg_catalog.has_schema_privilege('tracefab_worker', 'public', 'CREATE') THEN
+    RAISE EXCEPTION 'tracefab_worker_must_not_retain_schema_create';
   END IF;
 END
-$$;
+$worker_verify$;
 
 -- 7. Privileges du worker : le strict necessaire a ces six fonctions ---------
 --    Rien n'est copie du role applicatif : chaque table listee ici est lue ou

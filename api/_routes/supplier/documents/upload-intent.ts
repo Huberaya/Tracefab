@@ -2,6 +2,7 @@ import { Prisma } from '@prisma/client';
 import type { VercelRequest, VercelResponse } from '../../../_lib/vercel-types.js';
 import { requireClerkUser, isUnauthorized } from '../../../_lib/auth.js';
 import { withTracefabUserContext } from '../../../_lib/context.js';
+import { isTenantError, resolveActiveTenant } from '../../../_lib/tenant.js';
 import { json, methodNotAllowed, readJsonBody } from '../../../_lib/http.js';
 import { sqlBusinessError } from '../../../_lib/sql-errors.js';
 import { currentSupplier, requestedOrganizationId } from '../../../_lib/supplier-profile.js';
@@ -14,8 +15,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     const { user } = await requireClerkUser(req);
     const body = documentMetadata(await readJsonBody<Record<string, unknown>>(req));
+    const requestedOrgId = requestedOrganizationId(req);
     const result = await withTracefabUserContext(user.id, user.email, async (tx) => {
-      const supplier = await currentSupplier(tx, user.id, requestedOrganizationId(req));
+      const tenant = await resolveActiveTenant(tx, user.id, requestedOrgId, {
+        types: ['supplier'], roles: ['owner', 'admin', 'manager', 'contributor'],
+      });
+      const supplier = await currentSupplier(tx, user.id, tenant.organizationId);
       if (!supplier) return null;
 
       // Enforce organization storage quota
@@ -38,7 +43,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const document = rows[0];
       if (!document) throw new Error('document_registration_failed');
       return { document, upload: presignedUpload(storagePath, body.contentType) };
-    });
+    }, requestedOrgId);
     if (!result) return json(res, 404, { error: 'supplier_profile_not_found' });
     return json(res, 201, {
       document: serializeDocument(result.document),
@@ -47,6 +52,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     });
   } catch (error) {
     if (isUnauthorized(error)) return json(res, 401, { error: 'unauthorized' });
+    if (isTenantError(error)) return json(res, error.status, { error: error.message });
     const businessError = sqlBusinessError(error);
     if (businessError) return json(res, businessError.status, { error: businessError.error });
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') return json(res, 409, { error: 'document_already_registered' });

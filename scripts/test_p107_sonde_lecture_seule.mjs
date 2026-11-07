@@ -14,7 +14,7 @@
  *   S1 STATIQUE — chaque instruction commence par SELECT ou WITH : aucune
  *      écriture n'est possible par construction, pas « par relecture ».
  *   S2 DYNAMIQUE — toutes les sections s'exécutent sans erreur sur une base
- *      migrée (69 migrations), et le lanceur prouve le refus d'écriture (25006).
+ *      migrée (70 migrations), et le lanceur prouve le refus d'écriture (25006).
  *   S3 IDEMPOTENCE — deux exécutions rendent le même ÉTAT (horodatages
  *      neutralisés) : la sonde ne modifie rien, elle mesure.
  *   S4 TÉMOIN NÉGATIF — un rôle de connexion qui ATTEINT un rôle privilégié

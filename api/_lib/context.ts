@@ -2,7 +2,7 @@ import type { Prisma } from '@prisma/client';
 import { prisma } from './prisma.js';
 import { cleIdentite, signerIdentite } from './identite-jeton.js';
 import type { VercelRequest } from './vercel-types.js';
-import { requestedTenantId } from './tenant.js';
+import { requireActiveTenant, requestedTenantId, type ActiveTenant, type TenantScope } from './tenant.js';
 
 /**
  * Execute tenant-scoped queries in one transaction with the Clerk-resolved
@@ -84,6 +84,26 @@ export async function withTracefabRequestContext<T>(
   callback: (tx: Prisma.TransactionClient) => Promise<T>,
 ) {
   return withTracefabUserContext(user.id, user.email, callback, requestedTenantId(req));
+}
+
+/**
+ * Execute une requete privee dans le tenant explicitement demande.
+ *
+ * Le GUC et le jeton signe sont armes AVANT la validation et toute requete
+ * metier. L'absence de tenant, un UUID invalide, une adhesion inactive ou un
+ * role/type non autorise echouent avant l'acces aux donnees.
+ */
+export async function withTracefabTenantContext<T>(
+  req: VercelRequest,
+  user: { id: string; email: string },
+  scope: TenantScope,
+  callback: (tx: Prisma.TransactionClient, tenant: ActiveTenant) => Promise<T>,
+) {
+  const activeOrganizationId = requestedTenantId(req);
+  return withTracefabUserContext(user.id, user.email, async (tx) => {
+    const tenant = await requireActiveTenant(tx, req, user.id, scope);
+    return callback(tx, tenant);
+  }, activeOrganizationId);
 }
 
 export async function withTracefabUserContext<T>(

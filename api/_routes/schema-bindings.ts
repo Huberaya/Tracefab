@@ -5,6 +5,7 @@ import { withTracefabUserContext } from '../_lib/context.js';
 import { isUuid } from '../_lib/data-requests.js';
 import { json, methodNotAllowed, readJsonBody } from '../_lib/http.js';
 import { getSchema } from '../_lib/schema-catalog.js';
+import { isTenantError, requireActiveTenant, requestedTenantId, resolveActiveTenant } from '../_lib/tenant.js';
 import { sqlBusinessError } from '../_lib/sql-errors.js';
 
 type SubjectType = 'product' | 'material' | 'supplier' | 'data_request';
@@ -17,7 +18,13 @@ type SchemaBinding = {
   boundBy: string | null;
   createdAt: Date;
 };
-type BindingBody = { schemaKey?: string; schemaVersion?: string; subjectType?: string; subjectId?: string };
+type BindingBody = {
+  schemaKey?: string;
+  schemaVersion?: string;
+  subjectType?: string;
+  subjectId?: string;
+  organizationId?: string;
+};
 
 const SUBJECT_TYPES = new Set<SubjectType>(['product', 'material', 'supplier', 'data_request']);
 
@@ -29,6 +36,48 @@ function queryValue(req: VercelRequest, key: string) {
 function subjectType(value: unknown): SubjectType {
   if (typeof value !== 'string' || !SUBJECT_TYPES.has(value as SubjectType)) throw new Error('invalid_schema_subject_type');
   return value as SubjectType;
+}
+
+function tenantScope(type: SubjectType) {
+  if (type === 'product') return { types: ['brand'] as Array<'brand' | 'supplier' | 'verifier' | 'platform'> };
+  if (type === 'supplier') return { types: ['supplier'] as Array<'brand' | 'supplier' | 'verifier' | 'platform'> };
+  return {};
+}
+
+async function subjectBelongsToTenant(
+  tx: Prisma.TransactionClient,
+  type: SubjectType,
+  id: string,
+  organizationId: string,
+): Promise<boolean> {
+  if (type === 'product') {
+    return Boolean(await tx.tracefab_products.findFirst({
+      where: { id, brand_organization_id: organizationId },
+      select: { id: true },
+    }));
+  }
+  if (type === 'material') {
+    return Boolean(await tx.materials.findFirst({
+      where: { id, owner_organization_id: organizationId },
+      select: { id: true },
+    }));
+  }
+  if (type === 'supplier') {
+    return Boolean(await tx.suppliers.findFirst({
+      where: { id, organization_id: organizationId },
+      select: { id: true },
+    }));
+  }
+  return Boolean(await tx.data_requests.findFirst({
+    where: {
+      id,
+      OR: [
+        { brand_organization_id: organizationId },
+        { supplier_organization_id: organizationId },
+      ],
+    },
+    select: { id: true },
+  }));
 }
 
 function serializeBinding(row: SchemaBinding) {
@@ -58,25 +107,24 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           : type === 'supplier'
             ? Prisma.sql`supplier_id = ${id}::uuid`
             : Prisma.sql`data_request_id = ${id}::uuid`;
-      const bindings = await withTracefabUserContext(user.id, user.email, async (tx) => tx.$queryRaw<SchemaBinding[]>`
-        SELECT id, schema_key AS "schemaKey", schema_version AS "schemaVersion",
-          CASE WHEN product_id IS NOT NULL THEN 'product'
-               WHEN material_id IS NOT NULL THEN 'material'
-               WHEN supplier_id IS NOT NULL THEN 'supplier'
-               ELSE 'data_request' END AS "subjectType",
-          COALESCE(product_id, material_id, supplier_id, data_request_id) AS "subjectId",
-          bound_by AS "boundBy", created_at AS "createdAt"
-        FROM tracefab_schema_bindings
-        WHERE ${subjectClause}
-        ORDER BY created_at DESC
-      `);
-      // La reponse DOIT passer par json(). Renvoyer le tableau nu (le code
-      // historique) ne produit AUCUNE ecriture sur res : le routeur central
-      // ignore la valeur de retour des gestionnaires, la fonction serverless
-      // se termine sans avoir repondu, et la passerelle finit par renvoyer
-      // 504 Gateway Timeout sur CHAQUE appel — le blocage Production du
-      // 2026-10-17. La forme { bindings: [...] } est celle que la Brand
-      // Console attend deja cote client.
+      const bindings = await withTracefabUserContext(user.id, user.email, async (tx) => {
+        const tenant = await requireActiveTenant(tx, req, user.id, tenantScope(type));
+        if (!await subjectBelongsToTenant(tx, type, id, tenant.organizationId)) {
+          throw new Error('schema_subject_not_found');
+        }
+        return tx.$queryRaw<SchemaBinding[]>`
+          SELECT id, schema_key AS "schemaKey", schema_version AS "schemaVersion",
+            CASE WHEN product_id IS NOT NULL THEN 'product'
+                 WHEN material_id IS NOT NULL THEN 'material'
+                 WHEN supplier_id IS NOT NULL THEN 'supplier'
+                 ELSE 'data_request' END AS "subjectType",
+            COALESCE(product_id, material_id, supplier_id, data_request_id) AS "subjectId",
+            bound_by AS "boundBy", created_at AS "createdAt"
+          FROM tracefab_schema_bindings
+          WHERE ${subjectClause}
+          ORDER BY created_at DESC
+        `;
+      }, requestedTenantId(req));
       return json(res, 200, { bindings: bindings.map(serializeBinding) });
     }
 
@@ -89,7 +137,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const schema = getSchema(schemaKey, schemaVersion);
     if (!schema || !schema.subjectTypes.includes(type)) return json(res, 400, { error: 'schema_not_allowed_for_subject' });
 
+    const activeOrganizationId = requestedTenantId(req) ?? body.organizationId ?? null;
     const binding = await withTracefabUserContext(user.id, user.email, async (tx) => {
+      const tenant = await resolveActiveTenant(tx, user.id, activeOrganizationId, tenantScope(type));
+      if (!await subjectBelongsToTenant(tx, type, body.subjectId!, tenant.organizationId)) {
+        throw new Error('schema_subject_not_found');
+      }
       const rows = await tx.$queryRaw<SchemaBinding[]>`
         SELECT id, schema_key AS "schemaKey", schema_version AS "schemaVersion",
           CASE WHEN product_id IS NOT NULL THEN 'product'
@@ -101,13 +154,23 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         FROM tracefab_bind_schema(${schemaKey}, ${schemaVersion}, ${type}, ${body.subjectId}::uuid)
       `;
       return rows[0] ?? null;
-    });
+    }, activeOrganizationId);
     if (!binding) throw new Error('schema_binding_failed');
     return json(res, 201, { binding: serializeBinding(binding) });
   } catch (error) {
     if (isUnauthorized(error)) return json(res, 401, { error: 'unauthorized' });
+    if (isTenantError(error)) return json(res, error.status, { error: error.message });
+    if (error instanceof Error && error.message === 'schema_subject_not_found') {
+      return json(res, 404, { error: 'schema_subject_not_found' });
+    }
+    if (error instanceof Error && error.message === 'active_tenant_mismatch') {
+      return json(res, 404, { error: 'schema_subject_not_found' });
+    }
     const businessError = sqlBusinessError(error);
     if (businessError) return json(res, businessError.status, { error: businessError.error });
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+      return json(res, 409, { error: 'schema_binding_already_exists' });
+    }
     if (error instanceof Error && /^invalid_/.test(error.message)) return json(res, 400, { error: error.message });
     if (error instanceof Error && error.message === 'missing_clerk_secret_key') return json(res, 503, { error: 'clerk_not_configured' });
     console.error(`${req.method} /api/schema-bindings failed`, error);

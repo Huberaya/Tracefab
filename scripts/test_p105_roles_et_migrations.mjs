@@ -5,7 +5,7 @@
  *
  * CE QUE CE TEST ÉPROUVE, ET POURQUOI CHAQUE POINT COMPTE
  *
- *   B2.1  68/68 migrations sur une base VIERGE, exécutées par
+ *   B2.1  toutes les migrations sur une base VIERGE, exécutées par
  *         `tracefab_migrator` — un rôle `NOSUPERUSER` qui possède les objets.
  *   B2.2  reprise : relancer ne rejoue rien et ne casse rien.
  *   B2.3  `tracefab_app` ne peut PAS exécuter de migration (42501).
@@ -19,8 +19,9 @@
  *         privilège d'administration (mesuré : PostgreSQL 16+ exige SUPERUSER
  *         pour changer l'attribut SUPERUSER).
  *   B3.2  un rôle NON conforme (BYPASSRLS) est REFUSÉ, pas rabattu en silence.
- *   B3.3  l'élévation temporaire de la migration assistée est révoquée et
- *         vérifiée : le rôle de migration finit `rolsuper = false`.
+ *   B3.3  l'octroi explicite du worker porte INHERIT/SET sans ADMIN OPTION ;
+ *         un éventuel octroi bootstrap ADMIN émis par un rôle privilégié est
+ *         contrôlé séparément et ne donne aucun droit worker à tracefab_app.
  *
  * La base créée est détruite à la fin. Les rôles sont des objets de CLUSTER :
  * ils restent, conformes, pour les suites suivantes.
@@ -110,8 +111,17 @@ try {
   // -------------------------------------------------------------------------
   // B3.1 — provisioning, deux fois : la seconde ne doit RIEN émettre d'ALTER.
   // -------------------------------------------------------------------------
+  const urlAdminBase = (() => {
+    const u = new URL(urlAdmin);
+    u.pathname = `/${base}`;
+    return u.toString();
+  })();
   const envProv = {
-    DATABASE_URL: (() => { const u = new URL(urlAdmin); u.pathname = `/${base}`; return u.toString(); })(),
+    // Le provisionnement doit agir sur la base jetable elle-même : le
+    // DATABASE_ADMIN_URL hérité du job ne doit jamais rediriger l'ALTER SCHEMA
+    // vers la base partagée tracefab_test.
+    DATABASE_URL: urlAdminBase,
+    DATABASE_ADMIN_URL: urlAdminBase,
     TF_ALLOW_PROVISIONING: 'oui',
     TF_APP_PASSWORD: MDP_APP,
     TF_MIGRATOR_PASSWORD: MDP_MIG,
@@ -119,6 +129,20 @@ try {
   verrou = await verrouillerCluster({ urlProprietaire: urlAdmin });
   const prov1 = lancer(['scripts/provisionner_roles_db.mjs'], envProv);
   ok(prov1.status === 0, 'B3.1 provisioning initial réussi', `sortie ${prov1.status}`);
+  const schemaProbe = new pg.Client({
+    connectionString: urlAdminBase,
+    ssl: sslDepuisUrl(urlAdminBase),
+    application_name: 'tracefab-p105-schema-owner-probe',
+  });
+  await schemaProbe.connect();
+  const schemaOwner = (await schemaProbe.query(
+    `SELECT n.nspowner::regrole::text AS owner
+       FROM pg_catalog.pg_namespace n WHERE n.nspname = 'public'`,
+  )).rows[0]?.owner;
+  ok(schemaOwner === ROLE_MIGRATOR,
+    'B3.1 le migrateur est propriétaire du schéma public de la base jetable',
+    `owner=${schemaOwner ?? 'inconnu'}`);
+  await schemaProbe.end();
   const prov2 = lancer(['scripts/provisionner_roles_db.mjs'], envProv);
   ok(prov2.status === 0, 'B3.1 re-provisioning réussi (idempotent)', `sortie ${prov2.status}`);
   const alterEmis = /durci/.test(prov2.stdout);
@@ -127,17 +151,67 @@ try {
   verrou = null;
 
   // -------------------------------------------------------------------------
+  // B2.0 — le rôle worker est global au cluster. Si une suite précédente l'a
+  // déjà créé, l'administrateur prépare l'octroi bootstrap minimal au migrateur
+  // afin que la migration puisse créer son octroi explicite INHERIT/SET.
+  // -------------------------------------------------------------------------
+  verrou = await verrouillerCluster({ urlProprietaire: urlAdmin });
+  const workerExistant = (await admin.query(
+    'SELECT oid FROM pg_catalog.pg_roles WHERE rolname = $1',
+    [ROLE_WORKER],
+  )).rows[0];
+  if (workerExistant) {
+    const membershipsAvant = (await admin.query(
+      `SELECT grantor.rolname AS grantor_name, grantor.rolsuper AS grantor_superuser,
+              grantor.rolcreaterole AS grantor_createrole,
+              m.inherit_option, m.set_option, m.admin_option
+         FROM pg_catalog.pg_auth_members m
+         JOIN pg_catalog.pg_roles granted ON granted.oid = m.roleid
+         JOIN pg_catalog.pg_roles member ON member.oid = m.member
+         JOIN pg_catalog.pg_roles grantor ON grantor.oid = m.grantor
+        WHERE granted.rolname = $1 AND member.rolname = $2`,
+      [ROLE_WORKER, ROLE_MIGRATOR],
+    )).rows;
+    const explicite = membershipsAvant.some((m) =>
+      m.grantor_name === ROLE_MIGRATOR && m.inherit_option === true
+      && m.set_option === true && m.admin_option === false);
+    const bootstrap = membershipsAvant.some((m) =>
+      m.admin_option === true && m.inherit_option === false
+      && m.set_option === false && (m.grantor_superuser || m.grantor_createrole));
+    if (!explicite && !bootstrap) {
+      if (membershipsAvant.length > 0) {
+        throw new Error('Appartenance préexistante tracefab_worker non canonique pour tracefab_migrator.');
+      }
+      if (![ROLE_WORKER, ROLE_MIGRATOR].every((name) => /^[a-z_][a-z0-9_]*$/i.test(name))) {
+        throw new Error('Nom de rôle inattendu dans le prérequis worker.');
+      }
+      await admin.query(
+        `GRANT ${ROLE_WORKER} TO ${ROLE_MIGRATOR}
+         WITH ADMIN TRUE, INHERIT FALSE, SET FALSE`,
+      );
+      ok(true, 'B2.0 octroi bootstrap ADMIN isolé avant migration',
+        "rôle worker préexistant ; octroi explicite créé par migrateur");
+    }
+  }
+  await verrou.relacher();
+  verrou = null;
+
+  // -------------------------------------------------------------------------
   // B2.1 — la chaîne complète, exécutée par le rôle de migration seul.
   // -------------------------------------------------------------------------
   const mig1 = lancer(['scripts/migrer_fidelement.mjs'], {
     DATABASE_URL: url(ROLE_MIGRATOR),
-    TF_ADMIN_URL: (() => { const u = new URL(urlAdmin); u.pathname = `/${base}`; return u.toString(); })(),
-    TF_ALLOW_ELEVATION: 'oui',
     TF_ALLOW_WRITE: 'oui',
   });
   const appliquees = (mig1.stdout.match(/appliquee\s+20/g) || []).length;
   ok(mig1.status === 0, 'B2.1 la chaîne s applique intégralement', `sortie ${mig1.status}, ${appliquees} appliquée(s)`);
-  if (mig1.status !== 0) console.log(mig1.stdout.split('\n').filter((l) => /ECHEC|REFUS/.test(l)).join('\n'));
+  if (mig1.status !== 0) {
+    console.error('  DIAGNOSTICHE migrer_fidelement.mjs — stdout :');
+    console.error(mig1.stdout.split('\n').slice(-100).join('\n'));
+    console.error('  DIAGNOSTICHE migrer_fidelement.mjs — stderr :');
+    console.error(mig1.stderr.split('\n').slice(-100).join('\n'));
+    console.error(`  DIAGNOSTICHE migrer_fidelement.mjs — signal=${mig1.signal ?? 'aucun'} error=${mig1.error?.message ?? 'aucune'}`);
+  }
 
   const cible = new pg.Client({ connectionString: url(ROLE_MIGRATOR), ssl: sslDepuisUrl(url(ROLE_MIGRATOR)) });
   await cible.connect();
@@ -315,10 +389,36 @@ try {
   }
 
   // -------------------------------------------------------------------------
-  // B3.3 — l'élévation temporaire a bien été révoquée.
+  // B3.3 — l'octroi explicite est minimal ; le bootstrap ADMIN éventuel est
+  // distinct, attribué par un rôle privilégié et limité au migrateur.
   // -------------------------------------------------------------------------
-  const migFinal = (await admin.query('SELECT rolsuper FROM pg_catalog.pg_roles WHERE rolname = $1', [ROLE_MIGRATOR])).rows[0];
-  ok(migFinal?.rolsuper === false, 'B3.3 après la chaîne, le rôle de migration n est plus superutilisateur', `superuser=${migFinal?.rolsuper}`);
+  const migFinal = (await admin.query(
+    'SELECT rolsuper, rolbypassrls, rolcreaterole FROM pg_catalog.pg_roles WHERE rolname = $1',
+    [ROLE_MIGRATOR],
+  )).rows[0];
+  ok(migFinal?.rolsuper === false && migFinal?.rolbypassrls === true && migFinal?.rolcreaterole === true,
+    'B3.3 BYPASSRLS est réservé au migrateur non-superutilisateur, jamais au runtime', JSON.stringify(migFinal));
+  const workerMemberships = (await admin.query(
+    `SELECT grantor.rolname AS grantor_name, grantor.rolsuper AS grantor_superuser,
+            grantor.rolcreaterole AS grantor_createrole,
+            m.inherit_option, m.set_option, m.admin_option
+       FROM pg_catalog.pg_auth_members m
+       JOIN pg_catalog.pg_roles granted ON granted.oid = m.roleid
+       JOIN pg_catalog.pg_roles member ON member.oid = m.member
+       JOIN pg_catalog.pg_roles grantor ON grantor.oid = m.grantor
+      WHERE granted.rolname = $1 AND member.rolname = $2`,
+    [ROLE_WORKER, ROLE_MIGRATOR],
+  )).rows;
+  const workerExplicit = workerMemberships.filter((m) =>
+    m.grantor_name === ROLE_MIGRATOR && m.inherit_option === true
+    && m.set_option === true && m.admin_option === false);
+  const workerBootstrap = workerMemberships.filter((m) =>
+    m.admin_option === true && m.inherit_option === false
+    && m.set_option === false && (m.grantor_superuser || m.grantor_createrole));
+  ok(workerExplicit.length === 1 && workerBootstrap.length <= 1
+    && workerMemberships.length === workerExplicit.length + workerBootstrap.length,
+    'B3.3 octroi explicite INHERIT/SET sans ADMIN ; bootstrap séparé',
+    JSON.stringify(workerMemberships));
 } catch (erreur) {
   echecs += 1;
   console.log(`  ECHEC exécution — ${erreur.code || ''} ${String(erreur.message).slice(0, 140)}`);

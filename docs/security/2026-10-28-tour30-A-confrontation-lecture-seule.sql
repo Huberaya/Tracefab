@@ -177,7 +177,7 @@ SELECT ligne FROM (
   -- elle autorise `SET ROLE neondb_owner`, qui le donne. Une appartenance
   -- dangereuse peut donc afficher `herite=false` et rester une evasion.
   SELECT 5, 'membre.' || r.rolname || '.' || m.rolname,
-         'G|membre|' || m.rolname || '|dans|' || r.rolname
+         'G|membre|' || m.rolname || '|dans=' || r.rolname
          || '|admin=' || am.admin_option::text
          || '|herite=' || coalesce(to_jsonb(am)->>'inherit_option', 'n/a')
          || '|setrole=' || coalesce(to_jsonb(am)->>'set_option', 'n/a')
@@ -199,7 +199,7 @@ SELECT ligne FROM (
   -- divergence face au referentiel du depot, qui n'en contient aucune. C'est
   -- voulu. Une divergence a qualifier vaut mieux qu'un angle mort.
   SELECT 5, 'membre-inverse.' || r.rolname || '.' || m.rolname,
-         'G|membre|' || m.rolname || '|dans|' || r.rolname
+         'G|membre|' || m.rolname || '|dans=' || r.rolname
          || '|admin=' || am.admin_option::text
          || '|herite=' || coalesce(to_jsonb(am)->>'inherit_option', 'n/a')
          || '|setrole=' || coalesce(to_jsonb(am)->>'set_option', 'n/a')

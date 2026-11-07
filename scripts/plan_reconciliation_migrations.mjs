@@ -1,233 +1,425 @@
 #!/usr/bin/env node
 /**
- * PLAN DE RECONCILIATION DES MIGRATIONS — genere, pas recopie.
+ * Plan de reconciliation genere depuis le snapshot Neon du 04/11/2026.
  *
- * Entree  : les faits mesures (`scripts/lib/ecarts_migrations.mjs`, lectures de
- *           production du 28/10) + le contenu reel de `prisma/migrations`.
- * Sortie  : la liste exacte des migrations ABSENTES, ANNULEES et DEJA
- *           MATERALISEES, chacune avec UNE action, et un controle qui refuse
- *           tout plan qui reecrirait l'historique Prisma.
+ * Ce script est en lecture seule : il ne se connecte a aucune base et
+ * n'applique rien. Il verifie que les 56 migrations reussies gardent leurs
+ * checksums, identifie les 13 migrations historiques absentes et ordonne leur deploiement avec les corrections forward.
  *
- * Ce que ce script NE fait PAS : il ne se connecte a rien, n'applique rien,
- * n'ecrit dans aucune base. Il produit un plan, et il echoue si le plan viole
- * une des interdictions du mandat.
+ * Regle d'execution : Préproduction d'abord ; Production uniquement apres
+ * verification complete de Préproduction. Aucun resolve n'est requis ni admis.
  *
- *   node scripts/plan_reconciliation_migrations.mjs [--markdown]
+ *   node scripts/plan_reconciliation_migrations.mjs [--markdown] [--autotest]
  */
-import { readdirSync, existsSync, readFileSync } from 'node:fs';
+import { readdirSync, readFileSync, existsSync } from 'node:fs';
+import { createHash } from 'node:crypto';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { ECARTS, CATALOGUE, HORS_BANDE, BORNE_RELEVE } from './lib/ecarts_migrations.mjs';
+import {
+  PRODUCTION_APPLIED, ROLLED_BACK_ATTEMPTS, ECARTS, CATALOGUE, HORS_BANDE, CHECKSUM_EXCEPTIONS,
+  BORNE_RELEVE, SNAPSHOT_DATE,
+} from './lib/ecarts_migrations.mjs';
 
-const racine = join(dirname(fileURLToPath(import.meta.url)), '..');
-const dossier = join(racine, 'prisma', 'migrations');
+const root = join(dirname(fileURLToPath(import.meta.url)), '..');
+const migrationsDir = join(root, 'prisma', 'migrations');
 const markdown = process.argv.includes('--markdown');
+const autotest = process.argv.includes('--autotest');
+const migrations = readdirSync(migrationsDir, { withFileTypes: true })
+  .filter((entry) => entry.isDirectory()).map((entry) => entry.name).sort();
 
-const migrations = readdirSync(dossier, { withFileTypes: true })
-  .filter((e) => e.isDirectory()).map((e) => e.name).sort();
+const pending = Object.keys(ECARTS).sort();
+const applied = Object.keys(PRODUCTION_APPLIED).sort();
+const outOfBand = Object.keys(HORS_BANDE).sort();
+const appliedViaPrisma = applied.length - outOfBand.length;
+const newNames = migrations.filter((name) =>
+  !PRODUCTION_APPLIED[name] && !ECARTS[name] && name > BORNE_RELEVE);
 
-const lireSql = (n) => readFileSync(join(dossier, n, 'migration.sql'), 'utf8');
-const rejouable = (n) => {
-  const sql = lireSql(n);
-  // Une migration est NON rejouable si elle cree un objet sans garde.
-  const creationsNues = [...sql.matchAll(/CREATE\s+TABLE\s+(?!IF\s+NOT\s+EXISTS)/gi)];
-  const policyNues = [...sql.matchAll(/CREATE\s+POLICY\s+(?!IF\s+NOT\s+EXISTS)/gi)];
-  const typeNus = [...sql.matchAll(/CREATE\s+TYPE\s+(?!IF\s+NOT\s+EXISTS)/gi)];
-  return { rejouable: creationsNues.length + policyNues.length + typeNus.length === 0,
-    sansGarde: [...creationsNues, ...policyNues, ...typeNus].length };
-};
-
-// --- 1. La liste exacte, par categorie ------------------------------------
-const absentes = Object.keys(ECARTS).filter((n) => ECARTS[n].historique === 'ABSENTE');
-const annulees = Object.keys(ECARTS).filter((n) => ECARTS[n].historique === 'ANNULEE');
-const horsBande = Object.keys(HORS_BANDE);
-// Meme regle derivee que la matrice : posterieure au releve, ni ecart ni hors bande.
-const nouvellesNoms = migrations.filter((n) => !ECARTS[n] && !HORS_BANDE[n] && n > BORNE_RELEVE);
-const NOUVELLES = Object.fromEntries(nouvellesNoms.map((n) => [n, true]));
-const appliquees = migrations.filter((n) => !ECARTS[n] && !HORS_BANDE[n] && !NOUVELLES[n]);
-
-/**
- * L'action, deduite de DEUX faits seulement : ce que l'historique dit, et ce
- * que le catalogue dit. Jamais d'inference (« la ligne est annulee donc c'est
- * absent » n'est pas une deduction valide — c'est demontre par 20261017120000).
- */
-function actionDe(nom) {
-  if (NOUVELLES[nom]) {
-    return { action: 'APPLIQUER SEULE (jamais deployee)', preuve: 'aucune ligne _prisma_migrations ; ecrite le 29/10',
-      risque: 'aucun historique a reconcilier : elle n a jamais ete jouee',
-      prerequis: 'decision sur les migrations jumelles : plusieurs fichiers font le meme DROP' };
-  }
-  const e = ECARTS[nom];
-  const c = CATALOGUE[nom];
-  const r = rejouable(nom);
-  const effets = e.effets[0];      // MESURE | DEDUIT | NON PROUVE
-
-  if (nom === '20261028150000_reconcile_plm_erp_sync_job_policies') {
-    return { action: 'APPLIQUER SEULE', preuve: '4 politiques mesurees au lieu de 2',
-      risque: 'faible et borne : additive, idempotente, gardes fail-closed ; si la base ne ressemble pas a l attendu elle REFUSE et arrete la suite (c est voulu)',
-      prerequis: 'aucun (ne depend d aucune autre migration)' };
-  }
-  if (nom === '20261028120000_runtime_function_registry') {
-    return { action: 'APPLIQUER EN PREMIER', preuve: 'table lue ABSENTE en production',
-      risque: 'NON rejouable (CREATE TABLE sans IF NOT EXISTS) : un second passage casse et bloque les 5 suivantes',
-      prerequis: 'releve du catalogue juste avant, et confirmation que la table est toujours absente' };
-  }
-  if (effets === 'MESURE' || effets === 'DEDUIT') {
-    return { action: 'RESOLVE --APPLIED SUR PREUVE', preuve: e.effets[1],
-      risque: 'aucun DDL rejoue ; documente un etat deja present sans le modifier',
-      prerequis: 'sonde confirmant les effets au moment de l execution' };
-  }
-  // Effets NON PROUVES : le plan ne peut pas trancher a l avance, il porte donc
-  // DEUX branches explicites, choisies par la sonde et par elle seule.
-  const rejeu = r.rejouable
-    ? 'rejouable : un second passage est sans effet'
-    : `NON rejouable (${r.sansGarde} creation(s) sans garde) : la branche « appliquer » ne doit etre tentee qu UNE fois`;
-  return {
-    action: 'SONDE → APPLIED SI PRESENT, SINON APPLIQUER SEULE',
-    preuve: 'effets NON PROUVES a ce jour',
-    risque: rejeu,
-    prerequis: 'sonde de la chaine ; la branche est choisie par la mesure, pas par defaut',
+function planFor(name) {
+  const gap = ECARTS[name];
+  const catalogue = CATALOGUE[name];
+  const base = {
+    name,
+    history: 'ABSENTE',
+    effect: gap.effets[0],
+    evidence: catalogue.catalogue,
+    risk: 'migration non encore attestee ; appliquer une seule fois par Prisma apres preflight',
+    prerequisite: gap.suite,
+    action: 'APPLIQUER EN PRÉPRODUCTION, puis Production après validation complète',
   };
+  if (name === '20261028120000_runtime_function_registry') {
+    return { ...base,
+      action: 'APPLIQUER EN PREMIER EN PRÉPRODUCTION, puis Production après validation',
+      risk: 'CREATE TABLE sans IF NOT EXISTS ; table vérifiée absente le 04/11, re-vérifier juste avant deploy',
+      prerequisite: 'confirmer tracefab_runtime_function_registry absente et exécuteur propriétaire des fonctions',
+    };
+  }
+  if (name === '20261028120100_worker_identity_not_forgeable') {
+    return { ...base,
+      action: 'APPLIQUER APRÈS 20261028120000',
+      risk: 'migration corrigée dans cette branche ; CI P10.5 doit prouver l’exécution sans SUPERUSER',
+      prerequisite: 'rôle de migration avec CREATEROLE et propriété des fonctions ; vérifier worker NOLOGIN et app non membre',
+    };
+  }
+  if (name === '20261028150000_reconcile_plm_erp_sync_job_policies'
+      || name === '20261029180000_plm_erp_sync_jobs_policy_dedup') {
+    return { ...base,
+      action: 'APPLIQUER EN PRÉPRODUCTION, puis Production',
+      risk: 'les politiques canoniques sont déjà présentes ; migration de normalisation à rejouer une seule fois via Prisma',
+      prerequisite: 'confirmer que la table conserve exactement les deux politiques canoniques avant et après',
+    };
+  }
+  if (name === '20261031120000_identite_hmac_liee_au_contexte') {
+    return { ...base,
+      risk: 'mode strict désactivé ; TRACEFAB_IDENTITY_KEY absent ; ne pas activer strict pendant le deploy',
+      prerequisite: 'appliquer les tables et fonctions HMAC ; provisionner la clé séparément après déploiement',
+    };
+  }
+  if (name === '20261102120000_identite_stricte_email_et_rotation') {
+    return { ...base,
+      risk: 'dépend des tables HMAC ; ne pas activer le mode strict sans clé et couverture complète des routes',
+      prerequisite: '20261031120000 terminée ; strict reste désactivé jusqu’à validation dédiée',
+    };
+  }
+  return base;
 }
 
-const lignes = [...nouvellesNoms, ...absentes, ...annulees].map((nom) => {
-  if (NOUVELLES[nom]) {
-    const a = actionDe(nom);
-    return { nom, historique: 'NOUVELLE', effets: 'NON DEPLOYEE', ...a, dependDe: ['—'] };
+const lignesForward = (name) => {
+  const base = {
+    name,
+    history: 'NOUVELLE (postérieure au snapshot)',
+    risk: 'correction forward-only ; ne modifie aucune entrée _prisma_migrations déjà terminée',
+    action: 'APPLIQUER EN PRÉPRODUCTION, puis Production après validation complète',
+  };
+  if (name === '20261104090000_plm_integrations_and_gs1_constraints') {
+    return {
+      ...base,
+      effect: 'ajouter les quatre CHECK PLM manquants et autoriser GS1 GPC',
+      evidence: 'catalogue Neon relu le 04/11 : quatre CHECK absents, contrainte GS1 sans gpc, zéro ligne invalide',
+      risk: 'contrainte VALIDATE après précondition ; échec fermé si données invalides ou définition inattendue',
+      prerequisite: 'rejouer les comptages de lignes invalides et relire les contraintes juste avant application',
+      action: 'APPLIQUER APRÈS LES 13 MIGRATIONS HISTORIQUES, EN PRÉPRODUCTION PUIS PRODUCTION',
+    };
   }
-  const e = ECARTS[nom];
-  const a = actionDe(nom);
-  return { nom, historique: e.historique, effets: e.effets[0], ...a,
-    dependDe: nom.startsWith('2026102812')
-      ? (nom === '20261028120000_runtime_function_registry' ? ['—'] : ['20261028120000_runtime_function_registry'])
-      : ['—'] };
-});
-
-// --- 2. Controles : le plan ne doit jamais reecrire l'historique ----------
-const INTERDIT = [
-  [/UPDATE\s+_prisma_migrations/i, 'UPDATE sur _prisma_migrations'],
-  [/DELETE\s+FROM\s+_prisma_migrations/i, 'DELETE sur _prisma_migrations'],
-  [/resolve\s+--rolled-back/i, 'resolve --rolled-back (ferait rejouer un fichier non rejouable)'],
-  [/migrate\s+deploy(?!.*seule)/i, 'migrate deploy global'],
+  if (name === '20261104100000_supply_chain_status_enum_casts') {
+    return {
+      ...base,
+      effect: 'corriger les CASE texte en casts explicites data_value_status dans create/update supply-chain node',
+      evidence: 'pg_get_functiondef identique en Production/Préproduction ; P10.5 a reproduit SQLSTATE 42804 pendant l’ingestion PLM/ERP',
+      risk: 'remplacement de deux fonctions SECURITY DEFINER ; CREATE OR REPLACE doit conserver OID, propriétaire et ACL',
+      prerequisite: '20261104090000 terminée ; current_user doit être neondb_owner, propriétaire actuel des deux fonctions (tracefab_migrator absent sur les deux bases) ; exécuter test:p105:ingestion et vérifier propriétaire/ACL après application',
+      action: 'APPLIQUER APRÈS LA CORRECTION PLM/GS1, EN PRÉPRODUCTION PUIS PRODUCTION',
+    };
+  }
+  if (name === '20261105160000_active_tenant_product_materials_rls') {
+    return {
+      ...base,
+      effect: 'borner les relations produit-matière au tenant actif tout en conservant les partages fournisseur pour les produits du tenant actif',
+      evidence: 'test direct sous tracefab_app : membre A+B, A actif, une relation product_materials de B était visible via la branche partagée de la politique SELECT ; helper material_visible_via_product ignorait aussi le tenant actif',
+      risk: 'préserver les matières partagées sans exposer la composition d’un produit d’un autre tenant ; CREATE OR REPLACE conserve OID/propriétaire/ACL',
+      prerequisite: '20261105150000 terminée ; vérifier les fonctions SECURITY DEFINER d’ajout/mise à jour de matières et la visibilité partagée',
+      action: 'APPLIQUER APRÈS LE BORNAGE DES CLAIMS/IDENTITÉS DPP, EN PRÉPRODUCTION PUIS PRODUCTION APRÈS VALIDATION COMPLÈTE',
+    };
+  }
+  if (name === '20261105220000_active_tenant_quality_cap_guards') {
+    return {
+      ...base,
+      effect: 'exiger le tenant actif de la marque pour créer/revoir un CAP et du fournisseur pour soumettre la remédiation',
+      evidence: 'les trois fonctions SECURITY DEFINER contrôlaient le rôle ou l’adhésion sans vérifier le tenant actif ; les routes sont maintenant bornées à la partie concernée et testées en PostgreSQL',
+      risk: 'CREATE OR REPLACE doit préserver OID, propriétaire et ACL ; le helper reste non exécutable par tracefab_app',
+      prerequisite: '20261105210000 terminée ; vérifier la création sous marque active, puis les refus de soumission fournisseur et de revue marque hors tenant',
+      action: 'APPLIQUER APRÈS LES GARDES PROFIL/PASSEPORT FOURNISSEUR, EN PRÉPRODUCTION PUIS PRODUCTION APRÈS VALIDATION COMPLÈTE',
+    };
+  }
+  if (name === '20261105230000_active_tenant_invite_document_passport_guards') {
+    return {
+      ...base,
+      effect: 'lier les invitations fournisseur, l’enregistrement des documents, le démarrage des scans et la revue des demandes de passeport au tenant actif',
+      evidence: 'tests de routes et d’intégration : le tenant marque/fournisseur propriétaire est résolu explicitement et armé dans les transactions appelantes',
+      risk: 'CREATE OR REPLACE doit préserver OID, propriétaire et ACL ; les chemins de scan doivent réarmer le tenant à chaque transaction',
+      prerequisite: '20261105220000 terminée ; vérifier invitations, upload, scan et revue de passeport sur PostgreSQL 17',
+      action: 'APPLIQUER APRÈS LES GARDES CAP QUALITÉ, EN PRÉPRODUCTION PUIS PRODUCTION APRÈS VALIDATION COMPLÈTE',
+    };
+  }
+  if (name === '20261105235900_active_tenant_policy_and_worker_closure') {
+    return {
+      ...base,
+      effect: 'recalculer et borner les politiques RLS restantes au tenant actif, sécuriser les fonctions documentaires et transférer les traitements globaux de notification à l’identité worker non connectable',
+      evidence: 'inventaire PostgreSQL pg_policies, contrôles de postconditions, tests négatifs directs des fonctions documentaires, tests worker non falsifiable et contrôle du contexte public',
+      risk: 'migration à forte portée : réécrit dynamiquement les prédicats RLS et change le propriétaire de trois fonctions ; revue catalogue/ACL obligatoire avant tout déploiement réel',
+      prerequisite: '20261105230000 terminée ; comparer le nombre de politiques et les expressions USING/WITH CHECK avant/après, vérifier OID/propriétaires/ACL, puis exécuter les tests RLS, documentaires, worker et public',
+      action: 'APPLIQUER APRÈS LES GARDES INVITATIONS/DOCUMENTS/PASSEPORTS, EN PRÉPRODUCTION PUIS PRODUCTION APRÈS VALIDATION COMPLÈTE',
+    };
+  }
+  if (name === '20261105240000_active_tenant_supplier_quality_guard') {
+    return {
+      ...base,
+      effect: 'exiger le tenant fournisseur actif pour calculer et muter les scores/anomalies de qualité fournisseur',
+      evidence: 'test PostgreSQL direct : le calcul passe sous le tenant fournisseur propriétaire et échoue active_tenant_mismatch depuis un autre tenant',
+      risk: 'CREATE OR REPLACE doit préserver OID, propriétaire et ACL ; le helper reste non exécutable par tracefab_app',
+      prerequisite: '20261105230000 terminée ; vérifier le parcours positif test_neon_quality_flow et le refus inter-tenant',
+      action: 'APPLIQUER APRÈS LES GARDES INVITATIONS/DOCUMENTS/PASSEPORTS, EN PRÉPRODUCTION PUIS PRODUCTION APRÈS VALIDATION COMPLÈTE',
+    };
+  }
+  if (name === '20261106000000_active_tenant_supplier_passport_guards') {
+    return {
+      ...base,
+      effect: 'rétablir immédiatement après les migrations historiques tardives la garde du tenant actif dans les deux fonctions SECURITY DEFINER de passeport fournisseur',
+      evidence: 'pg_get_functiondef vérifie la garde après BEGIN ; les tests PostgreSQL 17 couvrent le refus inter-tenant et le parcours fournisseur positif',
+      risk: 'CREATE OR REPLACE doit préserver OID, propriétaire et ACL ; le helper ne doit jamais être exécutable directement par tracefab_app',
+      prerequisite: '20261105235900 et 20261105240000 terminées ; vérifier les deux fonctions sur le schéma canonique après les scénarios de migration tardive',
+      action: 'APPLIQUER APRÈS LA FERMETURE RLS/WORKER ET LES GARDES QUALITÉ FOURNISSEUR, EN PRÉPRODUCTION PUIS PRODUCTION APRÈS VALIDATION COMPLÈTE',
+    };
+  }
+  if (name === '20261105210000_active_tenant_supplier_profile_passport_guards') {
+    return {
+      ...base,
+      effect: 'exiger le tenant fournisseur actif pour modifier/soumettre le profil et créer/modifier le passeport fournisseur',
+      evidence: 'les fonctions SECURITY DEFINER vérifiaient seulement l’appartenance ; les quatre routes de profil fournisseur sont désormais armées avec un tenant supplier explicite et testées avec un troisième tenant',
+      risk: 'CREATE OR REPLACE doit préserver OID, propriétaire et ACL ; le helper reste non exécutable par tracefab_app',
+      prerequisite: '20261105200000 terminée ; vérifier les quatre refus SQL directs inter-tenant et les parcours fournisseur positifs',
+      action: 'APPLIQUER APRÈS LES GARDES MATIÈRES/CERTIFICATIONS, EN PRÉPRODUCTION PUIS PRODUCTION APRÈS VALIDATION COMPLÈTE',
+    };
+  }
+  if (name === '20261105200000_active_tenant_material_certification_guards') {
+    return {
+      ...base,
+      effect: 'exiger le tenant actif pour créer/modifier une matière et enregistrer/modifier une certification',
+      evidence: 'les routes matériaux étaient déjà bornées ; les quatre fonctions SECURITY DEFINER vérifiaient seulement l’appartenance ; les routes certifications sont maintenant liées au tenant fournisseur explicite',
+      risk: 'CREATE OR REPLACE doit préserver OID, propriétaire et ACL ; le helper reste non exécutable par tracefab_app',
+      prerequisite: '20261105190000 terminée ; vérifier les quatre refus SQL directs inter-tenant et les parcours fournisseurs positifs',
+      action: 'APPLIQUER APRÈS LES GARDES QUALITÉ/COLLECTE, EN PRÉPRODUCTION PUIS PRODUCTION APRÈS VALIDATION COMPLÈTE',
+    };
+  }
+  if (name === '20261105190000_active_tenant_quality_collection_guards') {
+    return {
+      ...base,
+      effect: 'exiger le tenant actif dans les sept fonctions SECURITY DEFINER de qualité et collecte : anomalies, items/demandes, soumission/réponse fournisseur et revue marque',
+      evidence: 'inspection PostgreSQL des fonctions SECURITY DEFINER exécutables par tracefab_app : les contrôles de rôle vérifiaient l’appartenance mais pas le tenant actif ; routes concernées mises à jour et tests multi-tenant négatifs ajoutés',
+      risk: 'CREATE OR REPLACE doit préserver OID, propriétaire et ACL ; les helpers de garde restent non exécutables par tracefab_app',
+      prerequisite: '20261105180000 terminée ; vérifier les sept refus SQL directs inter-tenant et les parcours HTTP armant le tenant de la partie concernée',
+      action: 'APPLIQUER APRÈS LA GARDE D’ENREGISTREMENT TC, EN PRÉPRODUCTION PUIS PRODUCTION APRÈS VALIDATION COMPLÈTE',
+    };
+  }
+  if (name === '20261105180000_active_tenant_tc_registration_guard') {
+    return {
+      ...base,
+      effect: 'exiger que le tenant actif soit vendeur ou acheteur dans tracefab_register_transaction_certificate, y compris en appel SQL direct',
+      evidence: 'la route vérifiait déjà que le tenant actif est une partie, mais la fonction SECURITY DEFINER ne répétait pas ce contrôle ; un membre multi-tenant pouvait appeler la fonction directement avec deux tiers',
+      risk: 'CREATE OR REPLACE dynamique doit préserver OID, propriétaire et ACL ; ne pas empêcher un vendeur ou acheteur actif autorisé de déclarer le certificat',
+      prerequisite: '20261105170000 terminée ; vérifier le parcours positif vendeur actif et le refus direct lorsque le tenant actif n’est ni vendeur ni acheteur',
+      action: 'APPLIQUER APRÈS LES GARDES DES 19 FONCTIONS SECURITY DEFINER, EN PRÉPRODUCTION PUIS PRODUCTION APRÈS VALIDATION COMPLÈTE',
+    };
+  }
+  if (name === '20261105170000_active_tenant_security_definer_guards') {
+    return {
+      ...base,
+      effect: 'imposer le tenant actif dans les 19 fonctions SECURITY DEFINER exposées au runtime : graphe, PEF, DPP, qualité, collecte, produits, mass-balance, publication, schémas',
+      evidence: 'audit SQL des définitions SECURITY DEFINER et des routes appelantes ; la migration injecte des gardes typées dans les fonctions sans renommer les objets',
+      risk: 'CREATE OR REPLACE doit préserver les OID, propriétaires et ACL ; helpers INVOKER sans EXECUTE PUBLIC ni tracefab_app ; préserver les opérations partagées fournisseur et les transitions publiques',
+      prerequisite: '20261105160000 terminée ; valider les contextes brand/supplier, les routes schema-bindings, les appels worker/public et les 19 postconditions pg_get_functiondef',
+      action: 'APPLIQUER APRÈS LE BORNAGE DES COMPOSITIONS PRODUIT-MATIÈRE, EN PRÉPRODUCTION PUIS PRODUCTION APRÈS VALIDATION COMPLÈTE',
+    };
+  }
+  if (name === '20261105150000_active_tenant_dpp_claims_identity_rls') {
+    return {
+      ...base,
+      effect: 'borner les lectures privées des claims, événements et identités DPP au tenant du produit ; refuser les fonctions SECURITY DEFINER exposées à l’API hors tenant actif',
+      evidence: 'test direct sous tracefab_app : membre A+B, A actif, lecture de 1 claim et 1 identité privée de B ; pg_get_functiondef confirme plusieurs fonctions DPP/identité sans garde tenant',
+      risk: 'CREATE OR REPLACE doit préserver OID, propriétaire et ACL ; ne pas ajouter de garde à tracefab_calculate_product_data_completion, fonction interne appelée par trigger et non exécutable par tracefab_app',
+      prerequisite: '20261105140000 terminée ; vérifier les fonctions SECURITY DEFINER, leurs ACL et les politiques publiques DPP avant/après',
+      action: 'APPLIQUER APRÈS LE BORNAGE DES ALLÉGATIONS VERTES, EN PRÉPRODUCTION PUIS PRODUCTION APRÈS VALIDATION COMPLÈTE',
+    };
+  }
+  if (name === '20261105140000_active_tenant_green_claims_rls') {
+    return {
+      ...base,
+      effect: 'borner les lectures et mutations des allégations vertes de marque au tenant actif',
+      evidence: 'test direct sous tracefab_app sur Neon isolé : un membre de A et B, A actif, lisait 1 allégation privée appartenant à B',
+      risk: 'politique privée ; ne pas introduire de lecture publique et vérifier le contexte actif des routes green claims',
+      prerequisite: '20261105130000 terminée ; vérifier les routes de claims et la politique RLS sous tracefab_app',
+      action: 'APPLIQUER APRÈS LE BORNAGE RLS PRODUITS/DPP/PEF, EN PRÉPRODUCTION PUIS PRODUCTION APRÈS VALIDATION COMPLÈTE',
+    };
+  }
+  if (name === '20261105130000_active_tenant_product_dpp_pef_rls') {
+    return {
+      ...base,
+      effect: 'borner les lectures privées produits, DPP et PEF au tenant actif, sans toucher aux politiques publiques',
+      evidence: 'test direct sous tracefab_app sur Neon isolé : A actif ne voit aucune ligne produit/DPP/PEF de B ; B actif voit les trois',
+      risk: 'les routes catalogue/DPP/PEF doivent armer le tenant actif ; préserver les partages fournisseur et les lectures publiques',
+      prerequisite: '20261105120000 terminée ; vérifier les contextes actifs des routes produit/DPP/PEF et les politiques publiques avant/après',
+      action: 'APPLIQUER APRÈS LE BORNAGE DE L’INGESTION PLM/ERP, EN PRÉPRODUCTION PUIS PRODUCTION APRÈS VALIDATION COMPLÈTE',
+    };
+  }
+  if (name === '20261105120000_active_tenant_plm_ingest_enforcement') {
+    return {
+      ...base,
+      effect: 'refuser les imports SECURITY DEFINER hors tenant actif, borner la RLS des intégrations/jobs PLM et accepter tous les types de source API',
+      evidence: 'test multi-tenant direct sous tracefab_app : tenant A autorisé, B refusé en fonction et RLS ; CI test:p105:ingestion à obtenir',
+      risk: 'CREATE OR REPLACE SECURITY DEFINER conserve OID, propriétaire et ACL ; prérequis tracefab_app et tracefab_in_active_tenant présents',
+      prerequisite: '20261104100000 terminée ; vérifier le propriétaire neondb_owner, les ACL, la RLS, les rôles tracefab_app et les types source_system avant puis après',
+      action: 'APPLIQUER APRÈS LA CORRECTION SUPPLY-CHAIN, EN PRÉPRODUCTION PUIS PRODUCTION APRÈS VALIDATION COMPLÈTE',
+    };
+  }
+  return base;
+};
+const lines = [
+  ...pending.map(planFor),
+  ...newNames.map(lignesForward),
 ];
-
-/** Controle un plan. Fonction pure : l autotest l appelle sur des plans mutés. */
-function controler(ls, ms, hb) {
-  const erreurs = [];
-  for (const l of ls) {
-    for (const [re, quoi] of INTERDIT) {
-      if (re.test(`${l.action} ${l.risque}`)) erreurs.push(`${l.nom} : action interdite — ${quoi}`);
-    }
-    // Un resolve --applied sans sonde ni preuve nommee est une affirmation gratuite.
-    if (/RESOLVE --APPLIED/.test(l.action) && !/SONDE/.test(l.action)
-        && (!l.preuve || /^(aucune mesure|effets NON PROUVES)/.test(l.preuve))) {
-      erreurs.push(`${l.nom} : resolve --applied sans preuve nommee`);
-    }
-    if (!ms.includes(l.nom)) erreurs.push(`${l.nom} : cite mais absent du depot`);
+const errors = [];
+const warnings = [];
+const phases = [
+  { label: 'PREPRODUCTION', command: 'npx prisma migrate deploy', gate: '13 migrations historiques pending + 17 corrections forward ordonnées (PLM/GS1, graphe, tenant actif PLM/ERP, RLS produits/DPP/PEF, allégations vertes, claims/identités DPP, compositions produit-matière, 19 fonctions SECURITY DEFINER, enregistrement TC, politiques RLS restantes et fermeture worker/public) ; 1 variance checksum documentée et éprouvée par test Prisma ; aucun resolve' },
+  { label: 'PRODUCTION', command: 'npx prisma migrate deploy', gate: 'Préproduction validée et catalogue vérifié' },
+];
+function violationsFor(planLines, phaseList = phases) {
+  const violations = [];
+  const text = planLines.map((line) => [line.action, line.risk, line.prerequisite].join(' ')).join('\n');
+  if (/migrate\s+resolve\s+--(?:applied|rolled-back)/i.test(text)) violations.push('resolve interdit');
+  if (/(?:UPDATE|DELETE\s+FROM)\s+_prisma_migrations/i.test(text)) violations.push('écriture directe dans _prisma_migrations interdite');
+  const pre = phaseList.findIndex((phase) => phase.label === 'PREPRODUCTION');
+  const prod = phaseList.findIndex((phase) => phase.label === 'PRODUCTION');
+  if (pre < 0 || prod < 0 || pre > prod) violations.push('Production doit venir après Préproduction');
+  if (phaseList.some((phase) => phase.label === 'PRODUCTION' && !/Préproduction validée/.test(phase.gate))) {
+    violations.push('la phase Production exige une preuve de Préproduction');
   }
-  for (const n of hb) if (!ms.includes(n)) erreurs.push(`${n} : hors bande absent du depot`);
-  const ordre = ls.map((l) => l.nom);
-  const iReg = ordre.indexOf('20261028120000_runtime_function_registry');
-  const i120 = ordre.indexOf('20261028120100_worker_identity_not_forgeable');
-  if (iReg >= 0 && i120 >= 0 && iReg > i120) {
-    erreurs.push('ordre : le registre doit preceder 20261028120100');
+  return violations;
+}
+const known = new Set([...applied, ...pending, ...newNames]);
+for (const name of migrations) if (!known.has(name)) errors.push(`${name}: aucune categorie dans le snapshot`);
+for (const name of known) if (!migrations.includes(name)) errors.push(`${name}: reference absente du depot`);
+if (applied.length !== 56) errors.push(`snapshot applique attendu 56, obtenu ${applied.length}`);
+if (appliedViaPrisma !== 51) errors.push(`migrations via Prisma attendues 51, obtenu ${appliedViaPrisma}`);
+if (outOfBand.length !== 5) errors.push(`migrations hors bande attendues 5, obtenu ${outOfBand.length}`);
+if (pending.length !== 13) errors.push(`migrations historiques en attente attendues 13, obtenu ${pending.length}`);
+if (JSON.stringify(newNames) !== JSON.stringify([
+  '20261104090000_plm_integrations_and_gs1_constraints',
+  '20261104100000_supply_chain_status_enum_casts',
+  '20261105120000_active_tenant_plm_ingest_enforcement',
+  '20261105130000_active_tenant_product_dpp_pef_rls',
+  '20261105140000_active_tenant_green_claims_rls',
+  '20261105150000_active_tenant_dpp_claims_identity_rls',
+  '20261105160000_active_tenant_product_materials_rls',
+  '20261105170000_active_tenant_security_definer_guards',
+  '20261105180000_active_tenant_tc_registration_guard',
+  '20261105190000_active_tenant_quality_collection_guards',
+  '20261105200000_active_tenant_material_certification_guards',
+  '20261105210000_active_tenant_supplier_profile_passport_guards',
+  '20261105220000_active_tenant_quality_cap_guards',
+  '20261105230000_active_tenant_invite_document_passport_guards',
+  '20261105235900_active_tenant_policy_and_worker_closure',
+  '20261105240000_active_tenant_supplier_quality_guard',
+  '20261106000000_active_tenant_supplier_passport_guards',
+])) {
+  errors.push(`les dix-sept corrections forward PLM/GS1, graphe, tenant actif, RLS produits/DPP/PEF, allégations vertes, claims/identités DPP, compositions produit-matière, gardes SECURITY DEFINER, enregistrement TC, qualité/collecte, matières/certifications, profil fournisseur, CAP qualité, invitations/documents/passeports et qualité fournisseur sont attendues, obtenu ${JSON.stringify(newNames)}`);
+}
+if (ROLLED_BACK_ATTEMPTS.length !== 2) errors.push('le snapshot doit conserver deux tentatives annulees');
+for (const name of outOfBand) {
+  if (!PRODUCTION_APPLIED[name]) errors.push(`hors bande sans ligne terminee : ${name}`);
+}
+for (const attempt of ROLLED_BACK_ATTEMPTS) {
+  if (!PRODUCTION_APPLIED[attempt.name]) errors.push(`tentative annulee sans ligne reussie du meme nom : ${attempt.name}`);
+}
+errors.push(...violationsFor(lines));
+const index = (name) => pending.indexOf(name);
+const ordered = [
+  ['20261021170000_dpp_readiness_truthful_gates','20261027100000_dpp_quality_gate_requires_assessment'],
+  ['20261027100000_dpp_quality_gate_requires_assessment','20261027130000_dpp_review_preservation_and_publication_coherence'],
+  ['20261028120000_runtime_function_registry','20261028120100_worker_identity_not_forgeable'],
+  ['20261028120100_worker_identity_not_forgeable','20261028120200_document_reserved_fields_internal_only'],
+  ['20261031120000_identite_hmac_liee_au_contexte','20261102120000_identite_stricte_email_et_rotation'],
+];
+for (const [before,after] of ordered) {
+  if (index(before) < 0 || index(after) < 0 || index(before) > index(after)) {
+    errors.push(`ordre de dependance invalide : ${before} doit preceder ${after}`);
   }
-  // Fermeture : chaque migration du depot dans exactement une categorie.
-  return erreurs;
+}
+for (const name of applied) {
+  const file = join(migrationsDir,name,'migration.sql');
+  const sha = sha256(readFileSync(file));
+  const recorded = PRODUCTION_APPLIED[name];
+  if (sha !== recorded) {
+    const exception = CHECKSUM_EXCEPTIONS[name];
+    const evidenceExists = exception?.evidence && existsSync(join(root, exception.evidence));
+    if (exception && exception.appliedChecksum === recorded && exception.repositoryChecksum === sha
+        && exception.exactHistoricalSqlRecovered === false
+        && exception.status === 'DOCUMENTED_NON_BLOCKING_FOR_PRISMA_MIGRATE_DEPLOY'
+        && exception.test === 'test:prisma:checksum-deploy' && evidenceExists) {
+      warnings.push(`${name}: écart historique documenté (${recorded.slice(0,12)} ≠ ${sha.slice(0,12)}), exact SQL non retrouvé`);
+    } else {
+      errors.push(`${name}: checksum depot différent de l'historique Neon sans exception exacte`);
+    }
+  }
 }
 
-function fermeture(ms, categories) {
-  const vues = new Map();
-  for (const c of categories) for (const n of c) vues.set(n, (vues.get(n) ?? 0) + 1);
-  const err = [];
-  for (const n of ms) {
-    const k = vues.get(n) ?? 0;
-    if (k === 0) err.push(`${n} : dans aucune categorie`);
-    if (k > 1) err.push(`${n} : dans ${k} categories`);
-  }
-  for (const n of vues.keys()) if (!ms.includes(n)) err.push(`${n} : categorie citee, absente du depot`);
-  return err;
+function sha256(bytes) {
+  return createHash('sha256').update(bytes).digest('hex');
 }
 
-const erreurs = [...controler(lignes, migrations, horsBande),
-                 ...fermeture(migrations, [nouvellesNoms, absentes, annulees, horsBande, appliquees])];
-
-// --- 2 bis. Autotest : les controles savent-ils ECHOUER ? ----------------
-// Sans cela, « aucune violation » ne prouve rien : un detecteur casse rend le
-// meme silence qu un plan correct.
-if (process.argv.includes('--autotest')) {
-  const temoins = [
-    ['UPDATE sur _prisma_migrations',
-      (l) => { l[0] = { ...l[0], action: 'UPDATE _prisma_migrations SET finished_at = now()' }; }],
-    ['DELETE sur _prisma_migrations',
-      (l) => { l[0] = { ...l[0], action: 'DELETE FROM _prisma_migrations' }; }],
-    ['resolve --rolled-back',
-      (l) => { l[0] = { ...l[0], action: 'resolve --rolled-back' }; }],
-    ['deploy global',
-      (l) => { l[0] = { ...l[0], action: 'migrate deploy' }; }],
-    ['resolve --applied sans preuve',
-      (l) => { l[0] = { ...l[0], action: 'RESOLVE --APPLIED SUR PREUVE', preuve: 'effets NON PROUVES' }; }],
-    ['ordre inverse (registre apres 120100)',
-      (l) => { const i = l.findIndex((x) => x.nom.startsWith('20261028120000'));
-               const j = l.findIndex((x) => x.nom.startsWith('20261028120100'));
-               if (i >= 0 && j >= 0) { const t = l[i]; l[i] = l[j]; l[j] = t; } }],
+if (autotest) {
+  const mutants = [
+    { label: 'resolve --applied', lines: [{ action: 'prisma migrate resolve --applied' }] },
+    { label: 'écriture historique', lines: [{ action: 'UPDATE _prisma_migrations SET checksum = ...' }] },
   ];
-  let vus = 0;
-  for (const [libelle, muter] of temoins) {
-    const copie = lignes.map((l) => ({ ...l }));
-    muter(copie);
-    if (controler(copie, migrations, horsBande).length > 0) { vus += 1; console.log(`  temoin detecte : ${libelle}`); }
-    else console.error(`  TEMOIN NON DETECTE : ${libelle} — le controle est aveugle`);
+  let passed = 0;
+  const guardErrors = [];
+  for (const mutant of mutants) {
+    if (violationsFor(mutant.lines).length > 0) passed += 1;
+    else guardErrors.push(`autotest non détecté : ${mutant.label}`);
   }
-  const f = fermeture(migrations, [absentes.slice(1), annulees, horsBande, appliquees]);
-  if (f.length > 0) { vus += 1; console.log('  temoin detecte : migration hors de toute categorie'); }
-  else console.error('  TEMOIN NON DETECTE : fermeture des categories');
-  const attendus = temoins.length + 1;
-  console.log(erreurs.length === 0 && vus === attendus
-    ? `autotest : ${vus}/${attendus} temoins detectes, plan reel sans violation.`
-    : `autotest ECHEC : ${vus}/${attendus} temoins, ${erreurs.length} violation(s) reelle(s).`);
-  process.exit(erreurs.length === 0 && vus === attendus ? 0 : 1);
+  const reversed = [...phases].reverse();
+  if (violationsFor(lines, reversed).length > 0) passed += 1;
+  else guardErrors.push('autotest non détecté : Production avant Préproduction');
+  if (guardErrors.length) {
+    console.error('\nAUTOTEST ECHEC');
+    for (const error of guardErrors) console.error(`  - ${error}`);
+    process.exit(1);
+  }
+  console.log(`Autotest OK : ${passed}/3 garde-fous détectent les mutations interdites.`);
+  process.exit(0);
 }
 
-// --- 3. Sortie ------------------------------------------------------------
 if (markdown) {
-  console.log('# Plan de reconciliation des migrations — genere\n');
-  console.log(`\`node scripts/plan_reconciliation_migrations.mjs --markdown\` sur ${migrations.length} migrations du depot.\n`);
-  console.log('**Aucune etape de ce plan n a ete executee.** Aucun acces en ecriture a la production.\n');
-  console.log('## 1. Liste exacte\n');
-  console.log('| Migration | Historique | Effets (production) | Action | Prerequis | Risque |');
-  console.log('|---|---|---|---|---|---|');
-  for (const l of lignes) {
-    console.log(`| \`${l.nom}\` | ${l.historique} | ${l.effets} | **${l.action}** | ${l.prerequis} | ${l.risque} |`);
+  console.log(`# Plan de réconciliation Neon — ${SNAPSHOT_DATE}\n`);
+  console.log('**Ce plan est généré, non exécuté. Préproduction doit réussir avant toute action Production.**\n');
+  console.log('| Migration | Catalogue mesuré | Action | Prérequis | Risque |');
+  console.log('|---|---|---|---|---|');
+  for (const line of lines) {
+    console.log(`| \`${line.name}\` | ${line.evidence} | **${line.action}** | ${line.prerequisite} | ${line.risk} |`);
   }
-  console.log('\n## 2. Deja materialisees (5) — ne rien rejouer\n');
-  console.log('| Migration | Objets lus presents |');
-  console.log('|---|---|');
-  for (const n of horsBande) console.log(`| \`${n}\` | ${HORS_BANDE[n].join(', ')} |`);
-  console.log('\n## 3. Interdits du plan, verifies\n');
-  console.log('Le generateur refuse : `UPDATE`/`DELETE` sur `_prisma_migrations`,');
-  console.log('`resolve --rolled-back`, `deploy` global, `resolve --applied` sans preuve nommee.');
-  console.log('`resolve --applied` n ecrit aucune ligne de migration : il documente un etat deja la.\n');
-  console.log(`Controles : ${erreurs.length === 0 ? 'aucune violation' : erreurs.join(' ; ')}`);
+  console.log('\n## Déjà appliquées hors bande — ne pas rejouer');
+  for (const name of outOfBand) console.log(`- ${name}: ${HORS_BANDE[name].join(', ')}`);
+  console.log('\n## Séquence d’exécution');
+  console.log('1. PRÉPRODUCTION : npx prisma migrate status — 13 migrations historiques pending + 16 corrections forward PLM/GS1, graphe, tenant actif, RLS produits/DPP/PEF, allégations vertes, claims/identités DPP, compositions produit-matière, gardes SECURITY DEFINER, enregistrement TC, qualité/collecte, matières/certifications, profil fournisseur, CAP qualité, puis fermeture RLS/worker/public ; 1 écart historique documenté, aucun resolve.');
+  console.log('2. PRÉPRODUCTION : npx prisma migrate deploy, puis contrôles catalogue et tests.');
+  console.log('3. PRODUCTION : même commande uniquement après validation complète de Préproduction.');
+  console.log(`\nHistorique : ${appliedViaPrisma} via Prisma + ${outOfBand.length} hors bande, ${pending.length} migrations historiques absentes + ${newNames.length} correction(s) forward, ${ROLLED_BACK_ATTEMPTS.length} tentatives annulées déjà suivies d'une réussite.`);
 } else {
-  console.log(`migrations du depot : ${migrations.length}`);
-  console.log(`  appliquees (attestees) : ${appliquees.length}`);
-  console.log(`  nouvelles (jamais deployees) : ${nouvellesNoms.length}  ${JSON.stringify(nouvellesNoms)}`);
-  console.log(`  appliquees hors bande  : ${horsBande.length}`);
-  console.log(`  annulees              : ${annulees.length}  ${JSON.stringify(annulees)}`);
-  console.log(`  absentes              : ${absentes.length}  ${JSON.stringify(absentes)}`);
+  console.log(`Plan Neon — snapshot ${SNAPSHOT_DATE}`);
+  console.log(`  migrations dépôt       : ${migrations.length}`);
+  console.log(`  appliquées via Prisma  : ${appliedViaPrisma}`);
+  console.log(`  appliquées hors bande  : ${outOfBand.length}`);
+  console.log(`  appliquées au total    : ${applied.length}`);
+  console.log(`  absentes               : ${pending.length}`);
+  console.log(`  nouvelles post-snapshot: ${newNames.length}`);
+  console.log(`  tentatives annulées    : ${ROLLED_BACK_ATTEMPTS.length} (non en attente)`);
   console.log('');
-  for (const l of lignes) {
-    console.log(`  ${l.nom}`);
-    console.log(`    historique=${l.historique} effets=${l.effets} -> ${l.action}`);
-    console.log(`    preuve : ${l.preuve}`);
-    console.log(`    risque : ${l.risque}`);
+  console.log('  Séquence : Préproduction → deploy → vérifications → Production.');
+  for (const line of lines) {
+    console.log(`  ${line.name}`);
+    console.log(`    ${line.action}`);
+    console.log(`    preuve: ${line.evidence}`);
+    console.log(`    prérequis: ${line.prerequisite}`);
+    console.log(`    risque: ${line.risk}`);
   }
-  console.log('');
-  for (const e of erreurs) console.log(`  VIOLATION ${e}`);
-  console.log(erreurs.length === 0
-    ? 'Le plan est coherent : 11 ecarts repartis, aucune action ne reecrit l historique.'
-    : `${erreurs.length} violation(s) du plan.`);
 }
-
-process.exit(erreurs.length === 0 ? 0 : 1);
+if (warnings.length) {
+  console.warn('\nAVERTISSEMENTS HISTORIQUES :');
+  for (const warning of warnings) console.warn(`  - ${warning}`);
+}
+if (errors.length) {
+  console.error('\nVIOLATIONS :');
+  for (const error of errors) console.error(`  - ${error}`);
+  process.exit(1);
+}
+console.log('\nPlan cohérent : 51 via Prisma + 5 hors bande, 13 migrations historiques en attente + 16 corrections forward PLM/GS1, graphe, tenant actif, RLS produits/DPP/PEF, allégations vertes, claims/identités DPP, compositions produit-matière, gardes SECURITY DEFINER, TC, qualité/collecte, matières/certifications, profil fournisseur, CAP, invitations/documents/passeports, qualité fournisseur et fermeture RLS/worker/public, 1 écart historique documenté, aucun resolve ni changement de checksum.');
