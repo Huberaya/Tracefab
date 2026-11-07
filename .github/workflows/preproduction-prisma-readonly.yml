@@ -1,4 +1,4 @@
-name: TraceFab — contrôle Cleanroom (lecture seule)
+name: TraceFab — contrôle Cleanroom désactivé (fail-closed)
 
 on:
   workflow_dispatch:
@@ -6,95 +6,15 @@ on:
 permissions:
   contents: read
 
-concurrency:
-  group: tracefab-cleanroom-readonly
-  cancel-in-progress: false
-
 jobs:
-  preflight:
-    name: Prisma — identité et état des migrations (sans écriture)
+  disabled:
+    name: Refuser toute exécution avec secrets depuis une branche PR
     runs-on: ubuntu-latest
-    timeout-minutes: 15
-    environment: tracefab-cleanroom
+    timeout-minutes: 2
     steps:
-      - name: Récupérer le dépôt
-        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
-        with:
-          persist-credentials: false
-
-      - name: Installer Node.js
-        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
-        with:
-          node-version: '20'
-          cache: npm
-
-      - name: Installer les dépendances
-        run: npm ci
-
-      - name: Vérifier les deux URL sans révéler les identifiants
-        env:
-          CLEANROOM_POOLER_URL: ${{ secrets.TRACEFAB_CLEANROOM_POOLER_URL }}
-          CLEANROOM_DIRECT_URL: ${{ secrets.TRACEFAB_CLEANROOM_DIRECT_URL }}
+      - name: Refus explicite
         run: |
-          node --input-type=module <<'NODE'
-          const expected = {
-            pooled: 'ep-wandering-rice-ba8jfvon-pooler.c-8.eu-central-1.aws.neon.tech',
-            direct: 'ep-wandering-rice-ba8jfvon.c-8.eu-central-1.aws.neon.tech',
-          };
-          for (const [label, raw, host] of [
-            ['pooler', process.env.CLEANROOM_POOLER_URL, expected.pooled],
-            ['direct', process.env.CLEANROOM_DIRECT_URL, expected.direct],
-          ]) {
-            if (!raw) throw new Error(`Secret TRACEFAB_CLEANROOM_${label.toUpperCase()}_URL absent.`);
-            const u = new URL(raw);
-            if (!['postgres:', 'postgresql:'].includes(u.protocol)) throw new Error(`${label}: protocole PostgreSQL attendu.`);
-            if (u.hostname !== host) throw new Error(`${label}: hôte inattendu — cible Cleanroom refusée.`);
-            if (decodeURIComponent(u.username) !== 'tracefab_migrator') throw new Error(`${label}: le rôle doit être tracefab_migrator.`);
-            if (u.pathname !== '/neondb') throw new Error(`${label}: la base doit être neondb.`);
-            if (!u.password) throw new Error(`${label}: mot de passe absent.`);
-            console.log(`${label}: URL présente, hôte/role/base conformes (secret masqué).`);
-          }
-          NODE
-
-      - name: Vérifier Prisma via le pooler (lecture seule)
-        env:
-          DATABASE_URL: ${{ secrets.TRACEFAB_CLEANROOM_POOLER_URL }}
-        shell: bash
-        run: |
-          set +e
-          output=$(npx prisma migrate status 2>&1)
-          status=$?
-          set -e
-          printf '%s\n' "$output"
-          if [ "$status" -eq 0 ]; then
-            echo "Pooler : connexion et historique Prisma accessibles."
-          elif printf '%s' "$output" | grep -Fq "Following migrations have not yet been applied:"; then
-            echo "::notice::Pooler : connexion réussie ; des migrations sont en attente sur cette base Cleanroom neuve."
-          else
-            echo "::error::Échec Prisma via le pooler (code $status)."
-            exit "$status"
-          fi
-
-      - name: Vérifier Prisma via la connexion directe (lecture seule)
-        env:
-          DATABASE_URL: ${{ secrets.TRACEFAB_CLEANROOM_DIRECT_URL }}
-        shell: bash
-        run: |
-          set +e
-          output=$(npx prisma migrate status 2>&1)
-          status=$?
-          set -e
-          printf '%s\n' "$output"
-          if [ "$status" -eq 0 ]; then
-            echo "Direct : connexion et historique Prisma accessibles."
-          elif printf '%s' "$output" | grep -Fq "Following migrations have not yet been applied:"; then
-            echo "::notice::Direct : connexion réussie ; des migrations sont en attente sur cette base Cleanroom neuve."
-          else
-            echo "::error::Échec Prisma via la connexion directe (code $status)."
-            exit "$status"
-          fi
-
-      - name: Résumé de sécurité
-        run: |
-          echo "Contrôles terminés. Ce workflow n'exécute aucune migration."
-          echo "Aucun prisma migrate deploy, migrate resolve ou SQL d'écriture n'est autorisé ici."
+          echo "::error::Workflow désactivé : il était modifiable depuis une branche PR tout en recevant des secrets Cleanroom."
+          echo "Aucun checkout, secret, environnement privilégié, npm ou accès base n'est autorisé."
+          echo "Un contrôle Cleanroom devra être déplacé vers une référence protégée et un environnement approuvé."
+          exit 1
