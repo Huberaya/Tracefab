@@ -1,9 +1,10 @@
 import type { VercelRequest, VercelResponse } from '../../../_lib/vercel-types.js';
 import { requireClerkUser, isUnauthorized } from '../../../_lib/auth.js';
-import { withTracefabUserContext } from '../../../_lib/context.js';
+import { withTracefabRequestContext, withTracefabTenantContext } from '../../../_lib/context.js';
 import { json, methodNotAllowed, readJsonBody } from '../../../_lib/http.js';
 import { sqlBusinessError } from '../../../_lib/sql-errors.js';
 import { isUuid } from '../../../_lib/data-requests.js';
+import { accessibleProduct } from '../../../_lib/quality.js';
 import {
   getProductMassBalanceSummary,
   reconcileProductMassBalance,
@@ -28,9 +29,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const { user } = await requireClerkUser(req);
 
     if (req.method === 'GET') {
-      const summary = await withTracefabUserContext(user.id, user.email, async (tx) => {
-        return await getProductMassBalanceSummary(tx, productId);
+      const summary = await withTracefabRequestContext(req, user, async (tx) => {
+        const product = await accessibleProduct(tx, productId);
+        if (!product) return null;
+        return getProductMassBalanceSummary(tx, productId);
       });
+      if (!summary) return json(res, 404, { error: 'product_not_found' });
       return json(res, 200, summary);
     }
 
@@ -44,14 +48,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return json(res, 400, { error: 'production_volume_units_must_be_positive_or_zero' });
     }
 
-    const recon = await withTracefabUserContext(user.id, user.email, async (tx) => {
-      return await reconcileProductMassBalance(tx, {
+    const recon = await withTracefabTenantContext(req, user, { types: ['brand'], roles: ['owner', 'admin', 'manager', 'contributor'] }, async (tx, tenant) => {
+      const product = await tx.tracefab_products.findFirst({
+        where: { id: productId, brand_organization_id: tenant.organizationId },
+        select: { id: true },
+      });
+      if (!product) return null;
+      return reconcileProductMassBalance(tx, {
         productId,
         productionVolumeUnits,
         cuttingWastePct,
         batchReference,
       });
     });
+    if (!recon) return json(res, 404, { error: 'product_not_found' });
 
     return json(res, 200, {
       message: 'mass_balance_reconciled',

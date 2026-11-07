@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '../../../_lib/vercel-types.js';
 import { requireClerkUser, isUnauthorized } from '../../../_lib/auth.js';
-import { withTracefabUserContext } from '../../../_lib/context.js';
+import { withTracefabTenantContext } from '../../../_lib/context.js';
 import { json, methodNotAllowed, readJsonBody } from '../../../_lib/http.js';
 import { sqlBusinessError } from '../../../_lib/sql-errors.js';
 import { isUuid } from '../../../_lib/data-requests.js';
@@ -68,17 +68,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       : isUuid(body.sourceDocumentId) ? body.sourceDocumentId : null;
     if (body.sourceDocumentId && !sourceDocumentId) return json(res, 400, { error: 'invalid_source_document_id' });
 
-    const response = await withTracefabUserContext(user.id, user.email, async (tx) => {
-      const item = await tx.data_request_items.findUnique({
-        where: { id: itemId },
+    const response = await withTracefabTenantContext(req, user, { types: ['supplier'], roles: ['owner', 'admin', 'manager', 'contributor'] }, async (tx, tenant) => {
+      const item = await tx.data_request_items.findFirst({
+        where: { id: itemId, data_requests: { supplier_organization_id: tenant.organizationId, status: { not: 'draft' } } },
         select: { data_request_id: true, data_type: true, validation_rules: true },
       });
       if (!item) throw new Error('data_request_item_not_found');
       const validationError = validateResponseValue(item, body.value);
       if (validationError) throw new Error(validationError);
       if (sourceDocumentId) {
-        const request = await tx.data_requests.findUnique({ where: { id: item.data_request_id }, select: { supplier_organization_id: true } });
-        const document = request ? await tx.documents.findFirst({ where: { id: sourceDocumentId, owner_organization_id: request.supplier_organization_id, status: 'available' }, select: { id: true } }) : null;
+        const document = await tx.documents.findFirst({ where: { id: sourceDocumentId, owner_organization_id: tenant.organizationId, status: 'available' }, select: { id: true } });
         if (!document) throw new Error('invalid_source_document_id');
       }
 

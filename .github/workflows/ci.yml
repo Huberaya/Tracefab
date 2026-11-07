@@ -78,6 +78,25 @@ jobs:
         # fail-closed. Un locataire absent, mal forme ou non adherent ne doit
         # provoquer aucune requete metier.
         run: npm run test:active-tenant
+      - name: Routes métier — tenant actif obligatoire
+        # Vérifie que les routes catalogue, intégrations, documents et portail fournisseur
+        # utilisent le tenant explicite, sans repli sur la première adhésion.
+        run: npm run test:active-tenant-routes
+      - name: Cartographie exhaustive des routes et du tenant actif
+        # Les 138 entrees du routeur sont classees ; toute route metier sans
+        # controle de tenant actif, toute autorisation documentaire fondee sur
+        # l'union des adhesions et toute matrice perimee font echouer le socle.
+        run: npm run test:tenant:matrix
+      - name: Matrice d'autorisation formelle
+        # Les 10 scenarios (proprietaire, tenant actif, fournisseur, marque,
+        # relation, ressource, permission, action) doivent rester decrits ET
+        # executes par la suite PostgreSQL jetable.
+        run: npm run test:tenant:autorisations
+      - name: Isolation globale — preuve PostgreSQL jetable
+        # Chaine complete des migrations sur PGlite, fixtures multi-tenant
+        # reelles, gardes d'autorisation executes avec le role applicatif :
+        # 61 controles positifs et negatifs, dont la mesure de la fuite RLS.
+        run: npm run test:isolation:globale
 
       - name: Commentaires de fin de ligne dans les routes compactees
         # Un commentaire `//` dans une route ecrite sur une ligne met en
@@ -664,6 +683,14 @@ jobs:
       - name: Installer les dependances
         run: npm ci
 
+      # P10.7 — chantier E : consigner la version EXACTE du PostgreSQL serveur
+      # utilise par la CI. `postgres:17` n'epingle pas de version mineure, donc
+      # seule une mesure sur le service en cours de run fait foi. Lecture seule,
+      # aucun secret : DATABASE_URL designe deja la base jetable du service.
+      - name: Version exacte du PostgreSQL jetable
+        run: |
+          node -e "const {Client}=require('pg');(async()=>{const c=new Client({connectionString:process.env.DATABASE_URL});await c.connect();const r=await c.query('select version() as v');console.log('PostgreSQL CI : '+r.rows[0].v);await c.end()})()"
+
       - name: Generer le client Prisma
         run: npm run db:generate
 
@@ -687,6 +714,21 @@ jobs:
         run: npm run audit:privileges
         env:
           TF_EXIGER_LOCAL: oui
+
+      - name: 'P10.8 — outbox : claim / complete prouvés sur PostgreSQL 17.11 réel'
+        # Harnais AUTONOME (aucune ref Git d'audit) : il crée sa propre base
+        # jetable dans le service postgres:17, applique TOUTES les migrations
+        # du checkout dans l'ordre Prisma, puis exécute claim et complete par
+        # une VRAIE connexion `tracefab_app` (session_user = current_user,
+        # NOSUPERUSER, NOBYPASSRLS). Il vérifie le propriétaire worker, les ACL,
+        # RLS active/forcée et l'absence de lecture des clés. La version exacte
+        # du serveur est mesurée et consignée : PGlite 18.6 ne suffit pas.
+        # Aucune base distante, aucun secret, aucune élévation.
+        run: npm run p108:ci
+        env:
+          TF_P108_PG_URL: ${{ env.DATABASE_URL }}
+          TF_APP_PASSWORD: isolation_ci_jetable
+          TF_P108_ROLE_PASSWORD: isolation_ci_jetable
 
       - name: Privilèges SQL après migrations, avant le seed
         # Vérifie les GRANT conditionnels dans le scénario où tracefab_app

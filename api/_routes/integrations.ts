@@ -1,11 +1,12 @@
 import type { VercelRequest, VercelResponse } from '../_lib/vercel-types.js';
 import { requireClerkUser, isUnauthorized } from '../_lib/auth.js';
-import { withTracefabUserContext } from '../_lib/context.js';
+import { withTracefabTenantContext } from '../_lib/context.js';
 import { json, methodNotAllowed, readJsonBody } from '../_lib/http.js';
 import { sqlBusinessError } from '../_lib/sql-errors.js';
-import { activeBrandOrganizationIds } from '../_lib/products.js';
+
 
 interface IntegrationBody {
+  organizationId?: string;
   systemType?: string;
   name?: string;
   endpointUrl?: string;
@@ -14,16 +15,18 @@ interface IntegrationBody {
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
+  if (req.method !== 'GET' && req.method !== 'POST') return methodNotAllowed(res, ['GET', 'POST']);
   try {
     const { user } = await requireClerkUser(req);
+    const body = req.method === 'POST'
+      ? (await readJsonBody<IntegrationBody>(req).catch(() => ({}))) as IntegrationBody
+      : {};
+    const scope = req.method === 'POST'
+      ? { types: ['brand'] as Array<'brand'>, roles: ['owner', 'admin', 'manager'] as Array<'owner' | 'admin' | 'manager'> }
+      : { types: ['brand'] as Array<'brand'> };
 
-    return await withTracefabUserContext(user.id, user.email, async (tx) => {
-      const brandOrgIds = await activeBrandOrganizationIds(tx, user.id);
-      const activeOrgId = (req.query.organizationId as string) || brandOrgIds[0];
-
-      if (!activeOrgId || !brandOrgIds.includes(activeOrgId)) {
-        return json(res, 403, { error: 'brand_product_role_required' });
-      }
+    return await withTracefabTenantContext(req, user, scope, async (tx, tenant) => {
+      const activeOrgId = tenant.organizationId;
 
       if (req.method === 'GET') {
         const integrations = await tx.plm_erp_integrations.findMany({
@@ -45,7 +48,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
 
       if (req.method === 'POST') {
-        const body = (await readJsonBody<IntegrationBody>(req).catch(() => ({}))) as IntegrationBody;
+        if (body.organizationId && body.organizationId !== activeOrgId) throw new Error('organization_context_mismatch');
         const { systemType, name, endpointUrl, authType, config } = body || {};
 
         if (!systemType || !name) {
@@ -86,9 +89,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   } catch (error: unknown) {
     if (isUnauthorized(error)) return json(res, 401, { error: 'unauthorized' });
     const businessError = sqlBusinessError(error);
-    if (businessError) {
-      return json(res, businessError.status, { error: businessError.error });
-    }
+    if (businessError) return json(res, businessError.status, { error: businessError.error });
     console.error('GET/POST /api/integrations failed', error);
     return json(res, 500, { error: 'internal_server_error' });
   }

@@ -2,6 +2,7 @@ import { readFile } from 'node:fs/promises';
 
 const files = Object.fromEntries(await Promise.all([
   ['storage', 'api/_lib/storage.ts'],
+  ['context', 'api/_lib/context.ts'],
   ['documents', 'api/_lib/documents.ts'],
   ['scanFlow', 'api/_lib/document-scan-flow.ts'],
   ['quota', 'api/_lib/cloud-storage/quota-manager.ts'],
@@ -40,8 +41,11 @@ const txBlocksWithNetwork = flowBody.split('withTracefabUserContext').slice(1)
 assert(txBlocksWithNetwork.length === 0, 'Network checks must not run inside the SQL transaction');
 
 // TF-02 — parcours scan proprietaire (marque) : route dediee et next.scan coherent.
-assert(files.brandScan.includes('runDocumentScanFlow') && files.brandScan.includes('tracefab_has_org_role'),
-  'Owner scan route must exist with writer-role enforcement');
+assert(files.brandScan.includes('runDocumentScanFlow')
+  && files.brandScan.includes('withTracefabTenantContext')
+  && files.brandScan.includes("roles: ['owner', 'admin', 'manager', 'contributor']")
+  && files.brandScan.includes('owner_organization_id: tenant.organizationId'),
+  'Owner scan route must validate the active brand tenant, enforce writer roles and scope the document owner');
 assert(files.brandUploadIntent.includes('/api/documents/${result.document.id}/scan'),
   'Brand upload intent must point to the owner scan route, not the supplier one');
 assert(files.scan.includes('runDocumentScanFlow'), 'Supplier scan route must use the shared fail-closed flow');
@@ -50,8 +54,43 @@ assert(files.scan.includes('runDocumentScanFlow'), 'Supplier scan route must use
 assert(files.quota.includes('pg_advisory_xact_lock'), 'Quota check must take a transactional advisory lock');
 
 assert(files.supplierDownload.includes("status: 'available'"), 'Supplier downloads must require available status');
-assert(files.genericDownload.includes('withTracefabUserContext'), 'Generic downloads must use SQL access context');
+// Le telechargement fournisseur ne doit pas se limiter a la propriete : les
+// pieces explicitement partagees par une marque (certificat emis au nom du
+// fournisseur, reponse de collecte) sont legitimes. Le garde lie au tenant
+// actif est la SEULE decision ; un filtre proprietaire seul les rendait
+// introuvables et un filtre sur l'union des adhesions aurait ouvert une fuite.
+assert(files.supplierDownload.includes('documentAccessibleFromTenant')
+  && files.supplierDownload.includes('withTracefabTenantContext'),
+'Supplier downloads must authorize through the active-tenant document guard');
+assert(!files.supplierDownload.includes('tracefab_can_access_document('),
+  'Supplier downloads must not use the membership-union guard');
+// Le téléchargement générique ne doit plus seulement ouvrir un contexte SQL :
+// il doit valider le tenant actif ET borner l'autorisation documentaire à ce
+// tenant (une union d'adhésions laisserait passer le document d'une autre
+// marque du même compte). Le contrat est renforcé, pas assoupli.
+assert(files.genericDownload.includes('withTracefabTenantContext'), 'Generic downloads must validate the active tenant');
+assert(files.context.includes('withTracefabUserContext('), 'Tenant context must still open the SQL user context');
+assert(files.genericDownload.includes('tracefab_document_accessible_in_active_tenant')
+  || files.genericDownload.includes('documentAccessibleFromTenant'),
+'Generic downloads must bound document access to the active tenant');
 assert(files.genericDownload.includes("status: 'available'"), 'Generic downloads must require available status');
+// Toutes les routes qui autorisent un document par son identifiant doivent
+// passer par le garde lié au tenant actif, jamais par la seule union des
+// adhésions de `tracefab_can_access_document`.
+const EVIDENCE_ROUTES = [
+  'api/_routes/products/[productId]/data-points.ts',
+  'api/_routes/products/[productId]/supply-chain/nodes.ts',
+  'api/_routes/products/[productId]/supply-chain/links.ts',
+  'api/_routes/products/[productId]/supply-chain/nodes/[nodeId].ts',
+  'api/_routes/products/[productId]/supply-chain/links/[linkId].ts',
+];
+for (const path of EVIDENCE_ROUTES) {
+  const source = await readFile(path, 'utf8');
+  assert(!source.includes('tracefab_can_access_document('),
+    `${path}: evidence must not be authorized by the membership union`);
+  assert(source.includes('tracefab_document_accessible_in_active_tenant('),
+    `${path}: evidence must be authorized in the active tenant`);
+}
 assert(files.response.includes("status: 'available'"), 'Response evidence must require an available document');
 assert(files.certifications.includes("status: 'available'"), 'Certification evidence must require an available document');
 console.log('Private storage contract passed: fixed private bucket, server validation, scanner gate, fail-closed scan phases, owner scan route, quota lock, tenant-safe associations and temporary download routes');

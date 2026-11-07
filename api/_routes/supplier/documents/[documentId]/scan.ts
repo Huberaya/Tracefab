@@ -1,7 +1,7 @@
 import { Prisma } from '@prisma/client';
 import type { VercelRequest, VercelResponse } from '../../../../_lib/vercel-types.js';
 import { requireClerkUser, isUnauthorized } from '../../../../_lib/auth.js';
-import { withTracefabUserContext } from '../../../../_lib/context.js';
+import { withTracefabTenantContext } from '../../../../_lib/context.js';
 import { json, methodNotAllowed } from '../../../../_lib/http.js';
 import { sqlBusinessError } from '../../../../_lib/sql-errors.js';
 import { currentSupplier, requestedOrganizationId } from '../../../../_lib/supplier-profile.js';
@@ -16,8 +16,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const documentId = routeDocumentId(req);
     if (!isUuid(documentId)) return json(res, 400, { error: 'invalid_document_id' });
     const { user } = await requireClerkUser(req);
-    const supplier = await withTracefabUserContext(user.id, user.email, (tx) =>
-      currentSupplier(tx, user.id, requestedOrganizationId(req)),
+    const supplier = await withTracefabTenantContext(req, user, { types: ['supplier'] }, (tx, tenant) =>
+      currentSupplier(tx, user.id, tenant.organizationId),
     );
     if (!supplier) return json(res, 404, { error: 'document_not_found' });
 

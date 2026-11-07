@@ -85,7 +85,17 @@ const verifyAiRoute = await readFile(
   new URL('../api/_routes/documents/[documentId]/verify-ai.ts', import.meta.url),
   'utf8',
 );
-assert(verifyAiRoute.includes('tracefab_can_access_document'), 'verify-ai route must enforce document access');
+// Voir la migration 20261105180000 : le garde documentaire doit etre lie au
+// tenant actif, pas a l'union des adhesions du compte (fuite A/B/S mesuree en
+// base jetable par scripts/test_isolation_globale_pglite.mjs).
+assert(
+  verifyAiRoute.includes('tracefab_document_accessible_in_active_tenant'),
+  'verify-ai route must enforce document access in the active tenant',
+);
+assert(
+  !verifyAiRoute.includes('tracefab_can_access_document('),
+  'verify-ai route must not use the union-of-memberships document guard',
+);
 assert(verifyAiRoute.includes('tracefab_apply_document_ai_verification'), 'verify-ai route must execute atomic stored procedure');
 
 const autoVerifyRoute = await readFile(

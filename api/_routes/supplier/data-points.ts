@@ -1,7 +1,7 @@
 import { data_type, data_value_status, Prisma } from '@prisma/client';
 import type { VercelRequest, VercelResponse } from '../../_lib/vercel-types.js';
 import { requireClerkUser, isUnauthorized } from '../../_lib/auth.js';
-import { withTracefabUserContext } from '../../_lib/context.js';
+import { withTracefabTenantContext } from '../../_lib/context.js';
 import { dataPointMutation, DATA_POINT_DEFINITIONS, DATA_POINT_SELECT, serializeDataPoint } from '../../_lib/data-points.js';
 import { json, methodNotAllowed, readJsonBody } from '../../_lib/http.js';
 import { sqlBusinessError } from '../../_lib/sql-errors.js';
@@ -11,8 +11,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'GET' && req.method !== 'POST') return methodNotAllowed(res, ['GET', 'POST']);
   try {
     const { user } = await requireClerkUser(req);
-    const result = await withTracefabUserContext(user.id, user.email, async (tx) => {
-      const supplier = await currentSupplier(tx, user.id, requestedOrganizationId(req));
+    const result = await withTracefabTenantContext(req, user, { types: ['supplier'] }, async (tx, tenant) => {
+      const supplier = await currentSupplier(tx, user.id, tenant.organizationId);
       if (!supplier) return null;
       if (req.method === 'GET') {
         const dataKey = Array.isArray(req.query.dataKey) ? req.query.dataKey[0] : req.query.dataKey;

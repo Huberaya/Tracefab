@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '../../../_lib/vercel-types.js';
 import { requireClerkUser, isUnauthorized } from '../../../_lib/auth.js';
-import { withTracefabUserContext } from '../../../_lib/context.js';
+import { withTracefabTenantContext } from '../../../_lib/context.js';
 import { json, methodNotAllowed } from '../../../_lib/http.js';
 import { sqlBusinessError } from '../../../_lib/sql-errors.js';
 import { isUuid, REQUEST_SELECT, serializeRequest } from '../../../_lib/data-requests.js';
@@ -17,7 +17,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const requestId = routeRequestId(req);
     if (!isUuid(requestId)) return json(res, 400, { error: 'invalid_request_id' });
     const { user } = await requireClerkUser(req);
-    const request = await withTracefabUserContext(user.id, user.email, async (tx) => {
+    const request = await withTracefabTenantContext(req, user, { types: ['brand'], roles: ['owner', 'admin', 'manager', 'contributor'] }, async (tx, tenant) => {
+      const accessible = await tx.data_requests.findFirst({ where: { id: requestId, brand_organization_id: tenant.organizationId }, select: { id: true } });
+      if (!accessible) return null;
       const rows = await tx.$queryRaw<Array<{ id: string }>>`
         SELECT id FROM tracefab_send_data_request(${requestId}::uuid)
       `;
@@ -27,6 +29,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return sent;
     });
 
+    if (!request) return json(res, 404, { error: 'data_request_not_found' });
     return json(res, 200, {
       request: serializeRequest(request),
       delivery: { status: 'queued' },

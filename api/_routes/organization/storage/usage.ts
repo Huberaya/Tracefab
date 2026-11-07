@@ -1,31 +1,21 @@
 import type { VercelRequest, VercelResponse } from '../../../_lib/vercel-types.js';
 import { requireClerkUser, isUnauthorized } from '../../../_lib/auth.js';
-import { withTracefabUserContext } from '../../../_lib/context.js';
+import { withTracefabTenantContext } from '../../../_lib/context.js';
 import { json, methodNotAllowed } from '../../../_lib/http.js';
 import { sqlBusinessError } from '../../../_lib/sql-errors.js';
-import { activeBrandOrganizationIds, isUuid } from '../../../_lib/products.js';
+
 import { getOrganizationStorageUsage } from '../../../_lib/cloud-storage/quota-manager.js';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'GET') return methodNotAllowed(res, ['GET']);
   try {
     const { user } = await requireClerkUser(req);
-    const queryOrgId = req.query.organizationId;
-    const requestedId = Array.isArray(queryOrgId) ? queryOrgId[0] : queryOrgId;
-
-    const usage = await withTracefabUserContext(user.id, user.email, async (tx) => {
-      const brandIds = await activeBrandOrganizationIds(tx, user.id);
-      let targetOrgId: string | undefined;
-
-      if (requestedId && isUuid(requestedId) && brandIds.includes(requestedId)) {
-        targetOrgId = requestedId;
-      } else if (brandIds.length > 0) {
-        targetOrgId = brandIds[0];
-      }
-
-      if (!targetOrgId) return null;
-      return getOrganizationStorageUsage(tx, targetOrgId);
-    });
+    const usage = await withTracefabTenantContext(
+      req,
+      user,
+      { types: ['brand'] },
+      async (tx, tenant) => getOrganizationStorageUsage(tx, tenant.organizationId),
+    );
 
     if (!usage) return json(res, 404, { error: 'organization_not_found' });
     return json(res, 200, { storage: usage });

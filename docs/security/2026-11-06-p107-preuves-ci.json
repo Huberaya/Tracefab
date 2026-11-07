@@ -1,0 +1,96 @@
+{
+  "schema": "tracefab-p107-preuves-ci-v1",
+  "date_mesure": "2026-11-06T16:12:41Z",
+  "branche": "arena/0f697b3e-tracefab",
+  "sha_candidat": "4cf760f6f61ccd3b9cd34b2188f14efd08666191",
+  "environnement": "GitHub Actions, service postgres:17 jetable, aucun secret, DATABASE_URL locale au runner",
+  "avertissement": "Ces preuves concernent UNIQUEMENT le PostgreSQL jetable de CI. Elles ne prouvent ni Neon, ni Preview authentifiee, ni Production, ni la forme de propriete des objets en environnement manage.",
+  "runs": {
+    "CI": {
+      "run_id": 42249334243,
+      "conclusion": "success",
+      "jobs": [
+        {"id": 127999887490, "nom": "Socle — types, compilation, isolation", "conclusion": "success"},
+        {"id": 128002580427, "nom": "Base — isolation RLS executee", "conclusion": "success"},
+        {"id": 128002580502, "nom": "Verification — suite de tests", "conclusion": "success"},
+        {"id": 128002580667, "nom": "Parcours — navigateur reel", "conclusion": "success"}
+      ]
+    },
+    "Integrations_migrations_34_36_41": {
+      "run_id": 42249334409,
+      "conclusion": "success",
+      "jobs": [
+        {"id": 127999887918, "nom": "Chaine 34/36/41 sur Postgres 17 jetable", "conclusion": "success"}
+      ]
+    }
+  },
+  "checks_pr_113": {
+    "total": 7,
+    "pass": 7,
+    "libelles": [
+      "Base — isolation RLS executee",
+      "Chaine 34/36/41 sur Postgres 17 jetable",
+      "Parcours — navigateur reel",
+      "Socle — types, compilation, isolation",
+      "Vercel",
+      "Vercel Preview Comments",
+      "Verification — suite de tests"
+    ],
+    "note": "Le check Vercel PASS atteste un build, PAS un parcours HTTP authentifie, ni le SHA servi, ni la base isolee."
+  },
+  "version_postgresql_exacte": {
+    "statut": "PASS",
+    "step_numero": 6,
+    "step_nom": "Version exacte du PostgreSQL jetable",
+    "step_conclusion": "success",
+    "job_id": 128002580427,
+    "commande": "node -e \"const {Client}=require('pg');(async()=>{const c=new Client({connectionString:process.env.DATABASE_URL});await c.connect();const r=await c.query('select version() as v');console.log('PostgreSQL CI : '+r.rows[0].v);await c.end()})()\"",
+    "requete": "select version() as v",
+    "horodatage_log": "2026-11-06T16:12:41.1396071Z",
+    "ligne_observee": "PostgreSQL CI : PostgreSQL 17.11 (Debian 17.11-1.pgdg13+2) on x86_64-pc-linux-gnu, compiled by gcc (Debian 14.2.0-19) 14.2.0, 64-bit",
+    "version": "PostgreSQL 17.11 (Debian 17.11-1.pgdg13+2)",
+    "image_digest": "sha256:748a18a54d3842d43bc156f0840d78029b8d349e0feca98c12b9c4ce3404a6b3",
+    "image_tag": "postgres:17",
+    "exit_code": 0,
+    "artefact": "journal du job 128002580427, chunk 3",
+    "methode_lecture": "URL signee du journal du job lue en HTTP ; gh run view --log et gh api .../logs renvoient EOF"
+  },
+  "controles_postgresql_serveur_CI": {
+    "statut": "PASS",
+    "source": "journal du job 128002580427, chunks 3 et 6",
+    "migrations_appliquees": 71,
+    "lignes_observees": [
+      "71 migrations found in prisma/migrations",
+      "Role tracefab_app prepare avant migrations : OID 16389, cree par ce script, NOSUPERUSER, NOBYPASSRLS, NOCREATEROLE, NOCREATEDB.",
+      "179 fonction(s) · 128 SECURITY DEFINER · 0 executable(s) par PUBLIC",
+      "ok    toute fonction SECURITY DEFINER fige son search_path",
+      "135 politique(s) sur 53 table(s)",
+      "Tables sans RLS forcee (le proprietaire echappe aux politiques) : (aucune)"
+    ],
+    "limite": "Le proprietaire des objets dans CE job est postgres (superutilisateur) : prop=postgres. La forme de propriete non superutilisee n'est donc mesuree que par le harnais local PGlite, pas sur PostgreSQL 17 de CI."
+  },
+  "boucle_test_etoile_CI": {
+    "statut": "PASS",
+    "step_numero": 10,
+    "step_nom": "Suite complete des scripts test:*",
+    "step_conclusion": "success",
+    "job_id": 128002580502,
+    "extraits": [
+      "OK    test:hmac:chaine-confiance",
+      "OK    test:reconciliation-chaine-canonique",
+      "OK    test:migrations:horodatages",
+      "OK    test:migrations:controle",
+      "OK    test:reconciliation-historique",
+      "OK    test:ci-no-production-access",
+      "OK    test:workflow-policy"
+    ],
+    "note": "Le script du step sort en exit 1 des qu'une suite echoue ; la conclusion success du step etablit 0 echec sur le SHA exact. Le decompte local des 156 scripts est consigne dans le rapport A–H."
+  },
+  "statuts_non_couverts": {
+    "neon_isole": "BLOCKED",
+    "preview_authentifiee_15_parcours": "BLOCKED",
+    "strict_preview": "BLOCKED",
+    "production_lecture_seule_privilegiee": "BLOCKED",
+    "sha_servi_par_preview": "BLOCKED"
+  }
+}

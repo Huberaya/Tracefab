@@ -100,13 +100,13 @@ export function requestedTenantId(req: VercelRequest): string | null {
   const fromHeader = headerValue(req, TENANT_HEADER);
   if (fromHeader) return fromHeader;
 
-  const fromQuery = firstValue(req.query.organizationId) ?? firstValue(req.query.brandOrganizationId);
+  const fromQuery = firstValue(req.query.organizationId) ?? firstValue(req.query.brandOrganizationId) ?? firstValue(req.query.supplierOrganizationId);
   if (fromQuery) return fromQuery;
 
   const body = req.body;
   if (body && typeof body === 'object' && !Array.isArray(body)) {
     const record = body as Record<string, unknown>;
-    for (const key of ['organizationId', 'brandOrganizationId'] as const) {
+    for (const key of ['organizationId', 'brandOrganizationId', 'supplierOrganizationId'] as const) {
       const raw = record[key];
       if (typeof raw === 'string') {
         const fromBody = firstValue(raw);

@@ -1,0 +1,308 @@
+{
+  "schema": "tracefab-p107-outbox-v2",
+  "date": "2026-11-06T16:02:05.933Z",
+  "environnement": "PGlite / PostgreSQL 18.6 jetable local — role applicatif via SET SESSION AUTHORIZATION",
+  "tete_114": "f0aeb51cb52ce778f7f9a5e857438603d81fa5ad",
+  "note_tete": "#114 a avance apres la Phase 0 (537bc31 -> f0aeb51). Toutes les epreuves ci-dessous sont REJOUEES sur f0aeb51.",
+  "avertissement": "Aucune preuve Neon, Preview ou Production. Proprietaire non superutilisateur MODEL explicitement.",
+  "scenarios": [
+    {
+      "nom": "S1 #114 seule",
+      "total": 70,
+      "appliquees": 70,
+      "erreurChaine": null,
+      "fixtures": "ok",
+      "owners": [
+        {
+          "proname": "tracefab_claim_notification_outbox",
+          "owner": "postgres",
+          "prosecdef": true
+        },
+        {
+          "proname": "tracefab_complete_notification_outbox",
+          "owner": "postgres",
+          "prosecdef": true
+        },
+        {
+          "proname": "tracefab_notification_outbox_health",
+          "owner": "tracefab_worker",
+          "prosecdef": true
+        }
+      ],
+      "ownersApresModelisation": [
+        {
+          "proname": "tracefab_claim_notification_outbox",
+          "owner": "tracefab_migrator"
+        },
+        {
+          "proname": "tracefab_complete_notification_outbox",
+          "owner": "tracefab_migrator"
+        }
+      ],
+      "predicat": [
+        {
+          "proname": "tracefab_identite_systeme",
+          "owner": "postgres",
+          "worker": true,
+          "app": false,
+          "migrateur": false
+        },
+        {
+          "proname": "tracefab_identite_systeme_jeton_valide",
+          "owner": "postgres",
+          "worker": true,
+          "app": true,
+          "migrateur": false
+        }
+      ],
+      "aclOutbox": {
+        "worker_update": false,
+        "app_update": false,
+        "policies": 3
+      },
+      "etatInitial": {
+        "status": "pending",
+        "attempts": 0
+      },
+      "roleApp": {
+        "cu": "tracefab_app",
+        "su": "tracefab_app"
+      },
+      "claim": {
+        "ok": false,
+        "erreur": "permission denied for function tracefab_identite_systeme"
+      },
+      "complete": {
+        "ok": false,
+        "erreur": "claim non reussi"
+      },
+      "sansJeton": "REFUSE permission denied for function tracefab_identite_systeme"
+    },
+    {
+      "nom": "S2 #111 + #114",
+      "total": 87,
+      "appliquees": 87,
+      "erreurChaine": null,
+      "fixtures": "ok",
+      "owners": [
+        {
+          "proname": "tracefab_claim_notification_outbox",
+          "owner": "tracefab_worker",
+          "prosecdef": true
+        },
+        {
+          "proname": "tracefab_complete_notification_outbox",
+          "owner": "tracefab_worker",
+          "prosecdef": true
+        },
+        {
+          "proname": "tracefab_notification_outbox_health",
+          "owner": "tracefab_worker",
+          "prosecdef": true
+        }
+      ],
+      "ownersApresModelisation": [
+        {
+          "proname": "tracefab_claim_notification_outbox",
+          "owner": "tracefab_worker"
+        },
+        {
+          "proname": "tracefab_complete_notification_outbox",
+          "owner": "tracefab_worker"
+        }
+      ],
+      "predicat": [
+        {
+          "proname": "tracefab_identite_systeme",
+          "owner": "postgres",
+          "worker": true,
+          "app": false,
+          "migrateur": false
+        },
+        {
+          "proname": "tracefab_identite_systeme_jeton_valide",
+          "owner": "postgres",
+          "worker": true,
+          "app": true,
+          "migrateur": false
+        }
+      ],
+      "aclOutbox": {
+        "worker_update": true,
+        "app_update": false,
+        "policies": 3
+      },
+      "etatInitial": {
+        "status": "pending",
+        "attempts": 0
+      },
+      "roleApp": {
+        "cu": "tracefab_app",
+        "su": "tracefab_app"
+      },
+      "claim": {
+        "ok": true,
+        "lignes": [
+          {
+            "id": "40000000-0000-4000-8000-000000000001",
+            "status": "processing",
+            "attempts": 1
+          }
+        ]
+      },
+      "complete": {
+        "ok": true
+      },
+      "sansJeton": "REFUSE authentication_required"
+    },
+    {
+      "nom": "S3 canonique SANS correctif",
+      "total": 72,
+      "appliquees": 72,
+      "erreurChaine": null,
+      "fixtures": "ok",
+      "owners": [
+        {
+          "proname": "tracefab_claim_notification_outbox",
+          "owner": "postgres",
+          "prosecdef": true
+        },
+        {
+          "proname": "tracefab_complete_notification_outbox",
+          "owner": "postgres",
+          "prosecdef": true
+        },
+        {
+          "proname": "tracefab_notification_outbox_health",
+          "owner": "tracefab_worker",
+          "prosecdef": true
+        }
+      ],
+      "ownersApresModelisation": [
+        {
+          "proname": "tracefab_claim_notification_outbox",
+          "owner": "tracefab_migrator"
+        },
+        {
+          "proname": "tracefab_complete_notification_outbox",
+          "owner": "tracefab_migrator"
+        }
+      ],
+      "predicat": [
+        {
+          "proname": "tracefab_identite_systeme",
+          "owner": "postgres",
+          "worker": true,
+          "app": false,
+          "migrateur": false
+        },
+        {
+          "proname": "tracefab_identite_systeme_jeton_valide",
+          "owner": "postgres",
+          "worker": true,
+          "app": true,
+          "migrateur": false
+        }
+      ],
+      "aclOutbox": {
+        "worker_update": false,
+        "app_update": false,
+        "policies": 3
+      },
+      "etatInitial": {
+        "status": "pending",
+        "attempts": 0
+      },
+      "roleApp": {
+        "cu": "tracefab_app",
+        "su": "tracefab_app"
+      },
+      "claim": {
+        "ok": false,
+        "erreur": "permission denied for function tracefab_identite_systeme"
+      },
+      "complete": {
+        "ok": false,
+        "erreur": "claim non reussi"
+      },
+      "sansJeton": "REFUSE permission denied for function tracefab_identite_systeme"
+    },
+    {
+      "nom": "S3b canonique AVEC correctif",
+      "total": 73,
+      "appliquees": 73,
+      "erreurChaine": null,
+      "fixtures": "ok",
+      "owners": [
+        {
+          "proname": "tracefab_claim_notification_outbox",
+          "owner": "tracefab_worker",
+          "prosecdef": true
+        },
+        {
+          "proname": "tracefab_complete_notification_outbox",
+          "owner": "tracefab_worker",
+          "prosecdef": true
+        },
+        {
+          "proname": "tracefab_notification_outbox_health",
+          "owner": "tracefab_worker",
+          "prosecdef": true
+        }
+      ],
+      "ownersApresModelisation": [
+        {
+          "proname": "tracefab_claim_notification_outbox",
+          "owner": "tracefab_worker"
+        },
+        {
+          "proname": "tracefab_complete_notification_outbox",
+          "owner": "tracefab_worker"
+        }
+      ],
+      "predicat": [
+        {
+          "proname": "tracefab_identite_systeme",
+          "owner": "postgres",
+          "worker": true,
+          "app": false,
+          "migrateur": false
+        },
+        {
+          "proname": "tracefab_identite_systeme_jeton_valide",
+          "owner": "postgres",
+          "worker": true,
+          "app": true,
+          "migrateur": false
+        }
+      ],
+      "aclOutbox": {
+        "worker_update": true,
+        "app_update": false,
+        "policies": 3
+      },
+      "etatInitial": {
+        "status": "pending",
+        "attempts": 0
+      },
+      "roleApp": {
+        "cu": "tracefab_app",
+        "su": "tracefab_app"
+      },
+      "claim": {
+        "ok": true,
+        "lignes": [
+          {
+            "id": "40000000-0000-4000-8000-000000000001",
+            "status": "processing",
+            "attempts": 1
+          }
+        ]
+      },
+      "complete": {
+        "ok": true
+      },
+      "sansJeton": "REFUSE authentication_required"
+    }
+  ]
+}
