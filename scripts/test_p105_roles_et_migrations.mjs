@@ -138,7 +138,7 @@ try {
   await preexisting.connect();
   await preexisting.query('CREATE TABLE public.tf_p105_existing_owner_probe (id integer PRIMARY KEY)');
   await preexisting.query("CREATE TYPE public.tf_p105_existing_enum AS ENUM ('alpha', 'beta')");
-  await preexisting.query('CREATE FUNCTION public.tf_p105_existing_owner_probe_fn() RETURNS integer LANGUAGE sql IMMUTABLE AS $ SELECT 1 $');
+  await preexisting.query("CREATE FUNCTION public.tf_p105_existing_owner_probe_fn() RETURNS integer LANGUAGE sql IMMUTABLE AS 'SELECT 1'");
   await preexisting.query('REVOKE ALL ON FUNCTION public.tf_p105_existing_owner_probe_fn() FROM PUBLIC');
   await preexisting.end();
   verrou = await verrouillerCluster({ urlProprietaire: urlAdmin });
@@ -187,7 +187,7 @@ try {
   await migratorProbe.connect();
   await migratorProbe.query('ALTER TABLE public.tf_p105_existing_owner_probe ADD COLUMN probe_value integer');
   await migratorProbe.query('ALTER TABLE public.tf_p105_existing_owner_probe DROP COLUMN probe_value');
-  await migratorProbe.query('CREATE OR REPLACE FUNCTION public.tf_p105_existing_owner_probe_fn() RETURNS integer LANGUAGE sql IMMUTABLE AS $ SELECT 2 $');
+  await migratorProbe.query("CREATE OR REPLACE FUNCTION public.tf_p105_existing_owner_probe_fn() RETURNS integer LANGUAGE sql IMMUTABLE AS 'SELECT 2'");
   await migratorProbe.query('DROP FUNCTION public.tf_p105_existing_owner_probe_fn()');
   await migratorProbe.query('DROP TABLE public.tf_p105_existing_owner_probe');
   await migratorProbe.query('DROP TYPE public.tf_p105_existing_enum');
