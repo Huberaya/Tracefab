@@ -4,6 +4,7 @@ import { withTracefabUserContext } from '../../_lib/context.js';
 import { json, methodNotAllowed, readJsonBody } from '../../_lib/http.js';
 import { sqlBusinessError } from '../../_lib/sql-errors.js';
 import { currentSupplier, requestedOrganizationId } from '../../_lib/supplier-profile.js';
+import { isTenantError, resolveActiveTenant } from '../../_lib/tenant.js';
 import { qualityBundle, serializeQualityIssue, serializeQualityScore } from '../../_lib/quality.js';
 
 type QualityBody = { calculationVersion?: string | null };
@@ -13,8 +14,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     const { user } = await requireClerkUser(req);
     const body = req.method === 'POST' ? await readJsonBody<QualityBody>(req) : {};
+    const activeOrganizationId = requestedOrganizationId(req);
     const result = await withTracefabUserContext(user.id, user.email, async (tx) => {
-      const supplier = await currentSupplier(tx, user.id, requestedOrganizationId(req));
+      const tenant = await resolveActiveTenant(tx, user.id, activeOrganizationId, { types: ['supplier'] });
+      const supplier = await currentSupplier(tx, user.id, tenant.organizationId);
       if (!supplier) return null;
       if (req.method === 'POST') {
         const calculationVersion = typeof body.calculationVersion === 'string' && body.calculationVersion.trim().length <= 120
@@ -23,11 +26,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         await tx.$queryRaw`SELECT * FROM tracefab_compute_supplier_quality(${supplier.id}::uuid, ${calculationVersion})`;
       }
       return qualityBundle(tx, { supplierId: supplier.id }, true);
-    });
+    }, activeOrganizationId);
     if (!result) return json(res, 404, { error: 'supplier_profile_not_found' });
     return json(res, 200, { score: serializeQualityScore(result.score), issues: result.issues.map(serializeQualityIssue) });
   } catch (error) {
     if (isUnauthorized(error)) return json(res, 401, { error: 'unauthorized' });
+    if (isTenantError(error)) return json(res, error.status, { error: error.message });
     const businessError = sqlBusinessError(error);
     if (businessError) return json(res, businessError.status, { error: businessError.error });
     if (error instanceof Error && error.message === 'missing_clerk_secret_key') return json(res, 503, { error: 'clerk_not_configured' });

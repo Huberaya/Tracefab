@@ -5,6 +5,7 @@ import { withTracefabUserContext } from '../../_lib/context.js';
 import { json, methodNotAllowed, readJsonBody } from '../../_lib/http.js';
 import { sqlBusinessError } from '../../_lib/sql-errors.js';
 import { currentSupplier, requestedOrganizationId } from '../../_lib/supplier-profile.js';
+import { isTenantError, resolveActiveTenant } from '../../_lib/tenant.js';
 import {
   certificationValues,
   serializeSupplierCertification,
@@ -18,8 +19,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'GET' && req.method !== 'POST') return methodNotAllowed(res, ['GET', 'POST']);
   try {
     const { user } = await requireClerkUser(req);
+    const activeOrganizationId = requestedOrganizationId(req);
     const result = await withTracefabUserContext(user.id, user.email, async (tx) => {
-      const supplier = await currentSupplier(tx, user.id, requestedOrganizationId(req));
+      const tenant = await resolveActiveTenant(tx, user.id, activeOrganizationId, { types: ['supplier'] });
+      const supplier = await currentSupplier(tx, user.id, tenant.organizationId);
       if (!supplier) return null;
       if (req.method === 'GET') {
         const certifications = await tx.certifications.findMany({
@@ -56,13 +59,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         )
       `;
       return { certification: rows[0] ?? null };
-    });
+    }, activeOrganizationId);
     if (!result) return json(res, 404, { error: 'supplier_profile_not_found' });
     if ('certifications' in result) return json(res, 200, { certifications: result.certifications!.map(serializeSupplierCertification) });
     if (!result.certification) return json(res, 500, { error: 'certification_creation_failed' });
     return json(res, 201, { certification: serializeSupplierCertification(result.certification) });
   } catch (error) {
     if (isUnauthorized(error)) return json(res, 401, { error: 'unauthorized' });
+    if (isTenantError(error)) return json(res, error.status, { error: error.message });
     const businessError = sqlBusinessError(error);
     if (businessError) return json(res, businessError.status, { error: businessError.error });
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') return json(res, 409, { error: 'certification_already_exists' });

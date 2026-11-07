@@ -176,23 +176,34 @@ async function assurerRole(nom, motDePasse) {
   if (ecarts.length > 0) {
     // Un écart d'attribut n'est PAS réparable sans le privilège correspondant.
     // On le dit, on donne l'instruction, et on ne tente rien a l'aveugle.
-    const correction = `ALTER ROLE ${nom} ${Object.entries(attendus)
-      .filter(([k]) => k !== 'rolinherit' && etat && etat[k] !== attendus[k])
+    const changements = Object.entries(attendus)
+      .filter(([k]) => etat && etat[k] !== attendus[k]);
+    const attributsConnus = new Set(Object.keys(attendus));
+    const ecartsNonReparables = ecarts.filter((e) =>
+      ![...attributsConnus].some((k) => e.startsWith(`${nom}.${k} =`)));
+    const changeSuperuser = changements.some(([k]) => k === 'rolsuper');
+    const correction = `ALTER ROLE ${nom} ${changements
       .map(([k, v]) => `${v ? '' : 'NO'}${k.replace(/^rol/, '').toUpperCase()}`)
       .join(' ')};`;
-    if (posture.rolsuper && !verifierSeulement && corrigerAttributs) {
+    const autorise = posture.rolsuper || (posture.rolcreaterole && !changeSuperuser);
+    if (!ecartsNonReparables.length && autorise && !verifierSeulement && corrigerAttributs) {
       try {
         await db.query(correction);
-        console.log(`  durci  ${nom} — un écart d'attribut a été corrigé (exécutant SUPERUSER)`);
+        console.log(`  durci  ${nom} — attributs non-SUPERUSER corrigés par un exécutant CREATEROLE/SUPERUSER`);
       } catch (e) {
-        ok(false, `durcissement de ${nom}`, `${e.code || ''} ${e.message.split('\n')[0].slice(0, 90)}`);
+        ok(false, `durcissement de ${nom}`, `${e.code || ''} ${e.message.split('\\n')[0].slice(0, 90)}`);
       }
     } else {
       ok(false, `attributs de ${nom} conformes`, ecarts.join(' ; '));
       console.error(`         correction requise par un administrateur : ${correction}`);
-      if (posture.rolsuper && !verifierSeulement) {
-        console.error('         (executant SUPERUSER : relancer avec TF_CORRIGER_ATTRIBUTS=oui pour l appliquer ;');
-        console.error('          sans ce drapeau, aucun attribut n est reecrit — un role preexistant n est pas le notre)');
+      if (changeSuperuser && !posture.rolsuper) {
+        console.error('         le changement de SUPERUSER exige un exécutant SUPERUSER ; aucun autre attribut n a été modifié.');
+      } else if (!autorise) {
+        console.error('         CREATEROLE ou SUPERUSER est requis pour corriger ces attributs.');
+      } else if (ecartsNonReparables.length) {
+        console.error(`         écarts non réparables par ce script : ${ecartsNonReparables.join(' ; ')}`);
+      } else {
+        console.error('         relancer avec TF_CORRIGER_ATTRIBUTS=oui pour appliquer explicitement la correction.');
       }
       return;
     }
@@ -218,6 +229,10 @@ async function assurerRole(nom, motDePasse) {
 
 function quote(s) {
   return `'${String(s).replace(/'/g, "''")}'`;
+}
+
+function quoteIdent(s) {
+  return `"${String(s).replace(/"/g, '""')}"`;
 }
 
 /**
@@ -338,15 +353,79 @@ async function assurerExtensions() {
   }
 }
 
-async function assurerDroitsSchema() {
+async function transfererObjetsPublic(proprietaireSource) {
+  const proprietaire = (await db.query('SELECT current_user AS role')).rows[0].role;
+  if (proprietaire !== proprietaireSource || proprietaire === ROLE_APP || proprietaire === ROLE_MIGRATOR) {
+    ok(false, 'identité administrative propriétaire des objets', proprietaire);
+    return;
+  }
+
+  // Refus fail-closed si des objets métier sont détenus par un troisième rôle.
+  // Les fonctions d'extension et les fonctions worker sont volontairement exclues.
+  const tiers = (await db.query(`
+    WITH objets AS (
+      SELECT 'relation'::text AS kind, pg_catalog.pg_get_userbyid(c.relowner) AS owner,
+             EXISTS (
+               SELECT 1 FROM pg_catalog.pg_depend d
+                WHERE d.classid = 'pg_catalog.pg_class'::pg_catalog.regclass
+                  AND d.objid = c.oid
+                  AND d.refclassid = 'pg_catalog.pg_extension'::pg_catalog.regclass
+                  AND d.deptype = 'e'
+             ) AS extension_owned
+        FROM pg_catalog.pg_class c
+        JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
+       WHERE n.nspname = 'public' AND c.relkind IN ('r','p','v','m','S','f')
+         AND NOT EXISTS (
+           SELECT 1 FROM pg_catalog.pg_depend d
+            WHERE d.classid = 'pg_catalog.pg_class'::pg_catalog.regclass
+              AND d.objid = c.oid
+              AND d.refclassid = 'pg_catalog.pg_extension'::pg_catalog.regclass
+              AND d.deptype = 'e'
+         )
+      UNION ALL
+      SELECT 'routine', pg_catalog.pg_get_userbyid(p.proowner),
+             EXISTS (
+               SELECT 1 FROM pg_catalog.pg_depend d
+                WHERE d.classid = 'pg_catalog.pg_proc'::pg_catalog.regclass
+                  AND d.objid = p.oid
+                  AND d.refclassid = 'pg_catalog.pg_extension'::pg_catalog.regclass
+                  AND d.deptype = 'e'
+             )
+        FROM pg_catalog.pg_proc p
+        JOIN pg_catalog.pg_namespace n ON n.oid = p.pronamespace
+       WHERE n.nspname = 'public'
+      UNION ALL
+      SELECT 'type', pg_catalog.pg_get_userbyid(t.typowner),
+             EXISTS (
+               SELECT 1 FROM pg_catalog.pg_depend d
+                WHERE d.classid = 'pg_catalog.pg_type'::pg_catalog.regclass
+                  AND d.objid = t.oid
+                  AND d.refclassid = 'pg_catalog.pg_extension'::pg_catalog.regclass
+                  AND d.deptype = 'e'
+             )
+        FROM pg_catalog.pg_type t
+        JOIN pg_catalog.pg_namespace n ON n.oid = t.typnamespace
+       WHERE n.nspname = 'public' AND t.typtype IN ('e','d','r','m','c')
+         AND t.typrelid = 0 AND t.typelem = 0
+    )
+    SELECT kind, owner, count(*)::int AS count
+      FROM objets
+     WHERE owner NOT IN ($1, $2, $3) AND extension_owned IS FALSE
+     GROUP BY kind, owner
+     ORDER BY kind, owner
+  `, [proprietaireSource, ROLE_MIGRATOR, ROLE_WORKER])).rows;
+  if (tiers.length) {
+    ok(false, 'aucun objet public détenu par un rôle tiers', JSON.stringify(tiers));
+    return;
+  }
+
+  // Neon peut créer une appartenance bootstrap avec SET=false. L'administrateur
+  // doit pouvoir endosser le migrateur le temps du transfert de propriété.
+  // INHERIT reste false : aucun privilège du migrateur n'est hérité implicitement.
   const base = (await db.query('SELECT current_database() AS b')).rows[0].b;
   const instructions = [
-    `GRANT CONNECT ON DATABASE "${base}" TO ${ROLE_APP_SURCHARGE}, ${ROLE_MIGRATOR}`,
-    `GRANT USAGE ON SCHEMA public TO ${ROLE_APP_SURCHARGE}`,
-    // Le proprietaire du SCHEMA, et pas seulement un detenteur de CREATE :
-    // la premiere migration pose `COMMENT ON SCHEMA public`, qui exige la
-    // propriete du schema (« must be owner of schema public », mesure).
-    // Sur Neon, c'est deja le role proprietaire des objets qui le porte.
+    `GRANT ${ROLE_MIGRATOR} TO ${quoteIdent(proprietaire)} WITH ADMIN FALSE, INHERIT FALSE, SET TRUE`,
+    `GRANT CONNECT, CREATE ON DATABASE ${quoteIdent(base)} TO ${ROLE_MIGRATOR}`,
     `ALTER SCHEMA public OWNER TO ${ROLE_MIGRATOR}`,
     `GRANT USAGE, CREATE ON SCHEMA public TO ${ROLE_MIGRATOR}`,
   ];
@@ -354,19 +433,148 @@ async function assurerDroitsSchema() {
     try {
       await db.query(sql);
     } catch (e) {
-      ok(false, 'droits de schéma', `${sql.slice(0, 42)}… → ${e.code || ''} ${e.message.split('\n')[0].slice(0, 70)}`);
+      ok(false, 'provisionnement du schéma migrateur', `${sql.slice(0, 48)}… → ${e.code || ''} ${e.message.split('\\n')[0].slice(0, 90)}`);
+      return;
     }
   }
-  // Contrôle : le runtime ne doit pas pouvoir créer d'objet.
-  const { rows } = await db.query(
-    `SELECT has_schema_privilege($1, 'public', 'CREATE') AS app_create,
-            has_schema_privilege($2, 'public', 'CREATE') AS mig_create`,
-    [ROLE_APP_SURCHARGE, ROLE_MIGRATOR],
-  );
-  ok(rows[0].app_create === false, `${ROLE_APP_SURCHARGE} n a pas CREATE sur le schéma public`, `create=${rows[0].app_create}`);
-  ok(rows[0].mig_create === true, 'tracefab_migrator a CREATE sur le schéma public', `create=${rows[0].mig_create}`);
+
+  // Transfert des relations existantes. Les séquences passent avant les tables :
+  // certaines séquences SERIAL peuvent suivre automatiquement leur table.
+  const relations = (await db.query(`
+    SELECT n.nspname, c.relname, c.relkind
+      FROM pg_catalog.pg_class c
+      JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
+     WHERE n.nspname = 'public'
+       AND c.relkind IN ('S','v','m','f','r','p')
+       AND c.relowner = (SELECT oid FROM pg_catalog.pg_roles WHERE rolname = $1)
+       AND NOT EXISTS (
+         SELECT 1 FROM pg_catalog.pg_depend d
+          WHERE d.classid = 'pg_catalog.pg_class'::pg_catalog.regclass
+            AND d.objid = c.oid
+            AND d.refclassid = 'pg_catalog.pg_extension'::pg_catalog.regclass
+            AND d.deptype = 'e'
+       )
+     ORDER BY CASE c.relkind WHEN 'S' THEN 0 WHEN 'v' THEN 1 WHEN 'm' THEN 2
+                             WHEN 'f' THEN 3 WHEN 'r' THEN 4 ELSE 5 END,
+              c.relname
+  `, [proprietaireSource])).rows;
+  const commandeRelation = {
+    S: 'SEQUENCE', v: 'VIEW', m: 'MATERIALIZED VIEW',
+    f: 'FOREIGN TABLE', r: 'TABLE', p: 'TABLE',
+  };
+  for (const r of relations) {
+    const kind = commandeRelation[r.relkind];
+    await db.query(
+      `ALTER ${kind} ${quoteIdent(r.nspname)}.${quoteIdent(r.relname)} OWNER TO ${ROLE_MIGRATOR}`,
+    );
+  }
+
+  // Les types autonomes (notamment les ENUM utilisés par les migrations) doivent
+  // suivre le propriétaire migrateur. Les types composites de tables et les
+  // tableaux sont dérivés : leur propriétaire suit celui de l'objet de base.
+  const types = (await db.query(`
+    SELECT n.nspname, t.typname
+      FROM pg_catalog.pg_type t
+      JOIN pg_catalog.pg_namespace n ON n.oid = t.typnamespace
+     WHERE n.nspname = 'public'
+       AND t.typowner = (SELECT oid FROM pg_catalog.pg_roles WHERE rolname = $1)
+       AND t.typtype IN ('e','d','r','m','c')
+       AND t.typrelid = 0 AND t.typelem = 0
+       AND NOT EXISTS (
+         SELECT 1 FROM pg_catalog.pg_depend d
+          WHERE d.classid = 'pg_catalog.pg_type'::pg_catalog.regclass
+            AND d.objid = t.oid
+            AND d.refclassid = 'pg_catalog.pg_extension'::pg_catalog.regclass
+            AND d.deptype = 'e'
+       )
+     ORDER BY t.typname
+  `, [proprietaireSource])).rows;
+  for (const t of types) {
+    await db.query(
+      `ALTER TYPE ${quoteIdent(t.nspname)}.${quoteIdent(t.typname)} OWNER TO ${ROLE_MIGRATOR}`,
+    );
+  }
+
+  // regprocedure fournit une signature sans noms d'arguments. Retirer public
+  // du search_path force sa qualification explicite, y compris les surcharges.
+  await db.query('SET search_path TO pg_catalog');
+  const routines = (await db.query(`
+    SELECT p.oid::pg_catalog.regprocedure::text AS signature, p.prokind
+      FROM pg_catalog.pg_proc p
+      JOIN pg_catalog.pg_namespace n ON n.oid = p.pronamespace
+     WHERE n.nspname = 'public'
+       AND p.proowner = (SELECT oid FROM pg_catalog.pg_roles WHERE rolname = $1)
+       AND NOT EXISTS (
+         SELECT 1 FROM pg_catalog.pg_depend d
+          WHERE d.classid = 'pg_catalog.pg_proc'::pg_catalog.regclass
+            AND d.objid = p.oid
+            AND d.refclassid = 'pg_catalog.pg_extension'::pg_catalog.regclass
+            AND d.deptype = 'e'
+       )
+     ORDER BY p.proname, p.oid
+  `, [proprietaireSource])).rows;
+  for (const r of routines) {
+    const kind = r.prokind === 'p' ? 'PROCEDURE' : r.prokind === 'a' ? 'AGGREGATE' : 'FUNCTION';
+    await db.query(`ALTER ${kind} ${r.signature} OWNER TO ${ROLE_MIGRATOR}`);
+  }
+  await db.query('RESET search_path');
+
+  const restant = (await db.query(`
+    WITH objets AS (
+      SELECT 'relation'::text AS kind, pg_catalog.pg_get_userbyid(c.relowner) AS owner
+        FROM pg_catalog.pg_class c
+        JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
+       WHERE n.nspname = 'public' AND c.relkind IN ('r','p','v','m','S','f')
+      UNION ALL
+      SELECT 'routine', pg_catalog.pg_get_userbyid(p.proowner)
+        FROM pg_catalog.pg_proc p
+        JOIN pg_catalog.pg_namespace n ON n.oid = p.pronamespace
+       WHERE n.nspname = 'public'
+         AND NOT EXISTS (
+           SELECT 1 FROM pg_catalog.pg_depend d
+            WHERE d.classid = 'pg_catalog.pg_proc'::pg_catalog.regclass
+              AND d.objid = p.oid
+              AND d.refclassid = 'pg_catalog.pg_extension'::pg_catalog.regclass
+              AND d.deptype = 'e'
+         )
+      UNION ALL
+      SELECT 'type', pg_catalog.pg_get_userbyid(t.typowner)
+        FROM pg_catalog.pg_type t
+        JOIN pg_catalog.pg_namespace n ON n.oid = t.typnamespace
+       WHERE n.nspname = 'public' AND t.typtype IN ('e','d','r','m','c')
+         AND t.typrelid = 0 AND t.typelem = 0
+         AND NOT EXISTS (
+           SELECT 1 FROM pg_catalog.pg_depend d
+            WHERE d.classid = 'pg_catalog.pg_type'::pg_catalog.regclass
+              AND d.objid = t.oid
+              AND d.refclassid = 'pg_catalog.pg_extension'::pg_catalog.regclass
+              AND d.deptype = 'e'
+         )
+    )
+    SELECT kind, owner, count(*)::int AS count
+      FROM objets
+     WHERE owner NOT IN ($1, $2)
+     GROUP BY kind, owner
+     ORDER BY kind, owner
+  `, [ROLE_MIGRATOR, ROLE_WORKER])).rows;
+  ok(restant.length === 0, 'tous les objets SQL publics sont détenus par migrator ou worker',
+    restant.length ? JSON.stringify(restant) : `${relations.length} relation(s), ${types.length} type(s), ${routines.length} routine(s) transféré(s)`);
 }
 
+async function assurerDroitsSchema() {
+  const proprietaire = (await db.query('SELECT current_user AS role')).rows[0].role;
+  await transfererObjetsPublic(proprietaire);
+  const base = (await db.query('SELECT current_database() AS b')).rows[0].b;
+  const { rows } = await db.query(
+    `SELECT has_database_privilege($1, $2, 'CREATE') AS mig_database_create,
+            has_schema_privilege($1, 'public', 'CREATE') AS mig_create,
+            has_schema_privilege($3, 'public', 'CREATE') AS app_create`,
+    [ROLE_MIGRATOR, base, ROLE_APP_SURCHARGE],
+  );
+  ok(rows[0].mig_database_create === true, 'tracefab_migrator peut créer dans la base', `create=${rows[0].mig_database_create}`);
+  ok(rows[0].mig_create === true, 'tracefab_migrator a CREATE sur le schéma public', `create=${rows[0].mig_create}`);
+  ok(rows[0].app_create === false, `${ROLE_APP_SURCHARGE} n a pas CREATE sur le schéma public`, `create=${rows[0].app_create}`);
+}
 if (!verifierSeulement) {
   // L'ordre compte : `tracefab_migrator` doit exister avant la chaîne, et
   // `tracefab_app` aussi (la chaîne lui accorde des privilèges par son nom).

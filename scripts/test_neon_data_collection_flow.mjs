@@ -50,7 +50,7 @@ async function main() {
     },
   });
 
-  const request = await inUserContext(brandUser, async (tx) => {
+  const request = await inUserContext(brandUser, brandOrganization, async (tx) => {
     const rows = await tx.$queryRaw`
       SELECT * FROM tracefab_create_data_request(
         ${brandOrganization}::uuid,
@@ -67,7 +67,7 @@ async function main() {
     return rows[0];
   });
 
-  const item = await inUserContext(brandUser, async (tx) => {
+  const item = await inUserContext(brandUser, brandOrganization, async (tx) => {
     const rows = await tx.$queryRaw`
       SELECT * FROM tracefab_add_data_request_item(
         ${request.id}::uuid,
@@ -86,18 +86,18 @@ async function main() {
   });
 
   await expectSqlCode(
-    () => inUserContext(brandViewer, async (tx) => tx.$queryRaw`
+    () => inUserContext(brandViewer, brandOrganization, async (tx) => tx.$queryRaw`
       SELECT * FROM tracefab_send_data_request(${request.id}::uuid)
     `),
     'brand_data_request_role_required',
   );
 
-  const sent = await inUserContext(brandUser, async (tx) => tx.$queryRaw`
+  const sent = await inUserContext(brandUser, brandOrganization, async (tx) => tx.$queryRaw`
     SELECT * FROM tracefab_send_data_request(${request.id}::uuid)
   `);
   assert(sent[0]?.status === 'sent', 'data request was not sent');
 
-  const response = await inUserContext(supplierUser, async (tx) => {
+  const response = await inUserContext(supplierUser, supplierOrganization, async (tx) => {
     const rows = await tx.$queryRaw`
       SELECT * FROM tracefab_submit_data_response(
         ${item.id}::uuid,
@@ -118,13 +118,13 @@ async function main() {
   `;
   assert(Number(secondReminderRun[0]?.enqueued) === 0, 'due-soon reminder was duplicated on the same day');
 
-  const submitted = await inUserContext(supplierUser, async (tx) => tx.$queryRaw`
+  const submitted = await inUserContext(supplierUser, supplierOrganization, async (tx) => tx.$queryRaw`
     SELECT * FROM tracefab_submit_data_request(${request.id}::uuid)
   `);
   assert(submitted[0]?.status === 'submitted', 'data request was not submitted');
 
   await expectSqlCode(
-    () => inUserContext(brandViewer, async (tx) => tx.$queryRaw`
+    () => inUserContext(brandViewer, brandOrganization, async (tx) => tx.$queryRaw`
       SELECT * FROM tracefab_review_data_response(
         ${response.id}::uuid,
         'verified_by_reviewer'::data_value_status,
@@ -134,7 +134,7 @@ async function main() {
     'reviewer_role_required',
   );
 
-  const reviewed = await inUserContext(brandUser, async (tx) => tx.$queryRaw`
+  const reviewed = await inUserContext(brandUser, brandOrganization, async (tx) => tx.$queryRaw`
     SELECT * FROM tracefab_review_data_response(
       ${response.id}::uuid,
       'verified_by_reviewer'::data_value_status,
@@ -180,9 +180,10 @@ async function main() {
   console.log('Neon data collection integration passed: request, item, supplier response, submission, review, notifications, outbox claim and role denial');
 }
 
-async function inUserContext(userId, callback) {
+async function inUserContext(userId, organizationId, callback) {
   return prisma.$transaction(async (tx) => {
     await tx.$executeRaw`SELECT set_config('tracefab.user_id', ${userId}, true)`;
+    await tx.$executeRaw`SELECT set_config('tracefab.active_organization_id', ${organizationId}, true)`;
     return callback(tx);
   });
 }

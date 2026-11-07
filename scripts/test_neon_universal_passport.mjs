@@ -80,6 +80,7 @@ async function run() {
     // Set RLS context for the supplier user
     await tx.$executeRawUnsafe(`SELECT set_config('tracefab.user_id', '${supplierUser.id}', true)`);
     await tx.$executeRawUnsafe(`SELECT set_config('tracefab.user_email', '${supplierUser.email}', true)`);
+    await tx.$executeRawUnsafe(`SELECT set_config('tracefab.active_organization_id', '${supplierOrg.id}', true)`);
 
     // 2. Supplier requests/initializes Universal Passport
     const passportRows = await tx.$queryRawUnsafe(`
@@ -111,6 +112,7 @@ async function run() {
     // Clear user context to simulate unauthenticated public visitor
     await tx.$executeRawUnsafe(`SELECT set_config('tracefab.user_id', '', true)`);
     await tx.$executeRawUnsafe(`SELECT set_config('tracefab.user_email', '', true)`);
+    await tx.$executeRawUnsafe(`SELECT set_config('tracefab.active_organization_id', '', true)`);
 
     const publicViewRows = await tx.$queryRawUnsafe(`
       SELECT tracefab_get_public_supplier_passport('${passport.slug}') as public_data;
@@ -155,6 +157,7 @@ async function run() {
     // Switch back to supplier context
     await tx.$executeRawUnsafe(`SELECT set_config('tracefab.user_id', '${supplierUser.id}', true)`);
     await tx.$executeRawUnsafe(`SELECT set_config('tracefab.user_email', '${supplierUser.email}', true)`);
+    await tx.$executeRawUnsafe(`SELECT set_config('tracefab.active_organization_id', '${supplierOrg.id}', true)`);
 
     const reviewRows = await tx.$queryRawUnsafe(`
       SELECT * FROM tracefab_review_passport_access(

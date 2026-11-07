@@ -52,7 +52,7 @@ async function main() {
       'FR',
       ${invitationHash}
     )
-  `);
+  `, brandOrganization);
   assert(invitation.length === 1, 'supplier invitation was not created');
   supplierOrganization = invitation[0].supplier_organization_id;
 
@@ -80,7 +80,7 @@ async function main() {
       2000,
       ${['dyeing', 'finishing']}::text[]
     )
-  `);
+  `, supplierOrganization);
   assert(updated[0]?.onboarding_status === 'in_progress', 'supplier profile was not updated');
 
   await prisma.supplier_sites.create({
@@ -88,17 +88,18 @@ async function main() {
   });
   const submitted = await inUserContext(supplierUser, supplierEmail, (tx) => tx.$queryRaw`
     SELECT * FROM tracefab_submit_supplier_profile(${supplierId}::uuid)
-  `);
+  `, supplierOrganization);
   assert(submitted[0]?.onboarding_status === 'submitted', 'complete supplier profile was not submitted');
   assert(String(submitted[0]?.profile_completion) === '100', 'supplier profile completion was not 100');
 
   console.log('Neon supplier integration passed: invite, email-bound acceptance, profile update and submission');
 }
 
-async function inUserContext(userId, email, callback) {
+async function inUserContext(userId, email, callback, activeOrganizationId = null) {
   return prisma.$transaction(async (tx) => {
     await tx.$executeRaw`SELECT set_config('tracefab.user_id', ${userId}, true)`;
     await tx.$executeRaw`SELECT set_config('tracefab.user_email', ${email}, true)`;
+    if (activeOrganizationId) await tx.$executeRaw`SELECT set_config('tracefab.active_organization_id', ${activeOrganizationId}, true)`;
     return callback(tx);
   });
 }

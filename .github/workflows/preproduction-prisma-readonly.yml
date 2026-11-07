@@ -1,0 +1,20 @@
+name: TraceFab — contrôle Cleanroom désactivé (fail-closed)
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  disabled:
+    name: Refuser toute exécution avec secrets depuis une branche PR
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Refus explicite
+        run: |
+          echo "::error::Workflow désactivé : il était modifiable depuis une branche PR tout en recevant des secrets Cleanroom."
+          echo "Aucun checkout, secret, environnement privilégié, npm ou accès base n'est autorisé."
+          echo "Un contrôle Cleanroom devra être déplacé vers une référence protégée et un environnement approuvé."
+          exit 1

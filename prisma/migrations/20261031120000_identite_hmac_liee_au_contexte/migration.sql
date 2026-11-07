@@ -26,9 +26,9 @@
 --
 -- Ce que la conception garantit, et comment :
 --
---   1. la clé n'est pas lisible par `tracefab_app` : elle vit dans
---      `tracefab_identity_cles`, possédée par `tracefab_worker`, sans aucun
---      GRANT au rôle applicatif ;
+--   1. la clé n'est pas lisible par `tracefab_app` ni par `tracefab_worker` :
+--      `tracefab_identity_cles` reste possédée par le rôle de migration
+--      (neondb_owner sur Neon), sans GRANT SELECT au runtime ou au worker ;
 --   2. aucune fonction accessible au runtime ne signe : la seule fonction
 --      exposée prend un jeton et rend un UUID (ou NULL). Il n'existe AUCUNE
 --      fonction qui rende un MAC — donc aucun oracle de signature ;
@@ -130,10 +130,10 @@ END
 $$;
 
 -- 2. Les clés ----------------------------------------------------------------
---    Possédée par `tracefab_worker` : une identité NOLOGIN, sans appartenance,
---    à laquelle `tracefab_app` ne peut pas se substituer (mesuré :
---    « permission denied to set role »). Aucun GRANT au rôle applicatif, et la
---    RLS FORCE empêche même le propriétaire de lire hors de sa politique.
+--    Possédée par le rôle de migration (neondb_owner sur Neon), comme le
+--    registre runtime. Aucun GRANT SELECT à tracefab_app ou tracefab_worker ;
+--    la RLS FORCE et la politique owner-only ferment l'accès direct au runtime.
+--    Le worker ne reçoit que EXECUTE sur le vérificateur SECURITY DEFINER.
 CREATE TABLE IF NOT EXISTS public.tracefab_identity_cles (
   version   INTEGER PRIMARY KEY,
   secret    BYTEA NOT NULL,
@@ -201,8 +201,10 @@ END
 $$;
 
 -- 4. La vérification ---------------------------------------------------------
---    SECURITY DEFINER, possédée par `tracefab_worker` : elle lit la clé avec
---    les droits du worker, jamais avec ceux de l'appelant. `search_path` est
+--    SECURITY DEFINER, possédée par le rôle de migration (neondb_owner sur
+--    Neon), comme la table. Elle lit la clé avec les droits du propriétaire des
+--    objets, jamais avec ceux de l'appelant. Le worker et l'app n'ont que
+--    EXECUTE sur cette fonction, pas SELECT sur la table. `search_path` est
 --    épinglé et tous les appels de catalogue sont qualifiés.
 --
 --    Elle rend l'UUID de l'utilisateur SIGNÉ, ou NULL. Elle ne rend JAMAIS le
@@ -280,10 +282,11 @@ REVOKE ALL ON FUNCTION public.tracefab_identity_jeton_utilisateur(TEXT) FROM PUB
 -- 4 bis. Le worker doit pouvoir appeler la verification ----------------------
 --    `tracefab_current_user_id()` est SECURITY INVOKER. Appelee DANS une
 --    fonction SECURITY DEFINER possedee par `tracefab_worker`
---    (`tracefab_ensure_clerk_user`, `tracefab_upsert_clerk_user`), elle execute
---    la verification avec les droits du worker — qui, sans ce GRANT, ne l'a
---    pas : mesure du 02/11/2026, `42501 permission denied for function
---    tracefab_identity_jeton_utilisateur` sur la creation d'un utilisateur.
+--    (`tracefab_ensure_clerk_user`, `tracefab_upsert_clerk_user`), elle appelle
+--    le vérificateur, SECURITY DEFINER possédé par le rôle de migration. Le
+--    worker reçoit EXECUTE, mais ne lit jamais directement la table des clés.
+--    Sans ce GRANT, la création d'un utilisateur échoue en `42501 permission
+--    denied for function tracefab_identity_jeton_utilisateur` (mesure du 02/11).
 --
 --    Ce droit est STRICTEMENT le meme que celui du runtime (verifier, jamais
 --    signer) et il est porte par une identite NOLOGIN non assumable. Le GRANT

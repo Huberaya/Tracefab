@@ -39,6 +39,18 @@ if (routePaths.length === 0 || routePaths.length !== declaredLoads) {
 }
 ok(`${routePaths.length} routes du routeur principal analysées`);
 
+// withTracefabTenantContext est un wrapper de sécurité, pas un simple alias :
+// il résout le tenant depuis la requête, valide appartenance/type/rôle, puis
+// arme user + tenant actif dans la même transaction avant le callback.
+const contextSource = readFileSync(join(ROOT, 'api/_lib/context.ts'), 'utf8');
+const tenantContextBlock = contextSource.match(/export async function withTracefabTenantContext[\s\S]*?\n}\n/);
+const tenantContextSafe = !!tenantContextBlock
+  && tenantContextBlock[0].includes('requestedTenantId(req)')
+  && tenantContextBlock[0].includes('requireActiveTenant(tx, req, user.id, scope)')
+  && tenantContextBlock[0].includes('withTracefabUserContext(user.id, user.email');
+if (tenantContextSafe) ok('withTracefabTenantContext délègue à requireActiveTenant et arme le contexte transactionnel');
+else fail('withTracefabTenantContext ne garantit plus la validation et l’armement du tenant actif');
+
 const authContextExceptions = new Map([
   ['api/_routes/questionnaires.ts', 'lecture de modèles statiques uniquement'],
   ['api/_routes/questionnaires/[questionnaireKey].ts', 'lecture de modèles statiques uniquement'],
@@ -66,7 +78,7 @@ for (const route of routePaths) {
   const source = readFileSync(route.file, 'utf8');
   if (!/requireClerkUser\s*\(/.test(source)) continue;
   authenticatedRoutes += 1;
-  const hasContext = /withTracefab(?:Request|User|Worker|Public)Context\s*\(/.test(source);
+  const hasContext = /withTracefab(?:Request|User|Tenant|Worker|Public)Context\s*\(/.test(source);
   if (hasContext) {
     authenticatedWithContext += 1;
     continue;

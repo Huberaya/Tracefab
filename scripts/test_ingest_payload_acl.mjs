@@ -111,11 +111,23 @@ async function ouvrir(url) {
  *          → SELECT tracefab_ingest_plm_erp_payload(...) (ingestor.ts:75)
  *   COMMIT / ROLLBACK
  */
-async function appelerParCheminApplicatif(client, { userId, organizationId, payload, integrationId = null }) {
+async function appelerParCheminApplicatif(client, {
+  userId,
+  organizationId,
+  activeOrganizationId = organizationId,
+  payload,
+  integrationId = null,
+}) {
   await client.query('BEGIN');
   try {
     if (userId !== undefined) {
       await client.query(`SELECT set_config('tracefab.user_id', $1, true)`, [userId]);
+    }
+    if (activeOrganizationId !== undefined) {
+      await client.query(
+        `SELECT set_config('tracefab.active_organization_id', $1, true)`,
+        [activeOrganizationId],
+      );
     }
     const { rows } = await client.query(
       `SELECT tracefab_ingest_plm_erp_payload($1::uuid, $2, $3::jsonb, $4::uuid) AS summary`,
@@ -340,10 +352,11 @@ try {
       const r = await attendreRefus(() => appelerParCheminApplicatif(c, {
         userId: userA,
         organizationId: orgB,
+        activeOrganizationId: orgA,
         payload: { products: [{ reference: `REF-${MARQUEUR}-INTRUS`, name: 'Doit être refusé' }] },
       }));
-      verifier('A7 userA propriétaire de A ne peut pas écrire dans B',
-        r.ok && /brand_product_role_required/.test(r.message), r.ok ? r.message : 'appel ACCEPTÉ');
+      verifier('A7 userA propriétaire de A ne peut pas écrire dans B depuis le tenant A',
+        r.ok && /active_tenant_mismatch/.test(r.message), r.ok ? r.message : 'appel ACCEPTÉ');
       const apres = await admin.query(`SELECT count(*)::int n FROM tracefab_products WHERE brand_organization_id = $1`, [orgB]);
       verifier('A7 aucune ligne n a été créée chez l organisation B',
         apres.rows[0].n === avant.rows[0].n && apres.rows[0].n === 0,
@@ -385,7 +398,7 @@ try {
     await admin.query(`REVOKE ALL ON SCHEMA public FROM ${ROLE_PROPRIO}`).catch(() => {});
     await admin.query(`DROP OWNED BY ${ROLE_PROPRIO}`).catch(() => {});
     await admin.query(`DROP ROLE IF EXISTS ${ROLE_PROPRIO}`);
-    await admin.query(`CREATE ROLE ${ROLE_PROPRIO} LOGIN PASSWORD '${MDP_SONDE}' NOSUPERUSER NOCREATEDB NOCREATEROLE NOBYPASSRLS`);
+    await admin.query(`CREATE ROLE ${ROLE_PROPRIO} LOGIN PASSWORD '${MDP_SONDE}' NOSUPERUSER NOCREATEDB NOCREATEROLE BYPASSRLS`);
     nettoyage.push(async () => {
       await admin.query(`ALTER FUNCTION public.tracefab_ingest_plm_erp_payload(UUID, TEXT, JSONB, UUID) OWNER TO "${proprietaireInitial}"`).catch(() => {});
       await admin.query(`REVOKE ALL ON SCHEMA public FROM ${ROLE_PROPRIO}`).catch(() => {});

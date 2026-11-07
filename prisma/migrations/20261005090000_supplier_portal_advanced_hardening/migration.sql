@@ -63,10 +63,7 @@ SECURITY DEFINER
 SET search_path = public
 AS $$
 BEGIN
-  -- The original brand-to-supplier onboarding flow intentionally invites the
-  -- first supplier owner. Member-management invitations have no relationship
-  -- context and may never grant owner directly.
-  IF NEW.target_role = 'owner' AND NEW.relationship_id IS NULL THEN
+  IF NEW.target_role = 'owner' THEN
     RAISE EXCEPTION 'owner_role_not_invitable';
   END IF;
   RETURN NEW;

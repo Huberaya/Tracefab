@@ -50,7 +50,7 @@ assert(files.scan.includes('runDocumentScanFlow'), 'Supplier scan route must use
 assert(files.quota.includes('pg_advisory_xact_lock'), 'Quota check must take a transactional advisory lock');
 
 assert(files.supplierDownload.includes("status: 'available'"), 'Supplier downloads must require available status');
-assert(files.genericDownload.includes('withTracefabUserContext'), 'Generic downloads must use SQL access context');
+assert(files.genericDownload.includes('withTracefabTenantContext'), 'Generic downloads must use tenant-scoped SQL access context');
 assert(files.genericDownload.includes("status: 'available'"), 'Generic downloads must require available status');
 assert(files.response.includes("status: 'available'"), 'Response evidence must require an available document');
 assert(files.certifications.includes("status: 'available'"), 'Certification evidence must require an available document');

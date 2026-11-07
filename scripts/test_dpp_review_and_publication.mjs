@@ -67,6 +67,7 @@ await client.query(`INSERT INTO users (id, clerk_user_id, email, full_name)
 await client.query(`INSERT INTO organization_memberships (id, organization_id, user_id, role, status)
   VALUES (gen_random_uuid(),$1,$2,'owner','active')`, [ORG, USER]);
 await client.query("SELECT set_config('tracefab.user_id', $1, false)", [USER]);
+await client.query("SELECT set_config('tracefab.active_organization_id', $1, false)", [ORG]);
 
 const { rows: [prod] } = await client.query(`
   INSERT INTO tracefab_products (id, brand_organization_id, version, reference, name, description,
@@ -109,6 +110,7 @@ await client.query(`INSERT INTO data_points (id, owner_organization_id, product_
 /* -- helpers -------------------------------------------------------------- */
 const recalcul = async () => {
   await client.query("SELECT set_config('tracefab.user_id', $1, false)", [USER]);
+  await client.query("SELECT set_config('tracefab.active_organization_id', $1, false)", [ORG]);
   const { rows: [r] } = await client.query(
     'SELECT * FROM tracefab_compute_dpp_readiness($1,$2,$3)', [prod.id, ...PROFIL]);
   return r;

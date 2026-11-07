@@ -2,8 +2,9 @@ import type { VercelRequest, VercelResponse } from '../_lib/vercel-types.js';
 import { requireClerkUser, isUnauthorized } from '.././_lib/auth.js';
 import { sqlBusinessError } from '.././_lib/sql-errors.js';
 import { withTracefabUserContext } from '.././_lib/context.js';
+import { isTenantError, resolveActiveTenant, requestedTenantId } from '../_lib/tenant.js';
 import { json, methodNotAllowed } from '.././_lib/http.js';
-import { activeBrandOrganizationIds } from '.././_lib/products.js';
+
 
 type SupplierRow = {
   supplier_id: string;
@@ -20,9 +21,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   try {
     const { user } = await requireClerkUser(req);
+    const requestedOrgId = requestedTenantId(req);
     const suppliers = await withTracefabUserContext(user.id, user.email, async (tx) => {
-      const brandIds = await activeBrandOrganizationIds(tx, user.id);
-      if (brandIds.length === 0) return [];
+      const tenant = await resolveActiveTenant(tx, user.id, requestedOrgId, { types: ['brand'] });
       const rows = await tx.$queryRaw<SupplierRow[]>`
         SELECT
           s.id AS supplier_id,
@@ -36,7 +37,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         JOIN organizations o ON o.id = s.organization_id
         JOIN brand_supplier_relationships r
           ON r.supplier_organization_id = s.organization_id
-         AND r.brand_organization_id = ANY(${brandIds}::uuid[])
+         AND r.brand_organization_id = ${tenant.organizationId}::uuid
          AND r.status = 'active'
         ORDER BY COALESCE(o.display_name, o.legal_name)
       `;
@@ -53,10 +54,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           type: 'supplier',
         },
       }));
-    });
+    }, requestedOrgId);
     return json(res, 200, { suppliers });
   } catch (error) {
     if (isUnauthorized(error)) return json(res, 401, { error: 'unauthorized' });
+    if (isTenantError(error)) return json(res, error.status, { error: error.message });
     const businessError = sqlBusinessError(error);
     if (businessError) return json(res, businessError.status, { error: businessError.error });
     if (error instanceof Error && error.message === 'missing_clerk_secret_key') return json(res, 503, { error: 'clerk_not_configured' });
