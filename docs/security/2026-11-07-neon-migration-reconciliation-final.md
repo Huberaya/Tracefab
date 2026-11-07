@@ -86,6 +86,12 @@ Le job d'intégration PostgreSQL est vert. Il exerce les accès inter-tenant pos
 
 **Conclusion réseau :** les runners GitHub peuvent récupérer et exécuter le moteur officiel Prisma. Il n'est pas nécessaire d'attendre le filtrage réseau du Codespace pour poursuivre les tests CI.
 
+### Prisma CLI réel sur Neon — branche de validation existante
+
+Sur la branche Neon de validation `br-sweet-king-b1n2f4u6`, le vrai CLI Prisma 6.19.3 a appliqué les 15 migrations alors pending sur une base issue du snapshot de référence : code de sortie 0, `migrate status` indique `Database schema is up to date!`, puis un second `migrate deploy` indique `No pending migrations to apply.`. L'état final observé est de 71 migrations réussies, 2 tentatives historiques annulées et 0 migration inachevée.
+
+Cette preuve couvre la chaîne jusqu'à 71 migrations sur Neon avec le vrai moteur Prisma. Elle ne couvre pas les quinze migrations active-tenant ajoutées ensuite ; celles-ci sont couvertes par le rejeu SQL Neon 18.6 ci-dessous et par le déploiement Prisma 86/86 sur PostgreSQL 17 jetable.
+
 ### Rejeu SQL — projet Neon isolé / PostgreSQL 18.6
 
 Projet isolé : `tracefab-pr110-admin-cleanroom`, rôle d'exécution `tracefab_migrator`. Après remise à zéro du schéma public de ce projet de test, les 86 fichiers `migration.sql` ont été exécutés dans l'ordre lexical, chacun dans sa propre transaction, avec le rôle migrateur.
