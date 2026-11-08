@@ -450,6 +450,9 @@ for (const nom of enAttente) {
     // leur transaction (20261021120000) : le registre doit donc etre qualifie,
     // et le search_path retabli, sinon l'insertion echoue apres coup.
     await executeur.query('SET LOCAL search_path TO public, pg_catalog');
+    // L'appartenance worker est accordée par l'admin après le bootstrap,
+    // avant COMMIT : si la migration échoue, le catch la révoque.
+    if (assisee && assisee.appartenanceTemporaire) await accorderAppartenanceWorker();
     await executeur.query(
       `INSERT INTO public._prisma_migrations
          (id, checksum, migration_name, finished_at, applied_steps_count)
@@ -460,26 +463,7 @@ for (const nom of enAttente) {
     appliquees += 1;
     console.log(`  appliquee  ${nom}`);
     if (eleve) await revoquerElevation('migration assistée terminée');
-    if (assisee && assisee.apres) {
-      // Ratrapage des effets de bord, sur la connexion de migration : c'est le
-      // role de migration qui recoit l'appartenance, pas le role applicatif.
-      // Sur la connexion administrative : PostgreSQL exige, pour accorder une
-      // appartenance AVEC l'option SET, de pouvoir soi-meme endosser le role.
-      // Le role de migration vient de creer `tracefab_worker` mais n'a que
-      // l'option ADMIN — mesuré : « permission denied to grant role ». C'est
-      // donc l'administrateur qui pose cette appartenance, une fois.
-      const sqlApres = assisee.apres.replace(/%ROLE%/g, roleExecutant);
-      // `clientAdmin` est NULL quand l'exécutant est DÉJÀ superutilisateur
-      // (`dejaSuperuser`, branche du 02/11) : il n'y a pas de connexion
-      // d'administration séparée. L'exécutant porte alors lui-même le
-      // privilège exigé par « GRANT … WITH ADMIN OPTION, SET TRUE », et le
-      // rattrapage passe par la connexion de migration. Défaut mesuré le
-      // 02/11 : sans ce repli, la chaîne s'arrêtait en
-      // « Cannot read properties of null (reading 'query') » APRÈS le COMMIT de
-      // la migration, donc sur un état mi-ratricapé.
-      await (clientAdmin ?? client).query(sqlApres);
-      console.log(`             rattrapage — ${sqlApres}`);
-    }
+
   } catch (error) {
     await executeur.query('ROLLBACK').catch(() => {});
     // Comme Prisma : la ligne d'echec reste, avec finished_at NULL.
@@ -491,6 +475,7 @@ for (const nom of enAttente) {
     console.error(`  ECHEC      ${nom}`);
     console.error(`             ${String(error.message).split('\n')[0]}`);
     if (eleve) await revoquerElevation('échec de la migration assistée');
+    await revoquerAppartenanceWorker('échec de migration').catch((x) => console.error(`ECHEC révocation worker : ${x.message}`));
     await client.end();
     if (clientAdmin) await clientAdmin.end();
     await verrou.relacher();
@@ -498,6 +483,7 @@ for (const nom of enAttente) {
   }
 }
 
+await revoquerAppartenanceWorker('fin de chaîne');
 console.log(`\n${appliquees} migration(s) appliquee(s).`);
 await client.end();
 if (clientAdmin) await clientAdmin.end();
