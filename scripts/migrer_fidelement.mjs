@@ -396,10 +396,6 @@ for (const nom of enAttente) {
     // La garde terminale n'est exécutée qu'après révocation effective.
     await revoquerAppartenanceWorker('avant migration terminale');
   }
-  if (nom === MIGRATION_WORKER_TERMINALE) {
-    // La garde terminale n'est exécutée qu'après révocation effective.
-    await revoquerAppartenanceWorker('avant migration terminale');
-  }
   const fichier = path.join(DOSSIER, nom, 'migration.sql');
   const sql = readFileSync(fichier, 'utf8');
   const id = crypto.randomUUID();
@@ -437,6 +433,7 @@ for (const nom of enAttente) {
     } catch (e) {
       console.error(`  REFUS      ${nom}`);
       console.error(`             ${String(e.message).split('\n')[0]}`);
+      await revoquerAppartenanceWorker('échec de préparation').catch((x) => console.error(x.message));
       await client.end();
       if (clientAdmin) await clientAdmin.end();
       await verrou.relacher();
@@ -464,6 +461,7 @@ for (const nom of enAttente) {
       console.error('             Cette operation exige le PROPRIETAIRE de ces fonctions.');
       console.error('             Relancer avec la connexion de ce proprietaire (DATABASE_URL), ou');
       console.error('             transferer la propriete par une decision explicite. Rien n a ete joue.');
+      await revoquerAppartenanceWorker('échec de préflight').catch((x) => console.error(x.message));
       await client.end();
       if (clientAdmin) await clientAdmin.end();
       await verrou.relacher();
