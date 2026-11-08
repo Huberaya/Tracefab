@@ -89,8 +89,10 @@ export function exigeAssistance(nom) {
  * suites qui créent leur propre base tombaient en cascade.
  *
  * La correction est donc dans l'OUTIL qui applique la chaîne : il ramène
- * l'état à « seul l'exécutant peut être membre », la migration ré-accorde ce
- * dont elle a besoin, puis `apres` rétablit le droit final.
+ * l'état à « aucun grantor résiduel vers un autre membre ». La migration
+ * accorde/révoque sa propre appartenance dans sa transaction ; après son
+ * COMMIT, le runner pose une appartenance temporaire sans ADMIN pour les
+ * migrations suivantes, puis la retire avant la garde terminale.
  *
  * @param {import('pg').Client} db connexion qui applique la migration
  * @param {string} nomMigration nom du dossier de migration
