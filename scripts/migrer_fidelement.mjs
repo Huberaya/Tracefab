@@ -294,23 +294,32 @@ const gestionRoles = clientAdmin ?? (dejaSuperuser ? client : null);
 
 /** Révoque l'appartenance worker et vérifie l'absence effective. */
 async function revoquerAppartenanceWorker(moment) {
-  const etat = (await client.query(
-    "SELECT pg_catalog.pg_has_role($1, 'tracefab_worker', 'MEMBER') AS membre",
-    [roleExecutant],
-  )).rows[0];
-  if (!etat?.membre) return;
-  if (!gestionRoles) {
-    throw new Error(`appartenance tracefab_worker résiduelle pour ${roleExecutant}, sans connexion autorisée pour la révoquer (${moment})`);
+  // Toujours nettoyer le rôle courant ET le migrateur nominal : un run précédent
+  // peut avoir été lancé avec une autre identité administrative.
+  const cibles = [...new Set([roleExecutant, 'tracefab_migrator'])];
+  for (const cible of cibles) {
+    const etat = (await client.query(
+      `SELECT pg_catalog.pg_has_role(r.oid, w.oid, 'MEMBER') AS membre
+         FROM pg_catalog.pg_roles r CROSS JOIN pg_catalog.pg_roles w
+        WHERE r.rolname = $1 AND w.rolname = 'tracefab_worker'`,
+      [cible],
+    )).rows[0];
+    if (!etat?.membre) continue;
+    if (!gestionRoles) {
+      throw new Error(`appartenance tracefab_worker résiduelle pour ${cible}, sans connexion autorisée pour la révoquer (${moment})`);
+    }
+    await gestionRoles.query(`REVOKE tracefab_worker FROM ${identifiantSql(cible)}`);
+    const verif = (await gestionRoles.query(
+      `SELECT pg_catalog.pg_has_role(r.oid, w.oid, 'MEMBER') AS membre
+         FROM pg_catalog.pg_roles r CROSS JOIN pg_catalog.pg_roles w
+        WHERE r.rolname = $1 AND w.rolname = 'tracefab_worker'`,
+      [cible],
+    )).rows[0];
+    if (verif?.membre !== false) {
+      throw new Error(`révocation tracefab_worker NON constatée pour ${cible} (${moment})`);
+    }
+    console.log(`             appartenance worker temporaire révoquée et vérifiée — ${cible} (${moment})`);
   }
-  await gestionRoles.query(`REVOKE tracefab_worker FROM ${identifiantSql(roleExecutant)}`);
-  const verif = (await gestionRoles.query(
-    "SELECT pg_catalog.pg_has_role($1, 'tracefab_worker', 'MEMBER') AS membre",
-    [roleExecutant],
-  )).rows[0];
-  if (verif?.membre !== false) {
-    throw new Error(`révocation tracefab_worker NON constatée pour ${roleExecutant} (${moment})`);
-  }
-  console.log(`             appartenance worker temporaire révoquée et vérifiée — ${moment}`);
 }
 
 /** Accorde SET/INHERIT sans ADMIN, uniquement pendant la chaîne de migrations. */
