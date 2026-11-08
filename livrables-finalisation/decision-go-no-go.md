@@ -8,11 +8,11 @@
 
 ## Décision
 
-# GO — avec deux conditions explicites
+# NO-GO — appartenance worker résiduelle du migrateur
 
-Le candidat est **techniquement déployable** : 76/76 migrations s'appliquent sur base vierge, se rejouent sans effet, et se rejouent **sous un rôle de migration non superutilisateur**. Les 28 contrôles de sécurité sous rôles réels sont conformes. Les trois sondes d'appel réel passent 17/17, 17/17 et 28/28. Les 24 contrôles et suites du dépôt passent, ainsi que `typecheck`, `api:typecheck` et `schema:static`.
+La revue indépendante du 8 novembre 2026 a invalidé le GO initial. Le candidat `515d5ab` laisse `tracefab_migrator` membre permanent de `tracefab_worker` via le crochet `apres` de `migrations_assistees.mjs`. La capacité d'endosser le worker a été exercée et l'exposition inter-tenant mesurée (2 identités visibles contre 1 sous le runtime). La matrice initiale ne testait pas `tracefab_migrator`.
 
-**Ce GO ne vaut que si les deux conditions ci-dessous sont respectées.** Elles ne sont pas des réserves de style : chacune correspond à un défaut mesuré qui a réellement cassé quelque chose pendant ce travail.
+Les résultats 76/76, checksums, sondes métier et 28/28 restent des preuves valables dans leur périmètre initial, mais ne prouvent pas l'isolation du rôle migrateur. Le candidat n'est pas intégrable tant que la correction du cycle de vie, la garde terminale et les tests migrator ne sont pas exécutés sur une base PostgreSQL jetable et confirmés par CI complète.
 
 ---
 
@@ -31,15 +31,23 @@ Les migrations 1, 2, 3, 4, 5, 6, 7 forment **un tout** : chacune a été nécess
 
 ---
 
-## Condition 2 — Migrer avec un rôle habilité à endosser `tracefab_worker`
+## Défaut P0 — cycle de vie de l'appartenance worker
 
-La migration `120100` exige `SET` sur `tracefab_worker` (ou SUPERUSER). C'est le cas de la CI (`postgres`). Sur un rôle de migration non superutilisateur, elle fonctionne **à condition** que `120200` ait posé l'appartenance bornée — ce qui est vérifié sur le chemin P10.5 : **76/76 migrations appliquées**.
+Le runner doit accorder `INHERIT TRUE, SET TRUE, ADMIN FALSE` uniquement pendant les migrations qui remplacent les fonctions possédées par `tracefab_worker`, puis révoquer et vérifier l'appartenance avant `20261108120700`. La migration `120200` ne doit plus tenter de s'accorder elle-même le rôle : elle vérifie le privilège temporaire préparé par le runner. Les chemins d'échec, SIGINT/SIGTERM et la reprise après interruption doivent être testés.
 
-Ce point reste une dette du dépôt, pas du candidat : `20261028120100` est classée « assistée » et exige une élévation temporaire documentée dans `docs/security/2026-10-31-p105-provisionnement.md`.
+La garde terminale doit refuser toute appartenance effective résiduelle. Le test doit se connecter réellement sous `tracefab_migrator` et démontrer que `SET ROLE tracefab_worker` échoue en `42501`.
 
 ---
 
-## Ce qui a été prouvé, et comment
+## Conditions de passage à GO
+
+1. Rejouer les 77 migrations sur base vierge et en reprise, sous `tracefab_migrator` non superutilisateur.
+2. Prouver l'absence d'appartenance worker et le refus de `SET ROLE` après succès, après échec contrôlé et après reprise.
+3. Exécuter la matrice étendue (M0–M4) sous une vraie connexion migrator.
+4. Obtenir la CI complète verte sur le SHA exact de correction.
+5. Conserver les interdictions : aucune modification Neon, aucune fusion, aucun déploiement Production.
+
+## Ce qui a été prouvé avant la découverte, et comment
 
 | Affirmation | Preuve | Fichier |
 |---|---|---|
