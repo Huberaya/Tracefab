@@ -126,7 +126,9 @@ try {
     await context(U.userB,emailB,()=>app.query(
       `SELECT tracefab_create_dpp_identity($1,'dpp-foreign-attempt','model',NULL)`,[U.product]));
   } catch(e) {
-    foreignIdentity = e.code === '42501' || String(e.message).includes('dpp_identity_role_required');
+    foreignIdentity = e.code === '42501'
+      || String(e.message).includes('dpp_identity_role_required')
+      || String(e.message).includes('active_tenant_mismatch');
   }
   check(foreignIdentity,'autre organisation ne peut créer une identité sur le produit');
   const foreignIdentityCount = await admin.query(
