@@ -123,7 +123,13 @@ async function etatFinal(c) {
   const typeAcl = await compte(c, `SELECT count(*)::int n FROM pg_catalog.pg_type t CROSS JOIN LATERAL pg_catalog.aclexplode(t.typacl) a WHERE t.typacl IS NOT NULL AND a.grantee='tracefab_worker_legacy'::regrole`);
   const schemaAcl = await compte(c, `SELECT count(*)::int n FROM pg_catalog.pg_namespace n CROSS JOIN LATERAL pg_catalog.aclexplode(coalesce(n.nspacl,pg_catalog.acldefault('n',n.nspowner))) a WHERE a.grantee='tracefab_worker_legacy'::regrole`);
   const defaultAcl = await compte(c, `SELECT count(*)::int n FROM pg_catalog.pg_default_acl WHERE defaclrole='tracefab_worker_legacy'::regrole`);
-  const externalAcl = await compte(c, `SELECT (SELECT count(*) FROM pg_catalog.pg_database WHERE datacl::text LIKE '%tracefab_worker_legacy%') + (SELECT count(*) FROM pg_catalog.pg_language WHERE lanacl::text LIKE '%tracefab_worker_legacy%') + (SELECT count(*) FROM pg_catalog.pg_foreign_server WHERE srvacl::text LIKE '%tracefab_worker_legacy%') + (SELECT count(*) FROM pg_catalog.pg_foreign_data_wrapper WHERE fdwacl::text LIKE '%tracefab_worker_legacy%') + (SELECT count(*) FROM pg_catalog.pg_largeobject_metadata WHERE lomacl::text LIKE '%tracefab_worker_legacy%') + (SELECT count(*) FROM pg_catalog.pg_parameter_acl WHERE paracl::text LIKE '%tracefab_worker_legacy%') AS n`);
+  const externalAcl = await compte(c, `SELECT
+    (SELECT count(*) FROM pg_catalog.pg_database d CROSS JOIN LATERAL pg_catalog.aclexplode(d.datacl) a WHERE d.datacl IS NOT NULL AND a.grantee='tracefab_worker_legacy'::regrole)
+    + (SELECT count(*) FROM pg_catalog.pg_language l CROSS JOIN LATERAL pg_catalog.aclexplode(l.lanacl) a WHERE l.lanacl IS NOT NULL AND a.grantee='tracefab_worker_legacy'::regrole)
+    + (SELECT count(*) FROM pg_catalog.pg_foreign_server s CROSS JOIN LATERAL pg_catalog.aclexplode(s.srvacl) a WHERE s.srvacl IS NOT NULL AND a.grantee='tracefab_worker_legacy'::regrole)
+    + (SELECT count(*) FROM pg_catalog.pg_foreign_data_wrapper f CROSS JOIN LATERAL pg_catalog.aclexplode(f.fdwacl) a WHERE f.fdwacl IS NOT NULL AND a.grantee='tracefab_worker_legacy'::regrole)
+    + (SELECT count(*) FROM pg_catalog.pg_largeobject_metadata l CROSS JOIN LATERAL pg_catalog.aclexplode(l.lomacl) a WHERE l.lomacl IS NOT NULL AND a.grantee='tracefab_worker_legacy'::regrole)
+    + (SELECT count(*) FROM pg_catalog.pg_parameter_acl p CROSS JOIN LATERAL pg_catalog.aclexplode(p.paracl) a WHERE p.paracl IS NOT NULL AND a.grantee='tracefab_worker_legacy'::regrole) AS n`);
   const memberships = await membership(c, 'tracefab_migrator', 'tracefab_worker_legacy');
   const newMembership = await membership(c, 'tracefab_migrator', 'tracefab_worker');
   const appNew = await membership(c, 'tracefab_app', 'tracefab_worker');
