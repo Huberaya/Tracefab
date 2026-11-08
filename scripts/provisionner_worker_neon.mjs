@@ -313,6 +313,18 @@ async function main() {
           WHERE n.nspname <> 'public' AND t.typacl IS NOT NULL AND a.grantee='tracefab_worker'::regrole
         ) + (
           SELECT count(*) FROM pg_catalog.pg_default_acl WHERE defaclrole='tracefab_worker'::regrole
+        ) + (
+          SELECT count(*) FROM pg_catalog.pg_database WHERE datacl::text LIKE '%tracefab_worker%'
+        ) + (
+          SELECT count(*) FROM pg_catalog.pg_language WHERE lanacl::text LIKE '%tracefab_worker%'
+        ) + (
+          SELECT count(*) FROM pg_catalog.pg_foreign_server WHERE srvacl::text LIKE '%tracefab_worker%'
+        ) + (
+          SELECT count(*) FROM pg_catalog.pg_foreign_data_wrapper WHERE fdwacl::text LIKE '%tracefab_worker%'
+        ) + (
+          SELECT count(*) FROM pg_catalog.pg_largeobject_metadata WHERE lomacl::text LIKE '%tracefab_worker%'
+        ) + (
+          SELECT count(*) FROM pg_catalog.pg_parameter_acl WHERE paracl::text LIKE '%tracefab_worker%'
         ) AS n`,
     );
     if (Number(aclHorsPublic.rows[0].n) !== 0) {
