@@ -117,9 +117,21 @@ try {
   check(replaced.rows[0].status==='replaced'&&replaced.rows[0].replaced_by_id,'ancien identifiant conservé comme remplacé');
   const replacement=(await admin.query('SELECT * FROM dpp_resolvable_identifiers WHERE id=$1',[replaced.rows[0].replaced_by_id])).rows[0];
   check(replacement.public_id===idPublic2&&replacement.status==='active','remplaçant créé atomiquement avec portée identique');
-  let foreignIdentity=false;try{await context(U.userB,emailB,()=>app.query(
-    `SELECT tracefab_create_dpp_identity($1,'dpp-foreign-attempt','model',NULL)`,[U.product]));}catch(e){foreignIdentity=String(e.message).includes('dpp_identity_role_required');}
+  // Le refus peut provenir de la garde métier de la fonction (P0001) ou
+  // directement de la RLS FORCEE (42501). Les deux sont des refus sûrs :
+  // ne pas exiger un texte d'exception unique quand PostgreSQL bloque déjà
+  // l'INSERT avant que la fonction puisse retourner son code métier.
+  let foreignIdentity=false;
+  try {
+    await context(U.userB,emailB,()=>app.query(
+      `SELECT tracefab_create_dpp_identity($1,'dpp-foreign-attempt','model',NULL)`,[U.product]));
+  } catch(e) {
+    foreignIdentity = e.code === '42501' || String(e.message).includes('dpp_identity_role_required');
+  }
   check(foreignIdentity,'autre organisation ne peut créer une identité sur le produit');
+  const foreignIdentityCount = await admin.query(
+    `SELECT count(*)::int AS n FROM dpp_resolvable_identifiers WHERE public_id='dpp-foreign-attempt'`);
+  check(foreignIdentityCount.rows[0].n === 0,'aucune identité étrangère persistée après refus RLS');
 
   const visible=await publicContext(()=>app.query('SELECT id FROM tracefab_products WHERE id=$1',[U.product]));
   check(visible.rowCount===1,'produit publie resolvable en contexte anonyme');
