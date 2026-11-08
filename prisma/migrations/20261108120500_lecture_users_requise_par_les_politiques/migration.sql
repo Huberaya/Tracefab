@@ -53,10 +53,11 @@
 --
 --   — elle n'accorde aucun privilège d'écriture ;
 --   — elle ne modifie, ne crée et ne supprime aucune politique RLS ;
---   — elle ne touche aucune autre table (`orders`, `tracefab_identity_cles` et
---     `tracefab_runtime_function_registry` restent illisibles, ce qui est le
---     comportement voulu : le registre ne doit pas être lisible par le rôle
---     qu'il contrôle) ;
+--   — elle ne touche aucune autre table ; l'accès SELECT à `orders` est
+--     accordé séparément par `20261108120600_lecture_orders_requise_par_le_runtime` ;
+--     `tracefab_identity_cles` et `tracefab_runtime_function_registry` restent
+--     illisibles, ce qui est voulu : le registre ne doit pas être lisible par
+--     le rôle qu'il contrôle ;
 --   — elle n'écrit aucune donnée.
 -- ============================================================================
 
