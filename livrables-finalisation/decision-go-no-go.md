@@ -3,6 +3,8 @@
 **Date** : 8 novembre 2026
 **Périmètre** : branche `candidat-integration-tracefab` = `origin/main` (`788df220`) + 7 migrations additives
 **Auteur** : agent Arena, sur mesures reproductibles
+**Référence initiale** : commit `515d5abf658eccf2fbc6d49c84cd803e8a8c15db`
+**Correctif séparé** : branche `fix/tracefab-worker-membership-lifecycle-20261108` (aucune PR, aucune fusion)
 
 ---
 
@@ -71,7 +73,7 @@ La garde terminale doit refuser toute appartenance effective résiduelle. Le tes
 | `db:generate` (moteur Prisma) | **impossible ici** — `binaries.prisma.sh` bloqué | Sans incidence sur les migrations ; à revérifier en CI |
 | Tests d'interface / navigateur | non exécutés | Hors périmètre des migrations |
 
-**Aucune migration n'a été poussée.** Aucun push n'a eu lieu. Le candidat existe uniquement dans le worktree `/home/user/wt-candidat`.
+À la date du rapport initial (`515d5ab`), aucune migration n'avait été poussée et le candidat n'existait que dans le worktree `/home/user/wt-candidat`. La branche corrective distincte ajoute une migration terminale `120700` et modifie le runner ainsi que les tests. Elle n'a pas encore reçu de validation CI complète ; elle n'a été ni ouverte en PR, ni fusionnée, ni appliquée à Neon.
 
 ---
 
