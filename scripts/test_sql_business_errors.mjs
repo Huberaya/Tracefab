@@ -64,7 +64,7 @@ const fixture = [
   "  RAISE EXCEPTION 'fixture_business_code';",
   "END",
   "$function_body$;",
-].join('\\n');
+].join('\n');
 assert.deepEqual(exceptionCodes(extractFunctionBodies(fixture).join('\n')), ['fixture_business_code']);
 
 const raised = new Set();
