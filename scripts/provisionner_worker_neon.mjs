@@ -116,13 +116,15 @@ async function etatFinal(c) {
   const legacy = await role(c, 'tracefab_worker_legacy');
   const worker = await role(c, 'tracefab_worker');
   if (!legacy || !worker) return { final: false, legacy, worker };
-  const [owned, tableAcl, functionAcl, sequenceAcl, schemaAcl, defaultAcl] = await Promise.all([
+  const [owned, tableAcl, functionAcl, sequenceAcl, typeAcl, schemaAcl, defaultAcl, externalAcl] = await Promise.all([
     compte(c, `SELECT count(*)::int n FROM pg_catalog.pg_shdepend WHERE refobjid='tracefab_worker_legacy'::regrole AND deptype='o'`),
     compte(c, `SELECT count(*)::int n FROM pg_catalog.pg_class c JOIN pg_catalog.pg_namespace n ON n.oid=c.relnamespace CROSS JOIN LATERAL pg_catalog.aclexplode(coalesce(c.relacl,pg_catalog.acldefault('r',c.relowner))) a WHERE a.grantee='tracefab_worker_legacy'::regrole`),
     compte(c, `SELECT count(*)::int n FROM pg_catalog.pg_proc p JOIN pg_catalog.pg_namespace n ON n.oid=p.pronamespace CROSS JOIN LATERAL pg_catalog.aclexplode(coalesce(p.proacl,pg_catalog.acldefault('f',p.proowner))) a WHERE a.grantee='tracefab_worker_legacy'::regrole`),
     compte(c, `SELECT count(*)::int n FROM pg_catalog.pg_class c JOIN pg_catalog.pg_namespace n ON n.oid=c.relnamespace CROSS JOIN LATERAL pg_catalog.aclexplode(coalesce(c.relacl,pg_catalog.acldefault('S',c.relowner))) a WHERE c.relkind='S' AND a.grantee='tracefab_worker_legacy'::regrole`),
-    compte(c, `SELECT count(*)::int n FROM pg_catalog.pg_namespace n CROSS JOIN LATERAL pg_catalog.aclexplode(coalesce(n.nspacl,pg_catalog.acldefault('n',n.nspowner))) a WHERE n.nspname='public' AND a.grantee='tracefab_worker_legacy'::regrole`),
+    compte(c, `SELECT count(*)::int n FROM pg_catalog.pg_type t CROSS JOIN LATERAL pg_catalog.aclexplode(t.typacl) a WHERE t.typacl IS NOT NULL AND a.grantee='tracefab_worker_legacy'::regrole`),
+    compte(c, `SELECT count(*)::int n FROM pg_catalog.pg_namespace n CROSS JOIN LATERAL pg_catalog.aclexplode(coalesce(n.nspacl,pg_catalog.acldefault('n',n.nspowner))) a WHERE a.grantee='tracefab_worker_legacy'::regrole`),
     compte(c, `SELECT count(*)::int n FROM pg_catalog.pg_default_acl WHERE defaclrole='tracefab_worker_legacy'::regrole`),
+    compte(c, `SELECT (SELECT count(*) FROM pg_catalog.pg_database WHERE datacl::text LIKE '%tracefab_worker_legacy%') + (SELECT count(*) FROM pg_catalog.pg_language WHERE lanacl::text LIKE '%tracefab_worker_legacy%') + (SELECT count(*) FROM pg_catalog.pg_foreign_server WHERE srvacl::text LIKE '%tracefab_worker_legacy%') + (SELECT count(*) FROM pg_catalog.pg_foreign_data_wrapper WHERE fdwacl::text LIKE '%tracefab_worker_legacy%') + (SELECT count(*) FROM pg_catalog.pg_largeobject_metadata WHERE lomacl::text LIKE '%tracefab_worker_legacy%') + (SELECT count(*) FROM pg_catalog.pg_parameter_acl WHERE paracl::text LIKE '%tracefab_worker_legacy%') AS n`),
   ]);
   const memberships = await membership(c, 'tracefab_migrator', 'tracefab_worker_legacy');
   const newMembership = await membership(c, 'tracefab_migrator', 'tracefab_worker');
@@ -143,10 +145,10 @@ async function etatFinal(c) {
     && memberships[0].set_option === false;
   return {
     final: owned === 0 && tableAcl === 0 && functionAcl === 0 && sequenceAcl === 0
-      && schemaAcl === 0 && defaultAcl === 0 && cloudGrant && newMembership.length === 0
+      && typeAcl === 0 && schemaAcl === 0 && defaultAcl === 0 && externalAcl === 0 && cloudGrant && newMembership.length === 0
       && appNew.length === 0 && appLegacy.length === 0 && !migratorLegacySet
       && !migratorLegacyUsage && safeAttrs && legacySafe && !workerCreate && newOwned > 0,
-    owned, tableAcl, functionAcl, sequenceAcl, schemaAcl, defaultAcl,
+    owned, tableAcl, functionAcl, sequenceAcl, typeAcl, schemaAcl, defaultAcl, externalAcl,
     memberships, newMembership, appNew, appLegacy, migratorLegacySet,
     migratorLegacyUsage, newOwned, workerCreate, safeAttrs, legacySafe,
   };
@@ -226,14 +228,28 @@ async function copierAclEtTransferrer() {
       await migrateur.query(`REVOKE ${r.privilege_type} ON SEQUENCE ${obj} FROM tracefab_worker_legacy`);
     }
 
+    const types = await migrateur.query(
+      `SELECT n.nspname,t.typname,a.privilege_type,bool_or(a.is_grantable) AS grantable
+         FROM pg_catalog.pg_type t JOIN pg_catalog.pg_namespace n ON n.oid=t.typnamespace
+         CROSS JOIN LATERAL pg_catalog.aclexplode(t.typacl) a
+        WHERE n.nspname='public' AND t.typacl IS NOT NULL
+          AND a.grantee='tracefab_worker_legacy'::regrole
+        GROUP BY n.nspname,t.typname,a.privilege_type ORDER BY t.typname,a.privilege_type`,
+    );
+    for (const r of types.rows) {
+      const obj = `${identifiant(r.nspname)}.${identifiant(r.typname)}`;
+      await migrateur.query(`GRANT ${r.privilege_type} ON TYPE ${obj} TO tracefab_worker${r.grantable ? ' WITH GRANT OPTION' : ''}`);
+      await migrateur.query(`REVOKE ${r.privilege_type} ON TYPE ${obj} FROM tracefab_worker_legacy`);
+    }
+
     await migrateur.query('REVOKE ALL ON SCHEMA public FROM tracefab_worker_legacy');
     await migrateur.query('REVOKE CREATE ON SCHEMA public FROM tracefab_worker');
     const s = await etatFinal(migrateur);
-    if (s.owned || s.tableAcl || s.functionAcl || s.sequenceAcl || s.schemaAcl || s.defaultAcl) {
+    if (s.owned || s.tableAcl || s.functionAcl || s.sequenceAcl || s.typeAcl || s.schemaAcl || s.defaultAcl || s.externalAcl) {
       refuser('Le rôle legacy conserve des objets ou ACL ; transaction annulée.');
     }
     await migrateur.query('COMMIT');
-    console.log(`transfert vérifié : ${fonctions.rows.length} fonction(s) propriétaire(s), ${tables.rows.length} table/ACL, ${fonctionsAcl.rows.length} fonction/ACL, ${sequences.rows.length} séquence/ACL.`);
+    console.log(`transfert vérifié : ${fonctions.rows.length} fonction(s) propriétaire(s), ${tables.rows.length} table/ACL, ${fonctionsAcl.rows.length} fonction/ACL, ${sequences.rows.length} séquence/ACL, ${types.rows.length} type/ACL.`);
   } catch (e) {
     try { await migrateur.query('ROLLBACK'); } catch {}
     throw e;
@@ -290,6 +306,11 @@ async function main() {
           SELECT count(*) FROM pg_catalog.pg_namespace n
           CROSS JOIN LATERAL pg_catalog.aclexplode(coalesce(n.nspacl,pg_catalog.acldefault('n',n.nspowner))) a
           WHERE n.nspname <> 'public' AND a.grantee='tracefab_worker'::regrole
+        ) + (
+          SELECT count(*) FROM pg_catalog.pg_type t
+          JOIN pg_catalog.pg_namespace n ON n.oid=t.typnamespace
+          CROSS JOIN LATERAL pg_catalog.aclexplode(t.typacl) a
+          WHERE n.nspname <> 'public' AND t.typacl IS NOT NULL AND a.grantee='tracefab_worker'::regrole
         ) + (
           SELECT count(*) FROM pg_catalog.pg_default_acl WHERE defaclrole='tracefab_worker'::regrole
         ) AS n`,
