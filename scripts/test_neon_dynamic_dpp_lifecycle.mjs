@@ -191,10 +191,17 @@ try {
   let foreignWrite=false;
   try { await context(U.userB,emailB,()=>app.query(
     `SELECT tracefab_add_dpp_event($1,'repair','Tentative externe')`,[U.product]));
-  } catch(e){foreignWrite=String(e.message).includes('dpp_event_role_required');}
+  } catch(e){
+    foreignWrite = e.code === '42501'
+      || String(e.message).includes('dpp_event_role_required')
+      || String(e.message).includes('active_tenant_mismatch');
+  }
   check(foreignWrite,'organisation B ne peut pas ajouter evenement au produit A');
   const foreignRead=await context(U.userB,emailB,()=>app.query('SELECT id FROM dpp_lifecycle_events WHERE product_id=$1',[U.product]));
   check(foreignRead.rowCount===0,'organisation B ne lit aucun evenement prive de A');
+  const foreignEventCount=await admin.query(
+    `SELECT count(*)::int AS n FROM dpp_lifecycle_events WHERE product_id=$1 AND summary='Tentative externe'`,[U.product]);
+  check(foreignEventCount.rows[0].n===0,'aucun evenement etranger persiste apres refus');
 
   let mutationBlocked=false;
   try {await admin.query('UPDATE dpp_lifecycle_events SET summary=$1 WHERE id=$2',['altération',evidenceEvent.id]);}
