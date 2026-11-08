@@ -328,15 +328,23 @@ async function accorderAppartenanceWorker() {
   }
   const apres = (await clientAdmin.query(
     `SELECT pg_catalog.pg_has_role($1, 'tracefab_worker', 'SET') AS peut_set,
-            EXISTS (SELECT 1 FROM pg_catalog.pg_auth_members m
-                     JOIN pg_catalog.pg_roles r ON r.oid = m.roleid
-                     JOIN pg_catalog.pg_roles u ON u.oid = m.member
-                    WHERE r.rolname = 'tracefab_worker' AND u.rolname = $1
-                      AND m.admin_option IS TRUE) AS admin_option`,
+            (SELECT m.inherit_option FROM pg_catalog.pg_auth_members m
+              JOIN pg_catalog.pg_roles r ON r.oid = m.roleid
+              JOIN pg_catalog.pg_roles u ON u.oid = m.member
+             WHERE r.rolname = 'tracefab_worker' AND u.rolname = $1) AS inherit_option,
+            (SELECT m.set_option FROM pg_catalog.pg_auth_members m
+              JOIN pg_catalog.pg_roles r ON r.oid = m.roleid
+              JOIN pg_catalog.pg_roles u ON u.oid = m.member
+             WHERE r.rolname = 'tracefab_worker' AND u.rolname = $1) AS set_option,
+            (SELECT m.admin_option FROM pg_catalog.pg_auth_members m
+              JOIN pg_catalog.pg_roles r ON r.oid = m.roleid
+              JOIN pg_catalog.pg_roles u ON u.oid = m.member
+             WHERE r.rolname = 'tracefab_worker' AND u.rolname = $1) AS admin_option`,
     [roleExecutant],
   )).rows[0];
-  if (apres?.peut_set !== true || apres?.admin_option !== false) {
-    throw new Error(`appartenance worker temporaire non conforme : SET=${apres?.peut_set}, ADMIN=${apres?.admin_option}`);
+  if (apres?.peut_set !== true || apres?.inherit_option !== true
+      || apres?.set_option !== true || apres?.admin_option !== false) {
+    throw new Error(`appartenance worker temporaire non conforme : SET=${apres?.peut_set}, INHERIT=${apres?.inherit_option}, SET_OPTION=${apres?.set_option}, ADMIN=${apres?.admin_option}`);
   }
   console.log(`             appartenance worker temporaire accordée à ${roleExecutant} (INHERIT/SET, sans ADMIN)`);
 }
@@ -350,21 +358,6 @@ if (enAttente.includes(MIGRATION_WORKER_BOOTSTRAP)) {
     await client.end(); if (clientAdmin) await clientAdmin.end(); await verrou.relacher(); process.exit(3);
   }
 }
-
-let nettoyageSignalEnCours = false;
-async function terminerSurSignal(signal, code) {
-  if (nettoyageSignalEnCours) return;
-  nettoyageSignalEnCours = true;
-  console.error(`\\n${signal} reçu — fermeture de l'appartenance worker temporaire.`);
-  try { await revoquerAppartenanceWorker(`signal ${signal}`); }
-  catch (e) { console.error(`ECHEC nettoyage signal : ${e.message}`); }
-  await client.end().catch(() => {});
-  if (clientAdmin) await clientAdmin.end().catch(() => {});
-  await verrou.relacher().catch(() => {});
-  process.exit(code);
-}
-process.once('SIGINT', () => { void terminerSurSignal('SIGINT', 130); });
-process.once('SIGTERM', () => { void terminerSurSignal('SIGTERM', 143); });
 
 let nettoyageSignalEnCours = false;
 async function terminerSurSignal(signal, code) {
