@@ -486,7 +486,8 @@ try {
   await proprio.query(`SELECT set_config('tracefab.active_organization_id', $1, false)`, [orgA]);
   await app.query(`SELECT set_config('tracefab.user_id', '', false)`);
   await app.query(`SELECT set_config('tracefab.active_organization_id', $1, false)`, [orgA]);
-  await expectError(() => bascule(docNeuf), 'document_scan_actor_required', 'bascule sans contexte utilisateur refusee');
+  await app.query(`SELECT set_config('tracefab.user_email', '', false)`);
+  await expectError(() => bascule(docNeuf), 'document_scan_role_required', 'bascule sans identité utilisateur refusée par le contrôle de rôle');
 
   // Le role applicatif n'a plus aucun droit d'ecriture direct, meme drapeau pose.
   await app.query(`SELECT set_config('tracefab.user_id', $1, false)`, [userA]);
