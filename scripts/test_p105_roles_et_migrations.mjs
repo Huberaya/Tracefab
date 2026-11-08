@@ -171,6 +171,28 @@ try {
   ok(etatWorker?.rolcanlogin === false && etatWorker?.rolsuper === false,
     'B2.5 le worker reste NOLOGIN et non superutilisateur',
     `login=${etatWorker?.rolcanlogin} superuser=${etatWorker?.rolsuper}`);
+
+  const membreWorker = (await cible.query(
+    `SELECT pg_catalog.pg_has_role(current_user, 'tracefab_worker', 'MEMBER') AS membre`)).rows[0];
+  ok(membreWorker?.membre === false,
+    'B2.5bis tracefab_migrator n est plus membre du worker après la chaîne',
+    `membre=${membreWorker?.membre}`);
+  let escaladeWorker = null;
+  try { await cible.query('SET ROLE tracefab_worker'); escaladeWorker = 'ACCEPTE'; }
+  catch (e) { escaladeWorker = e.code || 'ERREUR'; }
+  ok(escaladeWorker === '42501',
+    'B2.5ter tracefab_migrator ne peut pas endosser tracefab_worker', escaladeWorker);
+
+  const urlAdminBase = new URL(urlAdmin);
+  urlAdminBase.pathname = `/${base}`;
+  const matrice = lancer(['livrables-finalisation/sondes/matrice-securite-roles.mjs'], {
+    DATABASE_URL: urlAdminBase.toString(),
+    TF_APP_MDP: MDP_APP,
+    TF_MIGRATOR_MDP: MDP_MIG,
+  });
+  ok(matrice.status === 0, 'B2.6 matrice complète app/worker/migrator sous sessions authentifiées',
+    `sortie=${matrice.status}`);
+  if (matrice.status !== 0) console.log(matrice.stdout.split('\\n').filter((l) => /ECHEC|VERDICT/.test(l)).join('\\n'));
   await cible.end();
 
   // -------------------------------------------------------------------------
