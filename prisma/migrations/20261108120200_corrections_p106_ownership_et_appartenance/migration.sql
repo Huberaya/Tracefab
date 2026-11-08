@@ -42,41 +42,39 @@
 --   — elle n'écrit pas dans `_prisma_migrations`.
 -- ============================================================================
 
--- 1. Appartenance worker bornée, sans ADMIN ----------------------------------
+-- 1. Appartenance worker : elle doit provenir du runner, temporairement ------
 DO $worker_membership$
 DECLARE
-  v_sans_admin boolean;
+  v_peut_set boolean;
+  v_admin boolean;
 BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_catalog.pg_roles WHERE rolname = 'tracefab_worker') THEN
     RAISE EXCEPTION 'tracefab_worker_absent'
       USING HINT = 'La chaine 20261028120100 doit avoir cree le role avant cette migration.';
   END IF;
 
-  -- Une appartenance avec ADMIN donnée par un rôle privilégié existe déjà en
-  -- production (octroi bootstrap du fournisseur) : elle est CONSERVÉE, car la
-  -- retirer demanderait les droits du grantor. On vérifie seulement qu'elle
-  -- n'a pas été accordée par nous avec ADMIN.
-  SELECT NOT EXISTS (
-    SELECT 1
-      FROM pg_catalog.pg_auth_members m
-      JOIN pg_catalog.pg_roles cible ON cible.oid = m.roleid
-      JOIN pg_catalog.pg_roles membre ON membre.oid = m.member
-     WHERE cible.rolname = 'tracefab_worker'
-       AND membre.rolname = current_user
-       AND m.admin_option IS TRUE
-  ) INTO v_sans_admin;
+  SELECT pg_catalog.pg_has_role(current_user, 'tracefab_worker', 'SET'),
+         EXISTS (
+           SELECT 1 FROM pg_catalog.pg_auth_members m
+           JOIN pg_catalog.pg_roles cible ON cible.oid = m.roleid
+           JOIN pg_catalog.pg_roles membre ON membre.oid = m.member
+           WHERE cible.rolname = 'tracefab_worker'
+             AND membre.rolname = current_user
+             AND m.admin_option IS TRUE
+         )
+    INTO v_peut_set, v_admin;
 
-  IF NOT v_sans_admin THEN
-    RAISE EXCEPTION 'worker_membership_admin_forbidden'
-      USING HINT = 'Une appartenance ADMIN a tracefab_worker a ete accordee a ce role ; elle doit etre revue par un administrateur.';
+  -- Cette migration ne GRANT jamais un rôle : tracefab_migrator ne possède
+  -- ni ADMIN OPTION ni CREATEROLE. Le runner accorde SET/INHERIT via sa
+  -- connexion administrative après 20261028120100, puis révoque avant la
+  -- migration terminale 20261108120700.
+  IF NOT v_peut_set THEN
+    RAISE EXCEPTION 'worker_membership_temporaire_absente'
+      USING HINT = 'Exécuter la chaîne via scripts/migrer_fidelement.mjs avec TF_ADMIN_URL et TF_ALLOW_ELEVATION=oui.';
   END IF;
-
-  IF NOT pg_catalog.pg_has_role(current_user, 'tracefab_worker', 'SET') THEN
-    EXECUTE pg_catalog.format(
-      'GRANT tracefab_worker TO %I WITH INHERIT TRUE, SET TRUE, ADMIN FALSE',
-      current_user
-    );
-    RAISE NOTICE 'appartenance worker (INHERIT, SET, sans ADMIN) accordee au role executant';
+  IF v_admin THEN
+    RAISE EXCEPTION 'worker_membership_admin_forbidden'
+      USING HINT = 'L appartenance temporaire ne doit jamais porter ADMIN OPTION.';
   END IF;
 END
 $worker_membership$;
