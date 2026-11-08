@@ -29,7 +29,7 @@
  */
 import process from 'node:process';
 import { spawnSync } from 'node:child_process';
-import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, writeFileSync, rmSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import pg from 'pg';
@@ -204,6 +204,20 @@ try {
   ok(reprise.status === 0 && residualApresReprise === false,
     'B2.5quinquies reprise sans migrations : appartenance résiduelle révoquée',
     `sortie=${reprise.status}, membre=${residualApresReprise}`);
+
+  // La migration terminale doit elle-même refuser une appartenance résiduelle.
+  await admin.query('GRANT tracefab_worker TO tracefab_migrator WITH INHERIT TRUE, SET TRUE, ADMIN FALSE');
+  let refusGarde = null;
+  try {
+    const sqlGarde = readFileSync(
+      'prisma/migrations/20261108120700_assert_worker_membership_revoked/migration.sql', 'utf8');
+    await cible.query(sqlGarde);
+    refusGarde = 'ACCEPTE';
+  } catch (e) { refusGarde = e.message || e.code || 'ERREUR'; }
+  ok(/tracefab_migrator_worker_membership_residuelle/.test(String(refusGarde)),
+    'B2.5quinquies-bis la garde terminale refuse explicitement le migrator membre du worker',
+    String(refusGarde).split('\\n')[0].slice(0, 120));
+  await admin.query('REVOKE tracefab_worker FROM tracefab_migrator');
 
   // Forcer une migration en échec après avoir simulé l'appartenance temporaire.
   // Le catch du runner doit révoquer le rôle avant de quitter avec un code non nul.
