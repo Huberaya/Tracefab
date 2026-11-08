@@ -187,7 +187,7 @@ try {
   const a3 = await sous('tracefab_app',
     `UPDATE public.documents SET status = 'available' WHERE id = $1`, [DOC_A], ctx);
   verifier('A3 ecriture d une colonne reservee de document refusee',
-    !a3.ok && ['42501', 'P0001'].includes(a3.sqlstate),
+    !a3.ok && (a3.sqlstate === '42501' || (a3.sqlstate === 'P0001' && /managed_document_fields_are_not_client_writable/.test(a3.message))),
     a3.ok ? 'ECRITURE ACCEPTEE' : `${a3.sqlstate} ${a3.message}`);
 
   const a4 = await sous('tracefab_app',
@@ -205,7 +205,7 @@ try {
   const a6 = await sous('tracefab_app',
     `UPDATE public.tracefab_products SET version = 99 WHERE id = $1`, [PROD_A], ctx);
   verifier('A6 ecriture d un champ calcule refusee',
-    !a6.ok && ['42501', 'P0001'].includes(a6.sqlstate),
+    !a6.ok && (a6.sqlstate === '42501' || (a6.sqlstate === 'P0001' && /computed_product_fields_are_not_client_writable/.test(a6.message))),
     a6.ok ? 'ECRITURE ACCEPTEE' : `${a6.sqlstate} ${a6.message}`);
 
   const a7 = await sous('tracefab_app',
