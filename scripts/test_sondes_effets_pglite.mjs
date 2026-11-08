@@ -52,7 +52,9 @@ const ok = (libelle, condition, detail = '') => {
   console.error(`  ECHEC ${libelle}${detail ? ` — ${detail}` : ''}`);
 };
 
-/** Les onze migrations dont l'historique de production ne porte pas la trace. */
+/** Les onze migrations dont l'historique de production ne porte pas la trace.
+ * Le nombre de politiques est mesuré après toute la chaîne : trois politiques
+ * supplémentaires sont créées par les migrations ultérieures du candidat. */
 const ECARTS = [
   '20261010120000_publication_explicite',
   '20261017120000_active_tenant_context',
@@ -201,7 +203,7 @@ const attendu = {
   '20261027100000': 'requirement_met_lit_scores_du_produit|true',
   '20261027130000': 'suspend_nonconforming_posee|oui',
   '20261028120000': 'table_registre|oui',
-  '20261028120100': 'role_tracefab_worker|oui|politiques_sur_current_user|11',
+  '20261028120100': 'role_tracefab_worker|oui|politiques_sur_current_user|14',
   '20261028120200': 'mark_document_scanning_posee|oui|update_app_sur_documents|false',
   '20261028130000': 'update_app_sur_tracefab_products|false|trigger_lit_encore_le_guc|false',
   '20261028140000': 'garde_relation_invitation|true',
