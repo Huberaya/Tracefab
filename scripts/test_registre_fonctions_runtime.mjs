@@ -146,7 +146,7 @@ ok(
   grantsDirectsInterdits.join(', ') || 'aucun',
 );
 ok(
-  grantsDirectsAutorisesObserves.length === 1 && nomsSeed.includes('public.tracefab_current_user_email'),
+  grantsDirectsAutorisesObserves.length === 1 && nomsSeed.has('tracefab_current_user_email'),
   'l exception current_user_email est déjà dans le registre historique (aucun élargissement)',
   grantsDirectsAutorisesObserves.join(', ') || 'exception absente',
 );
