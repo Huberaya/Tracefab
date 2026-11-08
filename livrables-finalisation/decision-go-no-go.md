@@ -35,7 +35,7 @@ Les migrations 1, 2, 3, 4, 5, 6, 7 forment **un tout** : chacune a été nécess
 
 ## Défaut P0 — cycle de vie de l'appartenance worker
 
-Le runner doit accorder `INHERIT TRUE, SET TRUE, ADMIN FALSE` uniquement pendant les migrations qui remplacent les fonctions possédées par `tracefab_worker`, puis révoquer et vérifier l'appartenance avant `20261108120700`. La migration `120200` ne doit plus tenter de s'accorder elle-même le rôle : elle vérifie le privilège temporaire préparé par le runner. Les chemins d'échec, SIGINT/SIGTERM et la reprise après interruption doivent être testés.
+Le runner doit accorder `INHERIT TRUE, SET TRUE, ADMIN FALSE` dans la transaction de chaque migration qui remplace une fonction possédée par `tracefab_worker`, puis révoquer et vérifier l'appartenance avant le COMMIT. La migration `120200` ne doit pas s'accorder elle-même le rôle : elle vérifie le privilège temporaire préparé par le runner. Les chemins d'échec, de signal, de coupure et de reprise doivent démontrer qu'aucune appartenance ne survit.
 
 La garde terminale doit refuser toute appartenance effective résiduelle. Le test doit se connecter réellement sous `tracefab_migrator` et démontrer que `SET ROLE tracefab_worker` échoue en `42501`.
 

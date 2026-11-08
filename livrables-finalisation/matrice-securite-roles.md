@@ -72,4 +72,4 @@ Les trois `42501` et l'obstacle `orders` sont **préexistants** : mesurés à l'
 
 La matrice initiale 28/28 ne testait ni la session authentifiée `tracefab_migrator`, ni sa capacité à endosser `tracefab_worker`. La revue indépendante a démontré une appartenance effective résiduelle et une lecture inter-tenant via le worker. Le résultat 28/28 ne prouve donc pas l'isolation complète.
 
-La version corrective ajoute M0–M4 et exige `TF_MIGRATOR_MDP` : identité de session, absence d'appartenance effective, refus de `SET ROLE`, refus de `SET SESSION AUTHORIZATION` et absence d'ADMIN OPTION. Ces contrôles doivent être exécutés après la chaîne complète, sous une véritable connexion migrator.
+La version corrective ajoute M0–M4 et exige `TF_MIGRATOR_MDP` : identité de session, absence d'appartenance effective, refus de `SET ROLE`, refus de `SET SESSION AUTHORIZATION` et absence d'ADMIN OPTION. Ces contrôles sont exécutés par la suite P10.5 après la chaîne complète, sous une véritable connexion migrator ; le résultat n'est valide qu'après exécution CI sur le SHA candidat.
