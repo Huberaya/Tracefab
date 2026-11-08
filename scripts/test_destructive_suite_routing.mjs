@@ -457,8 +457,8 @@ for (const rel of OPERATOR_WRITER_SCRIPTS) {
   // Le workflow de reproduction PR110 ajoute ces outils au commit du banc
   // (git add) sans les exécuter. Seule une ligne de commande active qui nomme
   // directement le script constitue une invocation CI.
-  const enCi = workflowText.some((text) => text.split('\\n').some((line) =>
-    !/^\\s*(?:#|git add\\b)/.test(line)
+  const enCi = workflowText.some((text) => text.split('\n').some((line) =>
+    !/^\s*(?:#|git add\b)/.test(line)
       && line.includes(rel.replace('scripts/', 'scripts/')),
   ));
 
