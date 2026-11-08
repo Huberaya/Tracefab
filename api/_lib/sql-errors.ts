@@ -246,6 +246,53 @@ const DEFINITIONS: Record<string, SqlErrorDefinition> = {
   unsupported_certification_verification_status: { status: 409 },
   verification_method_required: { status: 400 },
   workflow_request_fields_are_not_client_writable: { status: 409 },
+
+
+  // ===========================================================================
+  // Gardes de DÉPLOIEMENT soulevées par les migrations du lot 20261108
+  // ===========================================================================
+  // Ces codes ne décrivent pas une erreur de requête : ils constatent que la
+  // BASE n'est pas dans l'état exigé (rôle absent, RLS non forcée, ACL
+  // résiduelle, droit CREATE non révoqué). En fonctionnement normal ils ne sont
+  // jamais atteints par une route — ils s'exécutent dans un bloc `DO` au moment
+  // de la migration.
+  //
+  // Statut 409, et non 500, par COHÉRENCE avec le précédent du dépôt : les
+  // gardes de migration déjà présentes sont mappées ainsi
+  // (`plm_erp_sync_jobs_absente`, `politique_canonique_insert_absente`).
+  // `scripts/test_sql_business_errors.mjs` refuse un mapping 5xx en expliquant
+  // pourquoi : un 5xx fait lire au client une panne anonyme là où l'état
+  // attendu est identifiable. Si l'un de ces codes remontait un jour par une
+  // route, le client recevrait un refus nommé plutôt qu'une erreur opaque.
+
+
+  // --- Migration 20261108120100 — prérequis du transfert de propriété des fonctions Clerk
+  worker_absent: { status: 409 },
+  worker_ownership_requires_set_role: { status: 409 },
+  worker_ownership_incomplete: { status: 409 },
+  audit_logs_worker_non_append_only: { status: 409 },
+  worker_create_sur_public_non_revoque: { status: 409 },
+
+  // --- Migration 20261108120200 — appartenance worker bornée
+  tracefab_worker_absent: { status: 409 },
+  worker_membership_admin_forbidden: { status: 409 },
+  tracefab_app_member_of_worker: { status: 409 },
+  worker_membership_temporaire_absente_ou_incomplete: { status: 409 },
+
+  // --- Migration 20261108120700 — garde terminale de l'appartenance worker
+  tracefab_migrator_superuser_residuel: { status: 409 },
+  tracefab_migrator_worker_membership_residuelle: { status: 409 },
+
+  // --- Migrations 20261108120300 / 120500 / 120600 — ACL de colonnes et lecture des tables
+  tracefab_app_absent: { status: 409 },
+  acl_colonne_sensible_restante: { status: 409 },
+  lecture_users_non_effective: { status: 409 },
+  users_rls_non_forcee: { status: 409 },
+  users_select_self_absente: { status: 409 },
+  orders_absente: { status: 409 },
+  orders_rls_non_forcee: { status: 409 },
+  orders_select_participant_absente: { status: 409 },
+  lecture_orders_non_effective: { status: 409 },
 };
 
 /**
