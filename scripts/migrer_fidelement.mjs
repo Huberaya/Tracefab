@@ -439,7 +439,7 @@ for (const nom of enAttente) {
   // PRÉFLIGHT DE PROPRIÉTÉ (P10.6/D6), au moment exact de la migration.
   // Si les seuls propriétaires injoignables sont tracefab_worker, l'accès est
   // ouvert dans la transaction de cette migration puis révoqué AVANT COMMIT.
-  let workerTemporaire = MIGRATIONS_AVEC_WORKER_TEMPORAIRE.has(nom);
+  let workerTemporaire = !dejaSuperuser && MIGRATIONS_AVEC_WORKER_TEMPORAIRE.has(nom);
   if (!assisee) {
     const ecarts = await propriétairesInjoignables(client, roleExecutant, [{ nom, sql }]);
     if (ecarts.length > 0) {
@@ -459,6 +459,14 @@ for (const nom of enAttente) {
       }
       workerTemporaire = true;
     }
+  }
+
+  if (workerTemporaire && (!clientAdmin || roleExecutant !== 'tracefab_migrator')) {
+    console.error(`REFUS — ${nom} exige TF_ADMIN_URL et une session tracefab_migrator pour accorder le worker dans une transaction.`);
+    await client.end().catch(() => {});
+    if (clientAdmin) await clientAdmin.end().catch(() => {});
+    await verrou.relacher().catch(() => {});
+    process.exit(3);
   }
 
   const executeur = workerTemporaire ? clientAdmin : client;
