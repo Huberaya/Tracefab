@@ -316,12 +316,16 @@ async function revoquerAppartenanceWorker(moment) {
   const cibles = [...new Set([roleExecutant, 'tracefab_migrator'])];
   for (const cible of cibles) {
     const etat = (await client.query(
-      `SELECT pg_catalog.pg_has_role(r.oid, w.oid, 'MEMBER') AS membre
+      `SELECT r.rolsuper,
+              pg_catalog.pg_has_role(r.oid, w.oid, 'MEMBER') AS membre
          FROM pg_catalog.pg_roles r CROSS JOIN pg_catalog.pg_roles w
         WHERE r.rolname = $1 AND w.rolname = 'tracefab_worker'`,
       [cible],
     )).rows[0];
-    if (!etat?.membre) continue;
+    // Un SUPERUSER peut endosser tous les rôles implicitement : ce n'est pas
+    // une appartenance pg_auth_members à révoquer. Le migrator, lui, est
+    // réabaissé avant ce contrôle et doit avoir une appartenance effective false.
+    if (!etat || etat.rolsuper === true || !etat.membre) continue;
     if (!gestionRoles) {
       throw new Error(`appartenance tracefab_worker résiduelle pour ${cible}, sans connexion autorisée pour la révoquer (${moment})`);
     }
