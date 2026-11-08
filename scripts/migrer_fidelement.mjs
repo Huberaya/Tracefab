@@ -286,8 +286,91 @@ async function revoquerElevation(moment) {
   console.log(`             élévation révoquée — ${roleExecutant} n est plus superutilisateur (vérifié)`);
 }
 
+const MIGRATION_WORKER_BOOTSTRAP = '20261028120100_worker_identity_not_forgeable';
+const MIGRATION_WORKER_TERMINALE = '20261108120700_assert_worker_membership_revoked';
+const identifiantSql = (v) => '"' + String(v).replace(/"/g, '""') + '"';
+const gestionRoles = clientAdmin ?? (dejaSuperuser ? client : null);
+
+/** Révoque l'appartenance worker et vérifie l'absence effective. */
+async function revoquerAppartenanceWorker(moment) {
+  const etat = (await client.query(
+    "SELECT pg_catalog.pg_has_role($1, 'tracefab_worker', 'MEMBER') AS membre",
+    [roleExecutant],
+  )).rows[0];
+  if (!etat?.membre) return;
+  if (!gestionRoles) {
+    throw new Error(`appartenance tracefab_worker résiduelle pour ${roleExecutant}, sans connexion autorisée pour la révoquer (${moment})`);
+  }
+  await gestionRoles.query(`REVOKE tracefab_worker FROM ${identifiantSql(roleExecutant)}`);
+  const verif = (await gestionRoles.query(
+    "SELECT pg_catalog.pg_has_role($1, 'tracefab_worker', 'MEMBER') AS membre",
+    [roleExecutant],
+  )).rows[0];
+  if (verif?.membre !== false) {
+    throw new Error(`révocation tracefab_worker NON constatée pour ${roleExecutant} (${moment})`);
+  }
+  console.log(`             appartenance worker temporaire révoquée et vérifiée — ${moment}`);
+}
+
+/** Accorde SET/INHERIT sans ADMIN, uniquement pendant la chaîne de migrations. */
+async function accorderAppartenanceWorker() {
+  if (dejaSuperuser) return; // le compte d'administration n'a pas besoin de ce détour
+  if (!clientAdmin) throw new Error('TF_ADMIN_URL requis pour accorder temporairement tracefab_worker au migrateur');
+  const avant = (await clientAdmin.query(
+    "SELECT pg_catalog.pg_has_role($1, 'tracefab_worker', 'SET') AS peut_set, pg_catalog.pg_has_role($1, 'tracefab_worker', 'MEMBER') AS membre",
+    [roleExecutant],
+  )).rows[0];
+  if (!avant.membre) {
+    await clientAdmin.query(
+      `GRANT tracefab_worker TO ${identifiantSql(roleExecutant)} WITH INHERIT TRUE, SET TRUE, ADMIN FALSE`,
+    );
+  }
+  const apres = (await clientAdmin.query(
+    `SELECT pg_catalog.pg_has_role($1, 'tracefab_worker', 'SET') AS peut_set,
+            EXISTS (SELECT 1 FROM pg_catalog.pg_auth_members m
+                     JOIN pg_catalog.pg_roles r ON r.oid = m.roleid
+                     JOIN pg_catalog.pg_roles u ON u.oid = m.member
+                    WHERE r.rolname = 'tracefab_worker' AND u.rolname = $1
+                      AND m.admin_option IS TRUE) AS admin_option`,
+    [roleExecutant],
+  )).rows[0];
+  if (apres?.peut_set !== true || apres?.admin_option !== false) {
+    throw new Error(`appartenance worker temporaire non conforme : SET=${apres?.peut_set}, ADMIN=${apres?.admin_option}`);
+  }
+  console.log(`             appartenance worker temporaire accordée à ${roleExecutant} (INHERIT/SET, sans ADMIN)`);
+}
+
+// Reprise après interruption : avant de rejouer le bootstrap historique,
+// supprimer tout octroi résiduel du runner précédent pour éviter 2BP01.
+if (enAttente.includes(MIGRATION_WORKER_BOOTSTRAP)) {
+  try { await revoquerAppartenanceWorker('récupération avant migration bootstrap'); }
+  catch (e) {
+    console.error(`REFUS — ${e.message}`);
+    await client.end(); if (clientAdmin) await clientAdmin.end(); await verrou.relacher(); process.exit(3);
+  }
+}
+
+let nettoyageSignalEnCours = false;
+async function terminerSurSignal(signal, code) {
+  if (nettoyageSignalEnCours) return;
+  nettoyageSignalEnCours = true;
+  console.error(`\\n${signal} reçu — fermeture de l'appartenance worker temporaire.`);
+  try { await revoquerAppartenanceWorker(`signal ${signal}`); }
+  catch (e) { console.error(`ECHEC nettoyage signal : ${e.message}`); }
+  await client.end().catch(() => {});
+  if (clientAdmin) await clientAdmin.end().catch(() => {});
+  await verrou.relacher().catch(() => {});
+  process.exit(code);
+}
+process.once('SIGINT', () => { void terminerSurSignal('SIGINT', 130); });
+process.once('SIGTERM', () => { void terminerSurSignal('SIGTERM', 143); });
+
 let appliquees = 0;
 for (const nom of enAttente) {
+  if (nom === MIGRATION_WORKER_TERMINALE) {
+    // La garde terminale n'est exécutée qu'après révocation effective.
+    await revoquerAppartenanceWorker('avant migration terminale');
+  }
   const fichier = path.join(DOSSIER, nom, 'migration.sql');
   const sql = readFileSync(fichier, 'utf8');
   const id = crypto.randomUUID();
