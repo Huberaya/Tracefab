@@ -41,6 +41,12 @@ if (!url) {
   console.error('DATABASE_URL requis.');
   process.exit(2);
 }
+let hoteCible = '';
+try { hoteCible = new URL(url).hostname; } catch { /* refus ci-dessous */ }
+if (!/^(localhost|127\\.0\\.0\\.1|::1|\\[::1\\])$/.test(hoteCible)) {
+  console.error(`REFUS — la matrice écrit dans une base jetable locale uniquement (cible : ${hoteCible || 'URL illisible'}).`);
+  process.exit(3);
+}
 const pg = (await import(process.env.TF_PG_MODULE || 'pg')).default;
 const admin = new pg.Client({ connectionString: url });
 await admin.connect();
