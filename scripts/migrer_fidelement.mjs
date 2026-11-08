@@ -538,7 +538,7 @@ for (const nom of enAttente) {
     }
     console.error(`  ECHEC      ${nom}`);
     console.error(`             ${String(error.message).split('\n')[0]}`);
-    if (eleve) await revoquerElevation('échec de la migration assistée');
+    if (eleve && !commitEffectue) await revoquerElevation('échec de la migration assistée');
     await revoquerAppartenanceWorker('échec de migration').catch((x) => console.error(`ECHEC révocation worker : ${x.message}`));
     await client.end();
     if (clientAdmin) await clientAdmin.end();
