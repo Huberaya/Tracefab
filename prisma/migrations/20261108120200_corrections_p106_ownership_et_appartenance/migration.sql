@@ -47,6 +47,8 @@
 DO $worker_membership$
 DECLARE
   v_peut_set boolean;
+  v_inherit boolean;
+  v_set boolean;
   v_admin boolean;
 BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_catalog.pg_roles WHERE rolname = 'tracefab_worker') THEN
@@ -55,25 +57,30 @@ BEGIN
   END IF;
 
   SELECT pg_catalog.pg_has_role(current_user, 'tracefab_worker', 'SET'),
-         EXISTS (
-           SELECT 1 FROM pg_catalog.pg_auth_members m
+         (SELECT bool_and(m.inherit_option) FROM pg_catalog.pg_auth_members m
            JOIN pg_catalog.pg_roles cible ON cible.oid = m.roleid
            JOIN pg_catalog.pg_roles membre ON membre.oid = m.member
-           WHERE cible.rolname = 'tracefab_worker'
-             AND membre.rolname = current_user
-             AND m.admin_option IS TRUE
-         )
-    INTO v_peut_set, v_admin;
+          WHERE cible.rolname = 'tracefab_worker' AND membre.rolname = current_user),
+         (SELECT bool_and(m.set_option) FROM pg_catalog.pg_auth_members m
+           JOIN pg_catalog.pg_roles cible ON cible.oid = m.roleid
+           JOIN pg_catalog.pg_roles membre ON membre.oid = m.member
+          WHERE cible.rolname = 'tracefab_worker' AND membre.rolname = current_user),
+         (SELECT COALESCE(bool_or(m.admin_option), false) FROM pg_catalog.pg_auth_members m
+           JOIN pg_catalog.pg_roles cible ON cible.oid = m.roleid
+           JOIN pg_catalog.pg_roles membre ON membre.oid = m.member
+          WHERE cible.rolname = 'tracefab_worker' AND membre.rolname = current_user)
+    INTO v_peut_set, v_inherit, v_set, v_admin;
 
   -- Cette migration ne GRANT jamais un rôle : tracefab_migrator ne possède
   -- ni ADMIN OPTION ni CREATEROLE. Le runner accorde SET/INHERIT via sa
   -- connexion administrative après 20261028120100, puis révoque avant la
   -- migration terminale 20261108120700.
-  IF NOT v_peut_set THEN
-    RAISE EXCEPTION 'worker_membership_temporaire_absente'
-      USING HINT = 'Exécuter la chaîne via scripts/migrer_fidelement.mjs avec TF_ADMIN_URL et TF_ALLOW_ELEVATION=oui.';
+  IF v_peut_set IS DISTINCT FROM TRUE OR v_inherit IS DISTINCT FROM TRUE
+     OR v_set IS DISTINCT FROM TRUE THEN
+    RAISE EXCEPTION 'worker_membership_temporaire_absente_ou_incomplete'
+      USING HINT = 'Le runner doit accorder une appartenance directe INHERIT/SET temporaire avant cette migration.';
   END IF;
-  IF v_admin THEN
+  IF v_admin IS DISTINCT FROM FALSE THEN
     RAISE EXCEPTION 'worker_membership_admin_forbidden'
       USING HINT = 'L appartenance temporaire ne doit jamais porter ADMIN OPTION.';
   END IF;
