@@ -129,10 +129,26 @@ for (const dossier of posterieurs) {
     grantsDirects.push(`${dossier}:${m[1]}`);
   }
 }
+// Exception historique bornée : cette migration transfère
+// tracefab_current_user_email au worker et réaffirme EXECUTE pour le runtime.
+// La fonction figure déjà dans les 84 entrées seedées par le registre
+// historique 20261021120000 ; elle n'élargit donc pas le périmètre autorisé.
+// Les autres GRANT directs restent interdits, et le contrôle SQL ci-dessous
+// vérifie qu'aucune fonction hors registre n'est exécutable par tracefab_app.
+const grantsDirectsAutorises = new Set([
+  '20261105235900_active_tenant_policy_and_worker_closure:public.tracefab_current_user_email',
+]);
+const grantsDirectsInterdits = grantsDirects.filter((g) => !grantsDirectsAutorises.has(g));
+const grantsDirectsAutorisesObserves = grantsDirects.filter((g) => grantsDirectsAutorises.has(g));
 ok(
-  grantsDirects.length === 0,
-  'aucune migration posterieure n accorde EXECUTE directement a tracefab_app',
-  grantsDirects.join(', ') || 'aucun',
+  grantsDirectsInterdits.length === 0,
+  'aucune migration posterieure n accorde EXECUTE directement hors exception historique enregistree',
+  grantsDirectsInterdits.join(', ') || 'aucun',
+);
+ok(
+  grantsDirectsAutorisesObserves.length === 1 && nomsSeed.has('tracefab_current_user_email'),
+  'l exception current_user_email est déjà dans le registre historique (aucun élargissement)',
+  grantsDirectsAutorisesObserves.join(', ') || 'exception absente',
 );
 console.log(`  info      ${ajouts.size} nom(s) ajoute(s) apres le registre`);
 

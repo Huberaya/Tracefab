@@ -1,0 +1,38 @@
+deploy=0
+--- tracefab_app (SESSION AUTHORIZATION, pas SET ROLE)
+OK   A0 identite reellement endossee — session_user=tracefab_app current_user=tracefab_app [session authentifiee]
+OK   A1 lecture de sa propre organisation — 1 ligne(s)
+OK   A2 lecture d une autre organisation refusee (RLS) — 0 ligne(s)
+OK   A3 ecriture d une colonne reservee de document refusee — 42501
+OK   A4 INSERT direct dans documents refuse — 42501
+OK   A5 ecriture du perimetre runtime autorisee — 1 ligne(s)
+OK   A6 ecriture d un champ calcule refusee — 42501
+OK   A7 execution d une fonction hors registre refusee — 42501
+OK   A8 creation d objet dans public refusee — 42501
+OK   A9 tracefab_app n est pas membre de tracefab_worker — membre=false
+OK   A10 SET ROLE tracefab_worker refuse (session applicative reelle) — 42501
+OK   A11 SET SESSION AUTHORIZATION tracefab_worker refuse — 42501
+--- tracefab_worker
+OK   W1 huit fonctions appartiennent au worker — 8 fonction(s)
+OK   W2 execution d une fonction systeme possedee par le worker — 1 ligne(s)
+OK   W3 creation d objet dans public refusee — 42501
+OK   W4 attributs du worker (NOLOGIN, NOBYPASSRLS, NOSUPERUSER, NOCREATEROLE) — {"rolcanlogin":false,"rolbypassrls":false,"rolsuper":false,"rolcreaterole":false}
+OK   W5 worker sans EXECUTE sur une fonction d ingestion de l allowlist — ok=false
+OK   W6 isolation bidirectionnelle app <-> worker — worker->app=false app->worker=false
+OK   W7 worker non accorde a PUBLIC — 0 octroi(s) PUBLIC
+--- chemins Clerk (SECURITY DEFINER), depuis une session tracefab_app
+OK   C1 synchronisation d organisation Clerk — id=73488c7d…
+OK   C2 synchronisation d adhesion Clerk (OWNER, creation) — id=09993a81…
+OK   C2b synchronisation d adhesion Clerk (VIEWER, creation) — creee
+OK   C2c deux adhesions distinctes en base — 2 adhesion(s)
+OK   C4 re-synchronisation idempotente (une seule organisation) — 1 organisation(s)
+OK   C3 revocation d adhesion Clerk (VIEWER, statut non actif) — statut=revoked
+OK   C3b garde-fou : revocation du dernier OWNER refusee — P0001 last_owner_membership_required
+OK   C4b audit ecrit par les fonctions Clerk — 3 ligne(s) d audit
+OK   C6 contexte falsifie : autorisation = role de session, pas le GUC — appel reussi malgre un tracefab.user_id falsifie
+     (conception) le worker possede ces fonctions, donc il peut les executer (privilege du proprietaire) — tracefab_sync_clerk_membership=true tracefab_revoke_clerk_membership=true
+     (conception) mais le worker est NOLOGIN et jamais assumable par tracefab_app (A10, A11, W6) — aucun chemin applicatif ne l atteint
+
+echecs : 0/28
+VERDICT : matrice de securite conforme
+matrice=0

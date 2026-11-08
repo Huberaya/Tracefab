@@ -263,6 +263,11 @@ const OPERATOR_WRITER_SCRIPTS = [
   // de cible jetable refuse par construction.
   'scripts/provisionner_roles_db.mjs',
   'scripts/provisionner_cle_identite.mjs',
+  // Préflight Neon ponctuel : renomme le rôle worker géré par cloud_admin,
+  // transfère les propriétaires/ACL, puis neutralise le rôle legacy. Il ne
+  // s'exécute jamais en CI ; --appliquer exige un GO d'environnement explicite,
+  // l'hôte/base attendus et une liste de cibles Production à protéger.
+  'scripts/provisionner_worker_neon.mjs',
   'scripts/mesure_effet_migrations_dpp.mjs',
   'scripts/valider_branche_dpp.mjs',
 ];
@@ -454,7 +459,13 @@ for (const rel of OPERATOR_WRITER_SCRIPTS) {
   // Une invocation qui porte le drapeau sans ecriture ne peut pas ecrire.
   const enEcriture = invocations.filter(([, command]) => !command.includes('--dry-run'));
   const automatiques = enEcriture.filter(([name]) => reached.has(name));
-  const enCi = workflowText.some((text) => text.includes(rel.replace('scripts/', 'scripts/')));
+  // Le workflow de reproduction PR110 ajoute ces outils au commit du banc
+  // (git add) sans les exécuter. Seule une ligne de commande active qui nomme
+  // directement le script constitue une invocation CI.
+  const enCi = workflowText.some((text) => text.split('\n').some((line) =>
+    !/^\s*(?:#|git add\b)/.test(line)
+      && line.includes(rel.replace('scripts/', 'scripts/')),
+  ));
 
   if (automatiques.length > 0) {
     ko(`${rel} est atteignable en ecriture depuis test/build via : ${automatiques.map(([k]) => k).join(', ')}`);

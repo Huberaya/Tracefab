@@ -286,12 +286,21 @@ console.log('\n  E. apres une suite complete, aucun verrou ne reste');
 
 {
   const suite = join(RACINE, 'scripts', 'test_isolation_lignes_reelles.mjs');
-  const code = await new Promise((resoudre) => {
+  const resultat = await new Promise((resoudre) => {
     const p = spawn(process.execPath, [join(RACINE, 'scripts', 'run-db-suite.mjs'), suite],
-      { env: process.env, stdio: 'ignore' });
-    p.on('exit', resoudre);
+      { env: process.env, stdio: ['ignore', 'pipe', 'pipe'] });
+    let stdout = '';
+    let stderr = '';
+    p.stdout.setEncoding('utf8').on('data', (chunk) => { stdout = (stdout + chunk).slice(-6000); });
+    p.stderr.setEncoding('utf8').on('data', (chunk) => { stderr = (stderr + chunk).slice(-6000); });
+    p.on('exit', (code, signal) => resoudre({ code: code ?? 1, signal, stdout, stderr }));
   });
-  verifier('la suite verrouillee aboutit', code === 0, `exit=${code}`);
+  const diagnostic = resultat.code === 0 ? '' : [
+    `signal=${resultat.signal ?? 'aucun'}`,
+    resultat.stderr.trim(),
+    resultat.stdout.trim().split('\n').slice(-22).join('\n'),
+  ].filter(Boolean).join('\n');
+  verifier('la suite verrouillee aboutit', resultat.code === 0, `exit=${resultat.code}\n${diagnostic}`);
   verifier('aucun verrou residuel apres la suite', (await detenteurs()) === 0, `${await detenteurs()}`);
 }
 

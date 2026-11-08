@@ -3,6 +3,22 @@
 Document de suivi historique : les informations datées plus bas ne doivent pas
 être considérées comme un état actuel sans vérification indépendante.
 
+**État courant du dépôt (branche corrective, 8 novembre 2026) : Dépôt : 95 migrations · Neon de production : non vérifié (aucune écriture) · Neon P11 préproduction : 86 migrations appliquées, historique contrôlé ; préflight du rôle worker effectué sans écriture dans `_prisma_migrations`.**
+
+
+## Mise à jour opérationnelle — 8 novembre 2026
+
+Cette section prévaut sur les notes historiques datées ci-dessous.
+
+- **Branche corrective : 95 migrations** (69 de `main`, 17 migrations historiques déjà appliquées sur P11 et restaurées à empreinte identique, 1 garde de préflight Neon, 8 migrations candidates P10.7).
+- **Neon P11** : 86 migrations réussies, aucune en cours. Les 17 fichiers historiques restaurés correspondent aux 17 empreintes relevées dans `_prisma_migrations`. Les 9 migrations restantes (préflight 1199 + 8 candidates 1200–1207) ne sont pas appliquées.
+- **Rôle worker P11 — préflight réalisé et vérifié** : l'ancien rôle a été renommé `tracefab_worker_legacy`; le nouveau `tracefab_worker` a repris les 10 fonctions propriétaires, les 14 entrées d'ACL de tables, les 17 entrées d'ACL de fonctions et les 4 ACL explicites de types PostgreSQL. L'ancien rôle n'a plus aucun objet, ACL de tables/fonctions/séquences/types, privilège de schéma ou privilège par défaut. `tracefab_app` n'est membre ni du nouveau rôle ni du legacy. Le migrateur n'a aucun `SET` ni `INHERIT` effectif sur le legacy ; le seul résidu est le grant `cloud_admin` avec `ADMIN OPTION`, sans `SET` ni `INHERIT`, sur ce rôle désormais inerte. Le nouveau rôle n'accorde aucun privilège d'élévation au runtime.
+- Le même modèle de rôle a été exécuté sur le clone isolé `tracefab-preprod-repair-20261108`. Les contrôles d'ACL, de propriétaires et d'appartenance ont été rejoués après transfert. Sur P11, l'octroi temporaire exact du runner a aussi été testé : `neondb_owner` accorde `SET=true`, `INHERIT=true`, `ADMIN=false` au migrateur ; `SET ROLE tracefab_worker` réussit ; le `REVOKE` suit et le nombre final de lignes d'appartenance du migrateur au nouveau worker revient à zéro. Les gardes 1199 et 1207 réexécutées sur P11 passent après le transfert des ACL de types.
+- **Aucune migration n'a été appliquée sur P11** et aucune ligne de `_prisma_migrations` n'a été modifiée. Neon Production et ses rôles restent intacts.
+- Le préflight reproductible est disponible via `npm run db:preflight:worker-neon` (lecture seule : `npm run db:preflight:worker-neon:check`). L'application exige explicitement `TF_ALLOW_WORKER_ROLE_SWAP=oui`, `TF_EXPECTED_DATABASE_HOST`, `TF_EXPECTED_DATABASE_NAME`, `TF_PRODUCTION_HOSTS`, `DATABASE_URL` et `TF_ADMIN_URL` (URLs Neon directes, non pooler). La migration 1199 échoue fermé si le préflight Neon n'a pas été exécuté.
+- **Preview runtime** sur le clone isolé : identité réelle `tracefab_app`, `BYPASSRLS=false`, `SUPERUSER=false`, aucune appartenance privilégiée atteignable, HMAC strict activé et clé active présente. La sonde readiness globale demeure HTTP 503 tant que stockage privé, antivirus, e-mail et alertes ne sont pas configurés ; ces intégrations ne sont pas une preuve d'identité runtime.
+- Les changements de code et les tests RLS corrigés sont soumis à la CI complète sur le SHA courant. Pas de GO fusion tant que tous les jobs n'ont pas réussi et que les 9 migrations n'ont pas été validées sur un environnement PostgreSQL Neon de préproduction avec le runner prévu.
+
 > **📌 28/10/2026 — état mesuré : 54 migrations appliquées sur 65, onze écarts.
 > Voir `docs/security/2026-10-28-cloture-chantier-p0.md`. Détail au §« Mise à
 > jour du 28 octobre » plus bas.**

@@ -59,7 +59,7 @@ import process from 'node:process';
 import pg from 'pg';
 import { sslDepuisUrl } from './lib/pg-ssl.mjs';
 import {
-  ROLE_APP, ROLE_MIGRATOR, ATTRIBUTS_ATTENDUS,
+  ROLE_APP, ROLE_MIGRATOR, ROLE_WORKER, ATTRIBUTS_ATTENDUS,
   etatRole, ecartsAttributs, appartenancesDirectes, appartenancesTransitives,
 } from './lib/tracefab_roles.mjs';
 import { verifierAucuneAppartenance } from './lib/tracefab_app_role.mjs';
@@ -277,6 +277,43 @@ function quote(s) {
  *      n'est appelee par le runtime : la verification HMAC vit dans une
  *      fonction SECURITY DEFINER qui appelle `hmac` sous son proprietaire.
  */
+// Un REVOKE sans autorité peut renvoyer une simple NOTICE et ne rien changer.
+// Lire les ACL réelles, y compris le défaut PUBLIC quand proacl est NULL.
+// Cette vérification est aussi utilisée en --verifier, sans aucune écriture.
+async function verifierPublicPgcrypto() {
+  const { rows } = await db.query(`
+    SELECT p.oid::pg_catalog.regprocedure::text AS signature,
+           pg_catalog.pg_get_userbyid(p.proowner) AS proprietaire,
+           EXISTS (
+             SELECT 1 FROM pg_catalog.aclexplode(
+               COALESCE(p.proacl, pg_catalog.acldefault('f', p.proowner))
+             ) acl WHERE acl.grantee = 0 AND acl.privilege_type = 'EXECUTE'
+           ) AS public_execute,
+           CASE WHEN pg_catalog.to_regrole($1) IS NULL THEN NULL
+             ELSE pg_catalog.has_function_privilege(pg_catalog.to_regrole($1), p.oid, 'EXECUTE')
+           END AS app_execute
+      FROM pg_catalog.pg_depend d
+      JOIN pg_catalog.pg_proc p ON p.oid = d.objid
+      JOIN pg_catalog.pg_extension e ON e.oid = d.refobjid
+     WHERE d.refclassid = 'pg_catalog.pg_extension'::pg_catalog.regclass
+       AND d.classid = 'pg_catalog.pg_proc'::pg_catalog.regclass
+       AND d.deptype = 'e' AND e.extname = 'pgcrypto'
+     ORDER BY 1`, [ROLE_APP_SURCHARGE]);
+  if (rows.length === 0) {
+    ok(false, 'ACL PUBLIC de pgcrypto vérifiables', 'extension ou fonctions absentes');
+    return false;
+  }
+  const ouverts = rows.filter((r) => r.public_execute);
+  const details = ouverts.slice(0, 5).map((r) => `${r.signature} (proprietaire ${r.proprietaire})`).join(', ');
+  ok(ouverts.length === 0, 'EXECUTE de pgcrypto retire a PUBLIC',
+    ouverts.length ? `${ouverts.length}/${rows.length} encore ouverts : ${details} ; intervention du proprietaire/administrateur requise` : `${rows.length} fonction(s) verifiee(s) dans le catalogue`);
+  const appOuvertes = rows.filter((r) => r.app_execute !== false);
+  const appDetails = appOuvertes.slice(0, 5).map((r) => r.signature).join(', ');
+  ok(appOuvertes.length === 0, `${ROLE_APP_SURCHARGE} sans EXECUTE sur pgcrypto`,
+    appOuvertes.length ? `${appOuvertes.length}/${rows.length} ouverts ou role absent : ${appDetails}` : `${rows.length} fonction(s) verifiee(s)`);
+  return ouverts.length === 0 && appOuvertes.length === 0;
+}
+
 async function assurerExtensions() {
   for (const ext of ['pgcrypto']) {
     try {
@@ -301,18 +338,15 @@ async function assurerExtensions() {
           AND d.classid = 'pg_catalog.pg_proc'::pg_catalog.regclass
           AND d.deptype = 'e'`, [ext])).rows.map((r) => r.signature);
 
-    let fermees = 0;
     for (const signature of membres) {
       try {
         await db.query(`REVOKE EXECUTE ON FUNCTION ${signature} FROM PUBLIC`);
-        fermees += 1;
       } catch (e) {
-        ok(false, `EXECUTE retire a PUBLIC sur ${signature}`, `${e.code || ''}`);
+        ok(false, `REVOKE EXECUTE sur ${signature}`, `${e.code || ''}`);
       }
     }
-    ok(fermees === membres.length,
-      `EXECUTE de ${ext} retire a PUBLIC sur ses ${membres.length} fonction(s)`,
-      `${fermees} fermee(s)`);
+    // Le succès de la commande ne garantit pas la révocation effective.
+    if (!(await verifierPublicPgcrypto())) return;
   }
 
   // Fermer PUBLIC ne suffit pas : le proprietaire des fonctions SECURITY
@@ -372,13 +406,15 @@ if (!verifierSeulement) {
   // `tracefab_app` aussi (la chaîne lui accorde des privilèges par son nom).
   await assurerRole(ROLE_APP_SURCHARGE, process.env.TF_APP_PASSWORD);
   await assurerRole(ROLE_MIGRATOR, process.env.TF_MIGRATOR_PASSWORD);
-  await assurerExtensions();
-  await assurerDroitsSchema();
+  if (echecs === 0) await assurerExtensions();
+  if (echecs === 0) await assurerDroitsSchema();
+  else console.error('  REFUS — droits du schema et transferts non executes : preconditions en echec.');
   console.log('  note  tracefab_worker n est PAS créé ici : la migration');
   console.log('        20261028120100 le crée et lui transfère la propriété de six');
   console.log('        fonctions. Le créer avant rendrait cette migration inapplicable');
   console.log('        par un rôle non superutilisateur (mesuré, P10.4).');
 } else {
+  await verifierPublicPgcrypto();
   for (const nom of [ROLE_APP_SURCHARGE, ROLE_MIGRATOR]) {
     const etat = await etatRole(db, nom);
     const ecarts = ecartsAttributs(nom, etat);
