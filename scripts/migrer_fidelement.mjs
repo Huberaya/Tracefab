@@ -290,7 +290,7 @@ async function revoquerElevation(moment) {
 const MIGRATION_WORKER_BOOTSTRAP = '20261028120100_worker_identity_not_forgeable';
 const MIGRATION_WORKER_TERMINALE = '20261108120700_assert_worker_membership_revoked';
 const identifiantSql = (v) => '"' + String(v).replace(/"/g, '""') + '"';
-const gestionRoles = clientAdmin ?? (dejaSuperuser ? client : null);
+const gestionRoles = dejaSuperuser ? client : clientAdmin;
 
 // Une exécution lancée par postgres doit aussi réparer un SUPERUSER résiduel
 // laissé sur le compte migrateur par un ancien processus interrompu.
