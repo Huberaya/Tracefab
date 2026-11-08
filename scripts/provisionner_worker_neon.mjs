@@ -267,6 +267,28 @@ async function main() {
     if (Number(ownership.rows[0].total) !== Number(ownership.rows[0].public_functions)) {
       refuser('Le worker historique possède des objets hors fonctions public ; traitement manuel requis.');
     }
+    const aclHorsPublic = await admin.query(
+      `SELECT (
+          SELECT count(*) FROM pg_catalog.pg_class c
+          JOIN pg_catalog.pg_namespace n ON n.oid=c.relnamespace
+          CROSS JOIN LATERAL pg_catalog.aclexplode(coalesce(c.relacl,pg_catalog.acldefault('r',c.relowner))) a
+          WHERE n.nspname <> 'public' AND a.grantee='tracefab_worker'::regrole
+        ) + (
+          SELECT count(*) FROM pg_catalog.pg_proc p
+          JOIN pg_catalog.pg_namespace n ON n.oid=p.pronamespace
+          CROSS JOIN LATERAL pg_catalog.aclexplode(coalesce(p.proacl,pg_catalog.acldefault('f',p.proowner))) a
+          WHERE n.nspname <> 'public' AND a.grantee='tracefab_worker'::regrole
+        ) + (
+          SELECT count(*) FROM pg_catalog.pg_namespace n
+          CROSS JOIN LATERAL pg_catalog.aclexplode(coalesce(n.nspacl,pg_catalog.acldefault('n',n.nspowner))) a
+          WHERE n.nspname <> 'public' AND a.grantee='tracefab_worker'::regrole
+        ) + (
+          SELECT count(*) FROM pg_catalog.pg_default_acl WHERE defaclrole='tracefab_worker'::regrole
+        ) AS n`,
+    );
+    if (Number(aclHorsPublic.rows[0].n) !== 0) {
+      refuser('Le worker historique possède des ACL hors public ou des privilèges par défaut ; arrêt avant renommage.');
+    }
     const rows = await membership(admin, 'tracefab_migrator', 'tracefab_worker');
     if (!rows.some(x => x.grantor === 'cloud_admin' && x.admin_option && !x.inherit_option && !x.set_option)) {
       refuser("L'appartenance cloud_admin attendue du migrateur n'est pas présente ; arrêt.");
