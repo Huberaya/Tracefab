@@ -43,7 +43,7 @@ if (!url) {
 }
 let hoteCible = '';
 try { hoteCible = new URL(url).hostname; } catch { /* refus ci-dessous */ }
-if (!/^(localhost|127\\.0\\.0\\.1|::1|\\[::1\\])$/.test(hoteCible)) {
+if (!/^(localhost|127\.0\.0\.1|::1|\[::1\])$/.test(hoteCible)) {
   console.error(`REFUS — la matrice écrit dans une base jetable locale uniquement (cible : ${hoteCible || 'URL illisible'}).`);
   process.exit(3);
 }

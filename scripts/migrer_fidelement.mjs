@@ -287,7 +287,6 @@ async function revoquerElevation(moment) {
   console.log(`             élévation révoquée — ${roleExecutant} n est plus superutilisateur (vérifié)`);
 }
 
-const MIGRATION_WORKER_BOOTSTRAP = '20261028120100_worker_identity_not_forgeable';
 const MIGRATION_WORKER_TERMINALE = '20261108120700_assert_worker_membership_revoked';
 const identifiantSql = (v) => '"' + String(v).replace(/"/g, '""') + '"';
 const gestionRoles = dejaSuperuser ? client : clientAdmin;
@@ -343,59 +342,33 @@ async function revoquerAppartenanceWorker(moment) {
   }
 }
 
-/** Accorde SET/INHERIT sans ADMIN, uniquement pendant la chaîne de migrations. */
-async function accorderAppartenanceWorker() {
-  if (dejaSuperuser) return; // le compte d'administration n'a pas besoin de ce détour
-  if (!clientAdmin) throw new Error('TF_ADMIN_URL requis pour accorder temporairement tracefab_worker au migrateur');
-  const avant = (await clientAdmin.query(
-    "SELECT pg_catalog.pg_has_role($1, 'tracefab_worker', 'SET') AS peut_set, pg_catalog.pg_has_role($1, 'tracefab_worker', 'MEMBER') AS membre",
-    [roleExecutant],
-  )).rows[0];
-  if (!avant.membre) {
-    await clientAdmin.query(
-      `GRANT tracefab_worker TO ${identifiantSql(roleExecutant)} WITH INHERIT TRUE, SET TRUE, ADMIN FALSE`,
-    );
-  }
-  const apres = (await clientAdmin.query(
-    `SELECT pg_catalog.pg_has_role($1, 'tracefab_worker', 'SET') AS peut_set,
-            (SELECT bool_and(m.inherit_option) FROM pg_catalog.pg_auth_members m
-              JOIN pg_catalog.pg_roles r ON r.oid = m.roleid
-              JOIN pg_catalog.pg_roles u ON u.oid = m.member
-             WHERE r.rolname = 'tracefab_worker' AND u.rolname = $1) AS inherit_option,
-            (SELECT bool_and(m.set_option) FROM pg_catalog.pg_auth_members m
-              JOIN pg_catalog.pg_roles r ON r.oid = m.roleid
-              JOIN pg_catalog.pg_roles u ON u.oid = m.member
-             WHERE r.rolname = 'tracefab_worker' AND u.rolname = $1) AS set_option,
-            (SELECT COALESCE(bool_or(m.admin_option), false) FROM pg_catalog.pg_auth_members m
-              JOIN pg_catalog.pg_roles r ON r.oid = m.roleid
-              JOIN pg_catalog.pg_roles u ON u.oid = m.member
-             WHERE r.rolname = 'tracefab_worker' AND u.rolname = $1) AS admin_option`,
-    [roleExecutant],
-  )).rows[0];
-  if (apres?.peut_set !== true || apres?.inherit_option !== true
-      || apres?.set_option !== true || apres?.admin_option !== false) {
-    throw new Error(`appartenance worker temporaire non conforme : SET=${apres?.peut_set}, INHERIT=${apres?.inherit_option}, SET_OPTION=${apres?.set_option}, ADMIN=${apres?.admin_option}`);
-  }
-  console.log(`             appartenance worker temporaire accordée à ${roleExecutant} (INHERIT/SET, sans ADMIN)`);
-}
-
-// Reprise après interruption : avant de rejouer le bootstrap historique,
-// supprimer tout octroi résiduel du runner précédent pour éviter 2BP01.
-if (enAttente.includes(MIGRATION_WORKER_BOOTSTRAP)) {
-  try { await revoquerAppartenanceWorker('récupération avant migration bootstrap'); }
-  catch (e) {
-    console.error(`REFUS — ${e.message}`);
-    await client.end(); if (clientAdmin) await clientAdmin.end(); await verrou.relacher(); process.exit(3);
-  }
+// Nettoyage systématique au démarrage : toute appartenance résiduelle d'un
+// ancien runner est révoquée AVANT le premier préflight. Une appartenance
+// créée par la version corrigée ne survit jamais à une transaction ; ce
+// rattrapage couvre les versions antérieures et les arrêts brutaux historiques.
+try {
+  await revoquerAppartenanceWorker('récupération au démarrage');
+} catch (e) {
+  console.error(`REFUS — nettoyage initial de l'appartenance worker impossible : ${e.message}`);
+  await client.end().catch(() => {});
+  if (clientAdmin) await clientAdmin.end().catch(() => {});
+  await verrou.relacher().catch(() => {});
+  process.exit(3);
 }
 
 let nettoyageSignalEnCours = false;
+let transactionWorkerTemporaireEnCours = false;
 async function terminerSurSignal(signal, code) {
   if (nettoyageSignalEnCours) return;
   nettoyageSignalEnCours = true;
   console.error(`\\n${signal} reçu — révocation de l'appartenance worker temporaire.`);
-  try { await revoquerAppartenanceWorker(`signal ${signal}`); }
-  catch (e) { console.error(`ECHEC nettoyage signal : ${e.message}`); }
+  if (transactionWorkerTemporaireEnCours && clientAdmin) {
+    await clientAdmin.query('ROLLBACK').catch(() => {});
+    transactionWorkerTemporaireEnCours = false;
+  } else {
+    try { await revoquerAppartenanceWorker(`signal ${signal}`); }
+    catch (e) { console.error(`ECHEC nettoyage signal : ${e.message}`); }
+  }
   await client.end().catch(() => {});
   if (clientAdmin) await clientAdmin.end().catch(() => {});
   await verrou.relacher().catch(() => {});
@@ -403,21 +376,6 @@ async function terminerSurSignal(signal, code) {
 }
 process.once('SIGINT', () => { void terminerSurSignal('SIGINT', 130); });
 process.once('SIGTERM', () => { void terminerSurSignal('SIGTERM', 143); });
-
-// Si le bootstrap est déjà appliqué mais que des migrations postérieures restent
-// à jouer, rétablir la fenêtre temporaire avant la première d'entre elles.
-// Cela récupère aussi un SIGKILL survenu après le COMMIT du bootstrap.
-const migrationsApresBootstrap = enAttente.filter(
-  (n) => n > MIGRATION_WORKER_BOOTSTRAP && n !== MIGRATION_WORKER_TERMINALE,
-);
-if (terminees.has(MIGRATION_WORKER_BOOTSTRAP) && migrationsApresBootstrap.length > 0 && !dejaSuperuser) {
-  try { await accorderAppartenanceWorker(); }
-  catch (e) {
-    console.error(`REFUS — impossible de rétablir l'appartenance worker temporaire : ${e.message}`);
-    await revoquerAppartenanceWorker('échec de restauration de la fenêtre temporaire').catch(() => {});
-    await client.end(); if (clientAdmin) await clientAdmin.end(); await verrou.relacher(); process.exit(3);
-  }
-}
 
 let appliquees = 0;
 for (const nom of enAttente) {
@@ -455,7 +413,7 @@ for (const nom of enAttente) {
   // être partagée avec les autres outils qui appliquent la chaîne.
   if (assisee) {
     try {
-      const { revoques } = await preparerAppartenance(client, nom, roleExecutant);
+      const { revoques } = await preparerAppartenance(gestionRoles, nom, roleExecutant);
       for (const membre of revoques) {
         console.log(`             préparation — ${assisee.avant.appartenance} révoqué de ${membre} (état d'avant la migration)`);
       }
@@ -470,42 +428,63 @@ for (const nom of enAttente) {
     }
   }
 
-  // PRÉFLIGHT DE PROPRIÉTÉ (P10.6/D6), PAR MIGRATION ET NON UNE FOIS POUR TOUTES.
-  //
-  // `CREATE OR REPLACE FUNCTION` exige d'être le propriétaire. Un préflight
-  // global, calculé avant la boucle, se trompe : la propriété CHANGE pendant la
-  // chaîne — `20261028120100` transfère six fonctions à `tracefab_worker`, et
-  // les migrations suivantes doivent pouvoir les remplacer. Mesuré le 02/11 :
-  // un contrôle global refusait la chaîne au rang 60, alors que l'exécutant
-  // devient membre de `tracefab_worker` entre-temps. Le contrôle porte donc sur
-  // l'état du catalogue AU MOMENT d'exécuter la migration.
+  // PRÉFLIGHT DE PROPRIÉTÉ (P10.6/D6), au moment exact de la migration.
+  // Si les seuls propriétaires injoignables sont tracefab_worker, l'accès est
+  // ouvert dans la transaction de cette migration puis révoqué AVANT COMMIT.
+  let workerTemporaire = false;
   if (!assisee) {
     const ecarts = await propriétairesInjoignables(client, roleExecutant, [{ nom, sql }]);
     if (ecarts.length > 0) {
-      console.error(`  REFUS      ${nom}`);
-      for (const e of ecarts) {
-        console.error(`             public.${e.fonction} appartient a ${e.proprietaire},`);
-        console.error(`             que ${roleExecutant} ne peut pas endosser (SET ROLE refuse).`);
+      const autres = ecarts.filter((e) => e.proprietaire !== 'tracefab_worker');
+      if (autres.length > 0 || !clientAdmin || roleExecutant !== 'tracefab_migrator') {
+        console.error(`  REFUS      ${nom}`);
+        for (const e of ecarts) {
+          console.error(`             public.${e.fonction} appartient a ${e.proprietaire},`);
+          console.error(`             que ${roleExecutant} ne peut pas endosser (SET ROLE refuse).`);
+        }
+        console.error('             Seul tracefab_worker peut recevoir une appartenance temporaire, dans une transaction.');
+        await revoquerAppartenanceWorker('échec de préflight').catch((x) => console.error(x.message));
+        await client.end();
+        if (clientAdmin) await clientAdmin.end();
+        await verrou.relacher();
+        process.exit(3);
       }
-      console.error('             Cette operation exige le PROPRIETAIRE de ces fonctions.');
-      console.error('             Relancer avec la connexion de ce proprietaire (DATABASE_URL), ou');
-      console.error('             transferer la propriete par une decision explicite. Rien n a ete joue.');
-      await revoquerAppartenanceWorker('échec de préflight').catch((x) => console.error(x.message));
-      await client.end();
-      if (clientAdmin) await clientAdmin.end();
-      await verrou.relacher();
-      process.exit(3);
+      workerTemporaire = true;
     }
   }
 
-  const executeur = client;
+  const executeur = workerTemporaire ? clientAdmin : client;
   let commitEffectue = false;
   try {
     await executeur.query('BEGIN');
+    if (workerTemporaire) {
+      transactionWorkerTemporaireEnCours = true;
+      await executeur.query('GRANT tracefab_worker TO tracefab_migrator WITH INHERIT TRUE, SET TRUE, ADMIN FALSE');
+      const options = (await executeur.query(
+        `SELECT pg_catalog.pg_has_role($1, 'tracefab_worker', 'SET') AS peut_set,
+                (SELECT bool_and(m.inherit_option) FROM pg_catalog.pg_auth_members m
+                  JOIN pg_catalog.pg_roles r ON r.oid = m.roleid
+                  JOIN pg_catalog.pg_roles u ON u.oid = m.member
+                 WHERE r.rolname = 'tracefab_worker' AND u.rolname = $1) AS inherit_option,
+                (SELECT bool_and(m.set_option) FROM pg_catalog.pg_auth_members m
+                  JOIN pg_catalog.pg_roles r ON r.oid = m.roleid
+                  JOIN pg_catalog.pg_roles u ON u.oid = m.member
+                 WHERE r.rolname = 'tracefab_worker' AND u.rolname = $1) AS set_option,
+                (SELECT COALESCE(bool_or(m.admin_option), false) FROM pg_catalog.pg_auth_members m
+                  JOIN pg_catalog.pg_roles r ON r.oid = m.roleid
+                  JOIN pg_catalog.pg_roles u ON u.oid = m.member
+                 WHERE r.rolname = 'tracefab_worker' AND u.rolname = $1) AS admin_option`,
+        [roleExecutant],
+      )).rows[0];
+      if (options?.peut_set !== true || options?.inherit_option !== true
+          || options?.set_option !== true || options?.admin_option !== false) {
+        throw new Error(`appartenance worker temporaire non conforme : SET=${options?.peut_set}, INHERIT=${options?.inherit_option}, SET_OPTION=${options?.set_option}, ADMIN=${options?.admin_option}`);
+      }
+      await executeur.query(`SET LOCAL ROLE ${identifiantSql(roleExecutant)}`);
+      const ecartsRestants = await propriétairesInjoignables(executeur, roleExecutant, [{ nom, sql }]);
+      if (ecartsRestants.length > 0) throw new Error(`préflight worker toujours bloquant : ${ecartsRestants.map((e) => e.fonction).join(', ')}`);
+    }
     await executeur.query(sql);
-    // Certaines migrations posent `search_path = pg_catalog` pour le reste de
-    // leur transaction (20261021120000) : le registre doit donc etre qualifie,
-    // et le search_path retabli, sinon l'insertion echoue apres coup.
     await executeur.query('SET LOCAL search_path TO public, pg_catalog');
     await executeur.query(
       `INSERT INTO public._prisma_migrations
@@ -513,21 +492,27 @@ for (const nom of enAttente) {
        VALUES ($1, $2, $3, now(), 1)`,
       [id, empreinte(fichier), nom],
     );
+    if (workerTemporaire) {
+      await executeur.query('RESET ROLE');
+      await executeur.query('REVOKE tracefab_worker FROM tracefab_migrator');
+      const membre = (await executeur.query(
+        `SELECT pg_catalog.pg_has_role('tracefab_migrator', 'tracefab_worker', 'MEMBER') AS membre`,
+      )).rows[0]?.membre;
+      if (membre !== false) throw new Error('révocation worker non constatée avant COMMIT');
+    }
     await executeur.query('COMMIT');
+    transactionWorkerTemporaireEnCours = false;
     commitEffectue = true;
     appliquees += 1;
     console.log(`  appliquee  ${nom}`);
     if (eleve) await revoquerElevation('migration assistée terminée');
-    // Le GRANT est hors transaction : le bootstrap a lui-même fait GRANT/REVOKE
-    // sur pg_auth_members. Le faire avant COMMIT créerait un interblocage entre
-    // la connexion migrator et la connexion administrative.
-    if (assisee && assisee.appartenanceTemporaire) await accorderAppartenanceWorker();
 
   } catch (error) {
     if (!commitEffectue) {
       await executeur.query('ROLLBACK').catch(() => {});
-      // Comme Prisma : la ligne d'echec reste, avec finished_at NULL.
-      await executeur.query(
+      transactionWorkerTemporaireEnCours = false;
+      const journaliseur = workerTemporaire ? client : executeur;
+      await journaliseur.query(
         `INSERT INTO public._prisma_migrations (id, checksum, migration_name, logs, applied_steps_count)
          VALUES ($1, $2, $3, $4, 0)`,
         [id, empreinte(fichier), nom, String(error.message).slice(0, 4000)],

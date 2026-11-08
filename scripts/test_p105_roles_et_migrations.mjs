@@ -5,7 +5,7 @@
  *
  * CE QUE CE TEST ÉPROUVE, ET POURQUOI CHAQUE POINT COMPTE
  *
- *   B2.1  68/68 migrations sur une base VIERGE, exécutées par
+ *   B2.1  77/77 migrations sur une base VIERGE, exécutées par
  *         `tracefab_migrator` — un rôle `NOSUPERUSER` qui possède les objets.
  *   B2.2  reprise : relancer ne rejoue rien et ne casse rien.
  *   B2.3  `tracefab_app` ne peut PAS exécuter de migration (42501).
@@ -224,8 +224,18 @@ try {
   const dossierTemp = mkdtempSync(join(tmpdir(), 'tracefab-worker-membership-'));
   const nomEchec = '20261108120800_test_force_failure_membership_cleanup';
   mkdirSync(join(dossierTemp, nomEchec));
+  const definitionWorker = (await admin.query(
+    `SELECT pg_catalog.pg_get_functiondef(p.oid) AS definition
+       FROM pg_catalog.pg_proc p
+       JOIN pg_catalog.pg_roles r ON r.oid = p.proowner
+       JOIN pg_catalog.pg_namespace n ON n.oid = p.pronamespace
+      WHERE n.nspname = 'public' AND p.proname = 'tracefab_notification_outbox_health'
+        AND r.rolname = 'tracefab_worker'
+      ORDER BY p.oid LIMIT 1`,
+  )).rows[0]?.definition;
+  if (!definitionWorker) throw new Error('fonction worker de sonde introuvable pour le test d échec transactionnel');
   writeFileSync(join(dossierTemp, nomEchec, 'migration.sql'),
-    "DO $failure$ BEGIN RAISE EXCEPTION 'tracefab_test_forced_failure'; END $failure$;\n");
+    `${definitionWorker}\\nSELECT 1/0;\\n`);
   try {
     const echec = lancer(['scripts/migrer_fidelement.mjs'], {
       DATABASE_URL: url(ROLE_MIGRATOR),
