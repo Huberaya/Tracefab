@@ -75,6 +75,14 @@ if (appliquer) {
     console.error('REFUS — TF_EXPECTED_DATABASE_HOST et TF_EXPECTED_DATABASE_NAME doivent confirmer explicitement la cible.');
     process.exit(3);
   }
+  if (!process.env.TF_PRODUCTION_HOSTS) {
+    console.error('REFUS — fournir TF_PRODUCTION_HOSTS (liste séparée par des virgules) pour protéger explicitement Production.');
+    process.exit(3);
+  }
+  if (uM.hostname.includes('-pooler')) {
+    console.error('REFUS — utiliser les URLs directes Neon, pas le pooler, pour conserver les verrous de session.');
+    process.exit(3);
+  }
   if (hotesProduction.includes(uM.hostname) && process.env.TF_ALLOW_PRODUCTION_ROLE_SWAP !== 'oui') {
     console.error('REFUS — cible Production. Un GO spécifique TF_ALLOW_PRODUCTION_ROLE_SWAP=oui est requis.');
     process.exit(3);
