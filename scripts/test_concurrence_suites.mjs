@@ -108,9 +108,9 @@ console.log('\n  B. preuve de serialisation — verrou tenu de l exterieur');
 {
   const verrou = await verrouillerCluster({ urlProprietaire });
   let termine = false;
-  const suite = lancerSuite('scripts/test_privileges_role_app.mjs').then((code) => {
+  const suite = lancerSuite('scripts/test_privileges_role_app.mjs').then((resultat) => {
     termine = true;
-    return code;
+    return resultat;
   });
 
   await dormir(4000);
@@ -119,8 +119,14 @@ console.log('\n  B. preuve de serialisation — verrou tenu de l exterieur');
     termine ? 'la suite a abouti sans attendre le verrou' : '');
 
   await verrou.relacher();
-  const code = await suite;
-  verifier('une fois le verrou relache, la suite aboutit', code === 0, `exit=${code}`);
+  const resultat = await suite;
+  const diagnostic = resultat.code === 0 ? '' : [
+    `signal=${resultat.signal ?? 'aucun'}`,
+    resultat.stderr.trim(),
+    resultat.stdout.trim().split('\n').slice(-18).join('\n'),
+  ].filter(Boolean).join('\n');
+  verifier('une fois le verrou relache, la suite aboutit', resultat.code === 0,
+    `exit=${resultat.code}\n${diagnostic}`);
   verifier('et le processus concurrent observe bien la fin', termine, 'suite non terminee');
 }
 
