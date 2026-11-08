@@ -289,10 +289,11 @@ async function revoquerElevation(moment) {
 
 const MIGRATION_WORKER_TERMINALE = '20261108120700_assert_worker_membership_revoked';
 const MIGRATIONS_AVEC_WORKER_TEMPORAIRE = new Set([
-  // Ces deux migrations vérifient elles-mêmes pg_has_role(..., 'SET') :
-  // la première transfère des fonctions au worker, la seconde vérifie les
-  // prérequis d'appartenance. Le préflight de propriété ne peut pas détecter
-  // les ALTER OWNER construits dynamiquement dans un bloc DO.
+  // Ces migrations appellent une fonction worker depuis leur SQL, ou vérifient
+  // elles-mêmes pg_has_role(..., 'SET'). Le préflight de propriété ne détecte
+  // pas les appels à une fonction existante ni les ALTER OWNER dynamiques.
+  '20261028120200_document_reserved_fields_internal_only',
+  '20261031120000_identite_hmac_liee_au_contexte',
   '20261108120100_worker_fonctions_systeme_completes',
   '20261108120200_corrections_p106_ownership_et_appartenance',
 ]);

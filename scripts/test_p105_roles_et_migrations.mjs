@@ -203,7 +203,7 @@ try {
     `SELECT pg_catalog.pg_has_role(current_user, 'tracefab_worker', 'MEMBER') AS membre`)).rows[0].membre;
   ok(reprise.status === 0 && residualApresReprise === false,
     'B2.5quinquies reprise sans migrations : appartenance résiduelle révoquée',
-    `sortie=${reprise.status}, membre=${residualApresReprise}`);
+    `sortie=${reprise.status}, membre=${residualApresReprise}, stderr=${String(reprise.stderr || '').slice(-500)}`);
 
   // La migration terminale doit elle-même refuser une appartenance résiduelle.
   await admin.query('GRANT tracefab_worker TO tracefab_migrator WITH INHERIT TRUE, SET TRUE, ADMIN FALSE');
