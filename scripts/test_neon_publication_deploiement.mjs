@@ -391,6 +391,7 @@ await app.connect();
 {
   await app.query('BEGIN');
   await app.query("SELECT set_config('tracefab.user_id',$1,true)", [globalThis.U.user]);
+  await app.query("SELECT set_config('tracefab.active_organization_id',$1,true)", [globalThis.U.org]);
   const r = await app.query('SELECT reference FROM tracefab_products ORDER BY reference');
   await app.query('ROLLBACK');
   verif(r.rows.map((x) => x.reference).join().startsWith('BROUILLON-001'),
@@ -399,6 +400,7 @@ await app.connect();
 {
   await app.query('BEGIN');
   await app.query("SELECT set_config('tracefab.user_id',$1,true)", [globalThis.U.user2]);
+  await app.query("SELECT set_config('tracefab.active_organization_id',$1,true)", [globalThis.U.org2]);
   const r = await app.query('SELECT count(*)::int n FROM tracefab_products WHERE id = $1', [globalThis.U.pa]);
   const tot = await app.query('SELECT count(*)::int n FROM tracefab_products');
   await app.query('ROLLBACK');
