@@ -263,6 +263,11 @@ const OPERATOR_WRITER_SCRIPTS = [
   // de cible jetable refuse par construction.
   'scripts/provisionner_roles_db.mjs',
   'scripts/provisionner_cle_identite.mjs',
+  // Préflight Neon ponctuel : renomme le rôle worker géré par cloud_admin,
+  // transfère les propriétaires/ACL, puis neutralise le rôle legacy. Il ne
+  // s'exécute jamais en CI ; --appliquer exige un GO d'environnement explicite,
+  // l'hôte/base attendus et une liste de cibles Production à protéger.
+  'scripts/provisionner_worker_neon.mjs',
   'scripts/mesure_effet_migrations_dpp.mjs',
   'scripts/valider_branche_dpp.mjs',
 ];
