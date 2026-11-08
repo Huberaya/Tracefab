@@ -292,6 +292,23 @@ const MIGRATION_WORKER_TERMINALE = '20261108120700_assert_worker_membership_revo
 const identifiantSql = (v) => '"' + String(v).replace(/"/g, '""') + '"';
 const gestionRoles = clientAdmin ?? (dejaSuperuser ? client : null);
 
+// Une exécution lancée par postgres doit aussi réparer un SUPERUSER résiduel
+// laissé sur le compte migrateur par un ancien processus interrompu.
+if (roleExecutant !== 'tracefab_migrator') {
+  const etatMigrator = (await client.query(
+    "SELECT rolsuper FROM pg_catalog.pg_roles WHERE rolname = 'tracefab_migrator'",
+  )).rows[0];
+  if (etatMigrator?.rolsuper === true) {
+    if (!gestionRoles) throw new Error('tracefab_migrator est SUPERUSER, mais aucune connexion administrative ne peut le réabaisser');
+    await gestionRoles.query('ALTER ROLE tracefab_migrator NOSUPERUSER');
+    const verifMigrator = (await gestionRoles.query(
+      "SELECT rolsuper FROM pg_catalog.pg_roles WHERE rolname = 'tracefab_migrator'",
+    )).rows[0];
+    if (verifMigrator?.rolsuper !== false) throw new Error('révocation SUPERUSER de tracefab_migrator non vérifiée');
+    console.log('             tracefab_migrator réabaissé NOSUPERUSER et vérifié (récupération)');
+  }
+}
+
 /** Révoque l'appartenance worker et vérifie l'absence effective. */
 async function revoquerAppartenanceWorker(moment) {
   // Toujours nettoyer le rôle courant ET le migrateur nominal : un run précédent
