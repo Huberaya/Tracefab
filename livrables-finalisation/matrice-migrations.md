@@ -1,6 +1,6 @@
 # Matrice des migrations — snapshot initial et correctif
 
-> **Snapshot historique `515d5ab` :** les sept lignes et les empreintes de `preuves/empreintes-migrations.txt` décrivent le candidat initial, pas la branche corrective. La branche `fix/tracefab-worker-membership-lifecycle-20261108` modifie la migration candidate `120200` (non appliquée à une base persistante) et ajoute `120700`. Les SHA-256 actuels de ces deux fichiers doivent être recalculés par le contrôle d'empreintes avant toute PR ; ne pas réutiliser l'empreinte historique de `120200`.
+> **Snapshot historique `515d5ab` :** les sept lignes et les empreintes de `preuves/empreintes-migrations.txt` décrivent le candidat initial, pas la branche corrective. La branche `fix/tracefab-worker-membership-lifecycle-20261108` modifie les migrations candidates `120200` et `120500` (non appliquées à une base persistante) et ajoute `120700`. Les SHA-256 actuels de ces trois fichiers doivent être recalculés par le contrôle d'empreintes avant toute PR ; ne pas réutiliser l'empreinte historique de `120200`.
 
 Base : `origin/main` @ `788df220`. Sept migrations additives initiales, plus une garde terminale corrective.
 
@@ -11,7 +11,7 @@ Base : `origin/main` @ `788df220`. Sept migrations additives initiales, plus une
 | 3 | `20261108120200_corrections_p106_ownership_et_appartenance` | 117 | **à recalculer** | Vérifie l'appartenance temporaire fournie par le runner ; aucun GRANT permanent | Oui |
 | 4 | `20261108120300_acl_colonnes_bornees_au_runtime` | 145 | `205d108bcf03` | ACL colonnes 24/7 → **9/0** | Oui |
 | 5 | `20261108120400_lien_graphe_statut_enum_type` | 119 | `b4e1afd9d5df` | `42804` sur `tracefab_add_supply_chain_link` | Oui |
-| 6 | `20261108120500_lecture_users_requise_par_les_politiques` | 102 | `0d51bea0e19f` (snapshot) | `tracefab_app` sans `SELECT` sur `users` ⇒ 3 lectures cassées | **Oui** |
+| 6 | `20261108120500_lecture_users_requise_par_les_politiques` | 102 | **à recalculer** | `tracefab_app` sans `SELECT` sur `users` ⇒ 3 lectures cassées | **Oui** |
 | 7 | `20261108120600_lecture_orders_requise_par_le_runtime` | 91 | `8d1fc35d245e` | `orders` sans privilège ⇒ obstacle de bascule | **Oui** |
 | 8 | `20261108120700_assert_worker_membership_revoked` | 53 | **à recalculer** | Refuse l'appartenance worker résiduelle et un migrator SUPERUSER | Non — garde corrective |
 
