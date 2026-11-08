@@ -66,7 +66,23 @@ BEGIN
         CROSS JOIN LATERAL pg_catalog.aclexplode(coalesce(n.nspacl,pg_catalog.acldefault('n',n.nspowner))) a
         WHERE a.grantee=v_legacy)
       +
+      (SELECT count(*) FROM pg_catalog.pg_type t
+        CROSS JOIN LATERAL pg_catalog.aclexplode(t.typacl) a
+        WHERE t.typacl IS NOT NULL AND a.grantee=v_legacy)
+      +
       (SELECT count(*) FROM pg_catalog.pg_default_acl WHERE defaclrole=v_legacy)
+      +
+      (SELECT count(*) FROM pg_catalog.pg_database WHERE datacl::text LIKE '%tracefab_worker_legacy%')
+      +
+      (SELECT count(*) FROM pg_catalog.pg_language WHERE lanacl::text LIKE '%tracefab_worker_legacy%')
+      +
+      (SELECT count(*) FROM pg_catalog.pg_foreign_server WHERE srvacl::text LIKE '%tracefab_worker_legacy%')
+      +
+      (SELECT count(*) FROM pg_catalog.pg_foreign_data_wrapper WHERE fdwacl::text LIKE '%tracefab_worker_legacy%')
+      +
+      (SELECT count(*) FROM pg_catalog.pg_largeobject_metadata WHERE lomacl::text LIKE '%tracefab_worker_legacy%')
+      +
+      (SELECT count(*) FROM pg_catalog.pg_parameter_acl WHERE paracl::text LIKE '%tracefab_worker_legacy%')
       INTO v_count;
     IF v_count <> 0 THEN
       RAISE EXCEPTION 'tracefab_worker_legacy_acl_residuelle';
