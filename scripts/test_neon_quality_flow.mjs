@@ -87,7 +87,8 @@ async function main() {
   assert(acknowledged[0]?.status === 'acknowledged', 'quality issue was not acknowledged');
 
   await expectSqlCode(
-    () => inUserContext(brandViewer, brandOrganization, async (tx) => tx.$queryRaw`
+    // Align the active tenant with the issue owner so this proves the RBAC denial, not only the tenant guard.
+    () => inUserContext(brandViewer, supplierOrganization, async (tx) => tx.$queryRaw`
       SELECT * FROM tracefab_waive_quality_issue(${supplierIssues[0].id}::uuid, 'viewer cannot waive')
     `),
     'quality_issue_waive_role_required',
