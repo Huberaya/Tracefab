@@ -71,7 +71,7 @@ if (uM.hostname !== uA.hostname || uM.pathname !== uA.pathname) {
   process.exit(2);
 }
 if (appliquer) {
-  if (process.env.TF_EXPECTED_DATABASE_HOST !== uM.hostname || process.env.TF_EXPECTED_DATABASE_NAME !== uM.pathname.replace(/^\\//, '')) {
+  if (process.env.TF_EXPECTED_DATABASE_HOST !== uM.hostname || process.env.TF_EXPECTED_DATABASE_NAME !== uM.pathname.replace(/^\//, '')) {
     console.error('REFUS — TF_EXPECTED_DATABASE_HOST et TF_EXPECTED_DATABASE_NAME doivent confirmer explicitement la cible.');
     process.exit(3);
   }
