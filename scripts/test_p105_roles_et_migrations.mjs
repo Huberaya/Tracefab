@@ -211,7 +211,7 @@ try {
   const nomEchec = '20261108120800_test_force_failure_membership_cleanup';
   mkdirSync(join(dossierTemp, nomEchec));
   writeFileSync(join(dossierTemp, nomEchec, 'migration.sql'),
-    "DO $ BEGIN RAISE EXCEPTION 'tracefab_test_forced_failure'; END $;\\n");
+    "DO $failure$ BEGIN RAISE EXCEPTION 'tracefab_test_forced_failure'; END $failure$;\n");
   try {
     await admin.query('GRANT tracefab_worker TO tracefab_migrator WITH INHERIT TRUE, SET TRUE, ADMIN FALSE');
     const echec = lancer(['scripts/migrer_fidelement.mjs'], {
