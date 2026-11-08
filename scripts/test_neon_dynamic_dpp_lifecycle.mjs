@@ -69,6 +69,10 @@ try {
   const context=async(user,email,fn)=>{await app.query('BEGIN');try{
     await app.query("SELECT set_config('tracefab.user_id',$1,true)",[user]);
     await app.query("SELECT set_config('tracefab.user_email',$1,true)",[email]);
+    // Le contexte applicatif doit toujours nommer le locataire actif :
+    // userA travaille sur A, userB sur B ; le contexte public reste sans tenant.
+    const activeTenant = user === U.userA ? U.orgA : user === U.userB ? U.orgB : '';
+    await app.query("SELECT set_config('tracefab.active_organization_id',$1,true)",[activeTenant]);
     const value=await fn(); await app.query('COMMIT'); return value;
   }catch(e){await app.query('ROLLBACK');throw e;}};
   const publicContext=fn=>context('', '', async()=>{await app.query("SELECT set_config('tracefab.public_context','true',true)");return fn();});
