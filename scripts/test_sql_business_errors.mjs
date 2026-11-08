@@ -56,15 +56,15 @@ function exceptionCodes(source) {
 
 // Contrat du scanner : une garde DO reste interne, une exception de fonction
 // est bien considérée comme une erreur métier potentiellement exposée.
-const fixture = "
-DO $migration_guard$ BEGIN RAISE EXCEPTION 'guard_only_code'; END $migration_guard$;
-CREATE OR REPLACE FUNCTION public.fixture_business_error() RETURNS void
-LANGUAGE plpgsql AS $function_body$
-BEGIN
-  RAISE EXCEPTION 'fixture_business_code';
-END
-$function_body$;
-";
+const fixture = [
+  "DO $migration_guard$ BEGIN RAISE EXCEPTION 'guard_only_code'; END $migration_guard$;",
+  "CREATE OR REPLACE FUNCTION public.fixture_business_error() RETURNS void",
+  "LANGUAGE plpgsql AS $function_body$",
+  "BEGIN",
+  "  RAISE EXCEPTION 'fixture_business_code';",
+  "END",
+  "$function_body$;",
+].join('\\n');
 assert.deepEqual(exceptionCodes(extractFunctionBodies(fixture).join('\n')), ['fixture_business_code']);
 
 const raised = new Set();
