@@ -219,15 +219,14 @@ try {
     String(refusGarde).split('\\n')[0].slice(0, 120));
   await admin.query('REVOKE tracefab_worker FROM tracefab_migrator');
 
-  // Forcer une migration en échec après avoir simulé l'appartenance temporaire.
-  // Le catch du runner doit révoquer le rôle avant de quitter avec un code non nul.
+  // Le runner doit rétablir l'appartenance temporaire pour cette migration post-bootstrap.
+  // La migration injectée échoue ensuite ; le catch doit révoquer avant de quitter.
   const dossierTemp = mkdtempSync(join(tmpdir(), 'tracefab-worker-membership-'));
   const nomEchec = '20261108120800_test_force_failure_membership_cleanup';
   mkdirSync(join(dossierTemp, nomEchec));
   writeFileSync(join(dossierTemp, nomEchec, 'migration.sql'),
     "DO $failure$ BEGIN RAISE EXCEPTION 'tracefab_test_forced_failure'; END $failure$;\n");
   try {
-    await admin.query('GRANT tracefab_worker TO tracefab_migrator WITH INHERIT TRUE, SET TRUE, ADMIN FALSE');
     const echec = lancer(['scripts/migrer_fidelement.mjs'], {
       DATABASE_URL: url(ROLE_MIGRATOR),
       TF_ADMIN_URL: urlAdminBase.toString(),
