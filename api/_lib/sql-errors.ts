@@ -5,6 +5,8 @@ type SqlErrorDefinition = {
 
 const DEFINITIONS: Record<string, SqlErrorDefinition> = {
   authentication_required: { status: 401 },
+  // Le locataire actif ne correspond pas a la ressource visee : refus d'autorisation, sans detail sur la ressource.
+  active_tenant_mismatch: { status: 403 },
   brand_admin_role_required: { status: 403 },
   brand_organization_required: { status: 400 },
   valid_supplier_email_required: { status: 400 },
