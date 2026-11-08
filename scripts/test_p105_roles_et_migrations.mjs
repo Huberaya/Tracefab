@@ -29,6 +29,9 @@
  */
 import process from 'node:process';
 import { spawnSync } from 'node:child_process';
+import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import pg from 'pg';
 import { sslDepuisUrl } from './lib/pg-ssl.mjs';
 import { ROLE_APP, ROLE_MIGRATOR, ROLE_WORKER, etatRole } from './lib/tracefab_roles.mjs';
@@ -185,6 +188,47 @@ try {
 
   const urlAdminBase = new URL(urlAdmin);
   urlAdminBase.pathname = `/${base}`;
+  // Simuler un arrêt brutal après le GRANT temporaire : un run de reprise
+  // sans migration en attente doit nettoyer l'appartenance résiduelle.
+  await admin.query('GRANT tracefab_worker TO tracefab_migrator WITH INHERIT TRUE, SET TRUE, ADMIN FALSE');
+  const residualAvantReprise = (await cible.query(
+    `SELECT pg_catalog.pg_has_role(current_user, 'tracefab_worker', 'MEMBER') AS membre`)).rows[0].membre;
+  ok(residualAvantReprise === true, 'B2.5quater scénario de reprise : appartenance résiduelle simulée', `membre=${residualAvantReprise}`);
+  const reprise = lancer(['scripts/migrer_fidelement.mjs'], {
+    DATABASE_URL: url(ROLE_MIGRATOR),
+    TF_ADMIN_URL: urlAdminBase.toString(),
+    TF_ALLOW_WRITE: 'oui',
+  });
+  const residualApresReprise = (await cible.query(
+    `SELECT pg_catalog.pg_has_role(current_user, 'tracefab_worker', 'MEMBER') AS membre`)).rows[0].membre;
+  ok(reprise.status === 0 && residualApresReprise === false,
+    'B2.5quinquies reprise sans migrations : appartenance résiduelle révoquée',
+    `sortie=${reprise.status}, membre=${residualApresReprise}`);
+
+  // Forcer une migration en échec après avoir simulé l'appartenance temporaire.
+  // Le catch du runner doit révoquer le rôle avant de quitter avec un code non nul.
+  const dossierTemp = mkdtempSync(join(tmpdir(), 'tracefab-worker-membership-'));
+  const nomEchec = '20261108120800_test_force_failure_membership_cleanup';
+  mkdirSync(join(dossierTemp, nomEchec));
+  writeFileSync(join(dossierTemp, nomEchec, 'migration.sql'),
+    "DO $ BEGIN RAISE EXCEPTION 'tracefab_test_forced_failure'; END $;\\n");
+  try {
+    await admin.query('GRANT tracefab_worker TO tracefab_migrator WITH INHERIT TRUE, SET TRUE, ADMIN FALSE');
+    const echec = lancer(['scripts/migrer_fidelement.mjs'], {
+      DATABASE_URL: url(ROLE_MIGRATOR),
+      TF_ADMIN_URL: urlAdminBase.toString(),
+      TF_ALLOW_WRITE: 'oui',
+      TF_MIGRATIONS_PATH: dossierTemp,
+    });
+    const residualApresEchec = (await cible.query(
+      `SELECT pg_catalog.pg_has_role(current_user, 'tracefab_worker', 'MEMBER') AS membre`)).rows[0].membre;
+    ok(echec.status === 1 && residualApresEchec === false,
+      'B2.5sexies échec de migration : appartenance worker révoquée avant sortie',
+      `sortie=${echec.status}, membre=${residualApresEchec}`);
+  } finally {
+    rmSync(dossierTemp, { recursive: true, force: true });
+  }
+
   const matrice = lancer(['livrables-finalisation/sondes/matrice-securite-roles.mjs'], {
     DATABASE_URL: urlAdminBase.toString(),
     TF_APP_MDP: MDP_APP,
