@@ -234,8 +234,10 @@ try {
       ORDER BY p.oid LIMIT 1`,
   )).rows[0]?.definition;
   if (!definitionWorker) throw new Error('fonction worker de sonde introuvable pour le test d échec transactionnel');
-  writeFileSync(join(dossierTemp, nomEchec, 'migration.sql'),
-    `${definitionWorker}\nSELECT 1/0;\n`);
+  const definitionEchappee = definitionWorker.replace(/'/g, "''");
+  const injectionTransactionnelle =
+    `DO $tracefab_worker_failure$ BEGIN EXECUTE '${definitionEchappee}'; PERFORM 1/0; END $tracefab_worker_failure$;`;
+  writeFileSync(join(dossierTemp, nomEchec, 'migration.sql'), injectionTransactionnelle);
   try {
     const echec = lancer(['scripts/migrer_fidelement.mjs'], {
       DATABASE_URL: url(ROLE_MIGRATOR),
