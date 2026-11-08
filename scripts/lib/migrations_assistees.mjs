@@ -32,9 +32,9 @@ export const MIGRATIONS_ASSISTEES = Object.freeze({
     //     de migration recoit 42501 « permission denied for function » ;
     //   - les migrations ULTERIEURES doivent pouvoir modifier ces six fonctions,
     //     ce qui exige de pouvoir endosser leur proprietaire.
-    // L'appartenance ci-dessous est la plus petite qui reponde aux deux, et
-    // elle est verifiee par un test d'escalade : `tracefab_app` n'en herite
-    // jamais (elle n'est membre de rien).
+    // L'appartenance est accordée par le runner après le bootstrap, avec
+    // INHERIT/SET et sans ADMIN, puis révoquée avant la migration terminale.
+    // `tracefab_app` n'en hérite jamais.
     // Le runner accorde l'appartenance temporairement après ce bootstrap,
     // puis la révoque avant la migration terminale 20261108120700.
     // Aucun GRANT permanent n'est porté par cette configuration.
@@ -46,15 +46,15 @@ export const MIGRATIONS_ASSISTEES = Object.freeze({
     // `REVOKE tracefab_worker FROM current_user`. PostgreSQL refuse cette
     // révocation si le même grantor a accordé `tracefab_worker` à un AUTRE
     // rôle : 2BP01 « dependent privileges exist ». Or c'est exactement ce que
-    // fait `apres` à l'exécution précédente. Conséquence mesurée le 02/11 :
+    // faisait le crochet post-migration permanent. Conséquence mesurée le 02/11 :
     // la chaîne s'appliquait une fois par cluster, puis toute nouvelle base
     // jetable échouait sur cette migration — les suites qui créent leur propre
     // base tombaient en cascade.
     //
     // On ramène donc l'état d'appartenance à celui d'avant la migration :
     // l'exécutant est le seul membre possible de `tracefab_worker`. La
-    // migration ré-accorde elle-même ce dont elle a besoin, et `apres` le
-    // rétablit ensuite.
+    // migration ré-accorde elle-même ce dont elle a besoin ; le runner
+    // n'accorde le droit temporaire qu'après son COMMIT.
     avant: {
       appartenance: 'tracefab_worker',
       conserver: '%ROLE%',
