@@ -1,5 +1,7 @@
 # Matrices du candidat d'intégration — Tracefab
 
+> **Snapshot historique du commit `515d5ab`** : les résultats ci-dessous (76/76, 28/28) précèdent la revue indépendante. Ils ne couvrent pas `tracefab_migrator`. La branche corrective ajoute `120700`, étend la matrice M0–M4 et ajoute des tests de reprise/échec ; ces tests ne sont pas encore exécutés. Ne pas présenter ce document historique comme le résultat du correctif.
+
 **Branche** : `candidat-integration-tracefab`, worktree `/home/user/wt-candidat`
 **Base** : `788df220` (`origin/main`) + **7 migrations additives**
 **Date des mesures** : 8 novembre 2026
@@ -161,3 +163,16 @@ Parcours complet, sur un propriétaire **non superutilisateur** — c'est le cas
 4. `2BP01` sur l'appartenance worker ⇒ chaîne non rejouable (corrigé par `120200`).
 
 Ces quatre défauts existaient **avant** ce candidat et ne sont pas de son fait. Les corriger était nécessaire pour que le candidat soit déployable ; les documenter était nécessaire pour que la décision reste informée. Voir `decision-go-no-go.md`.
+
+
+## 7. Correctif de cycle de vie worker — tests ajoutés, exécution en attente
+
+La revue indépendante a montré que `tracefab_migrator` conservait une appartenance permanente à `tracefab_worker`. Le correctif ajoute :
+
+- `M0–M4` dans `sondes/matrice-securite-roles.mjs`, sous une vraie connexion `tracefab_migrator` (`TF_MIGRATOR_MDP`) ;
+- des assertions P10.5 après replay : absence d'appartenance effective et refus de `SET ROLE tracefab_worker` ;
+- un scénario de reprise qui simule un octroi résiduel puis relance le runner sans migration en attente ;
+- un scénario d'échec qui injecte une migration jetable en erreur après l'octroi temporaire et vérifie que le runner révoque avant de sortir ;
+- une exécution négative directe de la garde terminale `120700` alors que le migrateur est membre du worker : elle doit lever `tracefab_migrator_worker_membership_residuelle`.
+
+**Statut** : code et assertions ajoutés sur `fix/tracefab-worker-membership-lifecycle-20261108`; aucune preuve d'exécution locale/PostgreSQL ni CI complète n'est encore disponible. Les anciens journaux restent des preuves du snapshot initial uniquement.
