@@ -1,5 +1,7 @@
 # Rapport final — finalisation du candidat d'intégration Tracefab
 
+> **Rapport historique du commit `515d5ab`**. La revue indépendante du 8 novembre a invalidé son verdict GO : `tracefab_migrator` gardait une appartenance worker permanente, non couverte par la matrice 28/28. Le correctif est suivi séparément dans `livrables-finalisation/revue-corrective-2026-11-08.md`. Les résultats ci-dessous décrivent uniquement le snapshot initial et ne valent pas validation du correctif.
+
 **Branche** : `candidat-integration-tracefab` · worktree `/home/user/wt-candidat`
 **Base** : `origin/main` @ `788df220`
 **Livré** : 7 migrations additives, 3 sondes d'appel réel, 3 matrices, 1 décision, 9 preuves
