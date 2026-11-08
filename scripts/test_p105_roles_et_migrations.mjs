@@ -236,7 +236,7 @@ try {
   if (!definitionWorker) throw new Error('fonction worker de sonde introuvable pour le test d échec transactionnel');
   const definitionEchappee = definitionWorker.replace(/'/g, "''");
   const injectionTransactionnelle =
-    `DO $tracefab_worker_failure$ BEGIN EXECUTE '${definitionEchappee}'; PERFORM 1/0; END $tracefab_worker_failure$;`;
+    `DO $tracefab_worker_failure$ BEGIN EXECUTE '${definitionEchappee};'; PERFORM 1/0; END $tracefab_worker_failure$;`;
   writeFileSync(join(dossierTemp, nomEchec, 'migration.sql'), injectionTransactionnelle);
   try {
     const echec = lancer(['scripts/migrer_fidelement.mjs'], {
