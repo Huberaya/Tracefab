@@ -1,0 +1,22 @@
+deploy=0
+OK   S1 ingestion nominale — "Ingestion sap réussie : 1 articles traités (1 créés, 0 mis à jour), 1 matières rattachées
+OK   S1 produit cree, version 1 — version=1
+OK   S1 matiere rattachee — 1 ligne(s)
+OK   S1 deux noeuds d etapes — 2 noeud(s)
+OK   S1 un lien entre les deux etapes — 1 lien(s)
+OK   S1 lien passe par la fonction officielle (status + declared_by poses) — status=declared declared_by=00000000-0000-4000-8000-0000000000c3
+OK   S2 re-ingestion identique : succes — ok
+OK   S2 aucun doublon de produit — id identique=true
+OK   S2 aucun doublon de noeud — 2 noeud(s)
+OK   S2 aucun doublon de lien — 1 lien(s)
+OK   S2 aucun doublon de matiere — 1 ligne(s)
+OK   S3 mise a jour de la composition — pct=55.0000
+OK   S3 la version produit n a pas ete ecrasee — version=1
+OK   S4 erreur partielle signalee — 23514 new row for relation "tracefab_products" violates check cons
+OK   S4 rien n a ete ecrit — 1 -> 1
+OK   S5 autre organisation non touchee — 0 produit(s)
+OK   S6 noeud preexistant preserve (meme identifiant) — a859774e…
+
+echecs : 0/17
+VERDICT : ingestion conforme sur tous les scenarios
+sonde=0
