@@ -63,8 +63,12 @@ async function maintenance() {
 function lancerSuite(chemin) {
   return new Promise((resoudre) => {
     const p = spawn(process.execPath, [join(RACINE, 'scripts', 'run-db-suite.mjs'), join(RACINE, chemin)],
-      { env: process.env, stdio: 'ignore' });
-    p.on('exit', (code) => resoudre(code));
+      { env: process.env, stdio: ['ignore', 'pipe', 'pipe'] });
+    let stdout = '';
+    let stderr = '';
+    p.stdout.setEncoding('utf8').on('data', (chunk) => { stdout = (stdout + chunk).slice(-6000); });
+    p.stderr.setEncoding('utf8').on('data', (chunk) => { stderr = (stderr + chunk).slice(-6000); });
+    p.on('exit', (code, signal) => resoudre({ code: code ?? 1, signal, stdout, stderr }));
   });
 }
 
@@ -84,9 +88,15 @@ const PAIRE = [
 
 for (let tour = 1; tour <= TOURS; tour += 1) {
   const [a, b] = PAIRE[(tour - 1) % PAIRE.length];
-  const [ca, cb] = await Promise.all([lancerSuite(a), lancerSuite(b)]);
+  const [ra, rb] = await Promise.all([lancerSuite(a), lancerSuite(b)]);
+  const detail = (r) => r.code === 0 ? '' : [
+    `exit=${r.code} signal=${r.signal ?? 'aucun'}`,
+    r.stderr.trim(),
+    r.stdout.trim().split('\n').slice(-18).join('\n'),
+  ].filter(Boolean).join('\n');
   verifier(`tour ${tour} : ${a.split('/').pop()} + ${b.split('/').pop()}`,
-    ca === 0 && cb === 0, `${a.split('/').pop()}=${ca}, ${b.split('/').pop()}=${cb}`);
+    ra.code === 0 && rb.code === 0,
+    `${a.split('/').pop()}=${ra.code} ${detail(ra)}\n${b.split('/').pop()}=${rb.code} ${detail(rb)}`);
 }
 
 /* ========================================================================== *
