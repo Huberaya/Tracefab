@@ -404,6 +404,21 @@ async function terminerSurSignal(signal, code) {
 process.once('SIGINT', () => { void terminerSurSignal('SIGINT', 130); });
 process.once('SIGTERM', () => { void terminerSurSignal('SIGTERM', 143); });
 
+// Si le bootstrap est déjà appliqué mais que des migrations postérieures restent
+// à jouer, rétablir la fenêtre temporaire avant la première d'entre elles.
+// Cela récupère aussi un SIGKILL survenu après le COMMIT du bootstrap.
+const migrationsApresBootstrap = enAttente.filter(
+  (n) => n > MIGRATION_WORKER_BOOTSTRAP && n !== MIGRATION_WORKER_TERMINALE,
+);
+if (terminees.has(MIGRATION_WORKER_BOOTSTRAP) && migrationsApresBootstrap.length > 0 && !dejaSuperuser) {
+  try { await accorderAppartenanceWorker(); }
+  catch (e) {
+    console.error(`REFUS — impossible de rétablir l'appartenance worker temporaire : ${e.message}`);
+    await revoquerAppartenanceWorker('échec de restauration de la fenêtre temporaire').catch(() => {});
+    await client.end(); if (clientAdmin) await clientAdmin.end(); await verrou.relacher(); process.exit(3);
+  }
+}
+
 let appliquees = 0;
 for (const nom of enAttente) {
   if (nom === MIGRATION_WORKER_TERMINALE) {
@@ -484,6 +499,7 @@ for (const nom of enAttente) {
   }
 
   const executeur = client;
+  let commitEffectue = false;
   try {
     await executeur.query('BEGIN');
     await executeur.query(sql);
@@ -491,9 +507,6 @@ for (const nom of enAttente) {
     // leur transaction (20261021120000) : le registre doit donc etre qualifie,
     // et le search_path retabli, sinon l'insertion echoue apres coup.
     await executeur.query('SET LOCAL search_path TO public, pg_catalog');
-    // L'appartenance worker est accordée par l'admin après le bootstrap,
-    // avant COMMIT : si la migration échoue, le catch la révoque.
-    if (assisee && assisee.appartenanceTemporaire) await accorderAppartenanceWorker();
     await executeur.query(
       `INSERT INTO public._prisma_migrations
          (id, checksum, migration_name, finished_at, applied_steps_count)
@@ -501,18 +514,28 @@ for (const nom of enAttente) {
       [id, empreinte(fichier), nom],
     );
     await executeur.query('COMMIT');
+    commitEffectue = true;
     appliquees += 1;
     console.log(`  appliquee  ${nom}`);
     if (eleve) await revoquerElevation('migration assistée terminée');
+    // Le GRANT est hors transaction : le bootstrap a lui-même fait GRANT/REVOKE
+    // sur pg_auth_members. Le faire avant COMMIT créerait un interblocage entre
+    // la connexion migrator et la connexion administrative.
+    if (assisee && assisee.appartenanceTemporaire) await accorderAppartenanceWorker();
 
   } catch (error) {
-    await executeur.query('ROLLBACK').catch(() => {});
-    // Comme Prisma : la ligne d'echec reste, avec finished_at NULL.
-    await executeur.query(
-      `INSERT INTO public._prisma_migrations (id, checksum, migration_name, logs, applied_steps_count)
-       VALUES ($1, $2, $3, $4, 0)`,
-      [id, empreinte(fichier), nom, String(error.message).slice(0, 4000)],
-    ).catch(() => {});
+    if (!commitEffectue) {
+      await executeur.query('ROLLBACK').catch(() => {});
+      // Comme Prisma : la ligne d'echec reste, avec finished_at NULL.
+      await executeur.query(
+        `INSERT INTO public._prisma_migrations (id, checksum, migration_name, logs, applied_steps_count)
+         VALUES ($1, $2, $3, $4, 0)`,
+        [id, empreinte(fichier), nom, String(error.message).slice(0, 4000)],
+      ).catch(() => {});
+    } else {
+      console.error(`  ATTENTION migration ${nom} déjà COMMITée ; rattrapage post-migration non terminé.`);
+      console.error('             La reprise doit rétablir l appartenance temporaire avant les migrations suivantes.');
+    }
     console.error(`  ECHEC      ${nom}`);
     console.error(`             ${String(error.message).split('\n')[0]}`);
     if (eleve) await revoquerElevation('échec de la migration assistée');
