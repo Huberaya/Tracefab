@@ -288,6 +288,14 @@ async function revoquerElevation(moment) {
 }
 
 const MIGRATION_WORKER_TERMINALE = '20261108120700_assert_worker_membership_revoked';
+const MIGRATIONS_AVEC_WORKER_TEMPORAIRE = new Set([
+  // Ces deux migrations vérifient elles-mêmes pg_has_role(..., 'SET') :
+  // la première transfère des fonctions au worker, la seconde vérifie les
+  // prérequis d'appartenance. Le préflight de propriété ne peut pas détecter
+  // les ALTER OWNER construits dynamiquement dans un bloc DO.
+  '20261108120100_worker_fonctions_systeme_completes',
+  '20261108120200_corrections_p106_ownership_et_appartenance',
+]);
 const identifiantSql = (v) => '"' + String(v).replace(/"/g, '""') + '"';
 const gestionRoles = dejaSuperuser ? client : clientAdmin;
 
@@ -431,7 +439,7 @@ for (const nom of enAttente) {
   // PRÉFLIGHT DE PROPRIÉTÉ (P10.6/D6), au moment exact de la migration.
   // Si les seuls propriétaires injoignables sont tracefab_worker, l'accès est
   // ouvert dans la transaction de cette migration puis révoqué AVANT COMMIT.
-  let workerTemporaire = false;
+  let workerTemporaire = MIGRATIONS_AVEC_WORKER_TEMPORAIRE.has(nom);
   if (!assisee) {
     const ecarts = await propriétairesInjoignables(client, roleExecutant, [{ nom, sql }]);
     if (ecarts.length > 0) {
