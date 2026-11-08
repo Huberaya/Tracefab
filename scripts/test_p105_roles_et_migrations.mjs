@@ -245,9 +245,14 @@ try {
     });
     const residualApresEchec = (await cible.query(
       `SELECT pg_catalog.pg_has_role(current_user, 'tracefab_worker', 'MEMBER') AS membre`)).rows[0].membre;
-    ok(echec.status === 1 && residualApresEchec === false,
-      'B2.5sexies échec de migration : appartenance worker révoquée avant sortie',
-      `sortie=${echec.status}, membre=${residualApresEchec}`);
+    const journalEchec = (await cible.query(
+      `SELECT logs FROM public._prisma_migrations
+        WHERE migration_name = $1 ORDER BY started_at DESC LIMIT 1`, [nomEchec],
+    )).rows[0]?.logs || '';
+    const injectionAtteinte = /division by zero/i.test(journalEchec + echec.stdout + echec.stderr);
+    ok(echec.status === 1 && residualApresEchec === false && injectionAtteinte,
+      'B2.5sexies échec après remplacement réel : rollback transactionnel et appartenance worker absente',
+      `sortie=${echec.status}, membre=${residualApresEchec}, erreur injectée atteinte=${injectionAtteinte}`);
   } finally {
     rmSync(dossierTemp, { recursive: true, force: true });
   }
