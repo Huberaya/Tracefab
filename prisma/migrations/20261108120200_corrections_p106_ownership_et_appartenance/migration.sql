@@ -46,6 +46,7 @@
 -- 1. Appartenance worker : elle doit provenir du runner, temporairement ------
 DO $worker_membership$
 DECLARE
+  v_superuser boolean;
   v_peut_set boolean;
   v_inherit boolean;
   v_set boolean;
@@ -55,6 +56,9 @@ BEGIN
     RAISE EXCEPTION 'tracefab_worker_absent'
       USING HINT = 'La chaine 20261028120100 doit avoir cree le role avant cette migration.';
   END IF;
+
+  SELECT rolsuper INTO v_superuser
+    FROM pg_catalog.pg_roles WHERE rolname = current_user;
 
   SELECT pg_catalog.pg_has_role(current_user, 'tracefab_worker', 'SET'),
          (SELECT bool_and(m.inherit_option) FROM pg_catalog.pg_auth_members m
@@ -75,14 +79,16 @@ BEGIN
   -- ni ADMIN OPTION ni CREATEROLE. Le runner accorde SET/INHERIT via sa
   -- connexion administrative après 20261028120100, puis révoque avant la
   -- migration terminale 20261108120700.
-  IF v_peut_set IS DISTINCT FROM TRUE OR v_inherit IS DISTINCT FROM TRUE
-     OR v_set IS DISTINCT FROM TRUE THEN
-    RAISE EXCEPTION 'worker_membership_temporaire_absente_ou_incomplete'
-      USING HINT = 'Le runner doit accorder une appartenance directe INHERIT/SET temporaire avant cette migration.';
-  END IF;
-  IF v_admin IS DISTINCT FROM FALSE THEN
-    RAISE EXCEPTION 'worker_membership_admin_forbidden'
-      USING HINT = 'L appartenance temporaire ne doit jamais porter ADMIN OPTION.';
+  IF v_superuser IS DISTINCT FROM TRUE THEN
+    IF v_peut_set IS DISTINCT FROM TRUE OR v_inherit IS DISTINCT FROM TRUE
+       OR v_set IS DISTINCT FROM TRUE THEN
+      RAISE EXCEPTION 'worker_membership_temporaire_absente_ou_incomplete'
+        USING HINT = 'Le runner doit accorder une appartenance directe INHERIT/SET temporaire avant cette migration.';
+    END IF;
+    IF v_admin IS DISTINCT FROM FALSE THEN
+      RAISE EXCEPTION 'worker_membership_admin_forbidden'
+        USING HINT = 'L appartenance temporaire ne doit jamais porter ADMIN OPTION.';
+    END IF;
   END IF;
 END
 $worker_membership$;
