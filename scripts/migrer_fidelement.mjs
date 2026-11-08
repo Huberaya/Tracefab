@@ -337,15 +337,15 @@ async function accorderAppartenanceWorker() {
   }
   const apres = (await clientAdmin.query(
     `SELECT pg_catalog.pg_has_role($1, 'tracefab_worker', 'SET') AS peut_set,
-            (SELECT m.inherit_option FROM pg_catalog.pg_auth_members m
+            (SELECT bool_and(m.inherit_option) FROM pg_catalog.pg_auth_members m
               JOIN pg_catalog.pg_roles r ON r.oid = m.roleid
               JOIN pg_catalog.pg_roles u ON u.oid = m.member
              WHERE r.rolname = 'tracefab_worker' AND u.rolname = $1) AS inherit_option,
-            (SELECT m.set_option FROM pg_catalog.pg_auth_members m
+            (SELECT bool_and(m.set_option) FROM pg_catalog.pg_auth_members m
               JOIN pg_catalog.pg_roles r ON r.oid = m.roleid
               JOIN pg_catalog.pg_roles u ON u.oid = m.member
              WHERE r.rolname = 'tracefab_worker' AND u.rolname = $1) AS set_option,
-            (SELECT m.admin_option FROM pg_catalog.pg_auth_members m
+            (SELECT COALESCE(bool_or(m.admin_option), false) FROM pg_catalog.pg_auth_members m
               JOIN pg_catalog.pg_roles r ON r.oid = m.roleid
               JOIN pg_catalog.pg_roles u ON u.oid = m.member
              WHERE r.rolname = 'tracefab_worker' AND u.rolname = $1) AS admin_option`,
