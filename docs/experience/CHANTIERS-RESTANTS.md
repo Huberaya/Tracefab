@@ -3,7 +3,7 @@
 Document de suivi historique : les informations datées plus bas ne doivent pas
 être considérées comme un état actuel sans vérification indépendante.
 
-**État courant du dépôt (branche corrective, 8 novembre 2026) : Dépôt : 95 migrations · Neon de production : non modifié · Neon P11 préproduction : 86 migrations appliquées, historique contrôlé ; préflight du rôle worker effectué sans écriture dans `_prisma_migrations`.**
+**État courant du dépôt (branche corrective, 8 novembre 2026) : Dépôt : 95 migrations · Neon de production : non vérifié (aucune écriture) · Neon P11 préproduction : 86 migrations appliquées, historique contrôlé ; préflight du rôle worker effectué sans écriture dans `_prisma_migrations`.**
 
 
 ## Mise à jour opérationnelle — 8 novembre 2026
