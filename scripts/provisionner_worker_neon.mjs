@@ -110,9 +110,9 @@ async function etatFinal(c) {
   if (!legacy || !worker) return { final: false, legacy, worker };
   const [owned, tableAcl, functionAcl, sequenceAcl, schemaAcl, defaultAcl] = await Promise.all([
     compte(c, `SELECT count(*)::int n FROM pg_catalog.pg_shdepend WHERE refobjid='tracefab_worker_legacy'::regrole AND deptype='o'`),
-    compte(c, `SELECT count(*)::int n FROM pg_catalog.pg_class c JOIN pg_catalog.pg_namespace n ON n.oid=c.relnamespace CROSS JOIN LATERAL pg_catalog.aclexplode(coalesce(c.relacl,pg_catalog.acldefault('r',c.relowner))) a WHERE n.nspname='public' AND a.grantee='tracefab_worker_legacy'::regrole`),
-    compte(c, `SELECT count(*)::int n FROM pg_catalog.pg_proc p JOIN pg_catalog.pg_namespace n ON n.oid=p.pronamespace CROSS JOIN LATERAL pg_catalog.aclexplode(coalesce(p.proacl,pg_catalog.acldefault('f',p.proowner))) a WHERE n.nspname='public' AND a.grantee='tracefab_worker_legacy'::regrole`),
-    compte(c, `SELECT count(*)::int n FROM pg_catalog.pg_class c JOIN pg_catalog.pg_namespace n ON n.oid=c.relnamespace CROSS JOIN LATERAL pg_catalog.aclexplode(coalesce(c.relacl,pg_catalog.acldefault('S',c.relowner))) a WHERE n.nspname='public' AND c.relkind='S' AND a.grantee='tracefab_worker_legacy'::regrole`),
+    compte(c, `SELECT count(*)::int n FROM pg_catalog.pg_class c JOIN pg_catalog.pg_namespace n ON n.oid=c.relnamespace CROSS JOIN LATERAL pg_catalog.aclexplode(coalesce(c.relacl,pg_catalog.acldefault('r',c.relowner))) a WHERE a.grantee='tracefab_worker_legacy'::regrole`),
+    compte(c, `SELECT count(*)::int n FROM pg_catalog.pg_proc p JOIN pg_catalog.pg_namespace n ON n.oid=p.pronamespace CROSS JOIN LATERAL pg_catalog.aclexplode(coalesce(p.proacl,pg_catalog.acldefault('f',p.proowner))) a WHERE a.grantee='tracefab_worker_legacy'::regrole`),
+    compte(c, `SELECT count(*)::int n FROM pg_catalog.pg_class c JOIN pg_catalog.pg_namespace n ON n.oid=c.relnamespace CROSS JOIN LATERAL pg_catalog.aclexplode(coalesce(c.relacl,pg_catalog.acldefault('S',c.relowner))) a WHERE c.relkind='S' AND a.grantee='tracefab_worker_legacy'::regrole`),
     compte(c, `SELECT count(*)::int n FROM pg_catalog.pg_namespace n CROSS JOIN LATERAL pg_catalog.aclexplode(coalesce(n.nspacl,pg_catalog.acldefault('n',n.nspowner))) a WHERE n.nspname='public' AND a.grantee='tracefab_worker_legacy'::regrole`),
     compte(c, `SELECT count(*)::int n FROM pg_catalog.pg_default_acl WHERE defaclrole='tracefab_worker_legacy'::regrole`),
   ]);
@@ -253,6 +253,20 @@ async function main() {
   if (process.env.TF_ALLOW_WORKER_ROLE_SWAP !== 'oui') refuser('TF_ALLOW_WORKER_ROLE_SWAP=oui requis.');
   if (!legacy) {
     if (!worker) refuser('tracefab_worker absent avant renommage.');
+    if (worker.rolcanlogin || worker.rolsuper || worker.rolbypassrls || worker.rolcreaterole || worker.rolcreatedb || worker.rolreplication) {
+      refuser('Le rôle worker historique possède des attributs inattendus ; arrêt avant renommage.');
+    }
+    const ownership = await admin.query(
+      `SELECT count(*)::int AS total,
+              count(*) FILTER (WHERE d.classid='pg_catalog.pg_proc'::regclass AND n.nspname='public')::int AS public_functions
+         FROM pg_catalog.pg_shdepend d
+         LEFT JOIN pg_catalog.pg_proc p ON d.classid='pg_catalog.pg_proc'::regclass AND p.oid=d.objid
+         LEFT JOIN pg_catalog.pg_namespace n ON n.oid=p.pronamespace
+        WHERE d.refobjid='tracefab_worker'::regrole AND d.deptype='o'`,
+    );
+    if (Number(ownership.rows[0].total) !== Number(ownership.rows[0].public_functions)) {
+      refuser('Le worker historique possède des objets hors fonctions public ; traitement manuel requis.');
+    }
     const rows = await membership(admin, 'tracefab_migrator', 'tracefab_worker');
     if (!rows.some(x => x.grantor === 'cloud_admin' && x.admin_option && !x.inherit_option && !x.set_option)) {
       refuser("L'appartenance cloud_admin attendue du migrateur n'est pas présente ; arrêt.");
@@ -271,8 +285,9 @@ async function main() {
     }
   } else if (!worker) {
     await admin.query('CREATE ROLE tracefab_worker NOLOGIN NOSUPERUSER NOBYPASSRLS NOCREATEROLE NOCREATEDB NOREPLICATION NOINHERIT');
-    await admin.query('ALTER ROLE tracefab_worker_legacy NOINHERIT');
   }
+  await admin.query('ALTER ROLE tracefab_worker NOINHERIT');
+  await admin.query('ALTER ROLE tracefab_worker_legacy NOINHERIT');
 
   // Relais temporaire : le migrateur peut déléguer l'ancien rôle inerte à
   // l'administrateur, qui accorde ensuite SET au migrateur sans ADMIN OPTION.
