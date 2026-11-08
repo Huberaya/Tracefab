@@ -35,12 +35,10 @@ export const MIGRATIONS_ASSISTEES = Object.freeze({
     // L'appartenance ci-dessous est la plus petite qui reponde aux deux, et
     // elle est verifiee par un test d'escalade : `tracefab_app` n'en herite
     // jamais (elle n'est membre de rien).
-    // `apres` sans ADMIN OPTION (P10.6). Mesure du 02/11 : `INHERIT TRUE,
-    // SET TRUE` suffit à `SET ROLE tracefab_worker` ET à
-    // `ALTER ... OWNER TO tracefab_worker` ; ADMIN n'était pas nécessaire et
-    // élargissait le rôle de migration au-delà du besoin (il pouvait
-    // re-accorder `tracefab_worker` à n'importe qui).
-    apres: 'GRANT tracefab_worker TO %ROLE% WITH INHERIT TRUE, SET TRUE',
+    // Le runner accorde l'appartenance temporairement après ce bootstrap,
+    // puis la révoque avant la migration terminale 20261108120700.
+    // Aucun GRANT permanent n'est porté par cette configuration.
+    appartenanceTemporaire: true,
     // `avant` : rendre la migration REJOUABLE dans le même cluster.
     //
     // Le corps de 20261028120100 fait, en § 6, `GRANT tracefab_worker TO
