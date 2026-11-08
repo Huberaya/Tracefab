@@ -93,6 +93,11 @@ async function construire(sans = new Set()) {
       // Retirer une migration peut rendre la suivante impossible (elle modifie
       // une fonction que sa predecesseure cree). On le dit, on ne le masque pas.
       sautees.push(`${d} (echec : ${String(e.message).split('\n')[0].slice(0, 90)})`);
+      // PGlite conserve la transaction en echec si la migration contenait
+      // BEGIN avant l'erreur. Cette base est jetable : on annule uniquement
+      // cette transaction pour que les migrations suivantes puissent etre
+      // tentees et que la sonde lise l'etat partiel sans faux 25P02.
+      try { await db.exec('ROLLBACK'); } catch { /* aucune transaction ouverte */ }
     }
   }
   return { db, sautees };
