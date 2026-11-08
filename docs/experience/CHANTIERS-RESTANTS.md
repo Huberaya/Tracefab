@@ -3,7 +3,7 @@
 Document de suivi historique : les informations datées plus bas ne doivent pas
 être considérées comme un état actuel sans vérification indépendante.
 
-**État courant du dépôt (branche corrective, 8 novembre 2026) : Dépôt : 77 migrations · Neon de production : candidat correctif non appliqué.**
+**État courant du dépôt (branche corrective, 8 novembre 2026) : Dépôt : 94 migrations · Neon de production : non vérifié · Neon P11 préproduction : 86 migrations appliquées, historique contrôlé en lecture seule.**
 
 > **📌 28/10/2026 — état mesuré : 54 migrations appliquées sur 65, onze écarts.
 > Voir `docs/security/2026-10-28-cloture-chantier-p0.md`. Détail au §« Mise à
