@@ -279,6 +279,7 @@ async function revoquerElevation(moment) {
   if (!rows[0] || rows[0].rolsuper !== false) {
     console.error(`  ECHEC      révocation de l'élévation de ${roleExecutant} NON constatée après ${moment}.`);
     console.error('             Arrêt : laisser un rôle superutilisateur serait pire que l échec.');
+    await revoquerAppartenanceWorker('échec de révocation SUPERUSER').catch((x) => console.error(x.message));
     await client.end();
     await clientAdmin.end();
     process.exit(1);
@@ -364,16 +365,6 @@ async function terminerSurSignal(signal, code) {
 }
 process.once('SIGINT', () => { void terminerSurSignal('SIGINT', 130); });
 process.once('SIGTERM', () => { void terminerSurSignal('SIGTERM', 143); });
-
-// Récupération après interruption : si le bootstrap historique doit être rejoué,
-// l'appartenance éventuellement laissée par un ancien run est retirée d'abord.
-if (enAttente.includes(MIGRATION_WORKER_BOOTSTRAP)) {
-  try { await revoquerAppartenanceWorker('reprise avant bootstrap'); }
-  catch (e) {
-    console.error(`REFUS — ${e.message}`);
-    await client.end(); if (clientAdmin) await clientAdmin.end(); await verrou.relacher(); process.exit(3);
-  }
-}
 
 let nettoyageSignalEnCours = false;
 async function terminerSurSignal(signal, code) {
