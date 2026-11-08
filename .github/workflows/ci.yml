@@ -21,8 +21,8 @@ permissions:
 on:
   push:
     # Les branches de PR sont déjà couvertes par pull_request ci-dessous.
-    # Limiter push à main évite deux runs concurrents sur le même SHA et un
-    # required check bloqué par le doublon push alors que la CI PR est verte.
+    # Push sur main et sur la branche corrective dédiée ; les autres branches de PR
+    # restent couvertes par pull_request, sans doublon push/PR.
     branches: ['main', 'fix/tracefab-worker-membership-lifecycle-20261108']
   pull_request:
   workflow_dispatch:

@@ -454,7 +454,13 @@ for (const rel of OPERATOR_WRITER_SCRIPTS) {
   // Une invocation qui porte le drapeau sans ecriture ne peut pas ecrire.
   const enEcriture = invocations.filter(([, command]) => !command.includes('--dry-run'));
   const automatiques = enEcriture.filter(([name]) => reached.has(name));
-  const enCi = workflowText.some((text) => text.includes(rel.replace('scripts/', 'scripts/')));
+  // Le workflow de reproduction PR110 ajoute ces outils au commit du banc
+  // (git add) sans les exécuter. Seule une ligne de commande active qui nomme
+  // directement le script constitue une invocation CI.
+  const enCi = workflowText.some((text) => text.split('\\n').some((line) =>
+    !/^\\s*(?:#|git add\\b)/.test(line)
+      && line.includes(rel.replace('scripts/', 'scripts/')),
+  ));
 
   if (automatiques.length > 0) {
     ko(`${rel} est atteignable en ecriture depuis test/build via : ${automatiques.map(([k]) => k).join(', ')}`);
