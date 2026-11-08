@@ -30,6 +30,13 @@ BEGIN
   SELECT oid INTO v_migrator FROM pg_catalog.pg_roles WHERE rolname = 'tracefab_migrator';
   SELECT oid INTO v_app FROM pg_catalog.pg_roles WHERE rolname = 'tracefab_app';
 
+  IF v_migrator IS NOT NULL AND EXISTS (
+    SELECT 1 FROM pg_catalog.pg_roles WHERE oid = v_migrator AND rolsuper IS TRUE
+  ) THEN
+    RAISE EXCEPTION 'tracefab_migrator_superuser_residuel'
+      USING HINT = 'Le rôle de migration doit être NOSUPERUSER avant la migration terminale.';
+  END IF;
+
   IF v_worker IS NOT NULL AND v_migrator IS NOT NULL
      AND pg_catalog.pg_has_role(v_migrator, v_worker, 'MEMBER') THEN
     RAISE EXCEPTION 'tracefab_migrator_worker_membership_residuelle'
