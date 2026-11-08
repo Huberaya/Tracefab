@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * MATRICE DE SÉCURITÉ SOUS RÔLES RÉELS — `tracefab_app` et `tracefab_worker`.
+ * MATRICE DE SÉCURITÉ SOUS RÔLES RÉELS — app, worker et migrator.
  *
  * POURQUOI CE SCRIPT EXISTE
  *
@@ -27,6 +27,7 @@
  *
  * Sous `tracefab_app` (NOBYPASSRLS) — A1 à A10
  * Sous `tracefab_worker`   — W1 à W6
+ * Sous `tracefab_migrator` — M0 à M4 (session authentifiée)
  * Chemins Clerk (SECURITY DEFINER) appelés depuis `tracefab_app` — C1 à C6
  *
  * Chaque écart est MESURÉ, jamais supposé. Les faits de conception qui ne sont
@@ -83,6 +84,28 @@ function fait(nom, detail) {
  * Rend { ok, rows, rowCount, sqlstate, message } — aucune exception ne remonte.
  */
 const MDP_APP = process.env.TF_APP_MDP;
+const MDP_MIGRATOR = process.env.TF_MIGRATOR_MDP;
+
+function urlMigrator() {
+  const u = new URL(url);
+  u.username = 'tracefab_migrator';
+  u.password = MDP_MIGRATOR;
+  return u.toString();
+}
+
+async function sousMigrator(sql, params = []) {
+  if (!MDP_MIGRATOR) return { ok: false, sqlstate: 'TF_MIGRATOR_MDP_ABSENT', message: 'session migrator authentifiée obligatoire' };
+  const c = new pg.Client({ connectionString: urlMigrator() });
+  await c.connect();
+  try {
+    try {
+      const r = await c.query(sql, params);
+      return { ok: true, rows: r.rows, rowCount: r.rowCount };
+    } catch (e) {
+      return { ok: false, sqlstate: e.code, message: e.message.split('\\n')[0] };
+    }
+  } finally { await c.end(); }
+}
 
 function urlApp() {
   const u = new URL(url);
@@ -246,6 +269,32 @@ try {
        JOIN pg_catalog.pg_roles r ON r.oid = m.roleid
       WHERE r.rolname = 'tracefab_worker' AND m.member = 0`);
   verifier('W7 worker non accorde a PUBLIC', w7.rows[0].n === 0, `${w7.rows[0].n} octroi(s) PUBLIC`);
+
+  // ========================================================= tracefab_migrator
+  console.log('--- tracefab_migrator (session authentifiée)');
+  const m0 = await sousMigrator('SELECT session_user AS s, current_user AS c');
+  verifier('M0 session réellement authentifiée sous tracefab_migrator',
+    m0.ok && m0.rows[0].s === 'tracefab_migrator' && m0.rows[0].c === 'tracefab_migrator',
+    m0.ok ? `session_user=${m0.rows[0].s} current_user=${m0.rows[0].c}` : `${m0.sqlstate} ${m0.message}`);
+  const m1 = await sousMigrator(
+    `SELECT pg_catalog.pg_has_role(current_user, 'tracefab_worker', 'MEMBER') AS membre`);
+  verifier('M1 migrator non membre du worker après la chaîne',
+    m1.ok && m1.rows[0].membre === false, m1.ok ? `membre=${m1.rows[0].membre}` : `${m1.sqlstate} ${m1.message}`);
+  const m2 = await sousMigrator('SET ROLE tracefab_worker');
+  verifier('M2 migrator ne peut pas endosser tracefab_worker',
+    !m2.ok && m2.sqlstate === '42501', m2.ok ? 'SET ROLE ACCEPTÉ' : `${m2.sqlstate} ${m2.message}`);
+  const m3 = await sousMigrator('SET SESSION AUTHORIZATION tracefab_worker');
+  verifier('M3 migrator ne peut pas changer la session en worker',
+    !m3.ok && m3.sqlstate === '42501', m3.ok ? 'SET SESSION AUTHORIZATION ACCEPTÉ' : `${m3.sqlstate} ${m3.message}`);
+  const m4 = await sousMigrator(
+    `SELECT EXISTS (SELECT 1 FROM pg_catalog.pg_auth_members m
+       JOIN pg_catalog.pg_roles r ON r.oid = m.roleid
+       JOIN pg_catalog.pg_roles u ON u.oid = m.member
+      WHERE r.rolname = 'tracefab_worker' AND u.rolname = 'tracefab_migrator'
+        AND m.admin_option IS TRUE) AS admin_option`);
+  verifier('M4 aucune ADMIN OPTION directe sur worker',
+    m4.ok && m4.rows[0].admin_option === false,
+    m4.ok ? `admin_option=${m4.rows[0].admin_option}` : `${m4.sqlstate} ${m4.message}`);
 
   // ================================================================= Clerk
   console.log('--- chemins Clerk (SECURITY DEFINER), depuis une session tracefab_app');
