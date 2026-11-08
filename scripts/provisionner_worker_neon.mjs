@@ -116,16 +116,14 @@ async function etatFinal(c) {
   const legacy = await role(c, 'tracefab_worker_legacy');
   const worker = await role(c, 'tracefab_worker');
   if (!legacy || !worker) return { final: false, legacy, worker };
-  const [owned, tableAcl, functionAcl, sequenceAcl, typeAcl, schemaAcl, defaultAcl, externalAcl] = await Promise.all([
-    compte(c, `SELECT count(*)::int n FROM pg_catalog.pg_shdepend WHERE refobjid='tracefab_worker_legacy'::regrole AND deptype='o'`),
-    compte(c, `SELECT count(*)::int n FROM pg_catalog.pg_class c JOIN pg_catalog.pg_namespace n ON n.oid=c.relnamespace CROSS JOIN LATERAL pg_catalog.aclexplode(coalesce(c.relacl,pg_catalog.acldefault('r',c.relowner))) a WHERE a.grantee='tracefab_worker_legacy'::regrole`),
-    compte(c, `SELECT count(*)::int n FROM pg_catalog.pg_proc p JOIN pg_catalog.pg_namespace n ON n.oid=p.pronamespace CROSS JOIN LATERAL pg_catalog.aclexplode(coalesce(p.proacl,pg_catalog.acldefault('f',p.proowner))) a WHERE a.grantee='tracefab_worker_legacy'::regrole`),
-    compte(c, `SELECT count(*)::int n FROM pg_catalog.pg_class c JOIN pg_catalog.pg_namespace n ON n.oid=c.relnamespace CROSS JOIN LATERAL pg_catalog.aclexplode(coalesce(c.relacl,pg_catalog.acldefault('S',c.relowner))) a WHERE c.relkind='S' AND a.grantee='tracefab_worker_legacy'::regrole`),
-    compte(c, `SELECT count(*)::int n FROM pg_catalog.pg_type t CROSS JOIN LATERAL pg_catalog.aclexplode(t.typacl) a WHERE t.typacl IS NOT NULL AND a.grantee='tracefab_worker_legacy'::regrole`),
-    compte(c, `SELECT count(*)::int n FROM pg_catalog.pg_namespace n CROSS JOIN LATERAL pg_catalog.aclexplode(coalesce(n.nspacl,pg_catalog.acldefault('n',n.nspowner))) a WHERE a.grantee='tracefab_worker_legacy'::regrole`),
-    compte(c, `SELECT count(*)::int n FROM pg_catalog.pg_default_acl WHERE defaclrole='tracefab_worker_legacy'::regrole`),
-    compte(c, `SELECT (SELECT count(*) FROM pg_catalog.pg_database WHERE datacl::text LIKE '%tracefab_worker_legacy%') + (SELECT count(*) FROM pg_catalog.pg_language WHERE lanacl::text LIKE '%tracefab_worker_legacy%') + (SELECT count(*) FROM pg_catalog.pg_foreign_server WHERE srvacl::text LIKE '%tracefab_worker_legacy%') + (SELECT count(*) FROM pg_catalog.pg_foreign_data_wrapper WHERE fdwacl::text LIKE '%tracefab_worker_legacy%') + (SELECT count(*) FROM pg_catalog.pg_largeobject_metadata WHERE lomacl::text LIKE '%tracefab_worker_legacy%') + (SELECT count(*) FROM pg_catalog.pg_parameter_acl WHERE paracl::text LIKE '%tracefab_worker_legacy%') AS n`),
-  ]);
+  const owned = await compte(c, `SELECT count(*)::int n FROM pg_catalog.pg_shdepend WHERE refobjid='tracefab_worker_legacy'::regrole AND deptype='o'`);
+  const tableAcl = await compte(c, `SELECT count(*)::int n FROM pg_catalog.pg_class c JOIN pg_catalog.pg_namespace n ON n.oid=c.relnamespace CROSS JOIN LATERAL pg_catalog.aclexplode(coalesce(c.relacl,pg_catalog.acldefault('r',c.relowner))) a WHERE a.grantee='tracefab_worker_legacy'::regrole`);
+  const functionAcl = await compte(c, `SELECT count(*)::int n FROM pg_catalog.pg_proc p JOIN pg_catalog.pg_namespace n ON n.oid=p.pronamespace CROSS JOIN LATERAL pg_catalog.aclexplode(coalesce(p.proacl,pg_catalog.acldefault('f',p.proowner))) a WHERE a.grantee='tracefab_worker_legacy'::regrole`);
+  const sequenceAcl = await compte(c, `SELECT count(*)::int n FROM pg_catalog.pg_class c JOIN pg_catalog.pg_namespace n ON n.oid=c.relnamespace CROSS JOIN LATERAL pg_catalog.aclexplode(coalesce(c.relacl,pg_catalog.acldefault('S',c.relowner))) a WHERE c.relkind='S' AND a.grantee='tracefab_worker_legacy'::regrole`);
+  const typeAcl = await compte(c, `SELECT count(*)::int n FROM pg_catalog.pg_type t CROSS JOIN LATERAL pg_catalog.aclexplode(t.typacl) a WHERE t.typacl IS NOT NULL AND a.grantee='tracefab_worker_legacy'::regrole`);
+  const schemaAcl = await compte(c, `SELECT count(*)::int n FROM pg_catalog.pg_namespace n CROSS JOIN LATERAL pg_catalog.aclexplode(coalesce(n.nspacl,pg_catalog.acldefault('n',n.nspowner))) a WHERE a.grantee='tracefab_worker_legacy'::regrole`);
+  const defaultAcl = await compte(c, `SELECT count(*)::int n FROM pg_catalog.pg_default_acl WHERE defaclrole='tracefab_worker_legacy'::regrole`);
+  const externalAcl = await compte(c, `SELECT (SELECT count(*) FROM pg_catalog.pg_database WHERE datacl::text LIKE '%tracefab_worker_legacy%') + (SELECT count(*) FROM pg_catalog.pg_language WHERE lanacl::text LIKE '%tracefab_worker_legacy%') + (SELECT count(*) FROM pg_catalog.pg_foreign_server WHERE srvacl::text LIKE '%tracefab_worker_legacy%') + (SELECT count(*) FROM pg_catalog.pg_foreign_data_wrapper WHERE fdwacl::text LIKE '%tracefab_worker_legacy%') + (SELECT count(*) FROM pg_catalog.pg_largeobject_metadata WHERE lomacl::text LIKE '%tracefab_worker_legacy%') + (SELECT count(*) FROM pg_catalog.pg_parameter_acl WHERE paracl::text LIKE '%tracefab_worker_legacy%') AS n`);
   const memberships = await membership(c, 'tracefab_migrator', 'tracefab_worker_legacy');
   const newMembership = await membership(c, 'tracefab_migrator', 'tracefab_worker');
   const appNew = await membership(c, 'tracefab_app', 'tracefab_worker');
@@ -151,6 +149,8 @@ async function etatFinal(c) {
     owned, tableAcl, functionAcl, sequenceAcl, typeAcl, schemaAcl, defaultAcl, externalAcl,
     memberships, newMembership, appNew, appLegacy, migratorLegacySet,
     migratorLegacyUsage, newOwned, workerCreate, safeAttrs, legacySafe,
+    workerAttrs: { login: worker.rolcanlogin, superuser: worker.rolsuper, bypassRls: worker.rolbypassrls, createRole: worker.rolcreaterole, createDb: worker.rolcreatedb, replication: worker.rolreplication, inherit: worker.rolinherit },
+    legacyAttrs: { login: legacy.rolcanlogin, superuser: legacy.rolsuper, bypassRls: legacy.rolbypassrls, createRole: legacy.rolcreaterole, createDb: legacy.rolcreatedb, replication: legacy.rolreplication, inherit: legacy.rolinherit },
   };
 }
 
@@ -269,8 +269,13 @@ async function main() {
   if (!worker && !legacy) refuser('Aucun rôle tracefab_worker trouvé.');
   if (etatSeulement) {
     console.log('État initial :');
-    await verifierEtat(admin);
-    console.log(legacy ? 'préflight déjà effectué ou partiel.' : 'préflight Neon requis : ancien worker à isoler.');
+    const final = await verifierEtat(admin);
+    if (!final) {
+      console.error(legacy ? 'Préflight partiel ou non conforme.' : 'Préflight Neon requis : ancien worker à isoler.');
+      process.exitCode = 2;
+    } else {
+      console.log('OK — préflight Neon vérifié, aucune écriture effectuée.');
+    }
     return;
   }
 
