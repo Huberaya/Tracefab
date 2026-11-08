@@ -31,8 +31,7 @@ const urlMigrateur = process.env.DATABASE_URL;
 const urlAdmin = process.env.TF_ADMIN_URL;
 const etatSeulement = process.argv.includes('--etat');
 const appliquer = process.argv.includes('--appliquer');
-const hoteProduction = process.env.TF_HOTE_PRODUCTION
-  || 'ep-polished-night-b1jc5941.c-5.eu-central-1.aws.neon.tech';
+const hotesProduction = (process.env.TF_PRODUCTION_HOSTS || '').split(',').map(x => x.trim()).filter(Boolean);
 
 function refuser(message) {
   throw new Error(message);
@@ -71,8 +70,12 @@ if (uM.hostname !== uA.hostname || uM.pathname !== uA.pathname) {
   console.error('REFUS — DATABASE_URL et TF_ADMIN_URL doivent viser le même hôte et la même base.');
   process.exit(2);
 }
-if (uM.hostname === hoteProduction || /^ep-polished-night/.test(uM.hostname)) {
-  if (process.env.TF_ALLOW_PRODUCTION_ROLE_SWAP !== 'oui') {
+if (appliquer) {
+  if (process.env.TF_EXPECTED_DATABASE_HOST !== uM.hostname || process.env.TF_EXPECTED_DATABASE_NAME !== uM.pathname.replace(/^\\//, '')) {
+    console.error('REFUS — TF_EXPECTED_DATABASE_HOST et TF_EXPECTED_DATABASE_NAME doivent confirmer explicitement la cible.');
+    process.exit(3);
+  }
+  if (hotesProduction.includes(uM.hostname) && process.env.TF_ALLOW_PRODUCTION_ROLE_SWAP !== 'oui') {
     console.error('REFUS — cible Production. Un GO spécifique TF_ALLOW_PRODUCTION_ROLE_SWAP=oui est requis.');
     process.exit(3);
   }
@@ -122,9 +125,9 @@ async function etatFinal(c) {
   const newOwned = await compte(c, `SELECT count(*)::int n FROM pg_catalog.pg_shdepend WHERE refobjid='tracefab_worker'::regrole AND deptype='o'`);
   const workerCreate = (await c.query(`SELECT has_schema_privilege('tracefab_worker','public','CREATE') AS b`)).rows[0].b;
   const safeAttrs = !worker.rolcanlogin && !worker.rolsuper && !worker.rolbypassrls
-    && !worker.rolcreaterole && !worker.rolcreatedb && !worker.rolreplication;
+    && !worker.rolcreaterole && !worker.rolcreatedb && !worker.rolreplication && !worker.rolinherit;
   const legacySafe = !legacy.rolcanlogin && !legacy.rolsuper && !legacy.rolbypassrls
-    && !legacy.rolcreaterole && !legacy.rolcreatedb && !legacy.rolreplication;
+    && !legacy.rolcreaterole && !legacy.rolcreatedb && !legacy.rolreplication && !legacy.rolinherit;
   const cloudGrant = memberships.length === 1
     && memberships[0].grantor === 'cloud_admin'
     && memberships[0].admin_option === true
@@ -252,13 +255,14 @@ async function main() {
     if (!worker) refuser('tracefab_worker absent avant renommage.');
     const rows = await membership(admin, 'tracefab_migrator', 'tracefab_worker');
     if (!rows.some(x => x.grantor === 'cloud_admin' && x.admin_option && !x.inherit_option && !x.set_option)) {
-      refuser('L''appartenance cloud_admin attendue du migrateur n''est pas présente ; arrêt.');
+      refuser("L'appartenance cloud_admin attendue du migrateur n'est pas présente ; arrêt.");
     }
     await migrateur.query('GRANT tracefab_worker TO neondb_owner WITH ADMIN OPTION, INHERIT FALSE, SET FALSE');
     await admin.query('BEGIN');
     try {
       await admin.query('ALTER ROLE tracefab_worker RENAME TO tracefab_worker_legacy');
       await admin.query('CREATE ROLE tracefab_worker NOLOGIN NOSUPERUSER NOBYPASSRLS NOCREATEROLE NOCREATEDB NOREPLICATION NOINHERIT');
+      await admin.query('ALTER ROLE tracefab_worker_legacy NOINHERIT');
       await admin.query('COMMIT');
     } catch (e) {
       try { await admin.query('ROLLBACK'); } catch {}
@@ -267,6 +271,7 @@ async function main() {
     }
   } else if (!worker) {
     await admin.query('CREATE ROLE tracefab_worker NOLOGIN NOSUPERUSER NOBYPASSRLS NOCREATEROLE NOCREATEDB NOREPLICATION NOINHERIT');
+    await admin.query('ALTER ROLE tracefab_worker_legacy NOINHERIT');
   }
 
   // Relais temporaire : le migrateur peut déléguer l'ancien rôle inerte à
