@@ -365,8 +365,37 @@ async function terminerSurSignal(signal, code) {
 process.once('SIGINT', () => { void terminerSurSignal('SIGINT', 130); });
 process.once('SIGTERM', () => { void terminerSurSignal('SIGTERM', 143); });
 
+// Récupération après interruption : si le bootstrap historique doit être rejoué,
+// l'appartenance éventuellement laissée par un ancien run est retirée d'abord.
+if (enAttente.includes(MIGRATION_WORKER_BOOTSTRAP)) {
+  try { await revoquerAppartenanceWorker('reprise avant bootstrap'); }
+  catch (e) {
+    console.error(`REFUS — ${e.message}`);
+    await client.end(); if (clientAdmin) await clientAdmin.end(); await verrou.relacher(); process.exit(3);
+  }
+}
+
+let nettoyageSignalEnCours = false;
+async function terminerSurSignal(signal, code) {
+  if (nettoyageSignalEnCours) return;
+  nettoyageSignalEnCours = true;
+  console.error(`\\n${signal} reçu — révocation de l'appartenance worker temporaire.`);
+  try { await revoquerAppartenanceWorker(`signal ${signal}`); }
+  catch (e) { console.error(`ECHEC nettoyage signal : ${e.message}`); }
+  await client.end().catch(() => {});
+  if (clientAdmin) await clientAdmin.end().catch(() => {});
+  await verrou.relacher().catch(() => {});
+  process.exit(code);
+}
+process.once('SIGINT', () => { void terminerSurSignal('SIGINT', 130); });
+process.once('SIGTERM', () => { void terminerSurSignal('SIGTERM', 143); });
+
 let appliquees = 0;
 for (const nom of enAttente) {
+  if (nom === MIGRATION_WORKER_TERMINALE) {
+    // La garde terminale n'est exécutée qu'après révocation effective.
+    await revoquerAppartenanceWorker('avant migration terminale');
+  }
   if (nom === MIGRATION_WORKER_TERMINALE) {
     // La garde terminale n'est exécutée qu'après révocation effective.
     await revoquerAppartenanceWorker('avant migration terminale');
