@@ -114,17 +114,17 @@ BEGIN
       +
       (SELECT count(*) FROM pg_catalog.pg_default_acl WHERE defaclrole=v_legacy)
       +
-      (SELECT count(*) FROM pg_catalog.pg_database WHERE datacl::text LIKE '%tracefab_worker_legacy%')
+      (SELECT count(*) FROM pg_catalog.pg_database WHERE datacl IS NOT NULL AND EXISTS (SELECT 1 FROM pg_catalog.aclexplode(datacl) a WHERE a.grantee=v_legacy))
       +
-      (SELECT count(*) FROM pg_catalog.pg_language WHERE lanacl::text LIKE '%tracefab_worker_legacy%')
+      (SELECT count(*) FROM pg_catalog.pg_language WHERE lanacl IS NOT NULL AND EXISTS (SELECT 1 FROM pg_catalog.aclexplode(lanacl) a WHERE a.grantee=v_legacy))
       +
-      (SELECT count(*) FROM pg_catalog.pg_foreign_server WHERE srvacl::text LIKE '%tracefab_worker_legacy%')
+      (SELECT count(*) FROM pg_catalog.pg_foreign_server WHERE srvacl IS NOT NULL AND EXISTS (SELECT 1 FROM pg_catalog.aclexplode(srvacl) a WHERE a.grantee=v_legacy))
       +
-      (SELECT count(*) FROM pg_catalog.pg_foreign_data_wrapper WHERE fdwacl::text LIKE '%tracefab_worker_legacy%')
+      (SELECT count(*) FROM pg_catalog.pg_foreign_data_wrapper WHERE fdwacl IS NOT NULL AND EXISTS (SELECT 1 FROM pg_catalog.aclexplode(fdwacl) a WHERE a.grantee=v_legacy))
       +
-      (SELECT count(*) FROM pg_catalog.pg_largeobject_metadata WHERE lomacl::text LIKE '%tracefab_worker_legacy%')
+      (SELECT count(*) FROM pg_catalog.pg_largeobject_metadata WHERE lomacl IS NOT NULL AND EXISTS (SELECT 1 FROM pg_catalog.aclexplode(lomacl) a WHERE a.grantee=v_legacy))
       +
-      (SELECT count(*) FROM pg_catalog.pg_parameter_acl WHERE paracl::text LIKE '%tracefab_worker_legacy%')
+      (SELECT count(*) FROM pg_catalog.pg_parameter_acl WHERE paracl IS NOT NULL AND EXISTS (SELECT 1 FROM pg_catalog.aclexplode(paracl) a WHERE a.grantee=v_legacy))
       INTO v_count;
     IF v_count <> 0 THEN
       RAISE EXCEPTION 'tracefab_worker_legacy_acl_residuelle'
