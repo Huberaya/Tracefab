@@ -79,35 +79,37 @@ else ko('une étape cible la base de production');
 // apparaitre nulle part ailleurs dans le workflow. Une invocation ajoutee dans
 // un job qui lit un secret, ou vers une cible distante, echoue toujours ici.
 const SEQ = ['security', 'supplier', 'product', 'quality', 'collection', 'storage:chantier10'];
-const lignes = wf.split('\\n');
+const lignes = wf.split('\n');
 function blocJob(nom) {
-  const debut = lignes.findIndex((l) => new RegExp(`^  ${nom}:\\\\s*$`).test(l));
+  const debut = lignes.findIndex((l) => new RegExp('^  ' + nom + ':\\s*$').test(l));
   if (debut === -1) return '';
   let fin = lignes.length;
   for (let i = debut + 1; i < lignes.length; i += 1) {
-    if (/^  [a-zA-Z0-9_-]+:\\s*$/.test(lignes[i])) { fin = i; break; }
+    if (/^  [a-zA-Z0-9_-]+:\s*$/.test(lignes[i])) { fin = i; break; }
   }
-  return lignes.slice(debut, fin).join('\\n');
+  return lignes.slice(debut, fin).join('\n');
 }
 // Deux jobs distincts peuvent exécuter des suites DB, mais chacun doit avoir
 // son propre service Postgres 17 local et sa DATABASE_URL jetable :
 // - base-de-donnees : CI normale sur la branche candidate ;
 // - repro-pr110-base : reproduction manuelle, isolée, déclenchée par dispatch.
-const blocsAutorises = [blocJob('base-de-donnees'), blocJob('repro-pr110-base')].filter(Boolean);
+const blocBase = blocJob('base-de-donnees');
+const blocRepro = blocJob('repro-pr110-base');
+const blocsAutorises = [blocBase, blocRepro].filter(Boolean);
 const horsBloc = SEQ.filter((s) => {
   let reste = wf;
   for (const bloc of blocsAutorises) reste = reste.replace(bloc, '');
-  return new RegExp(`test:neon:${s}(?![\\\\w:-])`).test(reste);
+  return new RegExp('test:neon:' + s + '(?![\\w:-])').test(reste);
 });
 if (horsBloc.length === 0) {
   ok('les suites neon ne sont invoquees que dans des jobs a base jetable');
 } else {
-  ko(`suites neon invoquees hors des jobs a base jetable : ${horsBloc.map((s) => `test:neon:${s}`).join(', ')}`);
+  ko('suites neon invoquees hors des jobs a base jetable : ' + horsBloc.map((s) => 'test:neon:' + s).join(', '));
 }
 // Chaque job autorisé qui existe doit déclarer son propre Postgres 17 local.
-const urlLocale = /DATABASE_URL: postgresql:\\/\\/postgres:postgres@localhost:5432\\/tracefab_test/;
-const jobsJetables = blocsAutorises.every((bloc) => /image: postgres:17/.test(bloc) && urlLocale.test(bloc));
-if (jobsJetables && urlLocale.test(blocsAutorises[0] || '')) {
+const urlLocale = /DATABASE_URL: postgresql:\/\/postgres:postgres@localhost:5432\/tracefab_test/;
+const jobsJetables = Boolean(blocBase) && blocsAutorises.every((bloc) => /image: postgres:17/.test(bloc) && urlLocale.test(bloc));
+if (jobsJetables && urlLocale.test(blocBase)) {
   ok('chaque job qui exécute ces suites pointe son propre Postgres local jetable');
 } else {
   ko('un job exécutant des suites neon ne prouve pas son Postgres local jetable');
