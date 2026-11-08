@@ -136,7 +136,7 @@ for (const dossier of posterieurs) {
 // Les autres GRANT directs restent interdits, et le contrôle SQL ci-dessous
 // vérifie qu'aucune fonction hors registre n'est exécutable par tracefab_app.
 const grantsDirectsAutorises = new Set([
-  '20261105235900_active_tenant_policy_and_worker_closure:tracefab_current_user_email',
+  '20261105235900_active_tenant_policy_and_worker_closure:public.tracefab_current_user_email',
 ]);
 const grantsDirectsInterdits = grantsDirects.filter((g) => !grantsDirectsAutorises.has(g));
 const grantsDirectsAutorisesObserves = grantsDirects.filter((g) => grantsDirectsAutorises.has(g));
@@ -146,7 +146,7 @@ ok(
   grantsDirectsInterdits.join(', ') || 'aucun',
 );
 ok(
-  grantsDirectsAutorisesObserves.length === 1 && nomsSeed.includes('tracefab_current_user_email'),
+  grantsDirectsAutorisesObserves.length === 1 && nomsSeed.includes('public.tracefab_current_user_email'),
   'l exception current_user_email est déjà dans le registre historique (aucun élargissement)',
   grantsDirectsAutorisesObserves.join(', ') || 'exception absente',
 );
