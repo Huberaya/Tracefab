@@ -469,6 +469,7 @@ for (const nom of enAttente) {
     process.exit(3);
   }
 
+  if (workerTemporaire) console.log(`             worker temporaire transactionnel — ${nom}`);
   const executeur = workerTemporaire ? clientAdmin : client;
   let commitEffectue = false;
   try {

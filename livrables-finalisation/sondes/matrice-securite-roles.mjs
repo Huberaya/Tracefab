@@ -234,11 +234,14 @@ try {
   // ========================================================= tracefab_worker
   console.log('--- tracefab_worker');
   const w1 = await admin.query(
-    `SELECT count(*)::int AS n FROM pg_catalog.pg_proc p
+    `SELECT count(*)::int AS n,
+            COALESCE(array_agg(n.nspname || '.' || p.proname ORDER BY n.nspname, p.proname), ARRAY[]::text[]) AS fonctions
+       FROM pg_catalog.pg_proc p
        JOIN pg_catalog.pg_roles r ON r.oid = p.proowner
+       JOIN pg_catalog.pg_namespace n ON n.oid = p.pronamespace
       WHERE r.rolname = 'tracefab_worker'`);
   verifier('W1 huit fonctions appartiennent au worker', w1.rows[0].n === 8,
-    `${w1.rows[0].n} fonction(s)`);
+    `${w1.rows[0].n} fonction(s) : ${w1.rows[0].fonctions.join(', ')}`);
 
   const w2 = await sous('tracefab_worker', 'SELECT count(*)::int AS n FROM public.tracefab_notification_outbox_health()');
   verifier('W2 execution d une fonction systeme possedee par le worker', w2.ok,
