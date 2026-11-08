@@ -234,9 +234,18 @@ try {
       ORDER BY p.oid LIMIT 1`,
   )).rows[0]?.definition;
   if (!definitionWorker) throw new Error('fonction worker de sonde introuvable pour le test d échec transactionnel');
+  // MARQUEUR DE REMPLACEMENT — requis pour PROUVER que la DDL a réellement été
+  // jouée avant l'erreur volontaire. Sans lui, on ne sait pas si le ROLLBACK a
+  // annulé un remplacement effectif ou si rien n'avait été joué du tout : les
+  // deux états produisent la même erreur. Le marqueur est un COMMENTAIRE sur la
+  // fonction, choisi parce que `COMMENT ON` est transactionnel lui aussi — il
+  // disparaît au ROLLBACK, ce qui rend le contrôle « après » probant.
+  const marqueurRemplacement = `test_p105_remplacement_${Date.now()}`;
   const definitionEchappee = definitionWorker.replace(/'/g, "''");
   const injectionTransactionnelle =
-    `DO $tracefab_worker_failure$ BEGIN EXECUTE '${definitionEchappee};'; PERFORM 1/0; END $tracefab_worker_failure$;`;
+    `DO $tracefab_worker_failure$ BEGIN EXECUTE '${definitionEchappee};';`
+    + ` EXECUTE 'COMMENT ON FUNCTION public.tracefab_notification_outbox_health() IS ''${marqueurRemplacement}''';`
+    + ` PERFORM 1/0; END $tracefab_worker_failure$;`;
   writeFileSync(join(dossierTemp, nomEchec, 'migration.sql'), injectionTransactionnelle);
   try {
     const echec = lancer(['scripts/migrer_fidelement.mjs'], {
@@ -252,6 +261,18 @@ try {
         WHERE migration_name = $1 ORDER BY started_at DESC LIMIT 1`, [nomEchec],
     )).rows[0]?.logs || '';
     const injectionAtteinte = /division by zero/i.test(journalEchec + echec.stdout + echec.stderr);
+    // PREUVE DU ROLLBACK : le marqueur posé AVANT l'erreur ne doit exister nulle
+    // part après coup. S'il subsistait, la DDL aurait survécu à l'échec — c'est
+    // exactement le défaut que ce scénario doit interdire.
+    const commentaireApres = (await cible.query(
+      `SELECT pg_catalog.obj_description(p.oid, 'pg_proc') AS c
+         FROM pg_catalog.pg_proc p
+        WHERE p.oid = 'public.tracefab_notification_outbox_health()'::regprocedure`,
+    )).rows[0]?.c || '';
+    const remplacementAnnule = commentaireApres !== marqueurRemplacement;
+    ok(injectionAtteinte && remplacementAnnule,
+      'B2.5sexies-bis le remplacement a bien eu lieu AVANT l erreur, et le rollback l a annule',
+      `marqueur present=${commentaireApres === marqueurRemplacement ? 'OUI (ROLLBACK INCOMPLET)' : 'non'}`);
     ok(echec.status === 1 && residualApresEchec === false && injectionAtteinte,
       'B2.5sexies échec après remplacement réel : rollback transactionnel et appartenance worker absente',
       `sortie=${echec.status}, membre=${residualApresEchec}, erreur injectée atteinte=${injectionAtteinte}`);

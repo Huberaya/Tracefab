@@ -452,6 +452,14 @@ for (const nom of enAttente) {
           console.error(`             que ${roleExecutant} ne peut pas endosser (SET ROLE refuse).`);
         }
         console.error('             Seul tracefab_worker peut recevoir une appartenance temporaire, dans une transaction.');
+        // DÉFAUT MESURÉ (CI #1829 / #1830, P10.8 E3) : ce chemin de refus était
+        // le SEUL des refus exit(3) à ne pas déclarer explicitement qu'il n'avait
+        // rien joué. Le test E3 lit cette déclaration comme preuve d'absence
+        // d'état partiel ; son absence faisait échouer l'assertion alors que le
+        // refus, lui, était correct (registre inchangé, aucune fonction créée).
+        // Le message est donc aligné sur les autres refus : ce n'est pas un
+        // affaiblissement du test, c'est la déclaration manquante du produit.
+        console.error('             Rien n a ete joue : le refus intervient avant toute ecriture.');
         await revoquerAppartenanceWorker('échec de préflight').catch((x) => console.error(x.message));
         await client.end();
         if (clientAdmin) await clientAdmin.end();
