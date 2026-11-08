@@ -80,17 +80,17 @@ une seule entrée). Pour celle-ci et pour elle seule :
 - l'élévation est temporaire, bornée à cette migration ;
 - elle est **refermée** (`SUPERUSER` → `NOSUPERUSER`) puis **relue** dans
   `pg_roles` ; si la relecture ne confirme pas, sortie 1 ;
-- après le bootstrap, le runner accorde temporairement `tracefab_worker` au
-  rôle d'exécution avec `INHERIT TRUE, SET TRUE, ADMIN FALSE`, via la connexion
-  administrative ; le rôle migrateur ne peut pas s'accorder ce droit lui-même ;
-- l'appartenance est conservée uniquement pendant les migrations qui doivent
-  remplacer des fonctions possédées par le worker ; elle est révoquée et
-  vérifiée dans le catalogue avant `20261108120700`, puis revérifiée en fin de
-  chaîne ;
-- sur un échec de migration ou SIGINT/SIGTERM, le runner tente la révocation
-  avant de sortir. SIGKILL ne peut pas être intercepté : une reprise reprend
-  la chaîne et révoque avant la garde terminale. Si l'appartenance ne peut pas
-  être révoquée, le runner s'arrête et ne valide pas la garde terminale.
+- pour chaque migration qui doit remplacer une fonction possédée par le worker,
+  le runner ouvre une transaction administrative, accorde `INHERIT TRUE, SET TRUE,
+  ADMIN FALSE`, endosse `tracefab_migrator`, exécute la migration, inscrit son
+  résultat, revient au rôle administratif, révoque l'appartenance et vérifie
+  son absence **avant COMMIT** ;
+- le `GRANT`, le SQL de migration, le registre et le `REVOKE` sont atomiques :
+  un échec, SIGINT, SIGTERM, SIGKILL ou une coupure annule la transaction et
+  annule aussi l'appartenance. Aucun grant ne reste ouvert entre deux migrations ;
+- au démarrage, le runner nettoie également les appartenances résiduelles
+  laissées par les versions antérieures, avec une connexion administrative,
+  et s'arrête si la révocation n'est pas démontrée.
 
 Aucune migration historique n'a été réécrite pour obtenir ce résultat.
 
@@ -101,12 +101,11 @@ si `tracefab_migrator` peut encore endosser `tracefab_worker`. Le runner doit
 révoquer cette appartenance avant de l'appliquer. Le contrôle porte sur
 l'appartenance effective, pas seulement sur une entrée ACL directe.
 
-Après SIGKILL ou perte brutale du processus, aucun gestionnaire Node ne peut
-s'exécuter. L'appartenance peut donc rester présente jusqu'à la reprise suivante.
-Le runner la détecte : si le bootstrap historique doit être rejoué, il nettoie
-l'ancien octroi avant ce bootstrap ; sinon, il le conserve uniquement pour les
-migrations restantes qui en dépendent, puis le révoque avant la garde terminale.
-Une reprise ne doit jamais sauter cette garde.
+Après SIGKILL ou perte brutale du processus, PostgreSQL annule la transaction
+ouverte à la fermeture de la connexion. Comme l'appartenance est accordée et
+révoquée dans cette même transaction que la migration, le `GRANT` est lui aussi
+annulé. Le nettoyage au démarrage ne sert qu'à récupérer les appartenances
+résiduelles créées par les anciennes versions du runner.
 
 ### 2.3 La migration 68 et son point de rupture
 

@@ -35,8 +35,8 @@ export const MIGRATIONS_ASSISTEES = Object.freeze({
     // L'appartenance est accordée par le runner après le bootstrap, avec
     // INHERIT/SET et sans ADMIN, puis révoquée avant la migration terminale.
     // `tracefab_app` n'en hérite jamais.
-    // Le runner accorde l'appartenance temporairement après ce bootstrap,
-    // puis la révoque avant la migration terminale 20261108120700.
+    // Le runner accorde l'appartenance dans la transaction de chaque migration
+    // qui remplace une fonction worker, puis la révoque avant le COMMIT.
     // Aucun GRANT permanent n'est porté par cette configuration.
     appartenanceTemporaire: true,
     // `avant` : rendre la migration REJOUABLE dans le même cluster.

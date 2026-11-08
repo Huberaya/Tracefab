@@ -8,12 +8,10 @@
 -- l'isolation multi-tenant. Cette appartenance est un besoin temporaire du
 -- processus de migration, jamais un privilège permanent.
 --
--- scripts/migrer_fidelement.mjs accorde INHERIT/SET sans ADMIN après le
--- bootstrap historique, la conserve uniquement pour les migrations qui en
--- dépendent, puis la révoque et vérifie son absence avant cette garde.
--- Sur échec ou SIGINT/SIGTERM, le runner tente également la révocation.
--- SIGKILL ne peut pas être intercepté : une reprise reprend la chaîne et
--- révoque avant d'appliquer cette garde.
+-- scripts/migrer_fidelement.mjs accorde INHERIT/SET sans ADMIN dans la transaction
+-- de chaque migration qui remplace une fonction worker, puis révoque et vérifie
+-- l'absence avant le COMMIT. Un échec, un signal ou SIGKILL annule cette
+-- transaction : l'appartenance ne peut pas survivre à la migration.
 --
 -- Cette migration ne tente pas de REVOKE : le rôle migrateur n'est pas grantor
 -- de l'appartenance et ne possède pas ADMIN OPTION. Elle échoue fermé si le
