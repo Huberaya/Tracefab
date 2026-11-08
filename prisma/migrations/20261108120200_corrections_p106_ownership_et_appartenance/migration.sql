@@ -20,11 +20,12 @@
 --    C'est documenté dans `scripts/lib/migrations_assistees.mjs`, qui traite
 --    cette migration comme « assistée ».
 --
---    LA CORRECTION ICI EST BORNÉE ET MESURÉE : elle accorde au rôle de
---    migration l'appartenance minimale `INHERIT TRUE, SET TRUE, ADMIN FALSE`
---    — jamais ADMIN — et laisse la révocation de § 6 bis faire son travail
---    quand elle le peut. Elle n'élargit aucun droit à `tracefab_app`, qui
---    n'est jamais membre de `tracefab_worker` (contrôle final ci-dessous).
+--    LA CORRECTION EST PORTÉE PAR LE RUNNER : après le bootstrap historique,
+--    il accorde temporairement `INHERIT TRUE, SET TRUE, ADMIN FALSE` au rôle
+--    migrateur pour les migrations qui doivent remplacer les fonctions worker.
+--    Cette migration vérifie cette appartenance ; elle ne tente pas de la
+--    créer. Le runner la révoque avant la garde terminale 20261108120700.
+--    `tracefab_app` ne devient jamais membre de `tracefab_worker`.
 --
 -- 2. OBJETS EXISTANTS NON TRANSFERES
 --    `20261028120100` transfère six fonctions NOMMÉES. Sur une base où des
