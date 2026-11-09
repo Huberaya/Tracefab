@@ -69,8 +69,9 @@ try {
     && r.migration_name !== MIGRATION);
   assert(unfinished.length === 0, 'aucune autre migration inachevee non annulee');
   const p107Rows = historyRows.filter((r) => r.migration_name === MIGRATION);
-  assert(p107Rows.length <= 1 && p107Rows.every((r) => !r.finished_at),
-    'au plus une tentative P10.7 echouee ou deja resolue, jamais une migration appliquee');
+  assert(p107Rows.every((r) => !r.finished_at)
+    && p107Rows.filter((r) => !r.rolled_back_at).length <= 1,
+    'aucune application P10.7 terminee et au plus une tentative echouee non resolue');
 
   if (mode === 'preflight') {
     const dirs = fs.readdirSync(path.resolve('prisma/migrations'), { withFileTypes: true })
@@ -83,8 +84,9 @@ try {
     const missing = dirs.filter((name) => !applied.has(name));
     assert(missing.length === 1 && missing[0] === MIGRATION,
       'seule migration en attente = ' + MIGRATION);
-    assert(p107Rows.length === 0 || (p107Rows.length === 1 && !p107Rows[0].finished_at),
-      'aucune application precedente de P10.7; tentative echouee recuperable');
+    assert(p107Rows.every((r) => !r.finished_at)
+      && p107Rows.filter((r) => !r.rolled_back_at).length <= 1,
+      'aucune application precedente de P10.7; historique echoue entierement annule ou tentative recuperable unique');
 
     const partial = (await client.query([
       'SELECT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema=\'public\' AND table_name=\'tracefab_identity_politique\' AND column_name=\'systeme_strict\') AS system_mode_column,',
