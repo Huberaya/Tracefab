@@ -28,7 +28,7 @@ assert(!parsed.hostname.includes('-pooler'), 'connexion directe non pooler');
 
 if (mode === 'postflight') {
   const options = parsed.searchParams.get('options');
-  if (!/(?:^|\\s)-c\\s+role=tracefab_migrator(?:\\s|$)/.test(options || '')) {
+  if (!/(?:^|\s)-c\s+role=tracefab_migrator(?:\s|$)/.test(options || '')) {
     parsed.searchParams.set('options', [options, '-c role=tracefab_migrator'].filter(Boolean).join(' '));
   }
 }
@@ -76,8 +76,8 @@ try {
       await roleClient.end();
     }
     if (!process.env.GITHUB_ENV) throw new Error('GITHUB_ENV absent.');
-    fs.appendFileSync(process.env.GITHUB_ENV, 'DATABASE_URL=' + migrationUrl + '\\n');
-    process.stdout.write('::add-mask::' + migrationUrl + '\\n');
+    fs.appendFileSync(process.env.GITHUB_ENV, 'DATABASE_URL=' + migrationUrl + '\n');
+    process.stdout.write('::add-mask::' + migrationUrl + '\n');
   }
   console.log(mode.toUpperCase() + ' OK — correction P10.7 controlee, mode strict inchange.');
 } finally {
