@@ -129,11 +129,18 @@ export async function baseVierge(nom) {
 }
 
 /** Applique la chaine en une seule connexion d'administration du cluster jetable. */
-export async function appliquer(c, entrees) {
+export async function appliquer(c, entrees, apresMigration = null) {
   const appliquees = [];
   for (const e of entrees) {
-    try { await c.query(e.texte); appliquees.push({ nom: e.nom, ref: e.ref, sha256: sha256(e.texte) }); }
-    catch (err) {
+    try {
+      await c.query(e.texte);
+      appliquees.push({ nom: e.nom, ref: e.ref, sha256: sha256(e.texte) });
+      // Le checkout CI inclut une garde terminale qui exige que le migrateur
+      // ait rendu l'appartenance temporaire au worker après le transfert de
+      // propriété P10.8. Le callback permet au harnais de jouer cet acte
+      // d'exploitation entre deux migrations, sans l'enfouir dans le SQL.
+      if (apresMigration) await apresMigration(e, c);
+    } catch (err) {
       return { appliquees, echec: { nom: e.nom, ref: e.ref, sqlstate: err.code, message: String(err.message).slice(0, 400) } };
     }
   }
