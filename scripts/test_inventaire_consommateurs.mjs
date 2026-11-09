@@ -36,7 +36,7 @@ const sortie = `${r.stdout || ''}${r.stderr || ''}`;
 console.log("\nBanc de l'inventaire des consommateurs\n--------------------------------------");
 verifie(r.status === 0, 'les invariants du depot passent', `code ${r.status}`);
 verifie(/ok\s+un seul client Prisma/.test(sortie), 'un seul client Prisma est reconnu');
-verifie(/ok\s+aucun workflow ne lit de secret de base/.test(sortie),
+verifie(/ok\s+aucun secret de base hors exception Preview strictement declaree/.test(sortie),
   'aucun secret de base hors exception Preview strictement declaree');
 
 if (!existsSync(RAPPORT)) {
