@@ -34,9 +34,19 @@ jobs:
         env:
           DATABASE_URL: ${{ secrets.TRACEFAB_P11_DATABASE_ADMIN_URL }}
         run: node scripts/verification_p107_worker_rls_migration.mjs preflight
-      - name: Apply additive migration through Prisma
-        run: npx prisma migrate deploy
-      - name: Verify Prisma migration status
-        run: npx prisma migrate status
+      - name: Apply additive migration through Prisma as tracefab_migrator
+        env:
+          DATABASE_URL: ${{ secrets.TRACEFAB_P11_DATABASE_ADMIN_URL }}
+        run: |
+          export DATABASE_URL="$(node -e 'const u = new URL(process.env.DATABASE_URL); u.searchParams.set("options", "-c role=tracefab_migrator"); process.stdout.write(u.toString())')"
+          npx prisma migrate deploy
+      - name: Verify Prisma migration status as tracefab_migrator
+        env:
+          DATABASE_URL: ${{ secrets.TRACEFAB_P11_DATABASE_ADMIN_URL }}
+        run: |
+          export DATABASE_URL="$(node -e 'const u = new URL(process.env.DATABASE_URL); u.searchParams.set("options", "-c role=tracefab_migrator"); process.stdout.write(u.toString())')"
+          npx prisma migrate status
       - name: Verify policy, role boundary and real archive effect
+        env:
+          DATABASE_URL: ${{ secrets.TRACEFAB_P11_DATABASE_ADMIN_URL }}
         run: node scripts/verification_p107_worker_rls_migration.mjs postflight
