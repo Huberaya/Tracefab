@@ -224,6 +224,44 @@ function previewMigrationEstDeclaree(file, doc) {
   const expectedIf = "${{ github.event.head_commit.message == '" + rule.commit_message + "' }}";
   const expectedSecret = "${{ secrets." + rule.secret + " }}";
   const runSteps = job.steps.filter((step) => typeof step.run === 'string').map((step) => step.run.trim());
+  const checkout = job.steps.find((step) => String(step.uses || '').startsWith('actions/checkout@'));
+  const setupNode = job.steps.find((step) => String(step.uses || '').startsWith('actions/setup-node@'));
+  const common = job.environment === rule.environment
+    && job.if === expectedIf
+    && Array.isArray(branches) && branches.length === 1 && branches[0] === rule.branch
+    && doc.permissions?.contents === 'read'
+    && Boolean(checkout?.with?.['persist-credentials'] === false)
+    && Boolean(setupNode);
+
+  if (rule.kind === 'expiry') {
+    const expectedRuns = [
+      'node --check scripts/verification_p107_expiry_migration.mjs && node --check scripts/resolve_p107_expiry_failed_migration.mjs && node --check scripts/verification_p107_preview_migration.mjs',
+      'npm ci',
+      rule.preflight,
+      rule.resolve,
+      rule.migration,
+      rule.status,
+      rule.postflight,
+    ];
+    const preflightStep = job.steps.find((step) => step.run?.trim() === rule.preflight);
+    const preflightSource = readFileSync(join(ROOT, 'scripts/verification_p107_expiry_migration.mjs'), 'utf8');
+    const resolveSource = readFileSync(join(ROOT, 'scripts/resolve_p107_expiry_failed_migration.mjs'), 'utf8');
+    const migrationSource = readFileSync(join(ROOT, 'prisma/migrations/20261109170000_p107_expiration_floor/migration.sql'), 'utf8');
+    return common
+      && preflightStep?.env?.DATABASE_URL === expectedSecret
+      && !job.env?.DATABASE_URL
+      && JSON.stringify(runSteps) === JSON.stringify(expectedRuns)
+      && preflightSource.includes("MIGRATION = '20261109170000_p107_expiration_floor'")
+      && preflightSource.includes("P107 = '20261106130000_identite_systeme_signee'")
+      && preflightSource.includes('attempts.filter')
+      && preflightSource.includes('TRACEFAB_P11_EXPIRY_NEEDS_RESOLVE')
+      && preflightSource.includes('pg_has_role')
+      && resolveSource.includes("const migration = '20261109170000_p107_expiration_floor'")
+      && resolveSource.includes("process.env.TRACEFAB_P11_EXPIRY_NEEDS_RESOLVE")
+      && resolveSource.includes("'prisma', 'migrate', 'resolve', '--rolled-back'")
+      && migrationSource.includes('floor(extract(epoch FROM pg_catalog.now()))::BIGINT');
+  }
+
   const expectedRuns = [
     'node --check scripts/verification_p107_preview_migration.mjs && node --check scripts/resolve_p107_failed_migration.mjs',
     'npm ci',
@@ -233,20 +271,13 @@ function previewMigrationEstDeclaree(file, doc) {
     rule.status,
     rule.postflight,
   ];
-  const checkout = job.steps.find((step) => String(step.uses || '').startsWith('actions/checkout@'));
-  const setupNode = job.steps.find((step) => String(step.uses || '').startsWith('actions/setup-node@'));
   const preflightStep = job.steps.find((step) => step.run?.trim() === rule.preflight);
   const preflightSource = readFileSync(join(ROOT, 'scripts/verification_p107_preview_migration.mjs'), 'utf8');
   const resolveSource = readFileSync(join(ROOT, 'scripts/resolve_p107_failed_migration.mjs'), 'utf8');
-  return job.environment === rule.environment
-    && job.if === expectedIf
-    && Array.isArray(branches) && branches.length === 1 && branches[0] === rule.branch
+  return common
     && preflightStep?.env?.DATABASE_URL === expectedSecret
     && !job.env?.DATABASE_URL
     && JSON.stringify(runSteps) === JSON.stringify(expectedRuns)
-    && doc.permissions?.contents === 'read'
-    && Boolean(checkout?.with?.['persist-credentials'] === false)
-    && Boolean(setupNode)
     && preflightSource.includes("EXPECTED_ENDPOINT = 'ep-lively-field-b1wicg4v'")
     && preflightSource.includes("MIGRATION = '20261106130000_identite_systeme_signee'")
     && preflightSource.includes('missing.length === 1')
