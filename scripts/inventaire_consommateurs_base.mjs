@@ -162,7 +162,6 @@ const secretsBase = [...secretsParWorkflow.entries()].flatMap(([workflow, secret
     .map((secret) => ({ workflow, secret })));
 const registrePrivileges = JSON.parse(lire('docs/security/workflow-privileged-allowlist.json'));
 const workflowsP11Autorises = [
-  'p11-preview-p107-expiry.yml',
   'p11-preview-p107-migration.yml',
   'p11-preview-p107-worker-rls.yml',
 ];
