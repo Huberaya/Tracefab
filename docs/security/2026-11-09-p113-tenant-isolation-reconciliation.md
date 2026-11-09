@@ -11,7 +11,7 @@
 
 Le test global doit comparer deux états réellement distincts :
 
-1. Le baseline s'arrête immédiatement avant `20261106010000_active_tenant_access_guards`.
+1. La chaine avant `20261106010000_active_tenant_access_guards` contient deja la correction RLS de `20261105235900_active_tenant_policy_and_worker_closure`. Le test verifie donc les helpers de route absents avant la migration, puis leur comportement apres.
 2. Les fixtures sont insérées dans cet état historique.
 3. Le correctif et toutes les migrations suivantes sont appliqués avant les contrôles après-correctif.
 
