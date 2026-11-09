@@ -29,13 +29,15 @@ jobs:
           node-version: 20
           cache: npm
       - name: Validate scripts
-        run: node --check scripts/verification_p107_expiry_migration.mjs && node --check scripts/verification_p107_preview_migration.mjs
+        run: node --check scripts/verification_p107_expiry_migration.mjs && node --check scripts/resolve_p107_expiry_failed_migration.mjs && node --check scripts/verification_p107_preview_migration.mjs
       - name: Install dependencies
         run: npm ci
       - name: Verify exact target and prepare migrator role
         env:
           DATABASE_URL: ${{ secrets.TRACEFAB_P11_DATABASE_ADMIN_URL }}
         run: node scripts/verification_p107_expiry_migration.mjs preflight
+      - name: Resolve only the verified failed correction attempt
+        run: node scripts/resolve_p107_expiry_failed_migration.mjs
       - name: Apply additive correction through Prisma
         run: npx prisma migrate deploy
       - name: Verify Prisma migration status
