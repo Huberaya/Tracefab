@@ -144,5 +144,6 @@ BEGIN
 END
 $function$
 
+;
 
 REVOKE ALL ON FUNCTION public.tracefab_identite_systeme_jeton_valide(TEXT) FROM PUBLIC;
