@@ -1,4 +1,7 @@
+import { createHmac, randomBytes } from 'node:crypto';
 import type { VercelRequest, VercelResponse } from '../../_lib/vercel-types.js';
+import { withTracefabWorkerContext } from '../../_lib/contexte-systeme.js';
+import clerkWebhookHandler from '../webhooks/clerk.js';
 import { emailDeliveryConfigured } from '../../_lib/email.js';
 import { notificationAlertConfigured } from '../../_lib/notification-observability.js';
 import { storageConfig } from '../../_lib/storage.js';
@@ -28,6 +31,43 @@ function privateStorageReadiness() {
   return { configured: missing.length === 0 && configValid, missing, probe: 'configuration_only' };
 }
 
+
+async function invokeSignedClerkWebhookProbe(eventType: string, data: Record<string, unknown>) {
+  const secret = process.env.CLERK_WEBHOOK_SIGNING_SECRET?.trim();
+  if (!secret) return { status: 503, body: { error: 'clerk_webhook_not_configured' } };
+  const rawBody = JSON.stringify({
+    object: 'event',
+    type: eventType,
+    data,
+    timestamp: Date.now(),
+    instance_id: 'ins_tracefab_p107_preview_probe',
+  });
+  const messageId = `msg_${randomBytes(16).toString('hex')}`;
+  const timestamp = String(Math.floor(Date.now() / 1000));
+  const key = Buffer.from(secret.replace(/^whsec_/, ''), 'base64');
+  const signature = createHmac('sha256', key).update(`${messageId}.${timestamp}.${rawBody}`).digest('base64');
+  let status = 0;
+  let body: unknown = null;
+  const mockResponse = {
+    setHeader() { return this; },
+    status(code: number) { status = code; return this; },
+    json(payload: unknown) { body = payload; return this; },
+    end() { return this; },
+  };
+  const mockRequest = {
+    method: 'POST',
+    headers: {
+      host: 'tracefab-preview.internal',
+      'svix-id': messageId,
+      'svix-timestamp': timestamp,
+      'svix-signature': `v1,${signature}`,
+    },
+    body: rawBody,
+  } as unknown as VercelRequest;
+  await clerkWebhookHandler(mockRequest, mockResponse as unknown as VercelResponse);
+  return { status, body };
+}
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'GET') return methodNotAllowed(res, ['GET']);
   const workerConfigured = workerSecretConfigured();
@@ -39,6 +79,36 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     && runtimeProbeAuthorized(req);
   if (!workerConfigured && !runtimeIdentityProbe) return json(res, 503, { error: 'worker_not_configured' });
   if (!workerAccess && !runtimeIdentityProbe) return json(res, 401, { error: 'worker_unauthorized' });
+
+  if (runtimeIdentityProbe && req.query?.webhook === '1') {
+    const clerkOrganizationId = `org_p107_runtime_probe_${Date.now()}`;
+    const eventData = {
+      id: clerkOrganizationId,
+      name: 'TraceFab P10.7 Runtime Probe',
+      slug: 'tracefab-p107-runtime-probe',
+      public_metadata: {
+        tracefab_organization_type: 'brand',
+        legal_name: 'TraceFab P10.7 Runtime Probe',
+      },
+    };
+    const created = await invokeSignedClerkWebhookProbe('organization.created', eventData);
+    const deleted = created.status === 200
+      ? await invokeSignedClerkWebhookProbe('organization.deleted', { id: clerkOrganizationId })
+      : { status: 0, body: { error: 'creation_not_confirmed' } };
+    let outboxHealth: unknown = null;
+    if (deleted.status === 200) {
+      outboxHealth = await withTracefabWorkerContext((tx) => tx.$queryRaw`SELECT * FROM tracefab_notification_outbox_health()`);
+    }
+    const ok = created.status === 200 && deleted.status === 200 && Array.isArray(outboxHealth);
+    return json(res, ok ? 200 : 503, {
+      ok,
+      probe: 'signed_clerk_webhook_preview_only',
+      created,
+      deleted,
+      outboxHealth,
+    });
+  }
+
 
   // ?probe=live exerce reellement chaque service au lieu de constater que ses
   // variables existent. Volontairement opt-in : on ne veut pas appeler cinq
