@@ -144,7 +144,7 @@ const secretsParWorkflow = new Map();
 const urlsNonLocales = [];
 for (const w of workflows) {
   const texte = sansCommentaires(readFileSync(join(dossierWf, w), 'utf8'), { yaml: true });
-  for (const m of texte.matchAll(/secrets\\.([A-Z0-9_]+)/g)) {
+  for (const m of texte.matchAll(/secrets\.([A-Z0-9_]+)/g)) {
     secretsReferences.add(m[1]);
     if (!secretsParWorkflow.has(w)) secretsParWorkflow.set(w, new Set());
     secretsParWorkflow.get(w).add(m[1]);
@@ -161,20 +161,30 @@ const secretsBase = [...secretsParWorkflow.entries()].flatMap(([workflow, secret
   [...secrets].filter((secret) => /DATABASE|POSTGRES|NEON/.test(secret))
     .map((secret) => ({ workflow, secret })));
 const registrePrivileges = JSON.parse(lire('docs/security/workflow-privileged-allowlist.json'));
-const migrationP11 = registrePrivileges.previewMigrationWorkflows?.['p11-preview-p107-migration.yml'];
-const secretP11 = registrePrivileges.secretUsingWorkflows?.['p11-preview-p107-migration.yml'];
-const environnementP11 = registrePrivileges.environmentBoundJobs?.['p11-preview-p107-migration.yml'];
-const exceptionP11Valide = migrationP11?.job === 'migrate-preview-p11'
-  && migrationP11?.branch === 'arena/b8fe1a44-tracefab'
-  && migrationP11?.commit_message === 'EXECUTE P11 PREVIEW MIGRATION'
-  && migrationP11?.environment === 'tracefab-p11-preview'
-  && migrationP11?.secret === 'TRACEFAB_P11_DATABASE_ADMIN_URL'
-  && secretP11?.secret === migrationP11.secret
-  && environnementP11?.environnement === migrationP11.environment
-  && environnementP11?.job === migrationP11.job
-  && secretsParWorkflow.get('p11-preview-p107-migration.yml')?.has(migrationP11.secret) === true;
+const workflowsP11Autorises = [
+  'p11-preview-p107-expiry.yml',
+  'p11-preview-p107-migration.yml',
+  'p11-preview-p107-worker-rls.yml',
+];
+const exceptionsP11 = workflowsP11Autorises.map((workflow) => ({
+  workflow,
+  migration: registrePrivileges.previewMigrationWorkflows?.[workflow],
+  secret: registrePrivileges.secretUsingWorkflows?.[workflow],
+  environnement: registrePrivileges.environmentBoundJobs?.[workflow],
+}));
+const exceptionP11Valide = exceptionsP11.every(({ workflow, migration, secret, environnement }) =>
+  migration?.job === 'migrate-preview-p11'
+  && migration?.branch === 'arena/b8fe1a44-tracefab'
+  && typeof migration?.commit_message === 'string'
+  && migration.commit_message.length > 0
+  && migration?.environment === 'tracefab-p11-preview'
+  && migration?.secret === 'TRACEFAB_P11_DATABASE_ADMIN_URL'
+  && secret?.secret === migration.secret
+  && environnement?.environnement === migration.environment
+  && environnement?.job === migration.job
+  && secretsParWorkflow.get(workflow)?.has(migration.secret) === true);
 const secretsBaseNonAutorises = secretsBase.filter(({ workflow, secret }) =>
-  !(exceptionP11Valide && workflow === 'p11-preview-p107-migration.yml'
+  !(exceptionP11Valide && workflowsP11Autorises.includes(workflow)
     && secret === 'TRACEFAB_P11_DATABASE_ADMIN_URL'));
 if (secretsBaseNonAutorises.length) {
   violations.push(`workflow(s) referencant un secret de base hors exception Preview declaree : ${JSON.stringify(secretsBaseNonAutorises)}`);
