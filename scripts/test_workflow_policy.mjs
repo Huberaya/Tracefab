@@ -228,6 +228,7 @@ function previewMigrationEstDeclaree(file, doc) {
     'node --check scripts/verification_p107_preview_migration.mjs',
     'npm ci',
     rule.preflight,
+    rule.resolve,
     rule.migration,
     rule.status,
     rule.postflight,
@@ -246,7 +247,10 @@ function previewMigrationEstDeclaree(file, doc) {
     && preflightSource.includes("EXPECTED_ENDPOINT = 'ep-lively-field-b1wicg4v'")
     && preflightSource.includes("MIGRATION = '20261106130000_identite_systeme_signee'")
     && preflightSource.includes('missing.length === 1')
-    && preflightSource.includes('tracefab_identite_systeme_jeton_valide');
+    && preflightSource.includes('tracefab_identite_systeme_jeton_valide')
+    && preflightSource.includes('TRACEFAB_P11_NEEDS_RESOLVE')
+    && preflightSource.includes('options')
+    && runSteps.includes(rule.resolve);
 }
 
 function estMigrateNUE(frag) {
