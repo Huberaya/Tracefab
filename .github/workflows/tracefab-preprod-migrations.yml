@@ -1,9 +1,6 @@
 name: TraceFab — appliquer les neuf migrations P11 et Repair
 
 on:
-  push:
-    branches:
-      - ops/p11-repair-neon-credentials-check-20261109
   workflow_dispatch:
 
 permissions:
