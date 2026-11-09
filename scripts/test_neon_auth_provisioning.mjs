@@ -65,7 +65,7 @@ const provisionnement = execFileSync(process.execPath, [
   },
   encoding: 'utf8',
 });
-if (!/VERDICT\\s*:\\s*clé provisionnée/i.test(provisionnement) || provisionnement.includes(cleTest)) {
+if (!/VERDICT\s*:\s*clé provisionnée/i.test(provisionnement) || provisionnement.includes(cleTest)) {
   throw new Error('La clé éphémère P10.7 n a pas été provisionnée proprement dans la base jetable.');
 }
 console.log('  clé de test P10.7 provisionnée par le script opérateur (valeur non affichée)');
