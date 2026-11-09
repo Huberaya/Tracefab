@@ -5,7 +5,7 @@
  *
  * CE QUE CE TEST ÉPROUVE, ET POURQUOI CHAQUE POINT COMPTE
  *
- *   B2.1  68/68 migrations sur une base VIERGE, exécutées par
+ *   B2.1  77/77 migrations sur une base VIERGE, exécutées par
  *         `tracefab_migrator` — un rôle `NOSUPERUSER` qui possède les objets.
  *   B2.2  reprise : relancer ne rejoue rien et ne casse rien.
  *   B2.3  `tracefab_app` ne peut PAS exécuter de migration (42501).
@@ -29,10 +29,14 @@
  */
 import process from 'node:process';
 import { spawnSync } from 'node:child_process';
+import { mkdtempSync, mkdirSync, writeFileSync, rmSync, readFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import pg from 'pg';
 import { sslDepuisUrl } from './lib/pg-ssl.mjs';
 import { ROLE_APP, ROLE_MIGRATOR, ROLE_WORKER, etatRole } from './lib/tracefab_roles.mjs';
 import { verrouillerCluster } from './lib/ephemeral-db.mjs';
+import { diagnosticProvisionnement } from './lib/diagnostic_provisionnement.mjs';
 
 const urlAdmin = (process.env.DATABASE_URL || '').trim();
 if (!urlAdmin) {
@@ -118,8 +122,10 @@ try {
   };
   verrou = await verrouillerCluster({ urlProprietaire: urlAdmin });
   const prov1 = lancer(['scripts/provisionner_roles_db.mjs'], envProv);
+  for (const ligne of diagnosticProvisionnement(prov1, 1)) console.error(`  ${ligne}`);
   ok(prov1.status === 0, 'B3.1 provisioning initial réussi', `sortie ${prov1.status}`);
   const prov2 = lancer(['scripts/provisionner_roles_db.mjs'], envProv);
+  for (const ligne of diagnosticProvisionnement(prov2, 2)) console.error(`  ${ligne}`);
   ok(prov2.status === 0, 'B3.1 re-provisioning réussi (idempotent)', `sortie ${prov2.status}`);
   const alterEmis = /durci/.test(prov2.stdout);
   ok(!alterEmis, 'B3.1 le re-provisioning n émet AUCUN ALTER ROLE', alterEmis ? 'un durcissement a eu lieu' : 'aucune instruction ALTER');
@@ -168,6 +174,120 @@ try {
   ok(etatWorker?.rolcanlogin === false && etatWorker?.rolsuper === false,
     'B2.5 le worker reste NOLOGIN et non superutilisateur',
     `login=${etatWorker?.rolcanlogin} superuser=${etatWorker?.rolsuper}`);
+
+  const membreWorker = (await cible.query(
+    `SELECT pg_catalog.pg_has_role(current_user, 'tracefab_worker', 'MEMBER') AS membre`)).rows[0];
+  ok(membreWorker?.membre === false,
+    'B2.5bis tracefab_migrator n est plus membre du worker après la chaîne',
+    `membre=${membreWorker?.membre}`);
+  let escaladeWorker = null;
+  try { await cible.query('SET ROLE tracefab_worker'); escaladeWorker = 'ACCEPTE'; }
+  catch (e) { escaladeWorker = e.code || 'ERREUR'; }
+  ok(escaladeWorker === '42501',
+    'B2.5ter tracefab_migrator ne peut pas endosser tracefab_worker', escaladeWorker);
+
+  const urlAdminBase = new URL(urlAdmin);
+  urlAdminBase.pathname = `/${base}`;
+  // Simuler un arrêt brutal après le GRANT temporaire : un run de reprise
+  // sans migration en attente doit nettoyer l'appartenance résiduelle.
+  await admin.query('GRANT tracefab_worker TO tracefab_migrator WITH INHERIT TRUE, SET TRUE, ADMIN FALSE');
+  const residualAvantReprise = (await cible.query(
+    `SELECT pg_catalog.pg_has_role(current_user, 'tracefab_worker', 'MEMBER') AS membre`)).rows[0].membre;
+  ok(residualAvantReprise === true, 'B2.5quater scénario de reprise : appartenance résiduelle simulée', `membre=${residualAvantReprise}`);
+  const reprise = lancer(['scripts/migrer_fidelement.mjs'], {
+    DATABASE_URL: url(ROLE_MIGRATOR),
+    TF_ADMIN_URL: urlAdminBase.toString(),
+    TF_ALLOW_WRITE: 'oui',
+  });
+  const residualApresReprise = (await cible.query(
+    `SELECT pg_catalog.pg_has_role(current_user, 'tracefab_worker', 'MEMBER') AS membre`)).rows[0].membre;
+  ok(reprise.status === 0 && residualApresReprise === false,
+    'B2.5quinquies reprise sans migrations : appartenance résiduelle révoquée',
+    `sortie=${reprise.status}, membre=${residualApresReprise}, stderr=${String(reprise.stderr || '').slice(-500)}`);
+
+  // La migration terminale doit elle-même refuser une appartenance résiduelle.
+  await admin.query('GRANT tracefab_worker TO tracefab_migrator WITH INHERIT TRUE, SET TRUE, ADMIN FALSE');
+  let refusGarde = null;
+  try {
+    const sqlGarde = readFileSync(
+      'prisma/migrations/20261108120700_assert_worker_membership_revoked/migration.sql', 'utf8');
+    await cible.query(sqlGarde);
+    refusGarde = 'ACCEPTE';
+  } catch (e) { refusGarde = e.message || e.code || 'ERREUR'; }
+  ok(/tracefab_migrator_worker_membership_residuelle/.test(String(refusGarde)),
+    'B2.5quinquies-bis la garde terminale refuse explicitement le migrator membre du worker',
+    String(refusGarde).split('\\n')[0].slice(0, 120));
+  await admin.query('REVOKE tracefab_worker FROM tracefab_migrator');
+
+  // Le runner doit rétablir l'appartenance temporaire pour cette migration post-bootstrap.
+  // La migration injectée échoue ensuite ; le catch doit révoquer avant de quitter.
+  const dossierTemp = mkdtempSync(join(tmpdir(), 'tracefab-worker-membership-'));
+  const nomEchec = '20261108120800_test_force_failure_membership_cleanup';
+  mkdirSync(join(dossierTemp, nomEchec));
+  const definitionWorker = (await admin.query(
+    `SELECT pg_catalog.pg_get_functiondef(p.oid) AS definition
+       FROM pg_catalog.pg_proc p
+       JOIN pg_catalog.pg_roles r ON r.oid = p.proowner
+       JOIN pg_catalog.pg_namespace n ON n.oid = p.pronamespace
+      WHERE n.nspname = 'public' AND p.proname = 'tracefab_notification_outbox_health'
+        AND r.rolname = 'tracefab_worker'
+      ORDER BY p.oid LIMIT 1`,
+  )).rows[0]?.definition;
+  if (!definitionWorker) throw new Error('fonction worker de sonde introuvable pour le test d échec transactionnel');
+  // MARQUEUR DE REMPLACEMENT — requis pour PROUVER que la DDL a réellement été
+  // jouée avant l'erreur volontaire. Sans lui, on ne sait pas si le ROLLBACK a
+  // annulé un remplacement effectif ou si rien n'avait été joué du tout : les
+  // deux états produisent la même erreur. Le marqueur est un COMMENTAIRE sur la
+  // fonction, choisi parce que `COMMENT ON` est transactionnel lui aussi — il
+  // disparaît au ROLLBACK, ce qui rend le contrôle « après » probant.
+  const marqueurRemplacement = `test_p105_remplacement_${Date.now()}`;
+  const definitionEchappee = definitionWorker.replace(/'/g, "''");
+  const injectionTransactionnelle =
+    `DO $tracefab_worker_failure$ BEGIN EXECUTE '${definitionEchappee};';`
+    + ` EXECUTE 'COMMENT ON FUNCTION public.tracefab_notification_outbox_health() IS ''${marqueurRemplacement}''';`
+    + ` PERFORM 1/0; END $tracefab_worker_failure$;`;
+  writeFileSync(join(dossierTemp, nomEchec, 'migration.sql'), injectionTransactionnelle);
+  try {
+    const echec = lancer(['scripts/migrer_fidelement.mjs'], {
+      DATABASE_URL: url(ROLE_MIGRATOR),
+      TF_ADMIN_URL: urlAdminBase.toString(),
+      TF_ALLOW_WRITE: 'oui',
+      TF_MIGRATIONS_PATH: dossierTemp,
+    });
+    const residualApresEchec = (await cible.query(
+      `SELECT pg_catalog.pg_has_role(current_user, 'tracefab_worker', 'MEMBER') AS membre`)).rows[0].membre;
+    const journalEchec = (await cible.query(
+      `SELECT logs FROM public._prisma_migrations
+        WHERE migration_name = $1 ORDER BY started_at DESC LIMIT 1`, [nomEchec],
+    )).rows[0]?.logs || '';
+    const injectionAtteinte = /division by zero/i.test(journalEchec + echec.stdout + echec.stderr);
+    // PREUVE DU ROLLBACK : le marqueur posé AVANT l'erreur ne doit exister nulle
+    // part après coup. S'il subsistait, la DDL aurait survécu à l'échec — c'est
+    // exactement le défaut que ce scénario doit interdire.
+    const commentaireApres = (await cible.query(
+      `SELECT pg_catalog.obj_description(p.oid, 'pg_proc') AS c
+         FROM pg_catalog.pg_proc p
+        WHERE p.oid = 'public.tracefab_notification_outbox_health()'::regprocedure`,
+    )).rows[0]?.c || '';
+    const remplacementAnnule = commentaireApres !== marqueurRemplacement;
+    ok(injectionAtteinte && remplacementAnnule,
+      'B2.5sexies-bis le remplacement a bien eu lieu AVANT l erreur, et le rollback l a annule',
+      `marqueur present=${commentaireApres === marqueurRemplacement ? 'OUI (ROLLBACK INCOMPLET)' : 'non'}`);
+    ok(echec.status === 1 && residualApresEchec === false && injectionAtteinte,
+      'B2.5sexies échec après remplacement réel : rollback transactionnel et appartenance worker absente',
+      `sortie=${echec.status}, membre=${residualApresEchec}, erreur injectée atteinte=${injectionAtteinte}`);
+  } finally {
+    rmSync(dossierTemp, { recursive: true, force: true });
+  }
+
+  const matrice = lancer(['livrables-finalisation/sondes/matrice-securite-roles.mjs'], {
+    DATABASE_URL: urlAdminBase.toString(),
+    TF_APP_MDP: MDP_APP,
+    TF_MIGRATOR_MDP: MDP_MIG,
+  });
+  ok(matrice.status === 0, 'B2.6 matrice complète app/worker/migrator sous sessions authentifiées',
+    `sortie=${matrice.status}`);
+  if (matrice.status !== 0) console.log(matrice.stdout.split('\\n').filter((l) => /ECHEC|VERDICT/.test(l)).join('\\n'));
   await cible.end();
 
   // -------------------------------------------------------------------------

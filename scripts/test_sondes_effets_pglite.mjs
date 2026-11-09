@@ -52,7 +52,9 @@ const ok = (libelle, condition, detail = '') => {
   console.error(`  ECHEC ${libelle}${detail ? ` — ${detail}` : ''}`);
 };
 
-/** Les onze migrations dont l'historique de production ne porte pas la trace. */
+/** Les onze migrations dont l'historique de production ne porte pas la trace.
+ * Le nombre de politiques est mesuré après toute la chaîne : trois politiques
+ * supplémentaires sont créées par les migrations ultérieures du candidat. */
 const ECARTS = [
   '20261010120000_publication_explicite',
   '20261017120000_active_tenant_context',
@@ -91,6 +93,11 @@ async function construire(sans = new Set()) {
       // Retirer une migration peut rendre la suivante impossible (elle modifie
       // une fonction que sa predecesseure cree). On le dit, on ne le masque pas.
       sautees.push(`${d} (echec : ${String(e.message).split('\n')[0].slice(0, 90)})`);
+      // PGlite conserve la transaction en echec si la migration contenait
+      // BEGIN avant l'erreur. Cette base est jetable : on annule uniquement
+      // cette transaction pour que les migrations suivantes puissent etre
+      // tentees et que la sonde lise l'etat partiel sans faux 25P02.
+      try { await db.exec('ROLLBACK'); } catch { /* aucune transaction ouverte */ }
     }
   }
   return { db, sautees };
@@ -201,7 +208,7 @@ const attendu = {
   '20261027100000': 'requirement_met_lit_scores_du_produit|true',
   '20261027130000': 'suspend_nonconforming_posee|oui',
   '20261028120000': 'table_registre|oui',
-  '20261028120100': 'role_tracefab_worker|oui|politiques_sur_current_user|11',
+  '20261028120100': 'role_tracefab_worker|oui|politiques_sur_current_user|14',
   '20261028120200': 'mark_document_scanning_posee|oui|update_app_sur_documents|false',
   '20261028130000': 'update_app_sur_tracefab_products|false|trigger_lit_encore_le_guc|false',
   '20261028140000': 'garde_relation_invitation|true',
