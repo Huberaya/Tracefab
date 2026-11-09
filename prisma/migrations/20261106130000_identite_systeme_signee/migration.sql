@@ -315,14 +315,23 @@ REVOKE ALL ON FUNCTION public.tracefab_identite_systeme() FROM PUBLIC;
 --    Ce n'est pas un elargissement : le predicat ne rend qu'un booleen, il est
 --    deja lisible par le runtime, et le worker n'est pas connectable. C'est le
 --    meme raisonnement que le GRANT de verification pose par 20261031120000.
-DO $$
+DO $
 BEGIN
   IF EXISTS (SELECT 1 FROM pg_catalog.pg_roles WHERE rolname = 'tracefab_worker') THEN
     EXECUTE 'GRANT EXECUTE ON FUNCTION public.tracefab_identite_systeme() TO tracefab_worker';
     EXECUTE 'GRANT EXECUTE ON FUNCTION public.tracefab_identite_systeme_jeton_valide(TEXT) TO tracefab_worker';
   END IF;
+  -- Deux operations historiques restent possedees par tracefab_migrator
+  -- (tracefab_sync_clerk_organization et
+  -- tracefab_enqueue_manual_data_request_reminder). SECURITY DEFINER leur
+  -- fait executer le predicat avec l'identite de leur proprietaire, pas celle
+  -- du worker. Leur accorder le seul predicat booleen, jamais le validateur
+  -- ni l'acces aux cles, ferme le 42501 sans elargir les droits de tracefab_app.
+  IF EXISTS (SELECT 1 FROM pg_catalog.pg_roles WHERE rolname = 'tracefab_migrator') THEN
+    EXECUTE 'GRANT EXECUTE ON FUNCTION public.tracefab_identite_systeme() TO tracefab_migrator';
+  END IF;
 END
-$$;
+$;
 
 -- 4. Le registre runtime ----------------------------------------------------
 --    SEULE la VERIFICATION entre au registre, et c'est mesure, pas suppose.
@@ -713,6 +722,12 @@ BEGIN
            'public.tracefab_identite_systeme_jeton_valide(text)', 'EXECUTE') INTO v_app_verifie;
   IF NOT v_app_verifie THEN
     RAISE EXCEPTION 'P10.7 : le runtime ne peut pas verifier une identite systeme';
+  END IF;
+
+  IF EXISTS (SELECT 1 FROM pg_catalog.pg_roles WHERE rolname = 'tracefab_migrator')
+     AND NOT pg_catalog.has_function_privilege('tracefab_migrator',
+           'public.tracefab_identite_systeme()', 'EXECUTE') THEN
+    RAISE EXCEPTION 'P10.7 : tracefab_migrator ne peut pas evaluer le predicat depuis ses fonctions SECURITY DEFINER';
   END IF;
 
   -- ... et le PREDICAT, lui, ne doit PAS etre un droit du runtime : il n'est
