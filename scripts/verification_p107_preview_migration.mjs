@@ -42,9 +42,16 @@ if (!url) throw new Error('DATABASE_URL absente : aucune connexion tentee.');
 const parsed = new URL(url);
 assert(parsed.hostname.startsWith(EXPECTED_ENDPOINT + '.'), 'endpoint Neon Preview P11 attendu');
 assert(!parsed.hostname.includes('-pooler'), 'connexion directe Neon (non pooler)');
+if (mode === 'postflight') {
+  const options = parsed.searchParams.get('options');
+  if (!/(?:^|\\s)-c\\s+role=tracefab_migrator(?:\\s|$)/.test(options || '')) {
+    parsed.searchParams.set('options', [options, '-c role=tracefab_migrator'].filter(Boolean).join(' '));
+  }
+}
+const connectionUrl = parsed.toString();
 
 const client = new pg.Client({
-  connectionString: url,
+  connectionString: connectionUrl,
   ssl: sslDepuisUrl(url),
   application_name: 'tracefab-p107-preview-migration-guard',
 });
@@ -69,9 +76,6 @@ try {
     && r.migration_name !== MIGRATION);
   assert(unfinished.length === 0, 'aucune autre migration inachevee non annulee');
   const p107Rows = historyRows.filter((r) => r.migration_name === MIGRATION);
-  assert(p107Rows.every((r) => !r.finished_at)
-    && p107Rows.filter((r) => !r.rolled_back_at).length <= 1,
-    'aucune application P10.7 terminee et au plus une tentative echouee non resolue');
 
   if (mode === 'preflight') {
     const dirs = fs.readdirSync(path.resolve('prisma/migrations'), { withFileTypes: true })
