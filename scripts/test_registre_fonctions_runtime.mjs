@@ -138,7 +138,7 @@ const ajouts = new Map();
 // On exige donc l'EGALITE : l'ensemble des noms accordes directement est inclus
 // dans l'ensemble des noms declares au registre, et tout ecart est nomme.
 const grantsDirects = [];
-const declares = new Set(ajouts.keys());
+const declares = new Set(nomsSeed);
 for (const dossier of posterieurs) {
   const fichier = path.join(MIGRATIONS, dossier, 'migration.sql');
   if (!existsSync(fichier)) continue;
