@@ -114,7 +114,7 @@ async function signedRequest(method: 'HEAD' | 'GET', key: string) {
   const stringToSign = ['AWS4-HMAC-SHA256', timestamp, credentialScope, sha256(canonicalRequest)].join('\n');
   const signature = hmac(signingKey(config, timestamp.slice(0, 8)), stringToSign).toString('hex');
   const authorization = `AWS4-HMAC-SHA256 Credential=${config.accessKeyId}/${credentialScope}, SignedHeaders=${signedHeaders}, Signature=${signature}`;
-  return fetch(url, { method, headers: { Host: url.host, 'x-amz-content-sha256': payloadHash, 'x-amz-date': timestamp, Authorization: authorization }, signal: AbortSignal.timeout(5000) });
+  return fetch(url, { method, headers: { Host: url.host, 'x-amz-content-sha256': payloadHash, 'x-amz-date': timestamp, Authorization: authorization }, redirect: 'error', signal: AbortSignal.timeout(5000) });
 }
 
 export async function headObject(key: string) {
@@ -153,6 +153,7 @@ export async function scanWithAntivirus(bytes: ArrayBuffer, filename: string, co
       method: 'POST',
       headers: { Authorization: `Bearer ${scannerToken}`, 'Content-Type': contentType, 'X-Tracefab-Filename': filename, 'X-Tracefab-Scan-Protocol': 'tracefab-v1' },
       body: Buffer.from(bytes) as unknown as BodyInit,
+      redirect: 'error',
       signal: AbortSignal.timeout(5000),
     });
   } catch (error) {
@@ -161,7 +162,15 @@ export async function scanWithAntivirus(bytes: ArrayBuffer, filename: string, co
     }
     throw new Error('private_storage_antivirus_unavailable');
   }
-  const payload = await response.json().catch(() => null) as { clean?: unknown; mimeType?: unknown } | null;
+  let payload: { clean?: unknown; mimeType?: unknown } | null;
+  try {
+    payload = await response.json() as { clean?: unknown; mimeType?: unknown };
+  } catch (error) {
+    if (error instanceof Error && (error.name === 'TimeoutError' || error.name === 'AbortError')) {
+      throw new Error('private_storage_antivirus_timeout');
+    }
+    throw new Error('private_storage_antivirus_invalid_response');
+  }
   if (!response.ok || !payload || typeof payload.clean !== 'boolean') throw new Error('private_storage_antivirus_invalid_response');
   return { clean: payload.clean, mimeType: typeof payload.mimeType === 'string' ? payload.mimeType : null };
 }
