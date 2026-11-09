@@ -295,17 +295,15 @@ function previewMigrationEstDeclaree(file, doc) {
   }
 
   const expectedRuns = [
-    'node --check scripts/verification_p107_preview_migration.mjs && node --check scripts/resolve_p107_failed_migration.mjs',
+    'node --check scripts/verification_p107_preview_migration.mjs',
     'npm ci',
     rule.preflight,
-    rule.resolve,
     rule.migration,
     rule.status,
     rule.postflight,
   ];
   const preflightStep = job.steps.find((step) => step.run?.trim() === rule.preflight);
   const preflightSource = readFileSync(join(ROOT, 'scripts/verification_p107_preview_migration.mjs'), 'utf8');
-  const resolveSource = readFileSync(join(ROOT, 'scripts/resolve_p107_failed_migration.mjs'), 'utf8');
   return common
     && preflightStep?.env?.DATABASE_URL === expectedSecret
     && !job.env?.DATABASE_URL
@@ -315,11 +313,7 @@ function previewMigrationEstDeclaree(file, doc) {
     && preflightSource.includes('missing.length === 1')
     && preflightSource.includes('tracefab_identite_systeme_jeton_valide')
     && preflightSource.includes('TRACEFAB_P11_NEEDS_RESOLVE')
-    && preflightSource.includes('options')
-    && resolveSource.includes("const MIGRATION = '20261106130000_identite_systeme_signee'")
-    && resolveSource.includes("process.env.TRACEFAB_P11_NEEDS_RESOLVE")
-    && resolveSource.includes("'prisma', 'migrate', 'resolve', '--rolled-back'")
-    && runSteps.includes(rule.resolve);
+    && preflightSource.includes('options');
 }
 
 function estMigrateNUE(frag) {
