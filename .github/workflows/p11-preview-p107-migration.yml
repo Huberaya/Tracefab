@@ -31,8 +31,10 @@ jobs:
       - name: Install dependencies
         run: npm ci
       - name: Verify target and exact pending migration
-        run: node scripts/verification_p107_preview_migration.mjs
+        run: node scripts/verification_p107_preview_migration.mjs preflight
       - name: Apply through Prisma only
         run: npx prisma migrate deploy
       - name: Verify migration status
         run: npx prisma migrate status
+      - name: Verify schema, ACLs, guards and HMAC
+        run: node scripts/verification_p107_preview_migration.mjs postflight
