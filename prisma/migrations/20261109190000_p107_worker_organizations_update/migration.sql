@@ -19,14 +19,17 @@ BEGIN
   IF v_unguarded IS NOT NULL THEN
     RAISE EXCEPTION 'P10.7 refuse organizations_worker_update: fonctions worker SECURITY DEFINER non gardees: %', v_unguarded;
   END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies
+     WHERE schemaname = 'public'
+       AND tablename = 'organizations'
+       AND policyname = 'organizations_worker_update'
+  ) THEN
+    EXECUTE 'CREATE POLICY organizations_worker_update ON public.organizations FOR UPDATE USING (CURRENT_USER = ''tracefab_worker''::name) WITH CHECK (CURRENT_USER = ''tracefab_worker''::name)';
+  END IF;
 END
 $migration$;
-
-CREATE POLICY organizations_worker_update
-  ON public.organizations
-  FOR UPDATE
-  USING (CURRENT_USER = 'tracefab_worker'::name)
-  WITH CHECK (CURRENT_USER = 'tracefab_worker'::name);
 
 CREATE OR REPLACE FUNCTION public.tracefab_archive_clerk_organization(p_clerk_organization_id text)
  RETURNS boolean
