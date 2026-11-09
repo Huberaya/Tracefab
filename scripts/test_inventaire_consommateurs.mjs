@@ -47,14 +47,13 @@ if (!existsSync(RAPPORT)) {
     'le rapport ne liste qu\'un client Prisma', JSON.stringify(rapport.clients_prisma));
   const workflowsP11 = (rapport.secrets_base_workflows || []).map((entry) => entry.workflow).sort();
   verifie(Array.isArray(rapport.secrets_base_workflows)
-    && rapport.secrets_base_workflows.length === 3
+    && rapport.secrets_base_workflows.length === 2
     && JSON.stringify(workflowsP11) === JSON.stringify([
-      'p11-preview-p107-expiry.yml',
       'p11-preview-p107-migration.yml',
       'p11-preview-p107-worker-rls.yml',
     ])
     && rapport.secrets_base_workflows.every((entry) => entry.secret === 'TRACEFAB_P11_DATABASE_ADMIN_URL'),
-  'les trois secrets de base sont strictement limites aux workflows Preview P11 declares',
+  'les deux secrets de base sont strictement limites aux workflows Preview P11 declares',
   JSON.stringify(rapport.secrets_base_workflows));
   verifie(Array.isArray(rapport.secrets_base_non_autorises)
     && rapport.secrets_base_non_autorises.length === 0,
