@@ -105,7 +105,7 @@ const PRODUIT_INCLUS = {
 export async function resolveDppPassData(
   tx: PrismaTx,
   identifierOrId: string,
-  baseUrl: string = 'https://tracefab.com'
+  baseUrl: string = process.env.TRACEFAB_PUBLIC_BASE_URL?.trim() || ''
 ): Promise<DppPassData | null> {
   const cleanId = String(identifierOrId || '').trim();
   if (!cleanId) return null;
