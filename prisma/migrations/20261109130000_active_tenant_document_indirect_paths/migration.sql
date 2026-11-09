@@ -82,7 +82,7 @@ BEGIN
         -- organisations ne doit pas lire la piece de celle qui n'est pas le
         -- locataire actif.
         (
-          public.tracefab_in_active_tenant(d.owner_organization_id)
+          (public.tracefab_in_active_tenant(d.owner_organization_id) OR nullif(current_setting('tracefab.active_organization_id', true), '') IS NULL)
           AND public.tracefab_is_org_member(d.owner_organization_id)
         )
         -- Partage explicite et borne : portee, fenetre de validite, statut.
@@ -99,6 +99,10 @@ BEGIN
                AND public.tracefab_is_org_member(req.brand_organization_id))
               OR (public.tracefab_in_active_tenant(req.supplier_organization_id)
                   AND public.tracefab_is_org_member(req.supplier_organization_id))
+              OR (nullif(current_setting('tracefab.active_organization_id', true), '') IS NULL AND (
+                public.tracefab_is_org_member(req.brand_organization_id)
+                OR public.tracefab_is_org_member(req.supplier_organization_id)
+              ))
             )
         )
         -- Piece jointe a une certification rattachee a un produit de la marque
@@ -109,13 +113,13 @@ BEGIN
           WHERE cert.document_id = d.id
             AND (
               (
-                public.tracefab_in_active_tenant(cert.owner_organization_id)
+                (public.tracefab_in_active_tenant(cert.owner_organization_id) OR nullif(current_setting('tracefab.active_organization_id', true), '') IS NULL)
                 AND public.tracefab_is_org_member(cert.owner_organization_id)
               )
               OR (cert.product_id IS NOT NULL AND EXISTS (
                 SELECT 1 FROM public.tracefab_products p
                 WHERE p.id = cert.product_id
-                  AND public.tracefab_in_active_tenant(p.brand_organization_id)
+                  AND (public.tracefab_in_active_tenant(p.brand_organization_id) OR nullif(current_setting('tracefab.active_organization_id', true), '') IS NULL)
                   AND public.tracefab_is_org_member(p.brand_organization_id)
               ))
               OR (cert.supplier_id IS NOT NULL AND EXISTS (
@@ -124,8 +128,16 @@ BEGIN
                 JOIN public.brand_supplier_relationships r
                   ON r.supplier_organization_id = s.organization_id
                 WHERE s.id = cert.supplier_id
-                  AND public.tracefab_in_active_tenant(r.brand_organization_id)
-                  AND public.tracefab_is_org_member(r.brand_organization_id)
+                  AND (
+                    (public.tracefab_in_active_tenant(r.brand_organization_id)
+                     AND public.tracefab_is_org_member(r.brand_organization_id))
+                    OR (public.tracefab_in_active_tenant(s.organization_id)
+                        AND public.tracefab_is_org_member(s.organization_id))
+                    OR (nullif(current_setting('tracefab.active_organization_id', true), '') IS NULL AND (
+                      public.tracefab_is_org_member(r.brand_organization_id)
+                      OR public.tracefab_is_org_member(s.organization_id)
+                    ))
+                  )
                   AND r.status = 'active'
               ))
             )
@@ -136,7 +148,7 @@ BEGIN
           FROM public.data_points dp
           JOIN public.tracefab_products p ON p.id = dp.product_id
           WHERE dp.source_document_id = d.id
-            AND public.tracefab_in_active_tenant(p.brand_organization_id)
+            AND (public.tracefab_in_active_tenant(p.brand_organization_id) OR nullif(current_setting('tracefab.active_organization_id', true), '') IS NULL)
             AND public.tracefab_is_org_member(p.brand_organization_id)
         )
       )
