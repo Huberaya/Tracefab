@@ -191,6 +191,9 @@ const ROLLBACK_ONLY_DB_SUITES = [
   // applicatif. Il verifie que les donnees ne survivent pas : c est le prix
   // pour prouver que l ecriture legitime fonctionne encore.
   'scripts/test_worker_non_forgeable.mjs',
+  // Postflight P10.7 : cree une organisation sonde, verifie l archivage sous role worker,
+  // puis annule toute la transaction (y compris le SET temporaire du role).
+  'scripts/verification_p107_worker_rls_migration.mjs',
 ];
 
 /**
