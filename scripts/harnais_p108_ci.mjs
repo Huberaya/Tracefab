@@ -17,7 +17,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { randomBytes } from 'node:crypto';
 import {
-  PG_URL, CORRECTIF_NOM, sha256, baseVierge, appliquer,
+  PG_URL, sha256, baseVierge, appliquer,
   MODELISATION_PROPRIETAIRE, fixtures, jetonSysteme, IDS,
   identiteSession, etatRLS, connecter,
 } from './lib/p108_pg17.mjs';
@@ -60,10 +60,11 @@ const admin = await baseVierge(DB);
 const version = (await admin.query('SELECT version() v')).rows[0].v;
 
 const a = await appliquer(admin, entrees, async (migration) => {
-  // 20261107120000 doit endosser tracefab_worker pendant ALTER OWNER.
-  // Une fois la migration de transfert terminee, le droit est temporaire :
-  // la migration terminale 20261108120700 doit le constater revoque.
-  if (migration.nom === CORRECTIF_NOM) {
+  // Les migrations 20261108120100..120600 utilisent le role worker pour
+  // finaliser les proprietaires et ACL. Le grant du harnais est temporaire :
+  // le retirer apres la derniere migration de provisioning, juste avant la
+  // garde terminale 20261108120700.
+  if (migration.nom === '20261108120600_lecture_orders_requise_par_le_runtime') {
     const membership = await admin.query(
       "SELECT pg_catalog.pg_has_role('tracefab_migrator','tracefab_worker','MEMBER') AS membre"
     );
@@ -80,8 +81,14 @@ if (a.echec) { fs.writeFileSync(SORTIE, JSON.stringify({ version_postgresql: ver
 
 consigner('CI02_version_postgresql', 'PostgreSQL 17.11 exactement (pas PGlite 18.6, pas une image non mesuree)',
   /PostgreSQL 17\.11/.test(version), version, /PostgreSQL 17\.11/.test(version));
-consigner('CI03_correctif_present', 'La migration corrective P10.8 est dans le checkout et trie en dernier',
-  entrees.at(-1).nom === CORRECTIF_NOM, entrees.at(-1).nom, entrees.at(-1).nom === CORRECTIF_NOM);
+const membershipFinal = await admin.query(
+  "SELECT pg_catalog.pg_has_role('tracefab_migrator','tracefab_worker','MEMBER') AS membre"
+);
+const terminalePresente = entrees.at(-1)?.nom === '20261108120700_assert_worker_membership_revoked';
+consigner('CI03_worker_membership_revoked', 'La garde terminale est la dernière migration et le migrateur n’est plus membre du worker',
+  'terminal=true member=false',
+  `terminal=${entrees.at(-1)?.nom} member=${membershipFinal.rows[0]?.membre}`,
+  terminalePresente && membershipFinal.rows[0]?.membre === false);
 
 const cle = randomBytes(32);
 await fixtures(admin, cle);
