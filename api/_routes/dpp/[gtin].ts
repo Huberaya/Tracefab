@@ -14,11 +14,34 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return json(res, 400, { error: 'missing_identifier' });
   }
 
+  // L'URL publique doit provenir de la configuration du deploiement.
+  // Ne jamais publier une origine de repli codee en dur.
+  const rawPublicBaseUrl = process.env.TRACEFAB_PUBLIC_BASE_URL?.trim();
+  if (!rawPublicBaseUrl) {
+    return json(res, 503, { error: 'public_base_url_not_configured' });
+  }
+  let publicBaseUrl: URL;
+  try {
+    publicBaseUrl = new URL(rawPublicBaseUrl);
+  } catch {
+    return json(res, 503, { error: 'public_base_url_invalid' });
+  }
+  if (
+    (publicBaseUrl.protocol !== 'https:' && !['localhost', '127.0.0.1'].includes(publicBaseUrl.hostname)) ||
+    publicBaseUrl.username !== '' ||
+    publicBaseUrl.password !== '' ||
+    publicBaseUrl.pathname !== '/' ||
+    publicBaseUrl.search !== '' ||
+    publicBaseUrl.hash !== ''
+  ) {
+    return json(res, 503, { error: 'public_base_url_invalid' });
+  }
+
   try {
     // Route anonyme : sans contexte public, chaque table tenant rend 0 ligne
     // une fois l'application connectee en tracefab_app.
     const resolved = await withTracefabPublicContext(async (tx) => {
-      const dpp = await resolveDppPassData(tx, gtinOrRef);
+      const dpp = await resolveDppPassData(tx, gtinOrRef, publicBaseUrl.origin);
       if (!dpp) return null;
       // Liste blanche SQL + RLS : aucun detail, acteur, document ou metadata
       // prive ne traverse cette projection anonyme.
