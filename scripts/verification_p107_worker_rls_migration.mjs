@@ -112,24 +112,38 @@ try {
       'la politique RLS limite UPDATE au role tracefab_worker');
 
     const probeId = 'org_p107_worker_rls_probe_' + randomBytes(8).toString('hex');
-    await client.query('BEGIN');
+    const adminClient = new pg.Client({
+      connectionString: rawUrl,
+      ssl: sslDepuisUrl(rawUrl),
+      application_name: 'tracefab-p107-worker-rls-runtime-probe',
+    });
+    await adminClient.connect();
+    await adminClient.query('BEGIN');
     try {
-      await client.query(
+      // Le membership SET est temporaire et sera annule avec ROLLBACK.
+      // neondb_owner conserve son etat initial apres ce postflight.
+      await adminClient.query('GRANT tracefab_worker TO neondb_owner WITH SET TRUE');
+      await adminClient.query('SET LOCAL ROLE tracefab_migrator');
+      await adminClient.query(
         "SELECT public.tracefab_sync_clerk_organization($1, 'TraceFab P10.7 RLS probe', 'TraceFab P10.7 RLS probe', 'brand'::organization_type)",
         [probeId]
       );
-      const archive = (await client.query(
+      await adminClient.query('RESET ROLE');
+      await adminClient.query('SET LOCAL ROLE tracefab_worker');
+      const archive = (await adminClient.query(
         'SELECT public.tracefab_archive_clerk_organization($1) AS archived',
         [probeId]
       )).rows[0];
-      assert(archive?.archived === true, 'archivage effectif sous RLS forcee (creation puis archivage dans la meme transaction)');
-      const persisted = (await client.query(
+      await adminClient.query('RESET ROLE');
+      const persisted = (await adminClient.query(
         'SELECT status FROM public.organizations WHERE clerk_organization_id = $1',
         [probeId]
       )).rows[0];
-      assert(persisted?.status === 'archived', 'statut archived persiste reellement sous RLS forcee');
+      assert(archive?.archived === true && persisted?.status === 'archived',
+        'archivage effectif sous RLS forcee (sync migrator puis archive worker)');
     } finally {
-      await client.query('ROLLBACK');
+      await adminClient.query('ROLLBACK');
+      await adminClient.end();
     }
   }
   console.log('P10.7 worker RLS ' + mode + ' : OK');
