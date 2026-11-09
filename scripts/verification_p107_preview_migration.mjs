@@ -77,34 +77,32 @@ try {
     assert(!historyRows.some((r) => r.migration_name === MIGRATION),
       'aucune tentative precedente de migration P10.7');
 
-    const p = (await client.query(
-      \`SELECT
-         to_regclass('public.tracefab_identity_politique') IS NOT NULL AS policy_table,
-         to_regclass('public.tracefab_identity_cles') IS NOT NULL AS keys_table,
-         to_regclass('public.tracefab_runtime_function_registry') IS NOT NULL AS registry_table,
-         (SELECT count(*)::int FROM public.tracefab_identity_cles WHERE actif) AS active_keys,
-         EXISTS (SELECT 1 FROM pg_roles WHERE rolname='tracefab_app') AS app_role,
-         EXISTS (SELECT 1 FROM pg_roles WHERE rolname='tracefab_worker') AS worker_role,
-         EXISTS (SELECT 1 FROM pg_roles WHERE rolname='tracefab_migrator') AS migrator_role\`
-    )).rows[0];
-    assert(p.policy_table && p.keys_table && p.registry_table, 'tables de prerequis P10.5/P10.6 presentes');
-    assert(p.active_keys > 0, 'au moins une cle HMAC active deja provisionnee');
-    assert(p.app_role && p.worker_role && p.migrator_role, 'roles app, worker et migrator presents');
+    const prerequisites = (await client.query([
+      'SELECT to_regclass(\'public.tracefab_identity_politique\') IS NOT NULL AS policy_table,',
+      'to_regclass(\'public.tracefab_identity_cles\') IS NOT NULL AS keys_table,',
+      'to_regclass(\'public.tracefab_runtime_function_registry\') IS NOT NULL AS registry_table,',
+      '(SELECT count(*)::int FROM public.tracefab_identity_cles WHERE actif) AS active_keys,',
+      'EXISTS (SELECT 1 FROM pg_roles WHERE rolname=\'tracefab_app\') AS app_role,',
+      'EXISTS (SELECT 1 FROM pg_roles WHERE rolname=\'tracefab_worker\') AS worker_role,',
+      'EXISTS (SELECT 1 FROM pg_roles WHERE rolname=\'tracefab_migrator\') AS migrator_role'
+    ].join(' '))).rows[0];
+    assert(prerequisites.policy_table && prerequisites.keys_table && prerequisites.registry_table,
+      'tables de prerequis P10.5/P10.6 presentes');
+    assert(prerequisites.active_keys > 0, 'au moins une cle HMAC active deja provisionnee');
+    assert(prerequisites.app_role && prerequisites.worker_role && prerequisites.migrator_role,
+      'roles app, worker et migrator presents');
 
-    const funcs = (await client.query(
-      \`SELECT p.proname, p.prosecdef
-         FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace
-        WHERE n.nspname='public' AND p.proname = ANY($1::text[])\`,
+    const functions = (await client.query(
+      'SELECT p.proname, p.prosecdef FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname=\'public\' AND p.proname = ANY($1::text[])',
       [SYSTEM_FUNCTIONS]
     )).rows;
-    assert(funcs.length === SYSTEM_FUNCTIONS.length && funcs.every((f) => f.prosecdef),
+    assert(functions.length === SYSTEM_FUNCTIONS.length && functions.every((f) => f.prosecdef),
       '13 operations systeme presentes et SECURITY DEFINER');
 
-    const acl = (await client.query(
-      \`SELECT
-         has_table_privilege('tracefab_app','public.tracefab_identity_cles','SELECT') AS app_reads_keys,
-         has_function_privilege('tracefab_app','public.tracefab_identity_jeton_utilisateur(text)','EXECUTE') AS app_checks_user_identity\`
-    )).rows[0];
+    const acl = (await client.query([
+      'SELECT has_table_privilege(\'tracefab_app\',\'public.tracefab_identity_cles\',\'SELECT\') AS app_reads_keys,',
+      'has_function_privilege(\'tracefab_app\',\'public.tracefab_identity_jeton_utilisateur(text)\',\'EXECUTE\') AS app_checks_user_identity'
+    ].join(' '))).rows[0];
     assert(acl.app_reads_keys === false, 'tracefab_app ne lit pas les cles HMAC');
     assert(acl.app_checks_user_identity === true, 'validation de l identite utilisateur toujours accordee');
     console.log('PREFLIGHT OK — aucune ecriture effectuee; seule P10.7 est en attente.');
@@ -112,34 +110,31 @@ try {
     const row = historyRows.find((r) => r.migration_name === MIGRATION);
     assert(row && row.finished_at && !row.rolled_back_at, 'migration P10.7 enregistree comme appliquee');
 
-    const p = (await client.query(
+    const policy = (await client.query(
       'SELECT systeme_strict FROM public.tracefab_identity_politique WHERE singleton'
     )).rows[0];
-    assert(p?.systeme_strict === false, 'mode systeme reste permissif apres migration (activation separee)');
+    assert(policy && policy.systeme_strict === false,
+      'mode systeme reste permissif apres migration (activation separee)');
 
-    const acl = (await client.query(
-      \`SELECT
-         has_function_privilege('tracefab_app','public.tracefab_identite_systeme_jeton_valide(text)','EXECUTE') AS app_can_verify,
-         has_function_privilege('tracefab_app','public.tracefab_identite_systeme()','EXECUTE') AS app_can_call_predicate,
-         has_function_privilege('tracefab_worker','public.tracefab_identite_systeme()','EXECUTE') AS worker_can_call_predicate,
-         has_function_privilege('tracefab_migrator','public.tracefab_identite_systeme()','EXECUTE') AS migrator_can_call_predicate,
-         has_table_privilege('tracefab_app','public.tracefab_identity_cles','SELECT') AS app_reads_keys\`
-    )).rows[0];
+    const acl = (await client.query([
+      'SELECT has_function_privilege(\'tracefab_app\',\'public.tracefab_identite_systeme_jeton_valide(text)\',\'EXECUTE\') AS app_can_verify,',
+      'has_function_privilege(\'tracefab_app\',\'public.tracefab_identite_systeme()\',\'EXECUTE\') AS app_can_call_predicate,',
+      'has_function_privilege(\'tracefab_worker\',\'public.tracefab_identite_systeme()\',\'EXECUTE\') AS worker_can_call_predicate,',
+      'has_function_privilege(\'tracefab_migrator\',\'public.tracefab_identite_systeme()\',\'EXECUTE\') AS migrator_can_call_predicate,',
+      'has_table_privilege(\'tracefab_app\',\'public.tracefab_identity_cles\',\'SELECT\') AS app_reads_keys'
+    ].join(' '))).rows[0];
     assert(acl.app_can_verify === true, 'tracefab_app peut verifier un jeton systeme');
     assert(acl.app_can_call_predicate === false, 'tracefab_app ne peut pas appeler le predicat interne');
     assert(acl.worker_can_call_predicate === true, 'tracefab_worker peut appeler le predicat');
     assert(acl.migrator_can_call_predicate === true, 'tracefab_migrator peut appeler le predicat');
     assert(acl.app_reads_keys === false, 'tracefab_app ne lit toujours pas les cles');
 
-    const funcs = (await client.query(
-      \`SELECT p.proname, p.prosecdef,
-              position('tracefab_identite_systeme()' in pg_get_functiondef(p.oid)) > 0 AS guarded
-         FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace
-        WHERE n.nspname='public' AND p.proname = ANY($1::text[])\`,
+    const functions = (await client.query(
+      'SELECT p.proname, p.prosecdef, position(\'tracefab_identite_systeme()\' in pg_get_functiondef(p.oid)) > 0 AS guarded FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname=\'public\' AND p.proname = ANY($1::text[])',
       [SYSTEM_FUNCTIONS]
     )).rows;
-    assert(funcs.length === SYSTEM_FUNCTIONS.length
-      && funcs.every((f) => f.prosecdef && f.guarded),
+    assert(functions.length === SYSTEM_FUNCTIONS.length
+      && functions.every((f) => f.prosecdef && f.guarded),
       'les 13 operations systeme portent toutes la garde d origine');
 
     const probe = (await client.query('SELECT * FROM public.tracefab_sec_probe_identite_systeme()')).rows[0];
@@ -148,8 +143,7 @@ try {
     assert(probe.runtime_lit_les_cles === false, 'sonde catalogue : runtime sans lecture des cles');
 
     const keys = (await client.query(
-      \`SELECT version, encode(secret, 'hex') AS secret_hex
-         FROM public.tracefab_identity_cles WHERE actif ORDER BY version DESC\`
+      'SELECT version, encode(secret, \'hex\') AS secret_hex FROM public.tracefab_identity_cles WHERE actif ORDER BY version DESC'
     )).rows;
     assert(keys.length > 0, 'au moins une cle active apres migration');
     const now = Number((await client.query(
@@ -159,7 +153,7 @@ try {
     for (const key of keys) {
       const secret = Buffer.from(key.secret_hex, 'hex');
       const sign = (expiration) => {
-        const body = \`v1|tracefab_system|tracefab_worker|\${expiration}\`;
+        const body = 'v1|tracefab_system|tracefab_worker|' + expiration;
         const mac = createHmac('sha256', secret).update(body).digest('hex');
         return body + '.' + mac;
       };
@@ -177,13 +171,12 @@ try {
       const tooLongToken = sign(now + 601);
       const ambiguousToken = validToken + '.extra';
       const checks = (await client.query(
-        \`SELECT
-           public.tracefab_identite_systeme_jeton_valide($1) AS valid,
-           public.tracefab_identite_systeme_jeton_valide($2) AS bad_mac,
-           public.tracefab_identite_systeme_jeton_valide($3) AS uppercase_mac,
-           public.tracefab_identite_systeme_jeton_valide($4) AS expired,
-           public.tracefab_identite_systeme_jeton_valide($5) AS over_ttl,
-           public.tracefab_identite_systeme_jeton_valide($6) AS ambiguous\`,
+        'SELECT public.tracefab_identite_systeme_jeton_valide($1) AS valid, ' +
+        'public.tracefab_identite_systeme_jeton_valide($2) AS bad_mac, ' +
+        'public.tracefab_identite_systeme_jeton_valide($3) AS uppercase_mac, ' +
+        'public.tracefab_identite_systeme_jeton_valide($4) AS expired, ' +
+        'public.tracefab_identite_systeme_jeton_valide($5) AS over_ttl, ' +
+        'public.tracefab_identite_systeme_jeton_valide($6) AS ambiguous',
         [validToken, invalidToken, upperToken, expiredToken, tooLongToken, ambiguousToken]
       )).rows[0];
       assert(checks.valid === true, 'HMAC valide accepte pour cle v' + key.version);
