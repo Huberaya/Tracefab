@@ -144,7 +144,11 @@ const secretsParWorkflow = new Map();
 const urlsNonLocales = [];
 for (const w of workflows) {
   const texte = sansCommentaires(readFileSync(join(dossierWf, w), 'utf8'), { yaml: true });
-  for (const m of texte.matchAll(/secrets\.([A-Z0-9_]+)/g)) secretsReferences.add(m[1]);
+  for (const m of texte.matchAll(/secrets\\.([A-Z0-9_]+)/g)) {
+    secretsReferences.add(m[1]);
+    if (!secretsParWorkflow.has(w)) secretsParWorkflow.set(w, new Set());
+    secretsParWorkflow.get(w).add(m[1]);
+  }
   for (const m of texte.matchAll(/(postgres(?:ql)?:\/\/[^\s"'`]+)/g)) {
     const url = m[1];
     if (!/@(localhost|127\.0\.0\.1)[:/]/.test(url)) urlsNonLocales.push(`${w} : ${url.replace(/:\/\/[^@]*@/, '://…@')}`);
