@@ -210,6 +210,45 @@ function usesHorsListe(uses) {
   return !USES_SANS_MIGRATE.has(action);
 }
 
+// Exception unique et verifiable : migration P10.7 sur Neon Preview P11.
+// La cible, le commit declencheur, le secret, l'environnement et les six
+// commandes sont compares au registre ; aucune autre migration distante ne
+// sort de la liste blanche T1.8.
+function previewMigrationEstDeclaree(file, doc) {
+  const rule = entryFor('previewMigrationWorkflows', file);
+  if (!rule) return false;
+  const job = doc.jobs?.[rule.job];
+  if (!job || !Array.isArray(job.steps)) return false;
+  const trigger = doc.on ?? doc.true;
+  const branches = trigger?.push?.branches;
+  const expectedIf = "${{ github.event.head_commit.message == '" + rule.commit_message + "' }}";
+  const expectedSecret = "${{ secrets." + rule.secret + " }}";
+  const runSteps = job.steps.filter((step) => typeof step.run === 'string').map((step) => step.run.trim());
+  const expectedRuns = [
+    'node --check scripts/verification_p107_preview_migration.mjs',
+    'npm ci',
+    rule.preflight,
+    rule.migration,
+    rule.status,
+    rule.postflight,
+  ];
+  const checkout = job.steps.find((step) => String(step.uses || '').startsWith('actions/checkout@'));
+  const setupNode = job.steps.find((step) => String(step.uses || '').startsWith('actions/setup-node@'));
+  const preflightSource = readFileSync(join(ROOT, 'scripts/verification_p107_preview_migration.mjs'), 'utf8');
+  return job.environment === rule.environment
+    && job.if === expectedIf
+    && Array.isArray(branches) && branches.length === 1 && branches[0] === rule.branch
+    && job.env?.DATABASE_URL === expectedSecret
+    && JSON.stringify(runSteps) === JSON.stringify(expectedRuns)
+    && doc.permissions?.contents === 'read'
+    && Boolean(checkout?.with?.['persist-credentials'] === false)
+    && Boolean(setupNode)
+    && preflightSource.includes("EXPECTED_ENDPOINT = 'ep-lively-field-b1wicg4v'")
+    && preflightSource.includes("MIGRATION = '20261106130000_identite_systeme_signee'")
+    && preflightSource.includes('missing.length === 1')
+    && preflightSource.includes('tracefab_identite_systeme_jeton_valide');
+}
+
 function estMigrateNUE(frag) {
   if (estEchoInoffensif(frag) || estFormeMigrateAutorisee(frag)) return false;
   const t = sansPrefixeShell(frag);
@@ -330,9 +369,14 @@ for (const file of files) {
   const secretDatabase = /DATABASE_URL\s*:\s*\$\{\{\s*secrets\./i.test(code)
     || /NEON_TEST_DATABASE_URL\s*:\s*\$\{\{\s*secrets\./i.test(code)
     || /secrets\.[A-Za-z0-9_]*(?:DATABASE|DB)_[A-Za-z0-9_]*/i.test(code);
-  secretDatabase
-    ? ko('B. une connexion de base est alimentee par le contexte secrets')
-    : ok('B. aucune connexion de base alimentee par un secret');
+  const previewMigrationAllowed = previewMigrationEstDeclaree(file, doc);
+  if (secretDatabase && previewMigrationAllowed) {
+    ok('B. connexion admin bornee a la migration P10.7 de Neon Preview P11, avec preflight et environnement approuve');
+  } else if (secretDatabase) {
+    ko('B. une connexion de base est alimentee par le contexte secrets hors exception Preview strictement declaree');
+  } else {
+    ok('B. aucune connexion de base alimentee par un secret');
+  }
 
   const destructiveAgainstSecret = /run\s*:\s*\|?[\s\S]{0,400}?npm\s+run\s+(test:neon|test:neon:)/.test(code)
     && secretRefs.length > 0;
@@ -558,6 +602,9 @@ for (const file of files) {
   // exactement le wrapper autorise. Fichiers locaux suivis sur 2 sauts.
   // uses: hors {checkout, setup-node, upload-artifact} = non autorise.
   const nues = [];
+  if (previewMigrationAllowed) {
+    ok('K. migration P10.7 distante bornee a Neon Preview P11 par le registre, le preflight, le commit explicite et le postflight');
+  } else {
   for (const [nomJob, job] of Object.entries(jobs)) {
     if (!job || typeof job !== 'object' || !Array.isArray(job.steps)) continue;
     for (const step of job.steps) {
@@ -586,6 +633,7 @@ for (const file of files) {
     }
   } else {
     ok(`K. ${file} : aucune migrate prisma nue dans les etapes run`);
+  }
   }
 }
 
