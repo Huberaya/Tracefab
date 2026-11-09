@@ -82,6 +82,10 @@ SELECT ligne FROM (
          || '|politiques_sur_current_user|'
          || (SELECT count(*)::text FROM pg_catalog.pg_policies
               WHERE schemaname = 'public'
+                -- Cette sonde isole l effet de 20261028120100 : exclure la politique
+                -- ajoutee plus tard par 20261109190000, sinon son compteur reste a 15
+                -- meme lorsque la migration historique testee est retiree.
+                AND policyname <> 'organizations_worker_update'
                 -- `strpos` ET NON `LIKE`, pour la raison qui a produit un faux
                 -- positif ailleurs dans ce chantier : dans un motif LIKE, `_`
                 -- est un JOKER. `LIKE '%tracefab_worker%'` matche donc
