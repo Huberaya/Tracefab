@@ -32,6 +32,7 @@ const checks = [
   ['page accepte GTIN, id ou segment de chemin', /params\.get\('gtin'\) \|\| params\.get\('id'\)/.test(client) && /fromPath/.test(client)],
   ['page appelle la route API avec un identifiant encode', /fetch\('\/api\/dpp\/' \+ encodeURIComponent\(id\)/.test(client)],
   ['page nue sans identifiant reste indisponible et signalee', /if \(!id\)[\s\S]*data-dpp-source', 'unavailable'[\s\S]*banner\.hidden = false/.test(client)],
+  ['contenu demo masque tant qu aucun identifiant publie n est charge', /html\[data-dpp-requested="true"\].*\[data-dpp-demo-only\]/.test(page) && /html\[data-dpp-source="unavailable"\].*\[data-tf-demo\]/.test(page)],
   ['erreur API neutralise les donnees de demonstration', /neutralizeForMissingPassport\(\)/.test(client) && /Passeport indisponible ou inconnu/.test(client)],
   ['statut live exige une source live et au moins une donnee sourcee', /declared === 'live' && sourcedCount > 0/.test(client)],
 ];
