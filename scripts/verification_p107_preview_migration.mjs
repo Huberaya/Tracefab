@@ -52,16 +52,25 @@ await client.connect();
 
 try {
   const identity = (await client.query(
-    'SELECT current_database() AS database, current_user AS role'
+    'SELECT current_database() AS database, current_user AS role, session_user AS session_role'
   )).rows[0];
   assert(identity.database === 'neondb', 'base cible neondb');
-  assert(identity.role === 'neondb_owner', 'role de migration neondb_owner');
+  if (mode === 'preflight') {
+    assert(identity.role === 'neondb_owner', 'connexion initiale neondb_owner');
+  } else {
+    assert(identity.role === 'tracefab_migrator' && identity.session_role === 'neondb_owner',
+      'postflight execute sous tracefab_migrator via neondb_owner');
+  }
 
   const historyRows = (await client.query(
     'SELECT migration_name, finished_at, rolled_back_at FROM public._prisma_migrations ORDER BY migration_name'
   )).rows;
-  const unfinished = historyRows.filter((r) => !r.finished_at && !r.rolled_back_at);
-  assert(unfinished.length === 0, 'aucune migration inachevee non annulee');
+  const unfinished = historyRows.filter((r) => !r.finished_at && !r.rolled_back_at
+    && r.migration_name !== MIGRATION);
+  assert(unfinished.length === 0, 'aucune autre migration inachevee non annulee');
+  const p107Rows = historyRows.filter((r) => r.migration_name === MIGRATION);
+  assert(p107Rows.length <= 1 && p107Rows.every((r) => !r.finished_at),
+    'au plus une tentative P10.7 echouee ou deja resolue, jamais une migration appliquee');
 
   if (mode === 'preflight') {
     const dirs = fs.readdirSync(path.resolve('prisma/migrations'), { withFileTypes: true })
@@ -74,8 +83,16 @@ try {
     const missing = dirs.filter((name) => !applied.has(name));
     assert(missing.length === 1 && missing[0] === MIGRATION,
       'seule migration en attente = ' + MIGRATION);
-    assert(!historyRows.some((r) => r.migration_name === MIGRATION),
-      'aucune tentative precedente de migration P10.7');
+    assert(p107Rows.length === 0 || (p107Rows.length === 1 && !p107Rows[0].finished_at),
+      'aucune application precedente de P10.7; tentative echouee recuperable');
+
+    const partial = (await client.query([
+      'SELECT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema=\\'public\\' AND table_name=\\'tracefab_identity_politique\\' AND column_name=\\'systeme_strict\\') AS system_mode_column,',
+      'to_regprocedure(\\'public.tracefab_identite_systeme_jeton_valide(text)\\') IS NOT NULL AS verifier_function,',
+      'to_regprocedure(\\'public.tracefab_sec_probe_identite_systeme()\\') IS NOT NULL AS probe_function'
+    ].join(' '))).rows[0];
+    assert(partial.system_mode_column === false && partial.verifier_function === false && partial.probe_function === false,
+      'aucun effet partiel P10.7 a recuperer dans le schema');
 
     const prerequisites = (await client.query([
       'SELECT to_regclass(\'public.tracefab_identity_politique\') IS NOT NULL AS policy_table,',
@@ -105,10 +122,46 @@ try {
     ].join(' '))).rows[0];
     assert(acl.app_reads_keys === false, 'tracefab_app ne lit pas les cles HMAC');
     assert(acl.app_checks_user_identity === true, 'validation de l identite utilisateur toujours accordee');
-    console.log('PREFLIGHT OK — aucune ecriture effectuee; seule P10.7 est en attente.');
+
+    const owner = (await client.query([
+      'SELECT pg_has_role(\\'neondb_owner\\', \\'tracefab_migrator\\', \\'MEMBER\\') AS can_set_migrator,',
+      '(SELECT pg_get_userbyid(c.relowner) FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace',
+      ' WHERE n.nspname=\\'public\\' AND c.relname=\\'tracefab_identity_politique\\') AS policy_owner'
+    ].join(' '))).rows[0];
+    assert(owner.can_set_migrator === true && owner.policy_owner === 'tracefab_migrator',
+      'neondb_owner peut endosser le role proprietaire tracefab_migrator');
+
+    const migrationUrl = new URL(url);
+    const previousOptions = migrationUrl.searchParams.get('options');
+    migrationUrl.searchParams.set('options', [previousOptions, '-c role=tracefab_migrator'].filter(Boolean).join(' '));
+    const migrationConnection = migrationUrl.toString();
+    const migratorClient = new pg.Client({
+      connectionString: migrationConnection,
+      ssl: sslDepuisUrl(migrationConnection),
+      application_name: 'tracefab-p107-preview-migrator-role-check',
+    });
+    try {
+      await migratorClient.connect();
+      const effective = (await migratorClient.query(
+        'SELECT current_database() AS database, current_user AS role, session_user AS session_role'
+      )).rows[0];
+      assert(effective.database === 'neondb' && effective.role === 'tracefab_migrator'
+        && effective.session_role === 'neondb_owner',
+      'connexion Prisma preparee sous tracefab_migrator, session neondb_owner');
+    } finally {
+      await migratorClient.end();
+    }
+
+    const githubEnv = process.env.GITHUB_ENV;
+    if (!githubEnv) throw new Error('GITHUB_ENV absent : impossible de preparer le role de migration sans exposer la connexion.');
+    fs.appendFileSync(githubEnv,
+      'DATABASE_URL=' + migrationConnection + '\\n'
+      + 'TRACEFAB_P11_NEEDS_RESOLVE=' + (p107Rows.some((r) => !r.rolled_back_at) ? 'true' : 'false') + '\\n');
+    process.stdout.write('::add-mask::' + migrationConnection + '\\n');
+    console.log('PREFLIGHT OK — cible P11, aucun effet partiel; role proprietaire prepare; recuperation Prisma conditionnelle.');
   } else {
-    const row = historyRows.find((r) => r.migration_name === MIGRATION);
-    assert(row && row.finished_at && !row.rolled_back_at, 'migration P10.7 enregistree comme appliquee');
+    const row = historyRows.find((r) => r.migration_name === MIGRATION && r.finished_at && !r.rolled_back_at);
+    assert(row, 'migration P10.7 enregistree comme appliquee');
 
     const policy = (await client.query(
       'SELECT systeme_strict FROM public.tracefab_identity_politique WHERE singleton'
