@@ -270,6 +270,33 @@ for (const [nom, operation] of OPERATIONS) {
       : r.ok ? 'executee' : `poursuite metier : ${r.code} ${String(r.message ?? '').slice(0, 50)}`);
 }
 
+
+console.log('\n  B2. archivage reel sous identite systeme signee');
+{
+  const clerkOrganizationId = `org_p107_archive_${randomBytes(8).toString('hex')}`;
+  await app.query('BEGIN');
+  try {
+    await app.query(`SELECT set_config('tracefab.identity_systeme', $1, true)`, [jetonSystemeValide({ cle })]);
+    await app.query(`SELECT set_config('tracefab.identity', '', true)`);
+    await app.query(`SELECT set_config('tracefab.active_organization_id', '', true)`);
+    await app.query(
+      `SELECT tracefab_sync_clerk_organization($1, 'TraceFab P10.7 archive probe', 'TraceFab P10.7 archive probe', 'brand'::organization_type)`,
+      [clerkOrganizationId]
+    );
+    const archived = await app.query(
+      `SELECT tracefab_archive_clerk_organization($1) AS archived`,
+      [clerkOrganizationId]
+    );
+    ok(archived.rows[0]?.archived === true,
+      'tracefab_archive_clerk_organization() applique effectivement UPDATE sous RLS worker');
+  } catch (error) {
+    ok(false, 'tracefab_archive_clerk_organization() applique effectivement UPDATE sous RLS worker',
+      `${error.code ?? 'sans_code'} ${String(error.message ?? '').slice(0, 100)}`);
+  } finally {
+    try { await app.query('ROLLBACK'); } catch { /* transaction de test */ }
+  }
+}
+
 /* --- C : falsifications -------------------------------------------------- */
 
 console.log('\n  C. falsifications refusees');

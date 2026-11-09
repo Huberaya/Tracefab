@@ -201,6 +201,32 @@ try {
     assert(Number(probe.operations_systeme_non_gardees) === 0, 'sonde catalogue : aucune operation non gardee');
     assert(probe.runtime_lit_les_cles === false, 'sonde catalogue : runtime sans lecture des cles');
 
+
+    const workerPolicy = (await client.query(
+      "SELECT qual, with_check FROM pg_policies WHERE schemaname='public' AND tablename='organizations' AND policyname='organizations_worker_update' AND cmd='UPDATE'"
+    )).rows[0];
+    assert(workerPolicy
+      && /tracefab_worker/.test(workerPolicy.qual || '')
+      && /tracefab_worker/.test(workerPolicy.with_check || ''),
+      'RLS autorise UPDATE sur organizations uniquement au role tracefab_worker');
+
+    const archiveProbeId = 'org_p107_preview_archive_probe_' + Date.now();
+    await client.query('BEGIN');
+    try {
+      await client.query(
+        "SELECT public.tracefab_sync_clerk_organization($1, 'TraceFab P10.7 RLS probe', 'TraceFab P10.7 RLS probe', 'brand'::organization_type)",
+        [archiveProbeId]
+      );
+      const archiveProbe = (await client.query(
+        'SELECT public.tracefab_archive_clerk_organization($1) AS archived',
+        [archiveProbeId]
+      )).rows[0];
+      assert(archiveProbe?.archived === true,
+        'postflight : archivage systeme effectif sous RLS forcee');
+    } finally {
+      await client.query('ROLLBACK');
+    }
+
     const keys = (await client.query(
       'SELECT version, encode(secret, \'hex\') AS secret_hex FROM public.tracefab_identity_cles WHERE actif ORDER BY version DESC'
     )).rows;
