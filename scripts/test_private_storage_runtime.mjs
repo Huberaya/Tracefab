@@ -26,6 +26,9 @@ try {
   process.env.PRIVATE_STORAGE_ENDPOINT = 'http://storage.example.test';
   process.env.PRIVATE_STORAGE_ACCESS_KEY_ID = 'test-key';
   process.env.PRIVATE_STORAGE_SECRET_ACCESS_KEY = 'test-secret';
+  process.env.PRIVATE_STORAGE_BUCKET = 'tracefab-private';
+  process.env.PRIVATE_STORAGE_REGION = 'us-east-1';
+  process.env.PRIVATE_STORAGE_PRESIGN_SECONDS = '300';
   ok('endpoint S3 HTTP externe refuse en production', () => assert.throws(() => storageConfig(), /private_storage_https_required/));
 
   process.env.NODE_ENV = 'test';
@@ -60,7 +63,7 @@ try {
   Object.defineProperty(AbortSignal, 'timeout', { configurable: true, value: () => controller.signal });
   globalThis.fetch = async (_url, init) => {
     assert.equal(init.signal, controller.signal);
-    throw new DOMException('timed out', 'TimeoutError');
+    const timeoutError = new Error('timed out'); timeoutError.name = 'TimeoutError'; throw timeoutError;
   };
   await rejects('timeout antivirus transforme en erreur retryable explicite', () => scanWithAntivirus(bytes, 'test.pdf', 'application/pdf'), 'private_storage_antivirus_timeout');
 
