@@ -10,7 +10,7 @@
 
 Le test global doit comparer deux états réellement distincts :
 
-1. Le baseline s'arrête immédiatement avant `20261105180000_active_tenant_access_guards`.
+1. Le baseline s'arrête immédiatement avant `20261106010000_active_tenant_access_guards`.
 2. Les fixtures sont insérées dans cet état historique.
 3. Le correctif et toutes les migrations suivantes sont appliqués avant les contrôles après-correctif.
 
