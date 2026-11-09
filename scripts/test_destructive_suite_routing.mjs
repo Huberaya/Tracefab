@@ -273,6 +273,9 @@ const OPERATOR_WRITER_SCRIPTS = [
   // de cible jetable refuse par construction.
   'scripts/provisionner_roles_db.mjs',
   'scripts/provisionner_cle_identite.mjs',
+  // Remplacement de role worker Neon : mutation operateur explicite, avec
+  // TF_ALLOW_WORKER_ROLE_SWAP, confirmation de la cible directe et garde Production.
+  'scripts/provisionner_worker_neon.mjs',
   'scripts/mesure_effet_migrations_dpp.mjs',
   'scripts/valider_branche_dpp.mjs',
 ];
