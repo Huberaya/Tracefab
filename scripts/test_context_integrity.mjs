@@ -99,5 +99,28 @@ ok(identite.includes('clerk_email_unverified'),
 // Le comportement lui-meme est eprouve, cas par cas, par test:clerk-identity :
 // une assertion statique ne prouve pas qu'une adresse non verifiee est refusee.
 
+// P10.7 : toute operation systeme doit signer son origine avant d'appeler
+// une fonction SECURITY DEFINER gardee. Le wrapper historique de context.ts
+// n'ajoute aucun jeton systeme et ne doit plus etre utilise par ces appelants.
+const systemContext = readFileSync(join('api', '_lib', 'contexte-systeme.ts'), 'utf8');
+ok(systemContext.includes('signerIdentiteSysteme({ cle })')
+  && systemContext.includes("set_config('tracefab.identity_systeme'"),
+  'le contexte systeme signe un jeton P10.7 et le pose transactionnellement');
+
+const workerCallers = sources.filter((file) => {
+  const code = readFileSync(file, 'utf8');
+  return /withTracefabWorkerContext\s*\(/.test(code)
+    && !/export\s+async\s+function\s+withTracefabWorkerContext/.test(code);
+});
+const importSystemContext = /import\s*\{\s*withTracefabWorkerContext\s*\}\s*from\s*['"]([^'"]+)['"]/;
+ok(workerCallers.length === 5,
+  '5 appelants systeme attendus, ' + workerCallers.length + ' trouve(s)');
+for (const file of workerCallers) {
+  const code = readFileSync(file, 'utf8');
+  const imported = code.match(importSystemContext)?.[1] ?? '';
+  ok(imported.endsWith('contexte-systeme.js'),
+    file + ' utilise le contexte systeme signe (import observe : ' + (imported || 'absent') + ')');
+}
+
 console.log(`\n  Intégrité du contexte d'identité : ${echecs === 0 ? 'OK' : `${echecs} échec(s)`}.`);
 process.exit(echecs === 0 ? 0 : 1);

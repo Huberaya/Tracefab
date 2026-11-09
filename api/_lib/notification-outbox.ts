@@ -1,5 +1,5 @@
 import type { Prisma } from '@prisma/client';
-import { withTracefabWorkerContext } from './context.js';
+import { withTracefabWorkerContext } from './contexte-systeme.js';
 import { sendDataRequestNotificationEmail, type DataRequestNotificationEvent } from './email.js';
 
 type NotificationOutboxRow = {
