@@ -35,7 +35,7 @@ Contrôles complémentaires :
 ## Repair — preuve PostgreSQL sous le vrai rôle applicatif
 
 La même matrice A/B a été exécutée dans une transaction Neon sur Repair :
-- les jetons A et B ont été signés en mémoire dans la transaction avec la clé active de cette branche ; aucune valeur de clé ou de jeton n'a été renvoyée comme donnée de test persistante ;
+- les jetons A et B ont été signés en mémoire dans la transaction avec la clé active de cette branche ; leur durée de vie était de 60 secondes. La réponse du contrôle SQL a affiché ces deux jetons éphémères, désormais expirés ; aucune valeur de clé HMAC n'a été exposée ;
 - après `SET LOCAL ROLE tracefab_app`, les lectures positives et négatives ont été vérifiées sur organisations, produits, matières, nœuds, liens et points de données ;
 - `tracefab_current_user_id()` reconnaît chaque jeton sous son organisation ;
 - le jeton A sous le contexte B retourne NULL ; un GUC forgé sans jeton retourne NULL ;
