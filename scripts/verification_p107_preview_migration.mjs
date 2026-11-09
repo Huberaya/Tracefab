@@ -157,7 +157,7 @@ try {
     fs.appendFileSync(githubEnv,
       'DATABASE_URL=' + migrationConnection + '\n'
       + 'TRACEFAB_P11_NEEDS_RESOLVE=' + (p107Rows.some((r) => !r.rolled_back_at) ? 'true' : 'false') + '\n');
-    process.stdout.write('::add-mask::' + migrationConnection + '\\n');
+    process.stdout.write('::add-mask::' + migrationConnection + '\n');
     console.log('PREFLIGHT OK — cible P11, aucun effet partiel; role proprietaire prepare; recuperation Prisma conditionnelle.');
   } else {
     const row = historyRows.find((r) => r.migration_name === MIGRATION && r.finished_at && !r.rolled_back_at);
