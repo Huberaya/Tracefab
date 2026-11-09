@@ -50,7 +50,7 @@ async function main() {
     },
   });
 
-  await inUserContext(brandUser, async (tx) => {
+  await inUserContext(brandUser, brandOrganization, async (tx) => {
     const rows = await tx.$queryRaw`
       SELECT * FROM tracefab_create_product(
         ${brandOrganization}::uuid,
@@ -64,7 +64,7 @@ async function main() {
     productId = rows[0].id;
   });
 
-  const supplierScore = await inUserContext(supplierUser, async (tx) => {
+  const supplierScore = await inUserContext(supplierUser, supplierOrganization, async (tx) => {
     const rows = await tx.$queryRaw`
       SELECT * FROM tracefab_compute_supplier_quality(${supplierId}::uuid, 'supplier_quality_test_v1')
     `;
@@ -81,24 +81,25 @@ async function main() {
   });
   assert(supplierIssues.length > 0, 'supplier quality issues were not created');
 
-  const acknowledged = await inUserContext(supplierUser, async (tx) => tx.$queryRaw`
+  const acknowledged = await inUserContext(supplierUser, supplierOrganization, async (tx) => tx.$queryRaw`
     SELECT * FROM tracefab_acknowledge_quality_issue(${supplierIssues[0].id}::uuid)
   `);
   assert(acknowledged[0]?.status === 'acknowledged', 'quality issue was not acknowledged');
 
   await expectSqlCode(
-    () => inUserContext(brandViewer, async (tx) => tx.$queryRaw`
+    // Align the active tenant with the issue owner so this proves the RBAC denial, not only the tenant guard.
+    () => inUserContext(brandViewer, supplierOrganization, async (tx) => tx.$queryRaw`
       SELECT * FROM tracefab_waive_quality_issue(${supplierIssues[0].id}::uuid, 'viewer cannot waive')
     `),
     'quality_issue_waive_role_required',
   );
 
-  const waived = await inUserContext(supplierUser, async (tx) => tx.$queryRaw`
+  const waived = await inUserContext(supplierUser, supplierOrganization, async (tx) => tx.$queryRaw`
     SELECT * FROM tracefab_waive_quality_issue(${supplierIssues[0].id}::uuid, 'Supplier accepts this known onboarding gap.')
   `);
   assert(waived[0]?.status === 'waived', 'quality issue was not waived');
 
-  const productScore = await inUserContext(brandUser, async (tx) => {
+  const productScore = await inUserContext(brandUser, brandOrganization, async (tx) => {
     const rows = await tx.$queryRaw`
       SELECT * FROM tracefab_compute_product_quality(${productId}::uuid, 'product_quality_test_v1')
     `;
@@ -108,7 +109,7 @@ async function main() {
   assert(productScore.product_id === productId, 'product quality subject mismatch');
 
   await expectSqlCode(
-    () => inUserContext(brandViewer, async (tx) => tx.$queryRaw`
+    () => inUserContext(brandViewer, brandOrganization, async (tx) => tx.$queryRaw`
       SELECT * FROM tracefab_compute_product_quality(${productId}::uuid, 'product_quality_test_v1')
     `),
     'product_quality_access_denied',
@@ -117,9 +118,10 @@ async function main() {
   console.log('Neon quality integration passed: explainable supplier/product scores, issue acknowledgement, waiver and role denial');
 }
 
-async function inUserContext(userId, callback) {
+async function inUserContext(userId, organizationId, callback) {
   return prisma.$transaction(async (tx) => {
     await tx.$executeRaw`SELECT set_config('tracefab.user_id', ${userId}, true)`;
+    await tx.$executeRaw`SELECT set_config('tracefab.active_organization_id', ${organizationId}, true)`;
     return callback(tx);
   });
 }

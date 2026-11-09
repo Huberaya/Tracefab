@@ -230,11 +230,14 @@ verifier("la connexion est le rôle applicatif", identite.rows[0].u === APP_ROLE
 verifier("le rôle ne contourne pas la RLS", identite.rows[0].b === false, `rolbypassrls=${identite.rows[0].b}`);
 
 /** Pose l'identité d'un utilisateur pour la durée de la transaction. */
-async function enTantQue(userId, fn) {
+async function enTantQue(userId, organizationId, fn) {
   await app.query('BEGIN');
   try {
     if (userId) {
       await app.query(`SELECT set_config('tracefab.user_id', $1, true)`, [userId]);
+    }
+    if (organizationId) {
+      await app.query(`SELECT set_config('tracefab.active_organization_id', $1, true)`, [organizationId]);
     }
     return await fn();
   } finally {
@@ -279,7 +282,7 @@ async function tente(sql, params = []) {
 
 console.log('\n  A. lecture inter-tenant, sur lignes existantes');
 
-await enTantQue(A.user, async () => {
+await enTantQue(A.user, A.org, async () => {
   const propres = await app.query(`SELECT id FROM documents WHERE id = $1`, [docA]);
   verifier('contrôle positif : A lit son propre document', propres.rowCount === 1, `${propres.rowCount} ligne`);
 
@@ -296,7 +299,7 @@ console.log('\n  B. modification inter-tenant');
 
 // `documents` fait partie des quatre tables où le rôle applicatif a vraiment le
 // droit d'écrire. C'est donc ici que la RLS — et non le privilège — doit agir.
-await enTantQue(A.user, async () => {
+await enTantQue(A.user, A.org, async () => {
   // La colonne modifiée est `original_filename`. Deux versions précédentes
   // écrivaient status puis byte_size, et restaient vertes même RLS désactivée :
   // le déclencheur de la migration initiale lève
@@ -325,7 +328,7 @@ verifier("le document de B est intact après la tentative", apresUpdate === 'pre
 
 console.log('\n  C. suppression inter-tenant');
 
-await enTantQue(A.user, async () => {
+await enTantQue(A.user, A.org, async () => {
   const r = await tente(`DELETE FROM documents WHERE id = $1`, [docB]);
   verifier(
     "A ne peut pas supprimer le document de B",
@@ -374,7 +377,7 @@ verifier("le document de B existe toujours", docBExiste === 1, `${docBExiste} li
 
 console.log('\n  D. insertion avec identité ou organisation falsifiée');
 
-await enTantQue(A.user, async () => {
+await enTantQue(A.user, A.org, async () => {
   // A tente d'écrire un document en se déclarant propriétaire l'organisation B.
   const r = await tente(
     `INSERT INTO documents (id, owner_organization_id, storage_bucket, storage_path,
@@ -416,7 +419,7 @@ verifier(
 
 // Le contexte « worker » ne doit pas ouvrir l'écriture inter-tenant : il arme
 // les politiques de l'outbox de notifications, pas celles des documents.
-await enTantQue(A.user, async () => {
+await enTantQue(A.user, A.org, async () => {
   await app.query(`SELECT set_config('tracefab.worker_context', 'true', true)`);
   // La colonne modifiée est `original_filename`. Deux versions précédentes
   // écrivaient status puis byte_size, et restaient vertes même RLS désactivée :

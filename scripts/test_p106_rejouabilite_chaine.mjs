@@ -287,8 +287,8 @@ try {
          JOIN pg_catalog.pg_roles r ON r.oid = m.member
          JOIN pg_catalog.pg_roles c ON c.oid = m.roleid
         WHERE c.rolname = 'tracefab_worker' ORDER BY 1`)).rows.map((r) => r.rolname);
-    ok(membres.length === 1 && membres[0] === roleExecutant,
-      'R7 appartenance finale conforme : seul l exécutant est membre de tracefab_worker',
+    ok(membres.length === 0,
+      'R7 aucune appartenance directe permanente à tracefab_worker après la chaîne',
       membres.join(', ') || 'aucun');
 
     const appMembre = (await client.query(

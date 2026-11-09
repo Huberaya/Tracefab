@@ -66,6 +66,7 @@ async function main() {
   await prisma.$transaction(async (tx) => {
     await tx.$executeRawUnsafe(`SET LOCAL ROLE ${role}`);
     await tx.$executeRaw`SELECT set_config('tracefab.user_id', ${userA}, true)`;
+    await tx.$executeRaw`SELECT set_config('tracefab.active_organization_id', ${orgA}, true)`;
     await tx.$executeRaw`SELECT set_config('tracefab.user_email', ${`${clerkA}@example.test`}, true)`;
 
     const visibleOrganizations = await tx.$queryRaw`SELECT id FROM organizations ORDER BY id`;
@@ -96,6 +97,7 @@ async function main() {
     await prisma.$transaction(async (tx) => {
       await tx.$executeRawUnsafe(`SET LOCAL ROLE ${role}`);
       await tx.$executeRaw`SELECT set_config('tracefab.user_id', ${userA}, true)`;
+    await tx.$executeRaw`SELECT set_config('tracefab.active_organization_id', ${orgA}, true)`;
       await tx.$executeRaw`SELECT set_config('tracefab.user_email', ${`${clerkA}@example.test`}, true)`;
       const n = await tx.$executeRaw`
         UPDATE suppliers SET profile_summary = 'must not write' WHERE id = ${supplierA}::uuid

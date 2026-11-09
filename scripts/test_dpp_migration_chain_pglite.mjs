@@ -255,6 +255,8 @@ await db.exec(`
     requirement_profile_version, readiness_status)
   VALUES ('${DPP2}', '${PROD2}', 1, 'textile_readiness_mvp', '1.0', 'data_ready');
   SELECT set_config('tracefab.user_id', '${USER}', false);
+  -- Le moteur DPP exige le locataire actif, pas seulement l'identite utilisateur.
+  SELECT set_config('tracefab.active_organization_id', '${ORG2}', false);
 `);
 
 const erreur = async (sql, params = []) => {

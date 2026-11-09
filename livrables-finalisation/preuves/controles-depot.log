@@ -1,0 +1,31 @@
+deploy=0
+=== test_registre_fonctions_runtime
+  ok        le refus est explicite dans le journal
+  ok        aucune transaction sur la cible refusee : la garde agit avant la connexion — avant=7 apres=7
+
+Verdict
+-------
+  ok — registre coherent, perimetre herite preserve, aucun elargissement.
+registre=0
+=== test_ingest_payload_acl
+  --------------------------------------------
+  30/30 assertions vertes
+  ok — la fonction est fermée, le chemin applicatif fonctionne.
+
+ingest_acl=0
+=== test_privileges_role_app
+  ok    une fonction future n hérite pas EXECUTE pour le runtime
+  base éphémère détruite : tf_privileges_mw76uzjy_3a4998a2408d
+
+  42/42 assertions vertes
+
+priv_app=0
+=== test_ecarts_privileges_role_app
+  ok    apres restauration : plus aucun ECART
+  --------------------------------------------
+  13/13 assertions vertes
+  ok — les deux ecarts sont detects, nommes, et l'etat est restaure.
+
+ecarts=0
+=== test:tables-ecriture-directe
+tables=0
