@@ -43,7 +43,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
     const { dpp: dppData, history, claims } = resolved;
 
-    res.setHeader('Cache-Control', 'public, max-age=60, stale-while-revalidate=300');
+    res.setHeader('Cache-Control', 'public, max-age=60, must-revalidate');
     return json(res, 200, {
       dpp: dppData,
       history,
