@@ -102,9 +102,17 @@ try {
   )).rows[0];
 
   if (mode === 'preflight') {
-    assert(pending.length === 1 && pending[0] === MIGRATION,
-      'seule migration en attente = ' + MIGRATION + ' (trouvees: ' + pending.join(', ') + ')');
-    assert(!policy, 'la politique corrective organizations_worker_update est encore absente');
+    const pendingExpected = pending.length === 1 && pending[0] === MIGRATION && !applied.has(MIGRATION);
+    const alreadyApplied = pending.length === 0 && applied.has(MIGRATION);
+    assert(pendingExpected || alreadyApplied,
+      'etat migration coherent (en attente unique ou deja appliquee) : ' + pending.join(', '));
+    if (alreadyApplied) {
+      assert(policy && /tracefab_worker/.test(policy.qual || '') && /tracefab_worker/.test(policy.with_check || ''),
+        'migration deja appliquee : politique organizations_worker_update conforme');
+    } else {
+      assert(!policy || (/tracefab_worker/.test(policy.qual || '') && /tracefab_worker/.test(policy.with_check || '')),
+        'politique absente ou etat partiel conforme avant reprise');
+    }
   } else {
     assert(pending.length === 0, 'aucune migration Prisma en attente apres deploy');
     assert(applied.has(MIGRATION), MIGRATION + ' est enregistree comme appliquee');
