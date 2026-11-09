@@ -3,16 +3,13 @@
 --
 -- MISSION : isolation globale des acces et du stockage (PR #109, suite).
 --
--- CONSTAT MESURE (PGlite, chaine complete des 69 migrations, 05/11/2026)
---   Utilisateur U membre actif de la marque A, de la marque B et du
---   fournisseur S ; `tracefab.active_organization_id` = A :
---     SELECT id FROM documents                       -> 3 lignes (A, B, S)
---     SELECT tracefab_can_access_document(<doc B>)  -> true
---     SELECT tracefab_can_access_document(<doc S>)  -> true
---   Les politiques RLS et `tracefab_can_access_document` bornent l'UTILISATEUR
---   (union des adhesions), pas le LOCATAIRE ACTIF. Une route qui appelle cette
---   fonction pour autoriser une preuve par son identifiant permet donc a un
---   compte multi-organisations de rattacher a un produit de A un document de B.
+-- CONSTAT MESURE (chaine de migrations rebasee sur main, 09/11/2026)
+--   La migration 20261105235900_active_tenant_policy_and_worker_closure a deja
+--   borne les lectures RLS et `tracefab_can_access_document` au tenant actif :
+--   avec le tenant A arme, les documents prives de B et S sont refuses.
+--   Le manque restant concerne les gardes explicites utilises par les routes
+--   pour autoriser un acces direct par identifiant exact. Ces deux helpers
+--   dedies n'existent pas encore avant la presente migration.
 --
 -- CE QUE FAIT CETTE MIGRATION (additive, aucun fichier historique modifie)
 --   1. `tracefab_document_accessible_in_active_tenant(uuid)` : decision
@@ -309,21 +306,23 @@ ON CONFLICT (name) DO NOTHING;
 -- registre corresponde a une fonction existante au moment ou il s'execute.
 
 -- ---------------------------------------------------------------------------
--- 4. RLS : les politiques historiques restent bornees a l'UTILISATEUR, ce qui
---    est insuffisant des qu'un compte appartient a plusieurs organisations.
+-- 4. Compatibilite avec les fonctions RLS historiques
 --
---    Mesure (section A de scripts/test_isolation_globale_pglite.mjs) : tenant A
---    arme, compte membre de A, B et S -> `SELECT id FROM documents` renvoyait
---    les documents des trois organisations, et `tracefab_can_access_document`
---    repondait vrai pour les trois. Les gardes des sections 1-2 protegent les
---    routes, mais une requete SQL qui ne passe pas par eux restait exposee.
+--    La migration 20261105235900_active_tenant_policy_and_worker_closure a deja
+--    lie les fonctions RLS historiques au tenant actif. La presente migration
+--    ajoute les gardes explicites pour les routes qui autorisent un acces par
+--    identifiant exact, puis les integre aux fonctions historiques sans
+--    supprimer ni remplacer les politiques RLS.
 --
---    Correction ADDITIVE par une 70e migration : `CREATE OR REPLACE` preserve
---    OID, proprietaire et ACL des deux fonctions historiques (aucun fichier de
---    migration deja applique n'est reecrit, aucun checksum n'est modifie).
---    Quand aucun tenant n'est arme (worker, public, compte avant choix du
---    tenant), le comportement historique est CONSERVEE. Quand un tenant est
---    arme, les voies inter-organisations ne comptent que pour CE tenant :
+--    Mesure (section A de scripts/test_isolation_globale_pglite.mjs) :
+--      AVANT : RLS et tracefab_can_access_document refusent deja B et S depuis A ;
+--              les helpers document/product dedies aux routes sont absents.
+--      APRES : les helpers existent, refusent les ID hors tenant actif et
+--              acceptent les partages/relations metier explicitement autorises.
+--
+--    CREATE OR REPLACE preserve OID, proprietaire et ACL des fonctions
+--    historiques. Sans tenant actif, leur comportement RLS historique est
+--    conserve ; les nouveaux helpers de route, eux, refusent tout acces :
 --      - `tracefab_can_access_document` -> propriete du tenant actif (tout etat
 --        non supprime, pour ne pas casser le cycle upload/scan) ou garde
 --        `tracefab_document_accessible_in_active_tenant` (partages, collecte,
