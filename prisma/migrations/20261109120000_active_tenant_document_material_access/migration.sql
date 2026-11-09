@@ -31,12 +31,17 @@
 --      de la marque ou a un fournisseur en relation active, document source
 --      d'un point de donnee d'un produit de la marque. Ce sont des liens
 --      metier verifiables, pas des appartenances.
---   3. `documents_select_authorized` et `documents_update_metadata_owner`
---      exigent le locataire actif sur la branche proprietaire.
---   4. `materials_select_authorized` et `materials_update_owner` de meme. Le
---      partage explicite (`data_shares`), la visibilite par composition
+--   3. `documents_select_authorized` exige le locataire actif sur la branche
+--      proprietaire lorsqu'un tenant est selectionne ; sans tenant, le
+--      comportement historique par appartenance reste conserve. La politique
+--      UPDATE reste exigeante et requiert toujours le tenant actif.
+--   4. `materials_select_authorized` applique la meme regle de lecture ; la
+--      politique UPDATE reste exigeante. Le partage explicite (`data_shares`),
+--      la visibilite par composition
 --      (`tracefab_material_visible_via_product`, deja bornee au locataire
 --      actif de la marque) et la relation fournisseur active restent admis.
+--      Les relations fournisseur et certificats sont accessibles depuis le
+--      tenant marque OU le tenant fournisseur auquel ils sont explicitement lies.
 --
 -- Ne sont PAS touches : les politiques PUBLIQUES (passeport DPP), les
 -- politiques WORKER (identite `tracefab_worker`), les tables techniques sans
