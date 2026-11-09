@@ -14,11 +14,11 @@
  *
  * IL MESURE AUSSI LE DEFAUT, PAS SEULEMENT LE CORRECTIF
  * -----------------------------------------------------
- * Avec le tenant A arme, un compte membre de A, B et du fournisseur S voit les
- * produits et les documents des TROIS organisations via les politiques RLS, et
- * `tracefab_can_access_document()` repond vrai pour les trois. C'est la fuite
- * inter-tenant que les gardes `*_accessible_in_active_tenant` doivent fermer.
- * Le test le demontre (section A) avant de verifier les refus (sections B-E).
+ * Avec le tenant A arme, un compte membre de A, B et du fournisseur S voit
+ * encore les documents des trois organisations via les politiques RLS, et
+ * `tracefab_can_access_document()` repond vrai pour les documents B et S.
+ * Les produits sont deja limites au tenant actif par une politique anterieure.
+ * Le test distingue ces deux etats avant de verifier les refus (sections B-E).
  *
  * ENVIRONNEMENT : niveau 1 — base jeteable locale, aucune connexion distante,
  * aucune ecriture sur Neon, aucune variable lue depuis l'environnement.
@@ -105,11 +105,15 @@ const dossiers = fs.readdirSync(MIGRATIONS)
 // La 70e migration porte le correctif. On l'applique APRES avoir mesure le
 // defaut sur la chaine historique : la section A n'est pas une simulation, ce
 // sont les politiques RLS reelles avant le correctif qui fuient.
+// Le baseline s'arrete juste AVANT le correctif. Exclure uniquement cette
+// migration tout en rejouant les suivantes reproduit un schema deja durci.
+// Les fixtures sont peuplees avant d'appliquer le correctif et toute sa suite.
 const DOSSIER_CORRECTIF = '20261105180000_active_tenant_access_guards';
-const avant = dossiers.filter((d) => d !== DOSSIER_CORRECTIF);
+const avant = dossiers.filter((d) => d < DOSSIER_CORRECTIF);
+const apres = dossiers.filter((d) => d >= DOSSIER_CORRECTIF);
 const correctif = dossiers.filter((d) => d === DOSSIER_CORRECTIF);
-if (correctif.length !== 1) {
-  console.error('  ECHEC — migration de correctif introuvable ou dupliquee');
+if (correctif.length !== 1 || apres[0] !== DOSSIER_CORRECTIF) {
+  console.error('  ECHEC — migration de correctif introuvable, dupliquee ou hors ordre');
   process.exit(1);
 }
 
@@ -178,9 +182,15 @@ await db.exec(`
 
   INSERT INTO data_shares (id,relationship_id,supplier_organization_id,grantee_organization_id,scope,status,starts_at) VALUES
     ('${SHARE_SA}','${REL_AS}','${S}','${A}',
-      jsonb_build_object('document_ids', jsonb_build_array('${D_S_VERS_A}'::text)),'active',now()),
+      jsonb_build_object(
+        'document_ids', jsonb_build_array('${D_S_VERS_A}'::text),
+        'subject_ids', jsonb_build_array('${D_S_VERS_A}'::text)
+      ),'active',now()),
     ('${SHARE_SB}','${REL_BS}','${S}','${B}',
-      jsonb_build_object('document_ids', jsonb_build_array('${D_S_VERS_B}'::text)),'active',now());
+      jsonb_build_object(
+        'document_ids', jsonb_build_array('${D_S_VERS_B}'::text),
+        'subject_ids', jsonb_build_array('${D_S_VERS_B}'::text)
+      ),'active',now());
 
   INSERT INTO certifications (id,owner_organization_id,supplier_id,standard_name,document_id,status) VALUES
     ('${CERT_S}','${S}','${SUPPLIER_PROFILE}','GOTS','${D_CERT_S}','verified_by_reviewer');
@@ -245,8 +255,8 @@ const accessibleProduct = async (productId) => {
 section('A. Defaut MESURE sur la chaine historique, avant le correctif');
 await contexte(U_MULTI, A);
 const visibles = await produitsVisibles();
-ok('AVANT : RLS seule, le compte membre de A et B voit les produits des DEUX marques',
-  visibles.includes(P_A) && visibles.includes(P_B), `${visibles.length} produits visibles`);
+ok('AVANT : la RLS produit historique masque deja le produit B au tenant A',
+  visibles.includes(P_A) && !visibles.includes(P_B), `${visibles.length} produit(s) visibles`);
 const docsAvant = await documentsVisibles();
 ok('AVANT : les documents de A, B et S sont visibles avec le tenant A arme',
   [D_A, D_B, D_S_PRIVE].every((id) => docsAvant.includes(id)),
@@ -256,9 +266,9 @@ ok('AVANT : tracefab_can_access_document(document de B) = vrai avec le tenant A'
 ok('AVANT : tracefab_can_access_document(document prive de S) = vrai avec le tenant A',
   await legacyDoc(D_S_PRIVE) === true);
 
-/* --- Application du correctif : 70e migration, sur la base deja peuplee --- */
+/* --- Application du correctif et de toutes les migrations suivantes --- */
 await db.exec('RESET ROLE');
-for (const d of correctif) {
+for (const d of apres) {
   await db.exec(fs.readFileSync(path.join(MIGRATIONS, d, 'migration.sql'), 'utf8'));
 }
 await db.exec('SET ROLE tracefab_app');
@@ -303,9 +313,8 @@ ok('RLS tenant S : le certificat explicitement emis par A a son nom reste visibl
 ok('RLS tenant B : ce meme certificat A->S reste refuse', !rlsB.includes(D_A_VERS_S));
 await contexte(U_MULTI, null);
 const rlsSansTenant = await documentsVisibles();
-ok('sans tenant arme (worker/public/compte) : comportement RLS historique conserve',
-  rlsSansTenant.includes(D_A) && rlsSansTenant.includes(D_B) && rlsSansTenant.includes(D_S_PRIVE),
-  `${rlsSansTenant.length} documents visibles`);
+ok('tracefab_app sans tenant actif : aucune ligne documentaire visible (fail-closed)',
+  rlsSansTenant.length === 0, `${rlsSansTenant.length} document(s) visibles`);
 await contexte(U_MULTI, A);
 
 /* ========================================================================== *
