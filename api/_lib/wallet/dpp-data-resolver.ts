@@ -153,7 +153,7 @@ export async function resolveDppPassData(
 export async function resolveDppPassDataByGtin(
   tx: PrismaTx,
   rawGtin: string,
-  baseUrl: string = 'https://tracefab.com'
+  baseUrl: string = process.env.TRACEFAB_PUBLIC_BASE_URL?.trim() || ''
 ): Promise<DppPassData | null> {
   const validation = validateGtin(rawGtin);
   if (!validation.isValid) return null;
