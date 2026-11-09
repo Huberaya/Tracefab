@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * Garde de migration P10.7 sur Neon Preview P11.
- * Lecture seule avant/apres l'unique mecanisme autorise : prisma migrate deploy.
+ * Controle lecture seule des proprietes P10.7 apres application Prisma.
  */
 import process from 'node:process';
 import fs from 'node:fs';
