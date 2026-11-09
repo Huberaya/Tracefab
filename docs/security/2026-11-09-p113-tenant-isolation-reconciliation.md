@@ -5,6 +5,7 @@
 - Ancienne base des PR : `788df22019c0d2b39301678ecfbc43ac868561bf`
 - `main` retenu pour la réconciliation : `71855014f4a4f6212b5475f4c208704c0054fb09`
 - Branche : `arena/0f697b3e-tracefab`
+- Migration corrective à horodatage unique : `20261106010000_active_tenant_access_guards` (après `20261106000000`, avant P107/P108).
 
 ## Correction du harnais PGlite
 
