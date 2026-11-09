@@ -87,9 +87,9 @@ try {
       'aucune application precedente de P10.7; tentative echouee recuperable');
 
     const partial = (await client.query([
-      'SELECT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema=\\'public\\' AND table_name=\\'tracefab_identity_politique\\' AND column_name=\\'systeme_strict\\') AS system_mode_column,',
-      'to_regprocedure(\\'public.tracefab_identite_systeme_jeton_valide(text)\\') IS NOT NULL AS verifier_function,',
-      'to_regprocedure(\\'public.tracefab_sec_probe_identite_systeme()\\') IS NOT NULL AS probe_function'
+      'SELECT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema=\'public\' AND table_name=\'tracefab_identity_politique\' AND column_name=\'systeme_strict\') AS system_mode_column,',
+      'to_regprocedure(\'public.tracefab_identite_systeme_jeton_valide(text)\') IS NOT NULL AS verifier_function,',
+      'to_regprocedure(\'public.tracefab_sec_probe_identite_systeme()\') IS NOT NULL AS probe_function'
     ].join(' '))).rows[0];
     assert(partial.system_mode_column === false && partial.verifier_function === false && partial.probe_function === false,
       'aucun effet partiel P10.7 a recuperer dans le schema');
@@ -124,9 +124,9 @@ try {
     assert(acl.app_checks_user_identity === true, 'validation de l identite utilisateur toujours accordee');
 
     const owner = (await client.query([
-      'SELECT pg_has_role(\\'neondb_owner\\', \\'tracefab_migrator\\', \\'MEMBER\\') AS can_set_migrator,',
+      'SELECT pg_has_role(\'neondb_owner\', \'tracefab_migrator\', \'MEMBER\') AS can_set_migrator,',
       '(SELECT pg_get_userbyid(c.relowner) FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace',
-      ' WHERE n.nspname=\\'public\\' AND c.relname=\\'tracefab_identity_politique\\') AS policy_owner'
+      ' WHERE n.nspname=\'public\' AND c.relname=\'tracefab_identity_politique\') AS policy_owner'
     ].join(' '))).rows[0];
     assert(owner.can_set_migrator === true && owner.policy_owner === 'tracefab_migrator',
       'neondb_owner peut endosser le role proprietaire tracefab_migrator');
@@ -155,8 +155,8 @@ try {
     const githubEnv = process.env.GITHUB_ENV;
     if (!githubEnv) throw new Error('GITHUB_ENV absent : impossible de preparer le role de migration sans exposer la connexion.');
     fs.appendFileSync(githubEnv,
-      'DATABASE_URL=' + migrationConnection + '\\n'
-      + 'TRACEFAB_P11_NEEDS_RESOLVE=' + (p107Rows.some((r) => !r.rolled_back_at) ? 'true' : 'false') + '\\n');
+      'DATABASE_URL=' + migrationConnection + '\n'
+      + 'TRACEFAB_P11_NEEDS_RESOLVE=' + (p107Rows.some((r) => !r.rolled_back_at) ? 'true' : 'false') + '\n');
     process.stdout.write('::add-mask::' + migrationConnection + '\\n');
     console.log('PREFLIGHT OK — cible P11, aucun effet partiel; role proprietaire prepare; recuperation Prisma conditionnelle.');
   } else {
