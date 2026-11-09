@@ -225,7 +225,7 @@ function previewMigrationEstDeclaree(file, doc) {
   const expectedSecret = "${{ secrets." + rule.secret + " }}";
   const runSteps = job.steps.filter((step) => typeof step.run === 'string').map((step) => step.run.trim());
   const expectedRuns = [
-    'node --check scripts/verification_p107_preview_migration.mjs',
+    'node --check scripts/verification_p107_preview_migration.mjs && node --check scripts/resolve_p107_failed_migration.mjs',
     'npm ci',
     rule.preflight,
     rule.resolve,
@@ -237,6 +237,7 @@ function previewMigrationEstDeclaree(file, doc) {
   const setupNode = job.steps.find((step) => String(step.uses || '').startsWith('actions/setup-node@'));
   const preflightStep = job.steps.find((step) => step.run?.trim() === rule.preflight);
   const preflightSource = readFileSync(join(ROOT, 'scripts/verification_p107_preview_migration.mjs'), 'utf8');
+  const resolveSource = readFileSync(join(ROOT, 'scripts/resolve_p107_failed_migration.mjs'), 'utf8');
   return job.environment === rule.environment
     && job.if === expectedIf
     && Array.isArray(branches) && branches.length === 1 && branches[0] === rule.branch
@@ -252,6 +253,9 @@ function previewMigrationEstDeclaree(file, doc) {
     && preflightSource.includes('tracefab_identite_systeme_jeton_valide')
     && preflightSource.includes('TRACEFAB_P11_NEEDS_RESOLVE')
     && preflightSource.includes('options')
+    && resolveSource.includes("const MIGRATION = '20261106130000_identite_systeme_signee'")
+    && resolveSource.includes("process.env.TRACEFAB_P11_NEEDS_RESOLVE")
+    && resolveSource.includes("'prisma', 'migrate', 'resolve', '--rolled-back'")
     && runSteps.includes(rule.resolve);
 }
 
