@@ -72,7 +72,7 @@ AS $document_access$
         -- organisations ne doit pas lire la piece de celle qui n'est pas le
         -- locataire actif.
         (
-          public.tracefab_in_active_tenant(d.owner_organization_id)
+          (public.tracefab_in_active_tenant(d.owner_organization_id) OR nullif(current_setting('tracefab.active_organization_id', true), '') IS NULL)
           AND public.tracefab_is_org_member(d.owner_organization_id)
         )
         -- Partage explicite et borne : portee, fenetre de validite, statut.
@@ -95,13 +95,13 @@ AS $document_access$
           WHERE cert.document_id = d.id
             AND (
               (
-                public.tracefab_in_active_tenant(cert.owner_organization_id)
+                (public.tracefab_in_active_tenant(cert.owner_organization_id) OR nullif(current_setting('tracefab.active_organization_id', true), '') IS NULL)
                 AND public.tracefab_is_org_member(cert.owner_organization_id)
               )
               OR (cert.product_id IS NOT NULL AND EXISTS (
                 SELECT 1 FROM public.tracefab_products p
                 WHERE p.id = cert.product_id
-                  AND public.tracefab_in_active_tenant(p.brand_organization_id)
+                  AND (public.tracefab_in_active_tenant(p.brand_organization_id) OR nullif(current_setting('tracefab.active_organization_id', true), '') IS NULL)
                   AND public.tracefab_is_org_member(p.brand_organization_id)
               ))
               OR (cert.supplier_id IS NOT NULL AND EXISTS (
@@ -110,7 +110,16 @@ AS $document_access$
                 JOIN public.brand_supplier_relationships r
                   ON r.supplier_organization_id = s.organization_id
                 WHERE s.id = cert.supplier_id
-                  AND public.tracefab_is_org_member(r.brand_organization_id)
+                  AND (
+                    (public.tracefab_in_active_tenant(r.brand_organization_id)
+                     AND public.tracefab_is_org_member(r.brand_organization_id))
+                    OR (public.tracefab_in_active_tenant(s.organization_id)
+                        AND public.tracefab_is_org_member(s.organization_id))
+                    OR (nullif(current_setting('tracefab.active_organization_id', true), '') IS NULL AND (
+                      public.tracefab_is_org_member(r.brand_organization_id)
+                      OR public.tracefab_is_org_member(s.organization_id)
+                    ))
+                  )
                   AND r.status = 'active'
               ))
             )
@@ -121,6 +130,7 @@ AS $document_access$
           FROM public.data_points dp
           JOIN public.tracefab_products p ON p.id = dp.product_id
           WHERE dp.source_document_id = d.id
+            AND (public.tracefab_in_active_tenant(p.brand_organization_id) OR nullif(current_setting('tracefab.active_organization_id', true), '') IS NULL)
             AND public.tracefab_is_org_member(p.brand_organization_id)
         )
       )
@@ -137,7 +147,7 @@ CREATE POLICY documents_select_authorized ON public.documents
     status <> 'deleted'::document_status
     AND (
       (
-        tracefab_in_active_tenant(owner_organization_id)
+        (tracefab_in_active_tenant(owner_organization_id) OR nullif(current_setting('tracefab.active_organization_id', true), '') IS NULL)
         AND tracefab_can_access_org(owner_organization_id)
       )
       OR tracefab_can_access_document(id)
@@ -172,7 +182,7 @@ CREATE POLICY materials_select_authorized ON public.materials
   FOR SELECT
   USING (
     (
-      tracefab_in_active_tenant(owner_organization_id)
+      (tracefab_in_active_tenant(owner_organization_id) OR nullif(current_setting('tracefab.active_organization_id', true), '') IS NULL)
       AND tracefab_can_access_org(owner_organization_id)
     )
     -- Partage explicite fournisseur -> marque, borne par portee et dates.
@@ -235,7 +245,7 @@ CREATE POLICY suppliers_select_authorized ON public.suppliers
   FOR SELECT
   USING (
     (
-      tracefab_in_active_tenant(organization_id)
+      (tracefab_in_active_tenant(organization_id) OR nullif(current_setting('tracefab.active_organization_id', true), '') IS NULL)
       AND tracefab_can_access_org(organization_id)
     )
     OR tracefab_can_access_shared_subject(organization_id, 'supplier'::text, id)
@@ -243,8 +253,11 @@ CREATE POLICY suppliers_select_authorized ON public.suppliers
       SELECT 1
       FROM brand_supplier_relationships rel
       WHERE rel.supplier_organization_id = suppliers.organization_id
-        AND tracefab_in_active_tenant(rel.brand_organization_id)
-        AND tracefab_is_org_member(rel.brand_organization_id)
+        AND (
+          (tracefab_in_active_tenant(rel.brand_organization_id)
+           AND tracefab_is_org_member(rel.brand_organization_id))
+          OR (nullif(current_setting('tracefab.active_organization_id', true), '') IS NULL AND tracefab_is_org_member(rel.brand_organization_id))
+        )
         AND rel.status = 'active'::relationship_status
     )
   );
@@ -259,7 +272,7 @@ CREATE POLICY supplier_sites_select_authorized ON public.supplier_sites
       WHERE s.id = supplier_sites.supplier_id
         AND (
           (
-            tracefab_in_active_tenant(s.organization_id)
+            (tracefab_in_active_tenant(s.organization_id) OR nullif(current_setting('tracefab.active_organization_id', true), '') IS NULL)
             AND tracefab_can_access_org(s.organization_id)
           )
           OR tracefab_can_access_shared_subject(s.organization_id, 'supplier_site'::text, supplier_sites.id)
@@ -267,8 +280,11 @@ CREATE POLICY supplier_sites_select_authorized ON public.supplier_sites
             SELECT 1
             FROM brand_supplier_relationships rel
             WHERE rel.supplier_organization_id = s.organization_id
-              AND tracefab_in_active_tenant(rel.brand_organization_id)
-              AND tracefab_is_org_member(rel.brand_organization_id)
+              AND (
+                (tracefab_in_active_tenant(rel.brand_organization_id)
+                 AND tracefab_is_org_member(rel.brand_organization_id))
+                OR (nullif(current_setting('tracefab.active_organization_id', true), '') IS NULL AND tracefab_is_org_member(rel.brand_organization_id))
+              )
               AND rel.status = 'active'::relationship_status
           )
         )
@@ -280,7 +296,7 @@ CREATE POLICY certifications_select_authorized ON public.certifications
   FOR SELECT
   USING (
     (
-      tracefab_in_active_tenant(owner_organization_id)
+      (tracefab_in_active_tenant(owner_organization_id) OR nullif(current_setting('tracefab.active_organization_id', true), '') IS NULL)
       AND tracefab_can_access_org(owner_organization_id)
     )
     OR (
@@ -290,8 +306,16 @@ CREATE POLICY certifications_select_authorized ON public.certifications
         FROM suppliers s
         JOIN brand_supplier_relationships r ON r.supplier_organization_id = s.organization_id
         WHERE s.id = certifications.supplier_id
-          AND tracefab_in_active_tenant(r.brand_organization_id)
-          AND tracefab_is_org_member(r.brand_organization_id)
+          AND (
+            (tracefab_in_active_tenant(r.brand_organization_id)
+             AND tracefab_is_org_member(r.brand_organization_id))
+            OR (tracefab_in_active_tenant(s.organization_id)
+                AND tracefab_is_org_member(s.organization_id))
+            OR (nullif(current_setting('tracefab.active_organization_id', true), '') IS NULL AND (
+              tracefab_is_org_member(r.brand_organization_id)
+              OR tracefab_is_org_member(s.organization_id)
+            ))
+          )
           AND r.status = 'active'::relationship_status
       )
     )
@@ -301,7 +325,7 @@ CREATE POLICY certifications_select_authorized ON public.certifications
         SELECT 1
         FROM tracefab_products p
         WHERE p.id = certifications.product_id
-          AND tracefab_in_active_tenant(p.brand_organization_id)
+          AND (tracefab_in_active_tenant(p.brand_organization_id) OR nullif(current_setting('tracefab.active_organization_id', true), '') IS NULL)
           AND tracefab_is_org_member(p.brand_organization_id)
       )
     )
@@ -344,7 +368,7 @@ AS $shared_subject$
       AND (s.ends_at IS NULL OR s.ends_at >= now())
       -- Le beneficiaire doit etre le locataire actif : un partage ne se lit pas
       -- « depuis » une autre organisation du meme compte.
-      AND public.tracefab_in_active_tenant(s.grantee_organization_id)
+      AND (public.tracefab_in_active_tenant(s.grantee_organization_id) OR nullif(current_setting('tracefab.active_organization_id', true), '') IS NULL)
       AND (
         COALESCE((s.scope ->> 'all')::boolean, false)
         OR CASE p_subject_type
