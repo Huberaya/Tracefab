@@ -1,0 +1,212 @@
+name: TraceFab — appliquer les neuf migrations P11 et Repair
+
+on:
+  push:
+    branches:
+      - ops/p11-repair-neon-credentials-check-20261109
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tracefab-preprod-migrations
+  cancel-in-progress: false
+
+jobs:
+  p11:
+    name: P11 — contrôle de cible, préflight worker, migrations et preuve
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: '20'
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - name: Vérifier branche Neon P11 et état initial exact (lecture seule)
+        env:
+          DATABASE_URL: ${{ secrets.TRACEFAB_P11_DATABASE_URL }}
+          TF_ADMIN_URL: ${{ secrets.TRACEFAB_P11_ADMIN_URL }}
+        run: |
+          node --input-type=module <<'NODE'
+          import pg from 'pg';
+          import { readdirSync, readFileSync, statSync, existsSync } from 'node:fs';
+          import { join } from 'node:path';
+          const expectedBranch = 'br-square-bread-b1gu7jk7';
+          const productionHost = 'ep-polished-night-b1jc5941.c-5.eu-central-1.aws.neon.tech';
+          const names = [
+            '20261108119900_assert_neon_worker_preflight',
+            '20261108120000_ingest_plm_graphe_versionne',
+            '20261108120100_worker_fonctions_systeme_completes',
+            '20261108120200_corrections_p106_ownership_et_appartenance',
+            '20261108120300_acl_colonnes_bornees_au_runtime',
+            '20261108120400_lien_graphe_statut_enum_type',
+            '20261108120500_lecture_users_requise_par_les_politiques',
+            '20261108120600_lecture_orders_requise_par_le_runtime',
+            '20261108120700_assert_worker_membership_revoked',
+          ];
+          for (const key of ['DATABASE_URL','TF_ADMIN_URL']) {
+            if (!process.env[key]) throw new Error(key + ' absent');
+            const u = new URL(process.env[key]);
+            if (u.hostname === productionHost || u.hostname.startsWith('ep-polished-night') || u.hostname.includes('-pooler') || u.pathname !== '/neondb') throw new Error('Cible interdite ou connexion non directe');
+          }
+          const c = new pg.Client({connectionString:process.env.DATABASE_URL});
+          const a = new pg.Client({connectionString:process.env.TF_ADMIN_URL});
+          await c.connect(); await a.connect();
+          try {
+            const x = (await c.query("select current_user r,current_database() d,current_setting('neon.branch_id',true) b")).rows[0];
+            const y = (await a.query("select current_user r,current_database() d,current_setting('neon.branch_id',true) b")).rows[0];
+            if (x.r !== 'tracefab_migrator' || y.r !== 'neondb_owner' || x.d !== 'neondb' || y.d !== 'neondb' || x.b !== expectedBranch || y.b !== expectedBranch) throw new Error('Identité de branche/base/rôle incorrecte');
+            const rows = (await c.query("select migration_name,finished_at,rolled_back_at from public._prisma_migrations")).rows;
+            const pending = names.filter(n => !rows.some(r => r.migration_name===n && r.finished_at && !r.rolled_back_at));
+            const failed = rows.filter(r => !r.finished_at && !r.rolled_back_at);
+            const applied = rows.filter(r => r.finished_at && !r.rolled_back_at);
+            if (applied.length !== 86 || failed.length !== 0 || pending.length !== 9) throw new Error('État initial inattendu : attendu 86 appliquées, 0 en échec, 9 ciblées en attente');
+            const disk = readdirSync('prisma/migrations').filter(n => /^\d/.test(n) && statSync(join('prisma/migrations',n)).isDirectory() && existsSync(join('prisma/migrations',n,'migration.sql'))).sort();
+            if (disk.length !== 95 || disk.filter(n => !applied.some(r=>r.migration_name===n)).length !== 9 || names.some(n=>!disk.includes(n))) throw new Error('Le différentiel disque/base ne correspond pas exactement aux neuf migrations ciblées');
+            console.log('PASS P11 : branche, rôles, base et différentiel exacts confirmés ; aucune écriture.');
+          } finally { await c.end(); await a.end(); }
+          NODE
+      - name: Préflight du rôle worker (état)
+        env:
+          DATABASE_URL: ${{ secrets.TRACEFAB_P11_DATABASE_URL }}
+          TF_ADMIN_URL: ${{ secrets.TRACEFAB_P11_ADMIN_URL }}
+        run: node scripts/provisionner_worker_neon.mjs --etat
+        continue-on-error: true
+        id: worker_state
+      - name: Provisionner et vérifier le rôle worker (si nécessaire)
+        if: steps.worker_state.outcome == 'failure'
+        env:
+          DATABASE_URL: ${{ secrets.TRACEFAB_P11_DATABASE_URL }}
+          TF_ADMIN_URL: ${{ secrets.TRACEFAB_P11_ADMIN_URL }}
+          TF_ALLOW_WORKER_ROLE_SWAP: 'oui'
+          TF_EXPECTED_DATABASE_HOST: ${{ secrets.TRACEFAB_P11_DATABASE_URL }}
+          TF_EXPECTED_DATABASE_NAME: neondb
+          TF_PRODUCTION_HOSTS: ep-polished-night-b1jc5941.c-5.eu-central-1.aws.neon.tech
+        run: |
+          node --input-type=module <<'NODE'
+          const u = new URL(process.env.TF_EXPECTED_DATABASE_HOST);
+          process.env.TF_EXPECTED_DATABASE_HOST = u.hostname;
+          const { spawnSync } = await import('node:child_process');
+          const r = spawnSync('node',['scripts/provisionner_worker_neon.mjs','--appliquer'],{stdio:'inherit',env:process.env});
+          process.exit(r.status ?? 1);
+          NODE
+      - name: Appliquer les neuf migrations par le runner transactionnel prévu
+        env:
+          DATABASE_URL: ${{ secrets.TRACEFAB_P11_DATABASE_URL }}
+          TF_ADMIN_URL: ${{ secrets.TRACEFAB_P11_ADMIN_URL }}
+          TF_ALLOW_WRITE: 'oui'
+          TF_ALLOW_ELEVATION: 'oui'
+          TF_HOTE_PRODUCTION: ep-polished-night-b1jc5941.c-5.eu-central-1.aws.neon.tech
+        run: node scripts/migrer_fidelement.mjs
+      - name: Vérifier les 95 migrations, la garde worker et Prisma
+        env:
+          DATABASE_URL: ${{ secrets.TRACEFAB_P11_DATABASE_URL }}
+        run: |
+          node --input-type=module <<'NODE'
+          import pg from 'pg';
+          const c = new pg.Client({connectionString:process.env.DATABASE_URL}); await c.connect();
+          try {
+            const b=(await c.query("select current_setting('neon.branch_id',true) b")).rows[0].b;
+            const rows=(await c.query("select migration_name,finished_at,rolled_back_at from public._prisma_migrations")).rows;
+            const applied=rows.filter(r=>r.finished_at&&!r.rolled_back_at);
+            const failed=rows.filter(r=>!r.finished_at&&!r.rolled_back_at);
+            const required=['20261108119900_assert_neon_worker_preflight','20261108120000_ingest_plm_graphe_versionne','20261108120100_worker_fonctions_systeme_completes','20261108120200_corrections_p106_ownership_et_appartenance','20261108120300_acl_colonnes_bornees_au_runtime','20261108120400_lien_graphe_statut_enum_type','20261108120500_lecture_users_requise_par_les_politiques','20261108120600_lecture_orders_requise_par_le_runtime','20261108120700_assert_worker_membership_revoked'];
+            if(b!=='br-square-bread-b1gu7jk7'||applied.length!==95||failed.length||required.some(n=>!applied.some(r=>r.migration_name===n))) throw new Error('Preuve post-migration P11 non conforme');
+            const m=(await c.query("select pg_has_role('tracefab_migrator','tracefab_worker','MEMBER') member, (select rolsuper from pg_roles where rolname='tracefab_migrator') super")).rows[0];
+            if(m.member||m.super) throw new Error('Appartenance worker résiduelle ou migrateur SUPERUSER');
+            console.log('PASS P11 : 95/95 migrations, 0 tentative inachevée, worker révoqué, migrateur NOSUPERUSER.');
+          } finally { await c.end(); }
+          NODE
+          npx prisma migrate status --schema prisma/schema.prisma
+
+  repair:
+    name: Repair — contrôle de cible, préflight worker, migrations et preuve
+    needs: p11
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: '20'
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - name: Vérifier branche Neon Repair et état initial exact (lecture seule)
+        env:
+          DATABASE_URL: ${{ secrets.TRACEFAB_REPAIR_DATABASE_URL }}
+          TF_ADMIN_URL: ${{ secrets.TRACEFAB_REPAIR_ADMIN_URL }}
+        run: |
+          node --input-type=module <<'NODE'
+          import pg from 'pg';
+          import { readdirSync, statSync, existsSync } from 'node:fs';
+          import { join } from 'node:path';
+          const expectedBranch = 'br-shy-star-b14enz6g';
+          const productionHost = 'ep-polished-night-b1jc5941.c-5.eu-central-1.aws.neon.tech';
+          const names = ['20261108119900_assert_neon_worker_preflight','20261108120000_ingest_plm_graphe_versionne','20261108120100_worker_fonctions_systeme_completes','20261108120200_corrections_p106_ownership_et_appartenance','20261108120300_acl_colonnes_bornees_au_runtime','20261108120400_lien_graphe_statut_enum_type','20261108120500_lecture_users_requise_par_les_politiques','20261108120600_lecture_orders_requise_par_le_runtime','20261108120700_assert_worker_membership_revoked'];
+          for (const key of ['DATABASE_URL','TF_ADMIN_URL']) { if(!process.env[key]) throw new Error(key+' absent'); const u=new URL(process.env[key]); if(u.hostname===productionHost||u.hostname.startsWith('ep-polished-night')||u.hostname.includes('-pooler')||u.pathname!=='/neondb') throw new Error('Cible interdite ou connexion non directe'); }
+          const c=new pg.Client({connectionString:process.env.DATABASE_URL}), a=new pg.Client({connectionString:process.env.TF_ADMIN_URL}); await c.connect(); await a.connect();
+          try {
+            const x=(await c.query("select current_user r,current_database() d,current_setting('neon.branch_id',true) b")).rows[0], y=(await a.query("select current_user r,current_database() d,current_setting('neon.branch_id',true) b")).rows[0];
+            if(x.r!=='tracefab_migrator'||y.r!=='neondb_owner'||x.d!=='neondb'||y.d!=='neondb'||x.b!==expectedBranch||y.b!==expectedBranch) throw new Error('Identité de branche/base/rôle incorrecte');
+            const rows=(await c.query("select migration_name,finished_at,rolled_back_at from public._prisma_migrations")).rows, pending=names.filter(n=>!rows.some(r=>r.migration_name===n&&r.finished_at&&!r.rolled_back_at)), failed=rows.filter(r=>!r.finished_at&&!r.rolled_back_at), applied=rows.filter(r=>r.finished_at&&!r.rolled_back_at);
+            if(applied.length!==86||failed.length!==0||pending.length!==9) throw new Error('État initial inattendu : attendu 86 appliquées, 0 en échec, 9 ciblées en attente');
+            const disk=readdirSync('prisma/migrations').filter(n=>/^\d/.test(n)&&statSync(join('prisma/migrations',n)).isDirectory()&&existsSync(join('prisma/migrations',n,'migration.sql'))).sort();
+            if(disk.length!==95||disk.filter(n=>!applied.some(r=>r.migration_name===n)).length!==9||names.some(n=>!disk.includes(n))) throw new Error('Le différentiel disque/base ne correspond pas exactement aux neuf migrations ciblées');
+            console.log('PASS Repair : branche, rôles, base et différentiel exacts confirmés ; aucune écriture.');
+          } finally { await c.end(); await a.end(); }
+          NODE
+      - name: Préflight du rôle worker (état)
+        env:
+          DATABASE_URL: ${{ secrets.TRACEFAB_REPAIR_DATABASE_URL }}
+          TF_ADMIN_URL: ${{ secrets.TRACEFAB_REPAIR_ADMIN_URL }}
+        run: node scripts/provisionner_worker_neon.mjs --etat
+        continue-on-error: true
+        id: worker_state
+      - name: Provisionner et vérifier le rôle worker (si nécessaire)
+        if: steps.worker_state.outcome == 'failure'
+        env:
+          DATABASE_URL: ${{ secrets.TRACEFAB_REPAIR_DATABASE_URL }}
+          TF_ADMIN_URL: ${{ secrets.TRACEFAB_REPAIR_ADMIN_URL }}
+          TF_ALLOW_WORKER_ROLE_SWAP: 'oui'
+          TF_EXPECTED_DATABASE_HOST: ${{ secrets.TRACEFAB_REPAIR_DATABASE_URL }}
+          TF_EXPECTED_DATABASE_NAME: neondb
+          TF_PRODUCTION_HOSTS: ep-polished-night-b1jc5941.c-5.eu-central-1.aws.neon.tech
+        run: |
+          node --input-type=module <<'NODE'
+          const u = new URL(process.env.TF_EXPECTED_DATABASE_HOST);
+          process.env.TF_EXPECTED_DATABASE_HOST = u.hostname;
+          const { spawnSync } = await import('node:child_process');
+          const r = spawnSync('node',['scripts/provisionner_worker_neon.mjs','--appliquer'],{stdio:'inherit',env:process.env});
+          process.exit(r.status ?? 1);
+          NODE
+      - name: Appliquer les neuf migrations par le runner transactionnel prévu
+        env:
+          DATABASE_URL: ${{ secrets.TRACEFAB_REPAIR_DATABASE_URL }}
+          TF_ADMIN_URL: ${{ secrets.TRACEFAB_REPAIR_ADMIN_URL }}
+          TF_ALLOW_WRITE: 'oui'
+          TF_ALLOW_ELEVATION: 'oui'
+          TF_HOTE_PRODUCTION: ep-polished-night-b1jc5941.c-5.eu-central-1.aws.neon.tech
+        run: node scripts/migrer_fidelement.mjs
+      - name: Vérifier les 95 migrations, la garde worker et Prisma
+        env:
+          DATABASE_URL: ${{ secrets.TRACEFAB_REPAIR_DATABASE_URL }}
+        run: |
+          node --input-type=module <<'NODE'
+          import pg from 'pg'; const c=new pg.Client({connectionString:process.env.DATABASE_URL}); await c.connect();
+          try {
+            const b=(await c.query("select current_setting('neon.branch_id',true) b")).rows[0].b, rows=(await c.query("select migration_name,finished_at,rolled_back_at from public._prisma_migrations")).rows, applied=rows.filter(r=>r.finished_at&&!r.rolled_back_at), failed=rows.filter(r=>!r.finished_at&&!r.rolled_back_at);
+            const required=['20261108119900_assert_neon_worker_preflight','20261108120000_ingest_plm_graphe_versionne','20261108120100_worker_fonctions_systeme_completes','20261108120200_corrections_p106_ownership_et_appartenance','20261108120300_acl_colonnes_bornees_au_runtime','20261108120400_lien_graphe_statut_enum_type','20261108120500_lecture_users_requise_par_les_politiques','20261108120600_lecture_orders_requise_par_le_runtime','20261108120700_assert_worker_membership_revoked'];
+            if(b!=='br-shy-star-b14enz6g'||applied.length!==95||failed.length||required.some(n=>!applied.some(r=>r.migration_name===n))) throw new Error('Preuve post-migration Repair non conforme');
+            const m=(await c.query("select pg_has_role('tracefab_migrator','tracefab_worker','MEMBER') member, (select rolsuper from pg_roles where rolname='tracefab_migrator') super")).rows[0];
+            if(m.member||m.super) throw new Error('Appartenance worker résiduelle ou migrateur SUPERUSER');
+            console.log('PASS Repair : 95/95 migrations, 0 tentative inachevée, worker révoqué, migrateur NOSUPERUSER.');
+          } finally { await c.end(); }
+          NODE
+          npx prisma migrate status --schema prisma/schema.prisma
