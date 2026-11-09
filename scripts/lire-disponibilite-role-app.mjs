@@ -275,17 +275,36 @@ try {
   //    affirme — aucun privilege pour le runtime. Sans cette section, le
   //    commentaire de la section 2 decrirait un controle qui n'existe pas.
   console.log(`  6. tables fermees par conception (${TABLES_FERMEES_PAR_CONCEPTION.length})`);
+  const tablesFermeesAbsentes = new Set();
   {
     let ouvertes = 0;
     for (const t of TABLES_FERMEES_PAR_CONCEPTION) {
       const existe = (await client.query(
         `SELECT count(*)::int AS n FROM pg_tables WHERE schemaname = 'public' AND tablename = $1`,
         [t])).rows[0].n;
+      // `has_table_privilege` LEVE `42P01` sur une table absente, et il est
+      // evalue AVANT le `CASE` : une cible en retard de migrations faisait donc
+      // tomber tout le rapport sur une exception, lue comme un obstacle
+      // (`obstacles = -1`) alors que le vrai diagnostic etait « cette table
+      // n'existe pas encore ici ». On garde la garde, on lui donne son verdict.
       const r = (await client.query(
-        `SELECT has_table_privilege($1, $2, 'SELECT') AS s,
-                has_table_privilege($1, $2, 'INSERT') AS i,
-                has_table_privilege($1, $2, 'UPDATE') AS u,
-                has_table_privilege($1, $2, 'DELETE') AS d`, [cible, t])).rows[0];
+        `SELECT CASE WHEN to_regclass($2) IS NULL THEN NULL
+                     ELSE has_table_privilege($1, $2, 'SELECT') END AS s,
+                CASE WHEN to_regclass($2) IS NULL THEN NULL
+                     ELSE has_table_privilege($1, $2, 'INSERT') END AS i,
+                CASE WHEN to_regclass($2) IS NULL THEN NULL
+                     ELSE has_table_privilege($1, $2, 'UPDATE') END AS u,
+                CASE WHEN to_regclass($2) IS NULL THEN NULL
+                     ELSE has_table_privilege($1, $2, 'DELETE') END AS d`, [cible, t])).rows[0];
+      if (!existe) {
+        // Absente : aucun privilege ne peut etre accorde dessus, donc rien a
+        // signaler ici. En revanche on ne fait PAS semblant d'avoir mesure :
+        // la ligne le dit deja (« absente de la cible »), et la conclusion de
+        // perimetre est tiree separement, plus bas, pour ne pas etre noyee.
+        tablesFermeesAbsentes.add(t);
+        console.log(`     ${t} : absente de la cible — privilege NON MESURE (aucun privilege possible sur une table absente)`);
+        continue;
+      }
       // Ecriture : interdite sur TOUTES ces tables, sans exception.
       // Lecture : interdite aussi, SAUF `tracefab_runtime_function_registry`,
       // qui est lisible par conception (le runtime doit pouvoir constater son
@@ -303,6 +322,18 @@ try {
     if (ouvertes) {
       console.log(`     ECART : ${ouvertes} table(s) censee(s) fermee(s) est/sont ouverte(s) au runtime.`);
       ecarts += 1;
+    }
+    if (tablesFermeesAbsentes.size > 0) {
+      // Ce n'est PAS un ecart de privilege : c'est une cible dont le perimetre
+      // est plus etroit que celui que le depot decrit (migrations en retard).
+      // On refuse de conclure « pret pour la bascule » sur un perimetre partiel
+      // — c'est exactement la conclusion que la section 6 existe pour empecher.
+      console.log(`     PERIMETRE INCOMPLET : ${tablesFermeesAbsentes.size} table(s) fermee(s)`
+        + ` par conception ${tablesFermeesAbsentes.size > 1 ? 'sont' : 'est'} absente(s) de la cible`
+        + ` (${[...tablesFermeesAbsentes].join(', ')}). La mesure de fermeture n a pas pu`
+        + ` etre faite sur ${tablesFermeesAbsentes.size > 1 ? 'elles' : 'elle'} :`
+        + ` appliquer les migrations avant de conclure.`);
+      obstacles += 1;
     }
   }
   console.log('');

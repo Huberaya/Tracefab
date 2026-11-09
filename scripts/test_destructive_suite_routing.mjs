@@ -253,6 +253,19 @@ const OPERATOR_WRITER_SCRIPTS = [
   // garde de cible : ils sont donc hors de toute chaine automatique, et chacun
   // porte un mode sans ecriture (--dry-run ou --etat).
   'scripts/migrer_fidelement.mjs',
+  // P10.7. Meme situation, et elle merite d'etre nommee : c'est l'outil qui
+  // pose et retire le mode strict de l'identite systeme. Il ne bascule JAMAIS
+  // dans une chaine automatique (aucune commande npm, aucun workflow : une
+  // migration qui exige un secret casserait toute base neuve — mesure du
+  // 05/11). Ce qui le borne, et qui le rend sur :
+  //   - `--verifier` est le seul mode atteignable sans ecriture ;
+  //   - une ecriture exige `TF_ALLOW_WRITE=oui` ET une cible classee JETABLE
+  //     par le classifieur commun : il refuse un environnement qui sert ;
+  //   - il relit sa postcondition dans la meme transaction.
+  // Les suites P10.7 l'invoquent comme processus ENFANT sur la base qu'elles
+  // ont creee et qu'elles detruisent. Un operateur, lui, pose le mode avec
+  // l'outil de deploiement de son environnement.
+  'scripts/activer_identite_systeme_stricte.mjs',
   // P10.5. Aucune commande npm ni aucun workflow ne les nomme : ils sont
   // invoques par les suites P10.5 comme processus ENFANT, sur une base que ces
   // suites ont creee et qu'elles detruisent (voir P105_DB_SUITES). Ce qui les
@@ -263,10 +276,8 @@ const OPERATOR_WRITER_SCRIPTS = [
   // de cible jetable refuse par construction.
   'scripts/provisionner_roles_db.mjs',
   'scripts/provisionner_cle_identite.mjs',
-  // Préflight Neon ponctuel : renomme le rôle worker géré par cloud_admin,
-  // transfère les propriétaires/ACL, puis neutralise le rôle legacy. Il ne
-  // s'exécute jamais en CI ; --appliquer exige un GO d'environnement explicite,
-  // l'hôte/base attendus et une liste de cibles Production à protéger.
+  // Remplacement de role worker Neon : mutation operateur explicite, avec
+  // TF_ALLOW_WORKER_ROLE_SWAP, confirmation de la cible directe et garde Production.
   'scripts/provisionner_worker_neon.mjs',
   'scripts/mesure_effet_migrations_dpp.mjs',
   'scripts/valider_branche_dpp.mjs',
@@ -459,13 +470,7 @@ for (const rel of OPERATOR_WRITER_SCRIPTS) {
   // Une invocation qui porte le drapeau sans ecriture ne peut pas ecrire.
   const enEcriture = invocations.filter(([, command]) => !command.includes('--dry-run'));
   const automatiques = enEcriture.filter(([name]) => reached.has(name));
-  // Le workflow de reproduction PR110 ajoute ces outils au commit du banc
-  // (git add) sans les exécuter. Seule une ligne de commande active qui nomme
-  // directement le script constitue une invocation CI.
-  const enCi = workflowText.some((text) => text.split('\n').some((line) =>
-    !/^\s*(?:#|git add\b)/.test(line)
-      && line.includes(rel.replace('scripts/', 'scripts/')),
-  ));
+  const enCi = workflowText.some((text) => text.includes(rel.replace('scripts/', 'scripts/')));
 
   if (automatiques.length > 0) {
     ko(`${rel} est atteignable en ecriture depuis test/build via : ${automatiques.map(([k]) => k).join(', ')}`);
