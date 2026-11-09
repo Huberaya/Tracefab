@@ -81,7 +81,7 @@ try {
   const infected = await scanWithAntivirus(bytes, 'test.pdf', 'application/pdf');
   assert.equal(infected.clean, false);
   console.log('  ok    scanner HTTP loopback autorise en test et verdict infecte conserve');
-  console.log('\nTransport stockage/antivirus : 7 controles verts.');
+  console.log('\nTransport stockage/antivirus : 8 controles verts.');
 } finally {
   restore();
 }
