@@ -49,6 +49,7 @@ async function invokeSignedClerkWebhookProbe(eventType: string, data: Record<str
   let status = 0;
   let body: unknown = null;
   const mockResponse = {
+    getHeader() { return undefined; },
     setHeader() { return this; },
     status(code: number) { status = code; return this; },
     json(payload: unknown) { body = payload; return this; },
