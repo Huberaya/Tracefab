@@ -37,7 +37,7 @@ console.log("\nBanc de l'inventaire des consommateurs\n-------------------------
 verifie(r.status === 0, 'les invariants du depot passent', `code ${r.status}`);
 verifie(/ok\s+un seul client Prisma/.test(sortie), 'un seul client Prisma est reconnu');
 verifie(/ok\s+aucun workflow ne lit de secret de base/.test(sortie),
-  'aucun secret de base dans les workflows (les commentaires ne comptent pas)');
+  'aucun secret de base hors exception Preview strictement declaree');
 
 if (!existsSync(RAPPORT)) {
   verifie(false, 'le rapport JSON est ecrit');
@@ -45,9 +45,16 @@ if (!existsSync(RAPPORT)) {
   const rapport = JSON.parse(readFileSync(RAPPORT, 'utf8'));
   verifie(Array.isArray(rapport.clients_prisma) && rapport.clients_prisma.length === 1,
     'le rapport ne liste qu\'un client Prisma', JSON.stringify(rapport.clients_prisma));
-  verifie(Array.isArray(rapport.secrets_workflows)
-    && !rapport.secrets_workflows.some((s) => /DATABASE|POSTGRES|NEON/.test(s)),
-  'le rapport ne liste aucun secret de base', JSON.stringify(rapport.secrets_workflows));
+  verifie(Array.isArray(rapport.secrets_base_workflows)
+    && rapport.secrets_base_workflows.length === 1
+    && rapport.secrets_base_workflows[0].workflow === 'p11-preview-p107-migration.yml'
+    && rapport.secrets_base_workflows[0].secret === 'TRACEFAB_P11_DATABASE_ADMIN_URL',
+  'le seul secret de base est celui du workflow P11 dédié',
+  JSON.stringify(rapport.secrets_base_workflows));
+  verifie(Array.isArray(rapport.secrets_base_non_autorises)
+    && rapport.secrets_base_non_autorises.length === 0,
+  'aucun secret de base hors exception strictement déclarée',
+  JSON.stringify(rapport.secrets_base_non_autorises));
   verifie(Object.keys(rapport.variables_base).some((v) => /DATABASE_URL/.test(v)),
     'la variable de connexion est identifiee');
   verifie(Array.isArray(rapport.non_verifiable) && rapport.non_verifiable.length >= 3,
