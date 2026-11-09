@@ -60,7 +60,14 @@ try {
   assert(membership.member === false, 'aucune appartenance temporaire migrator/worker');
   const verifier = (await client.query("SELECT pg_get_userbyid(p.proowner) AS owner, pg_get_functiondef(p.oid) AS definition FROM pg_proc p WHERE p.oid='public.tracefab_identite_systeme_jeton_valide(text)'::regprocedure")).rows[0];
   assert(verifier.owner === 'tracefab_migrator', 'fonction de verification reste possedee par tracefab_migrator');
-  assert(verifier.definition.includes('floor(extract(epoch FROM pg_catalog.now()))::BIGINT'), 'borne temporelle utilise un arrondi inferieur strict');
+  if (mode === 'preflight') {
+    assert(verifier.definition.includes('v_maintenant := extract(epoch FROM pg_catalog.now())::BIGINT;')
+      && !verifier.definition.includes('floor(extract(epoch FROM pg_catalog.now()))::BIGINT'),
+      'version actuelle identifiee : conversion arrondie a corriger');
+  } else {
+    assert(verifier.definition.includes('floor(extract(epoch FROM pg_catalog.now()))::BIGINT'),
+      'borne temporelle utilise un arrondi inferieur strict');
+  }
 
   if (mode === 'preflight') {
     const roleUrl = new URL(rawUrl);
