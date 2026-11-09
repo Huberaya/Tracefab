@@ -107,6 +107,17 @@ La valeur est validée comme URL HTTPS. Le header HTTP `Host` n’est jamais uti
 | `NODE_ENV` | plateforme | Durcit plusieurs contrôles quand sa valeur est `production` |
 | `VERCEL_ENV` | plateforme | Environnement, repris dans chaque remontée d'erreur |
 | `VERCEL_GIT_COMMIT_SHA` | plateforme | Version déployée, reprise dans chaque remontée d'erreur |
+| `VERCEL_GIT_COMMIT_REF` | plateforme | Branche Git du déploiement ; utilisée pour borner la sonde Runtime P11 à sa branche Preview |
+
+### Sonde Runtime Preview P11
+
+| Variable | Criticité | Rôle | Conséquence si absente |
+|---|---|---|---|
+| `TRACEFAB_RUNTIME_PROBE_TOKEN` | secret opérateur · Preview uniquement | Autorise uniquement la lecture diagnostique de l'identité PostgreSQL sur la branche Runtime P11. Ne donne aucun accès worker ni aucune capacité d'écriture. | La sonde Runtime P11 répond 401 ; les autres routes ne sont pas affectées. |
+
+Ce jeton doit être sensible, limité à la branche Preview Runtime, à forte entropie et
+roté après chaque campagne de mesure. Ne jamais le placer dans un dépôt, un journal
+ou une URL partagée.
 
 ---
 
