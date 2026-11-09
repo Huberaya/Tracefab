@@ -282,7 +282,9 @@
     "p108:outbox": "node scripts/harnais_p108_outbox.mjs",
     "test:tenant:matrix": "node scripts/test_route_tenant_matrix.mjs",
     "test:tenant:autorisations": "node scripts/test_matrice_autorisations.mjs",
-    "p108:ci": "node scripts/harnais_p108_ci.mjs"
+    "p108:ci": "node scripts/harnais_p108_ci.mjs",
+    "db:preflight:worker-neon:check": "node scripts/provisionner_worker_neon.mjs --etat",
+    "db:preflight:worker-neon": "node scripts/provisionner_worker_neon.mjs --appliquer"
   },
   "devDependencies": {
     "@electric-sql/pglite": "^0.5.12",
