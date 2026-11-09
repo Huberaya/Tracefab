@@ -10,6 +10,8 @@ import { readFileSync } from 'node:fs';
 const route = readFileSync('api/_routes/dpp/[gtin].ts', 'utf8');
 const resolver = readFileSync('api/_lib/wallet/dpp-data-resolver.ts', 'utf8');
 const identity = readFileSync('api/_routes/resolve/[publicId].ts', 'utf8');
+const page = readFileSync('dpp/index.html', 'utf8');
+const client = readFileSync('assets/js/dpp.2.js', 'utf8');
 
 const checks = [
   ['route DPP publique en lecture seule', /req\.method !== 'GET'/.test(route)],
@@ -26,6 +28,12 @@ const checks = [
   ['identifiant resolvable seulement si actif', /public_id=\$\{publicId\} AND status='active'/.test(identity)],
   ['identifiant retire renvoie 410 sans cache', /status==='retired'/.test(identity) && /Cache-Control','no-store'/.test(identity)],
   ['identifiant remplace redirige de facon permanente', /row\.status==='replaced'/.test(identity) && /\?308:302/.test(identity)],
+  ['page publique DPP expose un bandeau demo explicitement masque', /id="dpp-demo-banner"[^>]*hidden/.test(page)],
+  ['page accepte GTIN, id ou segment de chemin', /params\.get\('gtin'\) \|\| params\.get\('id'\)/.test(client) && /fromPath/.test(client)],
+  ['page appelle la route API avec un identifiant encode', /fetch\('\/api\/dpp\/' \+ encodeURIComponent\(id\)/.test(client)],
+  ['page nue sans identifiant reste indisponible et signalee', /if \(!id\)[\s\S]*data-dpp-source', 'unavailable'[\s\S]*banner\.hidden = false/.test(client)],
+  ['erreur API neutralise les donnees de demonstration', /neutralizeForMissingPassport\(\)/.test(client) && /Passeport indisponible ou inconnu/.test(client)],
+  ['statut live exige une source live et au moins une donnee sourcee', /declared === 'live' && sourcedCount > 0/.test(client)],
 ];
 
 let failures = 0;
