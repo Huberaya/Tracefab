@@ -289,11 +289,18 @@ console.log('\n  B2. archivage reel sous identite systeme signee');
     );
     ok(archived.rows[0]?.archived === true,
       'tracefab_archive_clerk_organization() applique effectivement UPDATE sous RLS worker');
+    await app.query('COMMIT');
+    const persisted = await admin.query(
+      'SELECT status FROM public.organizations WHERE clerk_organization_id = $1',
+      [clerkOrganizationId]
+    );
+    ok(persisted.rows[0]?.status === 'archived',
+      'le statut archived est persiste apres l operation systeme signee');
+    await admin.query('DELETE FROM public.organizations WHERE clerk_organization_id = $1', [clerkOrganizationId]);
   } catch (error) {
-    ok(false, 'tracefab_archive_clerk_organization() applique effectivement UPDATE sous RLS worker',
-      `${error.code ?? 'sans_code'} ${String(error.message ?? '').slice(0, 100)}`);
-  } finally {
     try { await app.query('ROLLBACK'); } catch { /* transaction de test */ }
+    ok(false, 'archivage effectif et persistant sous RLS worker',
+      `${error.code ?? 'sans_code'} ${String(error.message ?? '').slice(0, 100)}`);
   }
 }
 

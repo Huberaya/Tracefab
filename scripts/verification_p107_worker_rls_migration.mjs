@@ -59,7 +59,12 @@ try {
     'SELECT migration_name, finished_at, rolled_back_at FROM public._prisma_migrations ORDER BY migration_name'
   )).rows;
   const unfinished = history.filter((row) => !row.finished_at && !row.rolled_back_at);
-  assert(unfinished.length === 0, 'aucune migration inachevee non annulee');
+  if (mode === 'preflight') {
+    assert(unfinished.length <= 1 && unfinished.every((row) => row.migration_name === MIGRATION),
+      'seule tentative echouee eventuelle = ' + MIGRATION);
+  } else {
+    assert(unfinished.length === 0, 'aucune migration inachevee non annulee apres deploy');
+  }
   const applied = new Set(history.filter((row) => row.finished_at && !row.rolled_back_at).map((row) => row.migration_name));
   const dirs = fs.readdirSync(path.resolve('prisma/migrations'), { withFileTypes: true })
     .filter((entry) => entry.isDirectory()).map((entry) => entry.name).sort();
@@ -118,6 +123,11 @@ try {
         [probeId]
       )).rows[0];
       assert(archive?.archived === true, 'archivage effectif sous RLS forcee (creation puis archivage dans la meme transaction)');
+      const persisted = (await client.query(
+        'SELECT status FROM public.organizations WHERE clerk_organization_id = $1',
+        [probeId]
+      )).rows[0];
+      assert(persisted?.status === 'archived', 'statut archived persiste reellement sous RLS forcee');
     } finally {
       await client.query('ROLLBACK');
     }
