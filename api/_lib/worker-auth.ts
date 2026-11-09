@@ -32,7 +32,9 @@ export function workerAuthorized(req: VercelRequest) {
 export function runtimeProbeAuthorized(req: VercelRequest) {
   if (process.env.VERCEL_ENV !== 'preview') return false;
   if (process.env.VERCEL_GIT_COMMIT_REF !== 'fix/tracefab-p11-identity-runtime-20261109') return false;
-  const value = req.headers['x-tracefab-runtime-probe-token'];
+  const headerValue = req.headers['x-tracefab-runtime-probe-token'];
+  const queryValue = req.query?.runtimeProbeToken;
+  const value = headerValue ?? queryValue;
   const actual = (Array.isArray(value) ? value[0] : value)?.trim();
   return secretMatches(process.env.TRACEFAB_RUNTIME_PROBE_TOKEN?.trim(), actual);
 }
