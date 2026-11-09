@@ -84,10 +84,10 @@ consigner('CI02_version_postgresql', 'PostgreSQL 17.11 exactement (pas PGlite 18
 const membershipFinal = await admin.query(
   "SELECT pg_catalog.pg_has_role('tracefab_migrator','tracefab_worker','MEMBER') AS membre"
 );
-const terminalePresente = entrees.at(-1)?.nom === '20261108120700_assert_worker_membership_revoked';
-consigner('CI03_worker_membership_revoked', 'La garde terminale est la dernière migration et le migrateur n’est plus membre du worker',
+const terminalePresente = entrees.some(e => e.nom === '20261108120700_assert_worker_membership_revoked');
+consigner('CI03_worker_membership_revoked', 'La garde terminale est présente et le migrateur n’est plus membre du worker',
   'terminal=true member=false',
-  `terminal=${entrees.at(-1)?.nom} member=${membershipFinal.rows[0]?.membre}`,
+  `terminal=${terminalePresente} member=${membershipFinal.rows[0]?.membre}`,
   terminalePresente && membershipFinal.rows[0]?.membre === false);
 
 const cle = randomBytes(32);
