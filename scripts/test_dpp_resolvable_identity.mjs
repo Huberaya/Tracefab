@@ -15,8 +15,8 @@ const [sql, router, resolverRoute, qrRoute, dataResolver, gtinRoute, appleWallet
 ]);
 
 // Schema and database-level publication boundary.
-assert.match(sql, /granularity IN \\('model','variant','batch','unit'\\)/);
-assert.match(sql, /status IN \\('active','replaced','retired'\\)/);
+assert.ok(sql.includes("granularity IN ('model','variant','batch','unit')"));
+assert.ok(sql.includes("status IN ('active','replaced','retired')"));
 assert.ok(sql.includes('replaced_by_id'));
 assert.ok(sql.includes('idx_dpp_resolvable_scope_unique'));
 assert.ok(sql.includes('tracefab_product_is_public(product_id)'));
