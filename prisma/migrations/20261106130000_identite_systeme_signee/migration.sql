@@ -315,7 +315,7 @@ REVOKE ALL ON FUNCTION public.tracefab_identite_systeme() FROM PUBLIC;
 --    Ce n'est pas un elargissement : le predicat ne rend qu'un booleen, il est
 --    deja lisible par le runtime, et le worker n'est pas connectable. C'est le
 --    meme raisonnement que le GRANT de verification pose par 20261031120000.
-DO $
+DO $grant$
 BEGIN
   IF EXISTS (SELECT 1 FROM pg_catalog.pg_roles WHERE rolname = 'tracefab_worker') THEN
     EXECUTE 'GRANT EXECUTE ON FUNCTION public.tracefab_identite_systeme() TO tracefab_worker';
@@ -331,7 +331,7 @@ BEGIN
     EXECUTE 'GRANT EXECUTE ON FUNCTION public.tracefab_identite_systeme() TO tracefab_migrator';
   END IF;
 END
-$;
+$grant$;
 
 -- 4. Le registre runtime ----------------------------------------------------
 --    SEULE la VERIFICATION entre au registre, et c'est mesure, pas suppose.
