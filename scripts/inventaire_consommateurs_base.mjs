@@ -140,6 +140,7 @@ section('Workflows GitHub Actions');
 const dossierWf = join(ROOT, '.github', 'workflows');
 const workflows = existsSync(dossierWf) ? readdirSync(dossierWf).filter((f) => f.endsWith('.yml')) : [];
 const secretsReferences = new Set();
+const secretsParWorkflow = new Map();
 const urlsNonLocales = [];
 for (const w of workflows) {
   const texte = sansCommentaires(readFileSync(join(dossierWf, w), 'utf8'), { yaml: true });
@@ -152,10 +153,32 @@ for (const w of workflows) {
 note('secrets references', [...secretsReferences].sort().join(', ') || 'aucun');
 note('URL de base non locale', urlsNonLocales.length ? String(urlsNonLocales.length) : 'aucune');
 for (const u of urlsNonLocales) note('  a examiner', u);
-const secretsBase = [...secretsReferences].filter((s) => /DATABASE|POSTGRES|NEON/.test(s));
-if (secretsBase.length) violations.push(`workflow(s) referencant un secret de base : ${secretsBase.join(', ')}`);
+const secretsBase = [...secretsParWorkflow.entries()].flatMap(([workflow, secrets]) =>
+  [...secrets].filter((secret) => /DATABASE|POSTGRES|NEON/.test(secret))
+    .map((secret) => ({ workflow, secret })));
+const registrePrivileges = JSON.parse(lire('docs/security/workflow-privileged-allowlist.json'));
+const migrationP11 = registrePrivileges.previewMigrationWorkflows?.['p11-preview-p107-migration.yml'];
+const secretP11 = registrePrivileges.secretUsingWorkflows?.['p11-preview-p107-migration.yml'];
+const environnementP11 = registrePrivileges.environmentBoundJobs?.['p11-preview-p107-migration.yml'];
+const exceptionP11Valide = migrationP11?.job === 'migrate-preview-p11'
+  && migrationP11?.branch === 'arena/b8fe1a44-tracefab'
+  && migrationP11?.commit_message === 'EXECUTE P11 PREVIEW MIGRATION'
+  && migrationP11?.environment === 'tracefab-p11-preview'
+  && migrationP11?.secret === 'TRACEFAB_P11_DATABASE_ADMIN_URL'
+  && secretP11?.secret === migrationP11.secret
+  && environnementP11?.environnement === migrationP11.environment
+  && environnementP11?.job === migrationP11.job
+  && secretsParWorkflow.get('p11-preview-p107-migration.yml')?.has(migrationP11.secret) === true;
+const secretsBaseNonAutorises = secretsBase.filter(({ workflow, secret }) =>
+  !(exceptionP11Valide && workflow === 'p11-preview-p107-migration.yml'
+    && secret === 'TRACEFAB_P11_DATABASE_ADMIN_URL'));
+if (secretsBaseNonAutorises.length) {
+  violations.push(`workflow(s) referencant un secret de base hors exception Preview declaree : ${JSON.stringify(secretsBaseNonAutorises)}`);
+}
 if (urlsNonLocales.length) violations.push('une URL de base non locale figure dans un workflow');
-note(secretsBase.length === 0 ? 'ok   aucun workflow ne lit de secret de base' : 'ECHEC', secretsBase.join(', '));
+note(secretsBaseNonAutorises.length === 0 ? 'ok   aucun secret de base hors exception Preview strictement declaree' : 'ECHEC',
+  JSON.stringify(secretsBaseNonAutorises));
+if (secretsBase.length && !exceptionP11Valide) violations.push('le registre de l\'exception migration Preview P11 est incomplet ou incoherent');
 note('limite', 'la liste des secrets RELLEMENT stockes demande un droit d\'administration : non verifiable ici');
 
 // 5. Scripts qui ouvrent une connexion ------------------------------------
@@ -193,6 +216,8 @@ const rapport = {
   clients_prisma: clients,
   crons_vercel: crons,
   secrets_workflows: [...secretsReferences].sort(),
+  secrets_base_workflows: secretsBase,
+  secrets_base_non_autorises: secretsBaseNonAutorises,
   urls_non_locales: urlsNonLocales,
   scripts_connectes: connectes,
   scripts_refusant_production: refusentProd,
