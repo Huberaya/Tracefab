@@ -109,6 +109,11 @@ const dossiers = fs.readdirSync(MIGRATIONS)
 // migration tout en rejouant les suivantes reproduit un schema deja durci.
 // Les fixtures sont peuplees avant d'appliquer le correctif et toute sa suite.
 const DOSSIER_CORRECTIF = '20261106010000_active_tenant_access_guards';
+const MIGRATION_TIMESTAMP_COLLISION_ORIGIN = '20261105180000_active_tenant_tc_registration_guard';
+if (!dossiers.includes(DOSSIER_CORRECTIF) || !dossiers.includes(MIGRATION_TIMESTAMP_COLLISION_ORIGIN)) {
+  console.error('  ECHEC — la migration corrective doit conserver un horodatage unique apres la migration TC existante');
+  process.exit(1);
+}
 const avant = dossiers.filter((d) => d < DOSSIER_CORRECTIF);
 const apres = dossiers.filter((d) => d >= DOSSIER_CORRECTIF);
 const correctif = dossiers.filter((d) => d === DOSSIER_CORRECTIF);
