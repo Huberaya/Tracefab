@@ -92,6 +92,7 @@ export const API_RUNTIME_FUNCTION_NAMES = Object.freeze([
 ]);
 
 export const RLS_POLICY_FUNCTION_NAMES = Object.freeze([
+  'tracefab_in_active_tenant',
   'tracefab_can_access_document',
   'tracefab_can_access_org',
   'tracefab_can_access_shared_subject',
