@@ -63,6 +63,7 @@
       "environment": "tracefab-p11-preview",
       "secret": "TRACEFAB_P11_DATABASE_ADMIN_URL",
       "preflight": "node scripts/verification_p107_preview_migration.mjs preflight",
+      "resolve": "npx prisma migrate resolve --rolled-back 20261106130000_identite_systeme_signee",
       "migration": "npx prisma migrate deploy",
       "status": "npx prisma migrate status",
       "postflight": "node scripts/verification_p107_preview_migration.mjs postflight",
