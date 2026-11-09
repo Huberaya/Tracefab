@@ -43,7 +43,9 @@ try {
     assert(identity.role === 'neondb_owner' && identity.session_role === 'neondb_owner', 'connexion admin initiale');
     const history = (await client.query('SELECT migration_name, finished_at, rolled_back_at FROM public._prisma_migrations')).rows;
     assert(history.some(r => r.migration_name === P107 && r.finished_at && !r.rolled_back_at), 'migration P10.7 initiale deja appliquee');
-    assert(!history.some(r => r.migration_name === MIGRATION), 'migration de correction jamais tentee');
+    const attempts = history.filter(r => r.migration_name === MIGRATION);
+    assert(attempts.every(r => !r.finished_at) && attempts.filter(r => !r.rolled_back_at).length <= 1,
+      'aucune application terminee et au plus une tentative echouee non resolue');
     const dirs = fs.readdirSync(path.resolve('prisma/migrations'), { withFileTypes: true }).filter(x => x.isDirectory()).map(x => x.name);
     const applied = new Set(history.filter(r => r.finished_at && !r.rolled_back_at).map(r => r.migration_name));
     const missing = dirs.filter(name => !applied.has(name));
@@ -83,7 +85,9 @@ try {
       await roleClient.end();
     }
     if (!process.env.GITHUB_ENV) throw new Error('GITHUB_ENV absent.');
-    fs.appendFileSync(process.env.GITHUB_ENV, 'DATABASE_URL=' + migrationUrl + '\n');
+    fs.appendFileSync(process.env.GITHUB_ENV,
+      'DATABASE_URL=' + migrationUrl + '\n'
+      + 'TRACEFAB_P11_EXPIRY_NEEDS_RESOLVE=' + (attempts.some(r => !r.rolled_back_at) ? 'true' : 'false') + '\n');
     process.stdout.write('::add-mask::' + migrationUrl + '\n');
   }
   console.log(mode.toUpperCase() + ' OK — correction P10.7 controlee, mode strict inchange.');
