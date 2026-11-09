@@ -1,7 +1,7 @@
 import type { VercelRequest, VercelResponse } from '../../_lib/vercel-types.js';
 import { prisma } from '../../_lib/prisma.js';
 import { json, methodNotAllowed } from '../../_lib/http.js';
-import { resolveDppPassData } from '../../_lib/wallet/dpp-data-resolver.js';
+import { getConfiguredPublicBaseUrl, resolveDppPassData } from '../../_lib/wallet/dpp-data-resolver.js';
 import { withTracefabPublicContext } from '../../_lib/context.js';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -14,27 +14,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return json(res, 400, { error: 'missing_identifier' });
   }
 
-  // L'URL publique doit provenir de la configuration du deploiement.
-  // Ne jamais publier une origine de repli codee en dur.
-  const rawPublicBaseUrl = process.env.TRACEFAB_PUBLIC_BASE_URL?.trim();
-  if (!rawPublicBaseUrl) {
-    return json(res, 503, { error: 'public_base_url_not_configured' });
-  }
-  let publicBaseUrl: URL;
-  try {
-    publicBaseUrl = new URL(rawPublicBaseUrl);
-  } catch {
-    return json(res, 503, { error: 'public_base_url_invalid' });
-  }
-  if (
-    (publicBaseUrl.protocol !== 'https:' && !['localhost', '127.0.0.1'].includes(publicBaseUrl.hostname)) ||
-    publicBaseUrl.username !== '' ||
-    publicBaseUrl.password !== '' ||
-    publicBaseUrl.pathname !== '/' ||
-    publicBaseUrl.search !== '' ||
-    publicBaseUrl.hash !== ''
-  ) {
-    return json(res, 503, { error: 'public_base_url_invalid' });
+  // Origine canonique commune aux routes DPP, QR et Wallet.
+  const publicBaseUrl = getConfiguredPublicBaseUrl();
+  if (!publicBaseUrl) {
+    const configured = Boolean(process.env.TRACEFAB_PUBLIC_BASE_URL?.trim());
+    return json(res, 503, { error: configured ? 'public_base_url_invalid' : 'public_base_url_not_configured' });
   }
 
   try {
