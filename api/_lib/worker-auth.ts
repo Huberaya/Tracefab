@@ -25,6 +25,18 @@ export function workerAuthorized(req: VercelRequest) {
   return secretMatches(expected, actual);
 }
 
+/**
+ * Acces diagnostique ephemere, strictement borne a la Preview P11.
+ * Le jeton n'est jamais accepte en Production ni sur une autre branche.
+ */
+export function runtimeProbeAuthorized(req: VercelRequest) {
+  if (process.env.VERCEL_ENV !== 'preview') return false;
+  if (process.env.VERCEL_GIT_COMMIT_REF !== 'fix/tracefab-p11-identity-runtime-20261109') return false;
+  const value = req.headers['x-tracefab-runtime-probe-token'];
+  const actual = (Array.isArray(value) ? value[0] : value)?.trim();
+  return secretMatches(process.env.TRACEFAB_RUNTIME_PROBE_TOKEN?.trim(), actual);
+}
+
 export function cronSecretConfigured() {
   return secretConfigured('CRON_SECRET');
 }
