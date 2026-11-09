@@ -235,11 +235,13 @@ function previewMigrationEstDeclaree(file, doc) {
   ];
   const checkout = job.steps.find((step) => String(step.uses || '').startsWith('actions/checkout@'));
   const setupNode = job.steps.find((step) => String(step.uses || '').startsWith('actions/setup-node@'));
+  const preflightStep = job.steps.find((step) => step.run?.trim() === rule.preflight);
   const preflightSource = readFileSync(join(ROOT, 'scripts/verification_p107_preview_migration.mjs'), 'utf8');
   return job.environment === rule.environment
     && job.if === expectedIf
     && Array.isArray(branches) && branches.length === 1 && branches[0] === rule.branch
-    && job.env?.DATABASE_URL === expectedSecret
+    && preflightStep?.env?.DATABASE_URL === expectedSecret
+    && !job.env?.DATABASE_URL
     && JSON.stringify(runSteps) === JSON.stringify(expectedRuns)
     && doc.permissions?.contents === 'read'
     && Boolean(checkout?.with?.['persist-credentials'] === false)
