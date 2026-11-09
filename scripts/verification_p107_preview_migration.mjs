@@ -205,12 +205,15 @@ try {
       'SELECT version, encode(secret, \'hex\') AS secret_hex FROM public.tracefab_identity_cles WHERE actif ORDER BY version DESC'
     )).rows;
     assert(keys.length > 0, 'au moins une cle active apres migration');
-    const now = Number((await client.query(
-      'SELECT floor(extract(epoch FROM clock_timestamp()))::bigint AS epoch'
-    )).rows[0].epoch);
-
     for (const key of keys) {
-      const secret = Buffer.from(key.secret_hex, 'hex');
+      // Keep now() stable between expiry construction and verification. This
+      // makes the exact 600/601-second boundary deterministic across second edges.
+      await client.query('BEGIN');
+      try {
+        const now = Number((await client.query(
+          'SELECT floor(extract(epoch FROM now()))::bigint AS epoch'
+        )).rows[0].epoch);
+        const secret = Buffer.from(key.secret_hex, 'hex');
       const sign = (expiration) => {
         const body = 'v1|tracefab_system|tracefab_worker|' + expiration;
         const mac = createHmac('sha256', secret).update(body).digest('hex');
@@ -243,7 +246,10 @@ try {
       assert(checks.uppercase_mac === false, 'MAC non canonique refuse pour cle v' + key.version);
       assert(checks.expired === false, 'jeton expire refuse pour cle v' + key.version);
       assert(checks.over_ttl === false, 'jeton au-dela du TTL refuse pour cle v' + key.version);
-      assert(checks.ambiguous === false, 'jeton a serialization ambigue refuse pour cle v' + key.version);
+        assert(checks.ambiguous === false, 'jeton a serialization ambigue refuse pour cle v' + key.version);
+      } finally {
+        await client.query('ROLLBACK');
+      }
     }
     console.log('POSTFLIGHT OK — migration et verificateur HMAC mesures; systeme_strict reste false.');
   }
