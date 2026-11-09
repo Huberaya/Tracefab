@@ -12,13 +12,14 @@
  * `tracefab.user_id` / `tracefab.active_organization_id` poses comme le fait
  * `api/_lib/context.ts`.
  *
- * IL MESURE AUSSI LE DEFAUT, PAS SEULEMENT LE CORRECTIF
- * -----------------------------------------------------
- * Avec le tenant A arme, un compte membre de A, B et du fournisseur S voit
- * encore les documents des trois organisations via les politiques RLS, et
- * `tracefab_can_access_document()` repond vrai pour les documents B et S.
- * Les produits sont deja limites au tenant actif par une politique anterieure.
- * Le test distingue ces deux etats avant de verifier les refus (sections B-E).
+ * IL MESURE L'ETAT AVANT ET APRES LES GARDES DE ROUTE
+ * ----------------------------------------------------
+ * La migration 20261105235900_active_tenant_policy_and_worker_closure a deja
+ * ferme les lectures documentaires inter-tenant par RLS et par le helper
+ * historique. Avant cette migration, les gardes dedies aux routes (acces par
+ * identifiant exact) n'existent pas. Cette suite verifie leur absence, puis
+ * leur creation, leurs refus inter-tenant et leur comportement fail-closed
+ * sans tenant actif.
  *
  * ENVIRONNEMENT : niveau 1 — base jeteable locale, aucune connexion distante,
  * aucune ecriture sur Neon, aucune variable lue depuis l'environnement.
@@ -257,19 +258,23 @@ const accessibleProduct = async (productId) => {
 /* ========================================================================== *
  * A. Le defaut mesure : les politiques RLS bornent l'utilisateur, pas le tenant
  * ========================================================================== */
-section('A. Defaut MESURE sur la chaine historique, avant le correctif');
+section('A. Etat historique avant les gardes dedies aux routes');
 await contexte(U_MULTI, A);
 const visibles = await produitsVisibles();
 ok('AVANT : la RLS produit historique masque deja le produit B au tenant A',
   visibles.includes(P_A) && !visibles.includes(P_B), `${visibles.length} produit(s) visibles`);
 const docsAvant = await documentsVisibles();
-ok('AVANT : les documents de A, B et S sont visibles avec le tenant A arme',
-  [D_A, D_B, D_S_PRIVE].every((id) => docsAvant.includes(id)),
+ok('AVANT : la RLS historique limite les documents au tenant A',
+  docsAvant.includes(D_A) && !docsAvant.includes(D_B) && !docsAvant.includes(D_S_PRIVE),
   `${docsAvant.length} documents visibles`);
-ok('AVANT : tracefab_can_access_document(document de B) = vrai avec le tenant A',
-  await legacyDoc(D_B) === true);
-ok('AVANT : tracefab_can_access_document(document prive de S) = vrai avec le tenant A',
-  await legacyDoc(D_S_PRIVE) === true);
+ok('AVANT : tracefab_can_access_document(document de B) = faux',
+  await legacyDoc(D_B) === false);
+ok('AVANT : tracefab_can_access_document(document prive de S) = faux',
+  await legacyDoc(D_S_PRIVE) === false);
+ok('AVANT : le garde documentaire dedie aux routes est absent',
+  await scalar(`SELECT to_regprocedure('public.tracefab_document_accessible_in_active_tenant(uuid)') IS NOT NULL`) === false);
+ok('AVANT : le garde produit dedie aux routes est absent',
+  await scalar(`SELECT to_regprocedure('public.tracefab_product_accessible_in_active_tenant(uuid)') IS NOT NULL`) === false);
 
 /* --- Application du correctif et de toutes les migrations suivantes --- */
 await db.exec('RESET ROLE');
@@ -279,7 +284,7 @@ for (const d of apres) {
 await db.exec('SET ROLE tracefab_app');
 await contexte(U_MULTI, A);
 
-section('A2. Meme mesure APRES le correctif : la fuite RLS est fermee');
+section('A2. Gardes de route apres correctif : decisions liees au tenant actif');
 const docsApres = await documentsVisibles();
 ok('APRES : le document prive de B n est plus visible depuis le tenant A',
   !docsApres.includes(D_B), `${docsApres.length} documents visibles`);
@@ -318,8 +323,12 @@ ok('RLS tenant S : le certificat explicitement emis par A a son nom reste visibl
 ok('RLS tenant B : ce meme certificat A->S reste refuse', !rlsB.includes(D_A_VERS_S));
 await contexte(U_MULTI, null);
 const rlsSansTenant = await documentsVisibles();
-ok('tracefab_app sans tenant actif : aucune ligne documentaire visible (fail-closed)',
-  rlsSansTenant.length === 0, `${rlsSansTenant.length} document(s) visibles`);
+ok('RLS historique sans tenant : comportement par utilisateur conserve',
+  rlsSansTenant.length > 0, `${rlsSansTenant.length} document(s) visibles`);
+ok('garde documentaire sans tenant actif : refus fail-closed',
+  await guardDoc(D_A) === false);
+ok('garde produit sans tenant actif : refus fail-closed',
+  await guardProduit(P_A) === false);
 await contexte(U_MULTI, A);
 
 /* ========================================================================== *
