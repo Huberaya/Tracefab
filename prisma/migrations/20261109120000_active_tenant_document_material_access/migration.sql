@@ -22,7 +22,9 @@
 -- CE QUE LA MIGRATION CHANGE, ET CE QU'ELLE NE CHANGE PAS
 --
 --   1. La branche PROPRIETAIRE de `tracefab_can_access_document` exige
---      desormais le locataire actif EN PLUS de l'appartenance.
+--      le locataire actif EN PLUS de l'appartenance lorsqu'un tenant est
+--      selectionne. Sans tenant, le comportement historique par appartenance
+--      est conserve ; les routes HTTP restent fermees par le garde dedie.
 --   2. Les branches de PARTAGE explicite sont conservees telles quelles :
 --      `data_shares` (portee, dates, statut), document en preuve d'une reponse
 --      de collecte, document joint a une certification rattachee a un produit
@@ -336,7 +338,9 @@ CREATE POLICY certifications_select_authorized ON public.certifications
 -- -----------------------------------------------------------------------------
 --
 -- `tracefab_can_access_shared_subject` verifiait que l'UTILISATEUR est membre du
--- beneficiaire — jamais que le beneficiaire est le LOCATAIRE ACTIF. Un partage
+-- beneficiaire — jamais que le beneficiaire est le LOCATAIRE ACTIF. Quand un
+-- tenant est arme, le partage doit correspondre a ce tenant ; sans tenant, le
+-- comportement historique par appartenance reste conserve. Un partage
 -- accorde a la marque A restait donc lisible depuis le locataire B du meme
 -- compte : mesure sur base migree, `select count(*) from materials` sous le
 -- locataire B rendait 1 ligne de fournisseur des que A avait recu un partage.
