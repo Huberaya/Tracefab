@@ -29,6 +29,9 @@
     "test:p107:sonde-runtime": "node scripts/run-db-suite.mjs scripts/test_p107_sonde_runtime.mjs",
     "test:p107:demonstration": "node scripts/run-db-suite.mjs scripts/test_p107_demonstration_strict.mjs",
     "test:p107:sonde-hmac": "node scripts/test_p107_sonde_hmac.mjs",
+    "test:p107:identite-systeme-module": "node --import tsx scripts/test_p107_identite_systeme_module.mjs",
+    "test:p107:identite-systeme": "node scripts/run-db-suite.mjs scripts/test_p107_identite_systeme_signee.mjs",
+    "test:p107:activation-stricte": "node scripts/run-db-suite.mjs scripts/test_p107_activation_mode_systeme.mjs",
     "sonde:p107:hmac": "node --import tsx scripts/sonde_p107_hmac.ts",
     "test:neon:write-policies": "node scripts/run-db-suite.mjs scripts/test_rls_write_policies.mjs",
     "test:neon:wallet:chantier9": "node scripts/run-db-suite.mjs scripts/test_neon_wallet_chantier9.ts",
@@ -269,9 +272,7 @@
     "test:jetables:harnais-rls": "node scripts/run-db-suite.mjs scripts/harnais_suites_rls.mjs scripts/test_rls_write_policies.mjs scripts/test_rls_bypass_controle_negatif.mjs",
     "test:jetables:reinitialiser-base": "node scripts/run-db-suite.mjs scripts/reinitialiser_base_jetable.mjs",
     "test:jetables:nettoyer": "node scripts/run-db-suite.mjs scripts/nettoyer_ressources_jetables.mjs",
-    "test:jetables": "npm run test:jetables:verrou-cluster && npm run test:jetables:concurrence && npm run test:jetables:base-ephemere && npm run test:jetables:role-ephemere && npm run test:jetables:role-app && npm run test:jetables:destruction && npm run test:jetables:ressources-fixes && npm run test:jetables:reprise && npm run test:jetables:provisioning && npm run test:jetables:garde-cible && npm run test:jetables:migration-atomicite && npm run test:jetables:r4-inscription && npm run test:jetables:harnais-rls",
-    "db:preflight:worker-neon:check": "node scripts/provisionner_worker_neon.mjs --etat",
-    "db:preflight:worker-neon": "node scripts/provisionner_worker_neon.mjs --appliquer"
+    "test:jetables": "npm run test:jetables:verrou-cluster && npm run test:jetables:concurrence && npm run test:jetables:base-ephemere && npm run test:jetables:role-ephemere && npm run test:jetables:role-app && npm run test:jetables:destruction && npm run test:jetables:ressources-fixes && npm run test:jetables:reprise && npm run test:jetables:provisioning && npm run test:jetables:garde-cible && npm run test:jetables:migration-atomicite && npm run test:jetables:r4-inscription && npm run test:jetables:harnais-rls"
   },
   "devDependencies": {
     "@electric-sql/pglite": "^0.5.12",

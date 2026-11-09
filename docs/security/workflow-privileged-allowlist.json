@@ -1,7 +1,7 @@
 {
   "//": "Registre des workflows qui detiennent un privilege. Un workflow absent de ce fichier qui demande l'un de ces privileges fait echouer `npm run test:workflow-policy`. Declarer est un acte explicite ; l'omission est impossible.",
   "//version": "1",
-  "//updated": "2026-10-12",
+  "//updated": "2026-11-09",
   "//writePermissionWorkflows": "Workflows qui demandent `contents: write` — donc qui peuvent creer ou modifier des commits dans le depot.",
   "writePermissionWorkflows": {
     "figer-reference-visuelle.yml": {
@@ -20,6 +20,30 @@
       "lecture_seule": "Le script appele n'emet que des GET. Une interception de test hors ligne (npm run test:diagnose-incident) prouve qu'aucune autre methode n'est construite et qu'aucun hote autre que api.vercel.com n'est joint.",
       "rotation": "Jeton dedie, distinct de tout jeton d'administration, revoque des la ligne recuperee ; l'environnement ne doit pas conserver le secret apres le diagnostic.",
       "journal": "La sortie est caviardee par le script : jeton, entetes d'autorisation, chaines de connexion, identifiants opaques."
+    },
+    "p11-preview-p107-migration.yml": {
+      "secret": "TRACEFAB_P11_DATABASE_ADMIN_URL",
+      "portee": "job migrate-preview-p11 uniquement, environnement tracefab-p11-preview avec relecteur obligatoire et branche autorisee arena/b8fe1a44-tracefab ; workflow declenche uniquement par le commit explicite EXECUTE P11 PREVIEW MIGRATION",
+      "justification": "Appliquer la seule migration manquante P10.7 a Neon Preview P11 par prisma migrate deploy. La connexion admin directe est necessaire aux DDL, reste dans un environnement GitHub protege, n'est jamais placee dans Vercel ni affichee dans les logs.",
+      "lecture_seule": "Le preflight verifie l'endpoint P11 exact, le role neondb_owner, l'absence de migration inachevee, les 95 migrations appliquees et l'unique migration P10.7 en attente. Le postflight mesure les 13 gardes, les ACL et des HMAC valides/invalides sans afficher les cles.",
+      "rotation": "Secret dedie a Preview P11, a revoquer apres la campagne. Ne jamais le reutiliser pour Production.",
+      "journal": "Les scripts n'affichent ni URL, ni mot de passe, ni valeur de cle HMAC ; les secrets ne sont accessibles qu'apres approbation de l'environnement."
+    },
+    "p11-preview-p107-expiry.yml": {
+      "secret": "TRACEFAB_P11_DATABASE_ADMIN_URL",
+      "portee": "job migrate-preview-p11 uniquement, environnement tracefab-p11-preview approuve, branche arena/b8fe1a44-tracefab, commit explicite APPLY P11 P107 EXPIRY FIX",
+      "justification": "Appliquer une migration additive P10.7 de correction de la borne temporelle HMAC sur Neon Preview P11. Le runner Prisma utilise uniquement le role tracefab_migrator ; aucun changement Production.",
+      "lecture_seule": "Le preflight confirme P10.7 deja appliquee, l'unique migration additive en attente, l'absence d'appartenance temporaire worker et le proprietaire de la fonction. Le postflight controle la migration, le mode strict inchange et la matrice HMAC complete.",
+      "rotation": "Secret dedie a Preview P11, jamais reutilise pour Production.",
+      "journal": "Les scripts masquent la connexion et ne journalisent aucune cle HMAC ni valeur de secret."
+    },
+    "p11-preview-p107-worker-rls.yml": {
+      "secret": "TRACEFAB_P11_DATABASE_ADMIN_URL",
+      "portee": "job migrate-preview-p11 uniquement, environnement tracefab-p11-preview avec approbation obligatoire et branche autorisee arena/b8fe1a44-tracefab ; declenchement uniquement par le commit explicite APPLY P11 P107 WORKER RLS FIX",
+      "justification": "Appliquer la politique RLS organizations_worker_update sur Neon Preview P11 par Prisma, puis verifier l archivage sous tracefab_worker. Aucun changement Production.",
+      "lecture_seule": "Le preflight borne endpoint, role, mode strict et migration unique ou deja appliquee. Le resolver ne traite que l unique tentative echouee via Prisma. Le postflight verifie la politique, les roles et l effet d archivage dans une transaction annulee.",
+      "rotation": "Secret dedie a Preview P11, jamais reutilise pour Production.",
+      "journal": "Les scripts ne journalisent ni URL, ni mot de passe, ni cle HMAC ; la connexion admin n est accessible qu apres approbation de l environnement."
     }
   },
   "//privilegedTriggers": "Declencheurs qui executent du code de branche avec les privileges de la branche de base (`pull_request_target`, `workflow_run`).",
@@ -37,7 +61,72 @@
       "job": "recherche",
       "pourquoi": "Le workflow ne doit pas lire ce secret sur un push de branche. Le déclenchement est manuel uniquement ; l'environnement avec relecteurs obligatoires doit être vérifié avant toute exécution, faute de quoi le secret pourrait être exposé.",
       "reglage_attendu": "Settings > Environments > vercel-log-search > Required reviewers : le proprietaire. Le workflow refuse aussi toute référence autre que refs/heads/main. Sans le réglage de relecteurs, la condition de branche ne remplace pas l'approbation de l'environnement."
+    },
+    "p11-preview-p107-migration.yml": {
+      "environnement": "tracefab-p11-preview",
+      "job": "migrate-preview-p11",
+      "pourquoi": "Le job detient une connexion admin Neon Preview. L'environnement doit exiger l'approbation du proprietaire et limiter les branches de deploiement a arena/b8fe1a44-tracefab.",
+      "reglage_attendu": "Settings > Environments > tracefab-p11-preview > Required reviewers : le proprietaire ; Deployment branches : Selected branches, uniquement arena/b8fe1a44-tracefab. Le secret TRACEFAB_P11_DATABASE_ADMIN_URL doit etre un direct URL neondb_owner de P11, jamais une URL Production."
+    },
+    "p11-preview-p107-expiry.yml": {
+      "environnement": "tracefab-p11-preview",
+      "job": "migrate-preview-p11",
+      "pourquoi": "Le job execute une migration additive sur la seule branche Neon Preview P11 ; l'approbation du proprietaire et la restriction de branche restent obligatoires.",
+      "reglage_attendu": "Settings > Environments > tracefab-p11-preview > Required reviewers : le proprietaire ; Deployment branches : Selected branches, uniquement arena/b8fe1a44-tracefab. Secret TRACEFAB_P11_DATABASE_ADMIN_URL direct non pooler de Neon Preview P11."
+    },
+    "p11-preview-p107-worker-rls.yml": {
+      "environnement": "tracefab-p11-preview",
+      "job": "migrate-preview-p11",
+      "pourquoi": "Le job applique une politique RLS additive a la seule branche Neon Preview P11 ; l approbation du proprietaire et la restriction de branche sont obligatoires.",
+      "reglage_attendu": "Settings > Environments > tracefab-p11-preview > Required reviewers : le proprietaire ; Deployment branches : Selected branches, uniquement arena/b8fe1a44-tracefab. Secret TRACEFAB_P11_DATABASE_ADMIN_URL direct non pooler de Neon Preview P11."
     }
   },
-  "//horsPerimetre": "Le workflow `figer-reference-visuelle.yml` porte `contents: write` mais n'existe pas sur la branche de reference : il vit sur `arena/91844ee9-tracefab` (branche de la PR #34). Ce registre ne couvre que les fichiers presents dans l'arbre analyse. Sa neutralisation est preparee dans docs/security/PHASE-1-PIPELINE-GITHUB.md."
+  "//horsPerimetre": "Le workflow `figer-reference-visuelle.yml` porte `contents: write` mais n'existe pas sur la branche de reference : il vit sur `arena/91844ee9-tracefab` (branche de la PR #34). Ce registre ne couvre que les fichiers presents dans l'arbre analyse. Sa neutralisation est preparee dans docs/security/PHASE-1-PIPELINE-GITHUB.md.",
+  "//previewMigrationWorkflows": "Exceptions de migration distante strictement bornees a un environnement Preview, une branche et un preflight/postflight versionnes. Toute autre migration distante reste interdite.",
+  "previewMigrationWorkflows": {
+    "p11-preview-p107-migration.yml": {
+      "job": "migrate-preview-p11",
+      "branch": "arena/b8fe1a44-tracefab",
+      "commit_message": "EXECUTE P11 PREVIEW MIGRATION",
+      "environment": "tracefab-p11-preview",
+      "secret": "TRACEFAB_P11_DATABASE_ADMIN_URL",
+      "preflight": "node scripts/verification_p107_preview_migration.mjs preflight",
+      "resolve": "node scripts/resolve_p107_failed_migration.mjs",
+      "migration": "npx prisma migrate deploy",
+      "status": "npx prisma migrate status",
+      "postflight": "node scripts/verification_p107_preview_migration.mjs postflight",
+      "target": "Neon project autumn-breeze-47342493, branch br-square-bread-b1gu7jk7, endpoint ep-lively-field-b1wicg4v, database neondb",
+      "justification": "Exception ponctuelle de migration distante demandee explicitement par le proprietaire ; le preflight borne la cible et l'unique migration, le postflight verifie ACL, gardes et HMAC."
+    },
+    "p11-preview-p107-expiry.yml": {
+      "kind": "expiry",
+      "job": "migrate-preview-p11",
+      "branch": "arena/b8fe1a44-tracefab",
+      "commit_message": "APPLY P11 P107 EXPIRY FIX",
+      "environment": "tracefab-p11-preview",
+      "secret": "TRACEFAB_P11_DATABASE_ADMIN_URL",
+      "preflight": "node scripts/verification_p107_expiry_migration.mjs preflight",
+      "resolve": "node scripts/resolve_p107_expiry_failed_migration.mjs",
+      "migration": "npx prisma migrate deploy",
+      "status": "npx prisma migrate status",
+      "postflight": "node scripts/verification_p107_expiry_migration.mjs postflight && node scripts/verification_p107_preview_migration.mjs postflight",
+      "target": "Neon project autumn-breeze-47342493, branch br-square-bread-b1gu7jk7, endpoint ep-lively-field-b1wicg4v, database neondb",
+      "justification": "Correction additive du plafond TTL HMAC (floor au lieu d'un cast numeric arrondi) apres preuve du cas limite. Migration distante Prisma exclusivement sur Preview P11, preflight/postflight versionnes, aucun changement Production."
+    },
+    "p11-preview-p107-worker-rls.yml": {
+      "kind": "workerRls",
+      "job": "migrate-preview-p11",
+      "branch": "arena/b8fe1a44-tracefab",
+      "commit_message": "APPLY P11 P107 WORKER RLS FIX",
+      "environment": "tracefab-p11-preview",
+      "secret": "TRACEFAB_P11_DATABASE_ADMIN_URL",
+      "preflight": "node scripts/verification_p107_worker_rls_migration.mjs preflight",
+      "resolve": "node scripts/resolve_p107_worker_rls_failed_migration.mjs",
+      "migration": "export DATABASE_URL=\"$(node -e 'const u = new URL(process.env.DATABASE_URL); u.searchParams.set(\"options\", \"-c role=tracefab_migrator\"); process.stdout.write(u.toString())')\"\nnpx prisma migrate deploy",
+      "status": "export DATABASE_URL=\"$(node -e 'const u = new URL(process.env.DATABASE_URL); u.searchParams.set(\"options\", \"-c role=tracefab_migrator\"); process.stdout.write(u.toString())')\"\nnpx prisma migrate status",
+      "postflight": "node scripts/verification_p107_worker_rls_migration.mjs postflight",
+      "target": "Neon project autumn-breeze-47342493, branch br-square-bread-b1gu7jk7, endpoint ep-lively-field-b1wicg4v, database neondb",
+      "justification": "Correction additive de la politique UPDATE worker sur organizations, car la fonction d archivage SECURITY DEFINER s execute sous tracefab_worker sans BYPASSRLS. Prisma applique la migration ; preflight, reprise conditionnelle et postflight sont versionnes. Aucun changement Production."
+    }
+  }
 }

@@ -1,0 +1,56 @@
+name: P11 Preview — correction RLS worker P10.7
+
+on:
+  push:
+    branches:
+      - arena/b8fe1a44-tracefab
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tracefab-p11-preview-p107-worker-rls
+  cancel-in-progress: false
+
+jobs:
+  migrate-preview-p11:
+    if: ${{ github.event.head_commit.message == 'APPLY P11 P107 WORKER RLS FIX' }}
+    runs-on: ubuntu-latest
+    environment: tracefab-p11-preview
+    timeout-minutes: 20
+    steps:
+      - name: Checkout exact revision
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+      - name: Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 20
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Verify target and unique pending migration
+        env:
+          DATABASE_URL: ${{ secrets.TRACEFAB_P11_DATABASE_ADMIN_URL }}
+        run: node scripts/verification_p107_worker_rls_migration.mjs preflight
+      - name: Resolve only the verified failed worker RLS attempt
+        env:
+          DATABASE_URL: ${{ secrets.TRACEFAB_P11_DATABASE_ADMIN_URL }}
+        run: node scripts/resolve_p107_worker_rls_failed_migration.mjs
+      - name: Apply additive migration through Prisma as tracefab_migrator
+        env:
+          DATABASE_URL: ${{ secrets.TRACEFAB_P11_DATABASE_ADMIN_URL }}
+        run: |
+          export DATABASE_URL="$(node -e 'const u = new URL(process.env.DATABASE_URL); u.searchParams.set("options", "-c role=tracefab_migrator"); process.stdout.write(u.toString())')"
+          npx prisma migrate deploy
+      - name: Verify Prisma migration status as tracefab_migrator
+        env:
+          DATABASE_URL: ${{ secrets.TRACEFAB_P11_DATABASE_ADMIN_URL }}
+        run: |
+          export DATABASE_URL="$(node -e 'const u = new URL(process.env.DATABASE_URL); u.searchParams.set("options", "-c role=tracefab_migrator"); process.stdout.write(u.toString())')"
+          npx prisma migrate status
+      - name: Verify policy, role boundary and real archive effect
+        env:
+          DATABASE_URL: ${{ secrets.TRACEFAB_P11_DATABASE_ADMIN_URL }}
+        run: node scripts/verification_p107_worker_rls_migration.mjs postflight

@@ -1,0 +1,46 @@
+name: P11 Preview — migration P10.7
+
+on:
+  push:
+    branches:
+      - arena/b8fe1a44-tracefab
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tracefab-p11-preview-p107-migration
+  cancel-in-progress: false
+
+jobs:
+  migrate-preview-p11:
+    if: ${{ github.event.head_commit.message == 'EXECUTE P11 PREVIEW MIGRATION' }}
+    runs-on: ubuntu-latest
+    environment: tracefab-p11-preview
+    timeout-minutes: 20
+    steps:
+      - name: Checkout exact revision
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+      - name: Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 20
+          cache: npm
+      - name: Validate migration guard syntax
+        run: node --check scripts/verification_p107_preview_migration.mjs && node --check scripts/resolve_p107_failed_migration.mjs
+      - name: Install dependencies
+        run: npm ci
+      - name: Verify target, schema state and migration owner
+        env:
+          DATABASE_URL: ${{ secrets.TRACEFAB_P11_DATABASE_ADMIN_URL }}
+        run: node scripts/verification_p107_preview_migration.mjs preflight
+      - name: Resolve only the verified failed P10.7 attempt
+        run: node scripts/resolve_p107_failed_migration.mjs
+      - name: Apply through Prisma as tracefab_migrator
+        run: npx prisma migrate deploy
+      - name: Verify migration status
+        run: npx prisma migrate status
+      - name: Verify schema, ACLs, guards and HMAC
+        run: node scripts/verification_p107_preview_migration.mjs postflight
