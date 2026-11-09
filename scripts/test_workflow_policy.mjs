@@ -262,6 +262,38 @@ function previewMigrationEstDeclaree(file, doc) {
       && migrationSource.includes('floor(extract(epoch FROM pg_catalog.now()))::BIGINT');
   }
 
+  if (rule.kind === 'workerRls') {
+    const expectedRuns = [
+      'npm ci',
+      rule.preflight,
+      rule.resolve,
+      rule.migration,
+      rule.status,
+      rule.postflight,
+    ];
+    const preflightStep = job.steps.find((step) => step.run?.trim() === rule.preflight);
+    const resolveStep = job.steps.find((step) => step.run?.trim() === rule.resolve);
+    const migrationStep = job.steps.find((step) => step.run?.trim() === rule.migration);
+    const statusStep = job.steps.find((step) => step.run?.trim() === rule.status);
+    const postflightStep = job.steps.find((step) => step.run?.trim() === rule.postflight);
+    const preflightSource = readFileSync(join(ROOT, 'scripts/verification_p107_worker_rls_migration.mjs'), 'utf8');
+    const resolveSource = readFileSync(join(ROOT, 'scripts/resolve_p107_worker_rls_failed_migration.mjs'), 'utf8');
+    const migrationSource = readFileSync(join(ROOT, 'prisma/migrations/20261109190000_p107_worker_organizations_update/migration.sql'), 'utf8');
+    return common
+      && [preflightStep, resolveStep, migrationStep, statusStep, postflightStep].every((step) => step?.env?.DATABASE_URL === expectedSecret)
+      && !job.env?.DATABASE_URL
+      && JSON.stringify(runSteps) === JSON.stringify(expectedRuns)
+      && preflightSource.includes("MIGRATION = '20261109190000_p107_worker_organizations_update'")
+      && preflightSource.includes("EXPECTED_ENDPOINT = 'ep-lively-field-b1wicg4v'")
+      && preflightSource.includes('pendingExpected')
+      && preflightSource.includes('systeme_strict')
+      && resolveSource.includes("const MIGRATION = '20261109190000_p107_worker_organizations_update'")
+      && resolveSource.includes("'prisma', 'migrate', 'resolve', '--rolled-back'")
+      && migrationSource.includes('organizations_worker_update')
+      && migrationSource.includes('tracefab_identite_systeme()')
+      && migrationSource.includes('CURRENT_USER');
+  }
+
   const expectedRuns = [
     'node --check scripts/verification_p107_preview_migration.mjs && node --check scripts/resolve_p107_failed_migration.mjs',
     'npm ci',

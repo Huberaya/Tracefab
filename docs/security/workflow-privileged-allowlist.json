@@ -36,6 +36,14 @@
       "lecture_seule": "Le preflight confirme P10.7 deja appliquee, l'unique migration additive en attente, l'absence d'appartenance temporaire worker et le proprietaire de la fonction. Le postflight controle la migration, le mode strict inchange et la matrice HMAC complete.",
       "rotation": "Secret dedie a Preview P11, jamais reutilise pour Production.",
       "journal": "Les scripts masquent la connexion et ne journalisent aucune cle HMAC ni valeur de secret."
+    },
+    "p11-preview-p107-worker-rls.yml": {
+      "secret": "TRACEFAB_P11_DATABASE_ADMIN_URL",
+      "portee": "job migrate-preview-p11 uniquement, environnement tracefab-p11-preview avec approbation obligatoire et branche autorisee arena/b8fe1a44-tracefab ; declenchement uniquement par le commit explicite APPLY P11 P107 WORKER RLS FIX",
+      "justification": "Appliquer la politique RLS organizations_worker_update sur Neon Preview P11 par Prisma, puis verifier l archivage sous tracefab_worker. Aucun changement Production.",
+      "lecture_seule": "Le preflight borne endpoint, role, mode strict et migration unique ou deja appliquee. Le resolver ne traite que l unique tentative echouee via Prisma. Le postflight verifie la politique, les roles et l effet d archivage dans une transaction annulee.",
+      "rotation": "Secret dedie a Preview P11, jamais reutilise pour Production.",
+      "journal": "Les scripts ne journalisent ni URL, ni mot de passe, ni cle HMAC ; la connexion admin n est accessible qu apres approbation de l environnement."
     }
   },
   "//privilegedTriggers": "Declencheurs qui executent du code de branche avec les privileges de la branche de base (`pull_request_target`, `workflow_run`).",
@@ -64,6 +72,12 @@
       "environnement": "tracefab-p11-preview",
       "job": "migrate-preview-p11",
       "pourquoi": "Le job execute une migration additive sur la seule branche Neon Preview P11 ; l'approbation du proprietaire et la restriction de branche restent obligatoires.",
+      "reglage_attendu": "Settings > Environments > tracefab-p11-preview > Required reviewers : le proprietaire ; Deployment branches : Selected branches, uniquement arena/b8fe1a44-tracefab. Secret TRACEFAB_P11_DATABASE_ADMIN_URL direct non pooler de Neon Preview P11."
+    },
+    "p11-preview-p107-worker-rls.yml": {
+      "environnement": "tracefab-p11-preview",
+      "job": "migrate-preview-p11",
+      "pourquoi": "Le job applique une politique RLS additive a la seule branche Neon Preview P11 ; l approbation du proprietaire et la restriction de branche sont obligatoires.",
       "reglage_attendu": "Settings > Environments > tracefab-p11-preview > Required reviewers : le proprietaire ; Deployment branches : Selected branches, uniquement arena/b8fe1a44-tracefab. Secret TRACEFAB_P11_DATABASE_ADMIN_URL direct non pooler de Neon Preview P11."
     }
   },
@@ -98,6 +112,21 @@
       "postflight": "node scripts/verification_p107_expiry_migration.mjs postflight && node scripts/verification_p107_preview_migration.mjs postflight",
       "target": "Neon project autumn-breeze-47342493, branch br-square-bread-b1gu7jk7, endpoint ep-lively-field-b1wicg4v, database neondb",
       "justification": "Correction additive du plafond TTL HMAC (floor au lieu d'un cast numeric arrondi) apres preuve du cas limite. Migration distante Prisma exclusivement sur Preview P11, preflight/postflight versionnes, aucun changement Production."
+    },
+    "p11-preview-p107-worker-rls.yml": {
+      "kind": "workerRls",
+      "job": "migrate-preview-p11",
+      "branch": "arena/b8fe1a44-tracefab",
+      "commit_message": "APPLY P11 P107 WORKER RLS FIX",
+      "environment": "tracefab-p11-preview",
+      "secret": "TRACEFAB_P11_DATABASE_ADMIN_URL",
+      "preflight": "node scripts/verification_p107_worker_rls_migration.mjs preflight",
+      "resolve": "node scripts/resolve_p107_worker_rls_failed_migration.mjs",
+      "migration": "export DATABASE_URL=\"$(node -e 'const u = new URL(process.env.DATABASE_URL); u.searchParams.set(\"options\", \"-c role=tracefab_migrator\"); process.stdout.write(u.toString())')\"\nnpx prisma migrate deploy",
+      "status": "export DATABASE_URL=\"$(node -e 'const u = new URL(process.env.DATABASE_URL); u.searchParams.set(\"options\", \"-c role=tracefab_migrator\"); process.stdout.write(u.toString())')\"\nnpx prisma migrate status",
+      "postflight": "node scripts/verification_p107_worker_rls_migration.mjs postflight",
+      "target": "Neon project autumn-breeze-47342493, branch br-square-bread-b1gu7jk7, endpoint ep-lively-field-b1wicg4v, database neondb",
+      "justification": "Correction additive de la politique UPDATE worker sur organizations, car la fonction d archivage SECURITY DEFINER s execute sous tracefab_worker sans BYPASSRLS. Prisma applique la migration ; preflight, reprise conditionnelle et postflight sont versionnes. Aucun changement Production."
     }
   }
 }
