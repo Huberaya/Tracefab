@@ -3,7 +3,7 @@ import { emailDeliveryConfigured } from '../../_lib/email.js';
 import { notificationAlertConfigured } from '../../_lib/notification-observability.js';
 import { storageConfig } from '../../_lib/storage.js';
 import { json, methodNotAllowed } from '../../_lib/http.js';
-import { workerAuthorized, workerSecretConfigured } from '../../_lib/worker-auth.js';
+import { runtimeProbeAuthorized, workerAuthorized, workerSecretConfigured } from '../../_lib/worker-auth.js';
 import { databaseIdentityIsSafe, probeDatabaseIdentity, runLiveProbes } from '../../_lib/readiness-probes.js';
 import { etatCleIdentite } from '../../_lib/identite-jeton.js';
 
@@ -28,8 +28,15 @@ function privateStorageReadiness() {
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'GET') return methodNotAllowed(res, ['GET']);
-  if (!workerSecretConfigured()) return json(res, 503, { error: 'worker_not_configured' });
-  if (!workerAuthorized(req)) return json(res, 401, { error: 'worker_unauthorized' });
+  const workerConfigured = workerSecretConfigured();
+  const workerAccess = workerConfigured && workerAuthorized(req);
+  // Le jeton de sonde n'autorise que la lecture de l'identite DB en Preview
+  // sur la branche P11. Il ne peut pas declencher les sondes live externes.
+  const runtimeIdentityProbe = req.query?.identity === '1'
+    && req.query?.probe !== 'live'
+    && runtimeProbeAuthorized(req);
+  if (!workerConfigured && !runtimeIdentityProbe) return json(res, 503, { error: 'worker_not_configured' });
+  if (!workerAccess && !runtimeIdentityProbe) return json(res, 401, { error: 'worker_unauthorized' });
 
   // ?probe=live exerce reellement chaque service au lieu de constater que ses
   // variables existent. Volontairement opt-in : on ne veut pas appeler cinq
