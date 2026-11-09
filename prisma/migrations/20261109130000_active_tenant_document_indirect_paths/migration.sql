@@ -28,8 +28,9 @@
 --
 -- `CREATE OR REPLACE` de la fonction, sans changer sa signature : OID,
 -- proprietaire et ACL sont conserves et verifies. Chaque branche indirecte
--- exige desormais le locataire actif du cote qu'elle autorise, en plus de
--- l'appartenance. Les branches legitimes sont conservees telles quelles :
+-- exige desormais le locataire actif du cote qu'elle autorise lorsqu'un tenant
+-- est selectionne, en plus de l'appartenance. Sans tenant, le comportement
+-- historique par appartenance est conserve. Les branches legitimes sont :
 -- propriete sous le locataire actif, partage explicite (deja borne par le
 -- beneficiaire dans 20261109120000), relation fournisseur ACTIVE vue depuis la
 -- marque active, piece d'une reponse vue depuis le locataire partie a la
