@@ -59,7 +59,19 @@ const entrees = chaineLocale();
 const admin = await baseVierge(DB);
 const version = (await admin.query('SELECT version() v')).rows[0].v;
 
-const a = await appliquer(admin, entrees);
+const a = await appliquer(admin, entrees, async (migration) => {
+  // 20261107120000 doit endosser tracefab_worker pendant ALTER OWNER.
+  // Une fois la migration de transfert terminee, le droit est temporaire :
+  // la migration terminale 20261108120700 doit le constater revoque.
+  if (migration.nom === CORRECTIF_NOM) {
+    const membership = await admin.query(
+      "SELECT pg_catalog.pg_has_role('tracefab_migrator','tracefab_worker','MEMBER') AS membre"
+    );
+    if (membership.rows[0]?.membre === true) {
+      await admin.query('REVOKE tracefab_worker FROM tracefab_migrator');
+    }
+  }
+});
 consigner('CI01_chaine_appliquee', 'Toutes les migrations du checkout appliquees depuis une base vierge',
   `${entrees.length}/${entrees.length} sans echec`,
   a.echec ? `${a.appliquees.length}/${entrees.length} — ${a.echec.nom} ${a.echec.sqlstate} ${a.echec.message}` : `${a.appliquees.length}/${entrees.length}`,
