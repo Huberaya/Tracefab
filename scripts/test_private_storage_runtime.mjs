@@ -48,16 +48,18 @@ try {
   assert.equal(fetchCalls, 0);
 
   process.env.PRIVATE_STORAGE_ANTIVIRUS_URL = 'https://scanner.example.test/scan';
-  let observedSignal;
+  let observedSignal, observedRedirect;
   globalThis.fetch = async (_url, init) => {
     observedSignal = init.signal;
+    observedRedirect = init.redirect;
     return new Response('{"clean":true,"mimeType":"application/pdf"}', { status: 200 });
   };
   const result = await scanWithAntivirus(bytes, 'test.pdf', 'application/pdf');
   assert.equal(result.clean, true);
   assert.equal(result.mimeType, 'application/pdf');
   assert.ok(observedSignal instanceof AbortSignal, 'scanner request must carry a bounded AbortSignal');
-  console.log('  ok    scanner HTTPS accepte et reponse typee validee avec signal de timeout');
+  assert.equal(observedRedirect, 'error', 'scanner request must not follow redirects with a bearer token');
+  console.log('  ok    scanner HTTPS accepte, reponse typee, timeout et redirections refuses');
 
   const controller = new AbortController();
   Object.defineProperty(AbortSignal, 'timeout', { configurable: true, value: () => controller.signal });
@@ -66,6 +68,12 @@ try {
     const timeoutError = new Error('timed out'); timeoutError.name = 'TimeoutError'; throw timeoutError;
   };
   await rejects('timeout antivirus transforme en erreur retryable explicite', () => scanWithAntivirus(bytes, 'test.pdf', 'application/pdf'), 'private_storage_antivirus_timeout');
+
+  globalThis.fetch = async () => ({
+    ok: true,
+    json: async () => { const e = new Error('body timed out'); e.name = 'TimeoutError'; throw e; },
+  });
+  await rejects('timeout pendant la lecture du verdict reste retryable', () => scanWithAntivirus(bytes, 'test.pdf', 'application/pdf'), 'private_storage_antivirus_timeout');
 
   process.env.PRIVATE_STORAGE_ANTIVIRUS_URL = 'http://127.0.0.1:8080/scan';
   process.env.NODE_ENV = 'test';
