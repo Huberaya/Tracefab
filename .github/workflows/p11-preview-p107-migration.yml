@@ -34,9 +34,12 @@ jobs:
         run: node --check scripts/verification_p107_preview_migration.mjs
       - name: Install dependencies
         run: npm ci
-      - name: Verify target and exact pending migration
+      - name: Verify target, schema state and migration owner
         run: node scripts/verification_p107_preview_migration.mjs preflight
-      - name: Apply through Prisma only
+      - name: Resolve only the verified failed P10.7 attempt
+        if: ${{ env.TRACEFAB_P11_NEEDS_RESOLVE == 'true' }}
+        run: npx prisma migrate resolve --rolled-back 20261106130000_identite_systeme_signee
+      - name: Apply through Prisma as tracefab_migrator
         run: npx prisma migrate deploy
       - name: Verify migration status
         run: npx prisma migrate status
