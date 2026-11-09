@@ -38,12 +38,13 @@ await client.connect();
 
 try {
   const identity = (await client.query('SELECT current_database() AS db, current_user AS role, session_user AS session_role')).rows[0];
+  let attempts = [];
   assert(identity.db === 'neondb', 'base neondb');
   if (mode === 'preflight') {
     assert(identity.role === 'neondb_owner' && identity.session_role === 'neondb_owner', 'connexion admin initiale');
     const history = (await client.query('SELECT migration_name, finished_at, rolled_back_at FROM public._prisma_migrations')).rows;
     assert(history.some(r => r.migration_name === P107 && r.finished_at && !r.rolled_back_at), 'migration P10.7 initiale deja appliquee');
-    const attempts = history.filter(r => r.migration_name === MIGRATION);
+    attempts = history.filter(r => r.migration_name === MIGRATION);
     assert(attempts.every(r => !r.finished_at) && attempts.filter(r => !r.rolled_back_at).length <= 1,
       'aucune application terminee et au plus une tentative echouee non resolue');
     const dirs = fs.readdirSync(path.resolve('prisma/migrations'), { withFileTypes: true }).filter(x => x.isDirectory()).map(x => x.name);
