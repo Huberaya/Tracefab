@@ -29,7 +29,7 @@ jobs:
           node-version: 20
           cache: npm
       - name: Validate migration guard syntax
-        run: node --check scripts/verification_p107_preview_migration.mjs
+        run: node --check scripts/verification_p107_preview_migration.mjs && node --check scripts/resolve_p107_failed_migration.mjs
       - name: Install dependencies
         run: npm ci
       - name: Verify target, schema state and migration owner
@@ -37,8 +37,7 @@ jobs:
           DATABASE_URL: ${{ secrets.TRACEFAB_P11_DATABASE_ADMIN_URL }}
         run: node scripts/verification_p107_preview_migration.mjs preflight
       - name: Resolve only the verified failed P10.7 attempt
-        if: ${{ env.TRACEFAB_P11_NEEDS_RESOLVE == 'true' }}
-        run: npx prisma migrate resolve --rolled-back 20261106130000_identite_systeme_signee
+        run: node scripts/resolve_p107_failed_migration.mjs
       - name: Apply through Prisma as tracefab_migrator
         run: npx prisma migrate deploy
       - name: Verify migration status
