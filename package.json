@@ -271,7 +271,8 @@
     "test:jetables:nettoyer": "node scripts/run-db-suite.mjs scripts/nettoyer_ressources_jetables.mjs",
     "test:jetables": "npm run test:jetables:verrou-cluster && npm run test:jetables:concurrence && npm run test:jetables:base-ephemere && npm run test:jetables:role-ephemere && npm run test:jetables:role-app && npm run test:jetables:destruction && npm run test:jetables:ressources-fixes && npm run test:jetables:reprise && npm run test:jetables:provisioning && npm run test:jetables:garde-cible && npm run test:jetables:migration-atomicite && npm run test:jetables:r4-inscription && npm run test:jetables:harnais-rls",
     "db:preflight:worker-neon:check": "node scripts/provisionner_worker_neon.mjs --etat",
-    "db:preflight:worker-neon": "node scripts/provisionner_worker_neon.mjs --appliquer"
+    "db:preflight:worker-neon": "node scripts/provisionner_worker_neon.mjs --appliquer",
+    "test:public-dpp-route": "node scripts/test_public_dpp_route_contract.mjs"
   },
   "devDependencies": {
     "@electric-sql/pglite": "^0.5.12",
