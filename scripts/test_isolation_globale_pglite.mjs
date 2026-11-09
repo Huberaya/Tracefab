@@ -108,7 +108,7 @@ const dossiers = fs.readdirSync(MIGRATIONS)
 // Le baseline s'arrete juste AVANT le correctif. Exclure uniquement cette
 // migration tout en rejouant les suivantes reproduit un schema deja durci.
 // Les fixtures sont peuplees avant d'appliquer le correctif et toute sa suite.
-const DOSSIER_CORRECTIF = '20261105180000_active_tenant_access_guards';
+const DOSSIER_CORRECTIF = '20261106010000_active_tenant_access_guards';
 const avant = dossiers.filter((d) => d < DOSSIER_CORRECTIF);
 const apres = dossiers.filter((d) => d >= DOSSIER_CORRECTIF);
 const correctif = dossiers.filter((d) => d === DOSSIER_CORRECTIF);
