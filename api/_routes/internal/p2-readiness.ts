@@ -50,7 +50,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     probe: 'configuration_only',
   };
   const services = { privateStorage, email, alerting };
-  const configured_ = Object.values(services).every((service) => service.configured);
+  // Alerting is explicitly optional in docs/operations/production-hardening.md.
+  // It remains visible in the report, but cannot hold core readiness red.
+  const configured_ = privateStorage.configured && email.configured;
 
   // Identite reelle de la connexion applicative — opt-in.
   //
@@ -156,7 +158,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const probes = await runLiveProbes();
   // Le collecteur d'erreurs est souhaitable, pas bloquant : son absence degrade
   // l'exploitation, elle n'empeche pas de servir.
-  const blocking = [probes.database, probes.privateStorage, probes.antivirus, probes.email, probes.alerting];
+  // Alerting is optional: a missing or unreachable collector degrades
+  // observability but must not block document, identity, or email workflows.
+  const blocking = [probes.database, probes.privateStorage, probes.antivirus, probes.email];
   const ready = configured_ && blocking.every((probe) => probe.reachable) && identitySafe;
   return json(res, ready ? 200 : 503, {
     schema: 'tracefab-p2-readiness-v1',
