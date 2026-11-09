@@ -4,6 +4,26 @@ import { validateGtin, buildGs1DigitalLink } from '../plm-erp/gtin-engine.js';
 
 type PrismaTx = PrismaClient | Prisma.TransactionClient;
 
+/** URL canonique unique pour toutes les surfaces publiques du passeport. */
+export function getConfiguredPublicBaseUrl(): URL | null {
+  const raw = process.env.TRACEFAB_PUBLIC_BASE_URL?.trim();
+  if (!raw) return null;
+  try {
+    const url = new URL(raw);
+    if (
+      (url.protocol !== 'https:' && !['localhost', '127.0.0.1'].includes(url.hostname)) ||
+      url.username !== '' ||
+      url.password !== '' ||
+      url.pathname !== '/' ||
+      url.search !== '' ||
+      url.hash !== ''
+    ) return null;
+    return url;
+  } catch {
+    return null;
+  }
+}
+
 /**
  * Resolution des donnees de passeport — sans la moindre valeur substituee.
  *
