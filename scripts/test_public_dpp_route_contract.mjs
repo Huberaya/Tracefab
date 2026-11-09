@@ -25,7 +25,7 @@ const checks = [
   ['aucun stale-while-revalidate apres suspension', !route.includes('stale-while-revalidate')],
   ['identifiant resolvable seulement si actif', /public_id=\$\{publicId\} AND status='active'/.test(identity)],
   ['identifiant retire renvoie 410 sans cache', /status==='retired'/.test(identity) && /Cache-Control','no-store'/.test(identity)],
-  ['identifiant remplace redirige de facon permanente', /row\\.status==='replaced'/.test(identity) && /\\?308:302/.test(identity)],
+  ['identifiant remplace redirige de facon permanente', /row\.status==='replaced'/.test(identity) && /\?308:302/.test(identity)],
 ];
 
 let failures = 0;
