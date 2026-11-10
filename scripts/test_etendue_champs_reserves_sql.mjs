@@ -196,7 +196,8 @@ console.log('\n3. Test par mutation : etat lu en production vs etat corrige');
   ok('Q4 differe entre les deux etats', q4prod[0] !== q4corr[0]);
   ok('sur l etat lu, aucune politique n est indexee sur le role worker (0)',
     /politiques_current_user=0/.test(q4prod[0]), q4prod[0]);
-  ok('sur l etat corrige, les 14 politiques le sont', /politiques_current_user=14/.test(q4corr[0]), q4corr[0]);
+  // 14 politiques worker historiques + 2 politiques Clerk organizations ajoutees en 20261110120000.
+  ok('sur l etat corrige, les 16 politiques le sont', /politiques_current_user=16/.test(q4corr[0]), q4corr[0]);
   /**
    * La lecture du 29/10 dit « tracefab_app a UPDATE sur documents.status ».
    * La mesure est PLUS PRECISE : le droit n'est pas accorde colonne par
