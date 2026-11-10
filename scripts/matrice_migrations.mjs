@@ -2,9 +2,9 @@
 /**
  * Matrice des migrations : le decompte est RECALCULE, jamais recopie.
  *
- * Le mandat interdit de reprendre « 54 appliquees + 9 absentes + 2 annulees »
- * comme un acquis. Cette matrice le refait donc depuis l'etat courant du depot,
- * et echoue si l'arithmetique ne ferme plus.
+ * Le décompte est reconstruit depuis les relevés de Production et le dépôt :
+ * les deux tentatives annulées ont une reprise réussie, et une migration
+ * antidatée ajoutée après le relevé doit être explicitement classée absente.
  *
  * CE QUI EST MESURE ICI, ET CE QUI EST REPRIS
  *
@@ -133,6 +133,7 @@ const appliquees = compter('APPLIQUEE') + compter('APPLIQUEE APRES REPRISE');
 const horsBande = compter('APPLIQUEE HORS BANDE');
 const annulees = compter('ANNULEE');
 const absentes = compter('ABSENTE');
+const reprises = Object.values(ECARTS).filter((e) => e.tentative_annulee_reprise_reussie).length;
 
 const total = lignes.length;
 // Le TOTAL n'est pas fige : il augmente a chaque migration ajoutee, et le
@@ -218,11 +219,13 @@ if (process.argv.includes('--markdown')) {
 } else {
   console.log('Matrice des migrations — etat recalcule depuis le depot\n');
   console.log(`  migrations du depot            : ${total}`);
-  console.log(`  appliquees (attestees)         : ${appliquees}`);
+  console.log(`  appliquees (dont reprises)     : ${appliquees}`);
+  console.log(`    reprises apres tentative annulee : ${reprises}`);
   console.log(`    dont hors bande              : ${horsBande}`);
   console.log(`  annulees (rolled_back_at)      : ${annulees}`);
   console.log(`  absentes de l historique       : ${absentes}`);
-  console.log(`  ecarts nommes                  : ${annulees + absentes}`);
+  console.log(`  migrations encore absentes     : ${annulees + absentes}`);
+  console.log(`  entrees historiques detaillees : ${Object.keys(ECARTS).length}`);
   console.log(`  nouvelles (jamais deployees)   : ${nouvelles}`);
   console.log(`  arithmetique                   : ${appliquees + horsBande} + ${annulees} + ${absentes} + ${nouvelles} = ${total}`);
   console.log(`  prefixes en double (connus)    : ${doubles.length} / ${PREFIXES_DOUBLES_CONNUS.length} declares`);
@@ -231,9 +234,9 @@ if (process.argv.includes('--markdown')) {
   for (const st of ['CONFORME', 'DIVERGENCE', 'NON PROUVE', 'A QUALIFIER', 'NON DEPLOYEE']) {
     console.log(`  statut ${st.padEnd(11)}: ${lignes.filter((l) => l.statut === st).length}`);
   }
-  // Les effets se comptent sur les 65 migrations CONCERNEES par le releve du
-  // 28/10 : une migration ecrite apres n'a pas d'effet « non prouve », elle a
-  // simplement jamais ete deployee.
+  // Les effets se comptent sur les migrations anterieures ou egales a la borne
+  // du releve : une migration ecrite apres n'a pas d'effet « non prouve », elle
+  // a simplement jamais ete deployee.
   const concernes = total - nouvelles;
   console.log(`\n  effets MESURES      : ${mesures}`);
   console.log(`  effets DEDUITS      : ${deduits}`);
@@ -248,6 +251,6 @@ if (erreurs.length > 0) {
   process.exit(1);
 }
 if (!process.argv.includes('--markdown')) {
-  console.log('\nLa matrice ferme : 65 migrations, 11 ecarts, 5 hors bande,');
+  console.log(`\nLa matrice ferme : ${total} migrations, ${annulees + absentes} absentes/annulees, ${reprises} reprises, ${horsBande} hors bande, ${nouvelles} nouvelles.`);
   console.log('aucun nouveau prefixe en double.');
 }
