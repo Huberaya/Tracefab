@@ -209,20 +209,21 @@ console.log('\n6. Ce qu un `deploy` global ferait vraiment, en deux temps  [MESU
   // 20261028120000, echoue, et n'essaie JAMAIS les suivantes.
   const second = await jouer(db, '20261028120000_runtime_function_registry');
   ok('2e essai : 20261028120000 echoue', !second.ok, second.message);
-  const suivantes = ['20261028120100_worker_identity_not_forgeable',
+  const suivantes = ['20261028120050_neon_worker_function_grants',
+                     '20261028120100_worker_identity_not_forgeable',
                      '20261028120200_document_reserved_fields_internal_only',
                      '20261028130000_product_computed_fields_column_scoped',
                      '20261028140000_supplier_invitation_owner_relationship_scope',
                      '20261028150000_reconcile_plm_erp_sync_job_policies'];
   // Un deploy s'arrete au premier echec : on reproduit cet arret et on mesure
-  // que les cinq correctifs ne sont pas appliques.
+  // que les six migrations suivantes ne sont pas appliquees.
   let appliquees = 0;
   for (const d of suivantes) {
     const r = await jouer(db, d);
     if (!r.ok) break;
     appliquees += 1;
   }
-  ok('les 5 suivantes sont bien applicables une a une — elles ne bloquent pas PAR ELLES-MEMES',
+  ok('les 6 suivantes sont bien applicables une a une — elles ne bloquent pas PAR ELLES-MEMES',
     appliquees === suivantes.length, `${appliquees}/${suivantes.length}`);
   ok('donc la rupture ne vient que de l ordre : sans le registre, 120100 casse (mesure en 4)',
     true);
