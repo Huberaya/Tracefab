@@ -875,6 +875,8 @@ jobs:
         run: npm run test:neon:auth-provisioning
 
       - name: Deploiement publication explicite (jetable)
+        env:
+          TRACEFAB_PUBLIC_BASE_URL: https://tracefab.example
         run: npm run test:neon:deploiement-publication
 
       # Les trois routes POST de la PR sont Clerk-gatees : un POST non
