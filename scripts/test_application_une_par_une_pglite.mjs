@@ -21,9 +21,9 @@
  *      sans garde), et un second passage casse ;
  *   3. les migrations qui la SUIVENT en dependent : appliquer `...120100` sans
  *      elle echoue (c'est la dependance, pas une precaution) ;
- *   4. les deux migrations marquees ANNULEES ne sont pas rejouables non plus :
- *      un `deploy` global, qui les reprendrait, casse AVANT d'arriver aux
- *      correctifs ;
+ *   4. les deux migrations avec une tentative ANNULEE ont une reprise
+ *      ulterieure terminee : elles sont deja appliquees et ne doivent pas etre
+ *      rejouees ni comptees parmi les migrations en attente ;
  *   5. a l'arrivee, l'etat est celui d'une chaine neuve : 2 politiques.
  */
 import { PGlite } from '@electric-sql/pglite';
