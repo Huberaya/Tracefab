@@ -14,7 +14,7 @@
  *      historiques acceptees par `verifier-horodatages-migrations.mjs` restent ;
  *   5. le correctif P10.8 REEL est present, son empreinte est exacte, et
  *      l'ancien candidat P10.7 (nom ambigu) a bien ete REMPLACE ;
- *   6. toutes les migrations du depot local figurent dans la chaine canonique ;
+ *   6. toutes les migrations locales sont couvertes par la chaine canonique ou une extension empilee explicitement declaree ;
  *   7. les sept migrations historiques reecrites par #110/#111/#112 sont
  *      explicitement declarees exclues (pas d'oubli silencieux) ;
  *   8. la chaine suit la tete REELE de #114 (f0aeb51 du 06/11 15:34:35Z),
@@ -64,15 +64,43 @@ ok('toutes les empreintes historiques sont marquées identiques à main',
   historiques.every((e) => e.checksum_identique_a_main === true));
 const locales = fs.readdirSync(MIGRATIONS)
   .filter((d) => /^\d{14}_/.test(d) && fs.existsSync(path.join(MIGRATIONS, d, 'migration.sql')));
-const nomsManifest = new Set(m.entrees.map((e) => e.nom));
+const extensionsEmpilees = m.extensions_empilees || {};
+const extensions = Array.isArray(extensionsEmpilees.migrations) ? extensionsEmpilees.migrations : [];
+const toutesEntrees = [...m.entrees, ...extensions];
+const nomsManifest = new Set(toutesEntrees.map((e) => e.nom));
 for (const d of locales) {
-  const e = m.entrees.find((x) => x.nom === d);
-  if (!e) { ok(`migration locale ${d} présente dans la chaîne`, false); continue; }
-  if (e.source === 'HEAD' || e.source === 'main' || e.source === '#113') {
+  const e = toutesEntrees.find((x) => x.nom === d);
+  if (!e) { ok(`migration locale ${d} couverte par la chaîne ou une extension`, false); continue; }
+  if (e.source === 'HEAD' || e.source === 'main' || e.source === '#113' || e.source === '#120') {
     ok(`empreinte locale exacte : ${d}`, e.sha256 === sha(path.join(MIGRATIONS, d, 'migration.sql')));
   }
 }
-ok(`les ${locales.length} migrations du dépôt figurent toutes dans la chaîne`,
+const nomsExtensionsAttendus = [
+  '20261109120000_active_tenant_document_material_access',
+  '20261109130000_active_tenant_document_indirect_paths',
+];
+const nomsExtensions = extensions.map((e) => e.nom);
+ok('extensions empilées rattachées à la PR #120 et à la tête exacte de #113',
+  extensionsEmpilees.pr === 120
+  && extensionsEmpilees.branche === 'security/document-material-active-tenant-20261109'
+  && extensionsEmpilees.base === 'arena/0f697b3e-tracefab'
+  && extensionsEmpilees.base_sha === '1a0a2095fc9272c77cad7af9bbf1420829fe46cb');
+ok('les deux migrations additives #120 sont déclarées exactement une fois',
+  JSON.stringify(nomsExtensions) === JSON.stringify(nomsExtensionsAttendus)
+  && new Set(nomsExtensions).size === 2);
+ok('les extensions #120 ne réécrivent aucune migration historique ni entrée canonique',
+  extensions.every((e) => e.source === '#120' && e.historique_appliquee === false
+    && !m.entrees.some((c) => c.nom === e.nom)));
+const indexPrerequis113 = m.entrees.findIndex((e) => e.nom === '20261110120000_worker_clerk_organization_prerequisites');
+ok('les extensions #120 précèdent le dernier prérequis #113 dans l’ordre de migration',
+  indexPrerequis113 === m.entrees.length - 1
+  && extensions.every((e) => e.nom < m.entrees[indexPrerequis113].nom));
+ok('empreintes SHA-256 des deux extensions #120 exactes',
+  extensions.every((e) => {
+    const fichier = path.join(MIGRATIONS, e.nom, 'migration.sql');
+    return fs.existsSync(fichier) && e.sha256 === sha(fichier);
+  }));
+ok(`les ${locales.length} migrations locales sont couvertes par la chaîne canonique et ses extensions empilées`,
   locales.every((d) => nomsManifest.has(d)), String(locales.length));
 
 console.log('\n  3. collisions d’horodatage');

@@ -781,5 +781,26 @@
     "preview_p11_present": false,
     "production_present": false,
     "raison": "absente du depot de la branche et de main, et absente des journaux _prisma_migrations Preview P11 et Production ; la migration main 20261105180000_active_tenant_tc_registration_guard est la seule entree locale de cet horodatage"
+  },
+  "extensions_empilees": {
+    "pr": 120,
+    "branche": "security/document-material-active-tenant-20261109",
+    "base": "arena/0f697b3e-tracefab",
+    "base_sha": "1a0a2095fc9272c77cad7af9bbf1420829fe46cb",
+    "raison": "Les deux migrations additives de la PR #120 sont des extensions de la chaîne empilée sur #113. Elles sont suivies et empreintées ici sans être ajoutées aux 100 entrées du manifeste canonique P10.8, dont le périmètre historique reste inchangé.",
+    "migrations": [
+      {
+        "nom": "20261109120000_active_tenant_document_material_access",
+        "source": "#120",
+        "sha256": "ac6f16b487e352c68e08828cc64132b01836eb4caf645361a9c4c60996289b4a",
+        "historique_appliquee": false
+      },
+      {
+        "nom": "20261109130000_active_tenant_document_indirect_paths",
+        "source": "#120",
+        "sha256": "7df4e26e96a76e8cea74029ab106f16581aef529622eae56b53b3e04bb64f1e9",
+        "historique_appliquee": false
+      }
+    ]
   }
 }
