@@ -861,6 +861,9 @@ jobs:
         run: npm run test:neon:bypass-control
 
       - name: Provenance DPP / Wallet
+        # Les routes DPP/Wallet exigent une origine canonique ; cette valeur .invalid est une fixture CI, jamais une origine réelle.
+        env:
+          TRACEFAB_PUBLIC_BASE_URL: https://tracefab-test.invalid
         run: npm run test:neon:dpp-provenance
 
       - name: Cycle de vie DPP dynamique — deux tenants
