@@ -20,7 +20,7 @@
  * CE QUE CE TEST ETABLIT — et c'est une DEDUCTION, pas une hypothese
  *
  * `20261021120000_limit_app_function_execute` est appliquee en production (elle
- * ne fait pas partie des douze ecarts). Or elle ECHOUE si les trois fonctions
+ * ne fait pas partie des dix migrations historiques absentes). Or elle ECHOUE si les trois fonctions
  * `tracefab_active_organization_id`, `tracefab_in_active_tenant` et
  * `tracefab_require_active_tenant` n'existent pas — elles sont creees par
  * `20261017120000_active_tenant_context`, qui a une tentative annulee puis une reprise reussie.
@@ -179,11 +179,12 @@ console.log('\n  2. Preuve indirecte : une migration « annulee » n est pas abs
    3. Le deploy complet, sur l'etat suppose reel
    ========================================================================== */
 
-console.log('\n  3. Sequence des dix, sur une base qui porte deja les cinquante-quatre autres');
+console.log('\n  3. Sequence des dix, sur une base qui porte deja les cinquante-six migrations appliquees');
 
 const db = await nouvelleBase();
-// La base de depart du scenario porte les cinquante-six migrations deja appliquees
-// annulees — rien d'autre. Les NOUVELLES sont exclues ici : elles n'ont jamais
+// La base de depart du scenario porte les cinquante-six migrations deja appliquees,
+// y compris les deux migrations avec une tentative annulee puis une reprise reussie.
+// Les NOUVELLES sont exclues ici : elles n'ont jamais
 // ete deployees, et les appliquer AVANT les dix les ferait passer pour « deja
 // appliquees » sur un etat qui ne les porte pas. Mesure du 02/11/2026 : avec
 // elles dans cette boucle, `20261031120000` s'executait sans le registre
@@ -196,9 +197,9 @@ for (const d of aAppliquer) {
   const r = await appliquer(db, d);
   if (!r.ok) { console.error(`ECHEC  construction de la base a ${d.slice(0, 14)} : ${r.message}`); process.exit(1); }
 }
-// depot - (ecarts hors annulees) - (nouvelles) : le compte se derive, il ne se recopie pas.
+// depot - migrations historiques absentes - nouvelles : le compte se derive.
 const attendu = dossiers.length - ECARTS.length - NOUVELLES.length;
-ok('la base « production avec les deux annulees presentes » se construit',
+ok('la base « production avec les 56 migrations appliquees » se construit',
   aAppliquer.length === attendu, `${aAppliquer.length} / ${attendu}`);
 
 const resultats = [];
