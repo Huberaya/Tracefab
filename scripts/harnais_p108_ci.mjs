@@ -56,6 +56,118 @@ function consigner(id, libelle, attendu, observe, ok, extra = {}) {
 
 const DB = `p108_ci_${process.env.GITHUB_RUN_ID || 'local'}`.replace(/[^a-z0-9_]/gi, '_');
 const entrees = chaineLocale();
+const ROLE_NAMES = ['tracefab_app', 'tracefab_worker', 'tracefab_migrator'];
+const identifiant = (value) => '"' + String(value).replace(/"/g, '""') + '"';
+
+// Les rôles PostgreSQL sont des objets de CLUSTER, pas de base. baseVierge()
+// les normalise pour simuler Neon ; sans restauration, ce harnais laisse
+// tracefab_app en NOINHERIT et tracefab_migrator en NOBYPASSRLS, puis casse
+// les suites suivantes du même job (P10.5). On photographie les seuls attributs
+// qu'il modifie et les appartenances qui touchent ces rôles, sans lire les mots
+// de passe ni aucune donnée métier.
+const avantClient = await connecter('postgres');
+const rolesAvant = (await avantClient.query(`
+  SELECT rolname, rolcanlogin, rolsuper, rolbypassrls, rolcreaterole, rolcreatedb, rolinherit
+    FROM pg_catalog.pg_roles
+   WHERE rolname = ANY($1::text[])
+`, [ROLE_NAMES])).rows;
+const appartenancesAvant = (await avantClient.query(`
+  SELECT granted.rolname AS role_accorde, member.rolname AS membre,
+         m.admin_option, m.inherit_option, m.set_option
+    FROM pg_catalog.pg_auth_members m
+    JOIN pg_catalog.pg_roles granted ON granted.oid = m.roleid
+    JOIN pg_catalog.pg_roles member ON member.oid = m.member
+   WHERE granted.rolname = ANY($1::text[]) OR member.rolname = ANY($1::text[])
+`, [ROLE_NAMES])).rows;
+await avantClient.end();
+
+async function restaurerEtatCluster() {
+  const maintenance = await connecter('postgres');
+  let detail = '';
+  try {
+    await maintenance.query(`DROP DATABASE IF EXISTS ${DB} WITH (FORCE)`);
+
+    // Retirer d'abord toutes les appartenances créées ou modifiées par le
+    // harnais ; on rétablit ensuite exactement les relations préexistantes.
+    const courantes = (await maintenance.query(`
+      SELECT granted.rolname AS role_accorde, member.rolname AS membre
+        FROM pg_catalog.pg_auth_members m
+        JOIN pg_catalog.pg_roles granted ON granted.oid = m.roleid
+        JOIN pg_catalog.pg_roles member ON member.oid = m.member
+       WHERE granted.rolname = ANY($1::text[]) OR member.rolname = ANY($1::text[])
+    `, [ROLE_NAMES])).rows;
+    for (const m of courantes) {
+      await maintenance.query(`REVOKE ${identifiant(m.role_accorde)} FROM ${identifiant(m.membre)}`);
+    }
+
+    const avantParNom = new Map(rolesAvant.map(r => [r.rolname, r]));
+    for (const nom of ROLE_NAMES) {
+      const original = avantParNom.get(nom);
+      if (!original) {
+        // Ce rôle n'existait pas avant le test : le harnais est son seul
+        // créateur. La base ayant été détruite, sa suppression est sûre.
+        await maintenance.query(`DROP OWNED BY ${identifiant(nom)}`).catch(() => {});
+        await maintenance.query(`DROP ROLE IF EXISTS ${identifiant(nom)}`);
+      } else {
+        const attributs = [
+          original.rolcanlogin ? 'LOGIN' : 'NOLOGIN',
+          original.rolsuper ? 'SUPERUSER' : 'NOSUPERUSER',
+          original.rolbypassrls ? 'BYPASSRLS' : 'NOBYPASSRLS',
+          original.rolcreaterole ? 'CREATEROLE' : 'NOCREATEROLE',
+          original.rolcreatedb ? 'CREATEDB' : 'NOCREATEDB',
+          original.rolinherit ? 'INHERIT' : 'NOINHERIT',
+        ].join(' ');
+        await maintenance.query(`ALTER ROLE ${identifiant(nom)} WITH ${attributs}`);
+      }
+    }
+
+    // Restaurer les options de chaque appartenance préexistante (PostgreSQL 16+).
+    for (const m of appartenancesAvant) {
+      await maintenance.query(`GRANT ${identifiant(m.role_accorde)} TO ${identifiant(m.membre)} WITH ADMIN ${m.admin_option ? 'TRUE' : 'FALSE'}`);
+      await maintenance.query(`GRANT ${identifiant(m.role_accorde)} TO ${identifiant(m.membre)} WITH INHERIT ${m.inherit_option ? 'TRUE' : 'FALSE'}`);
+      await maintenance.query(`GRANT ${identifiant(m.role_accorde)} TO ${identifiant(m.membre)} WITH SET ${m.set_option ? 'TRUE' : 'FALSE'}`);
+    }
+
+    // Vérification indépendante : existence et attributs des trois rôles,
+    // puis appartenance exacte. Aucun secret n'est sélectionné ou journalisé.
+    const apres = (await maintenance.query(`
+      SELECT rolname, rolcanlogin, rolsuper, rolbypassrls, rolcreaterole, rolcreatedb, rolinherit
+        FROM pg_catalog.pg_roles WHERE rolname = ANY($1::text[])
+    `, [ROLE_NAMES])).rows;
+    const normaliser = rows => rows.map(r => [
+      r.rolname, r.rolcanlogin, r.rolsuper, r.rolbypassrls,
+      r.rolcreaterole, r.rolcreatedb, r.rolinherit,
+    ]).sort((a,b) => a[0].localeCompare(b[0]));
+    const rolesRestaures = JSON.stringify(normaliser(apres)) === JSON.stringify(normaliser(rolesAvant));
+    const liensRestaures = (await maintenance.query(`
+      SELECT granted.rolname AS role_accorde, member.rolname AS membre,
+             m.admin_option, m.inherit_option, m.set_option
+        FROM pg_catalog.pg_auth_members m
+        JOIN pg_catalog.pg_roles granted ON granted.oid = m.roleid
+        JOIN pg_catalog.pg_roles member ON member.oid = m.member
+       WHERE granted.rolname = ANY($1::text[]) OR member.rolname = ANY($1::text[])
+       ORDER BY 1,2
+    `, [ROLE_NAMES])).rows;
+    const trierLiens = rows => rows.map(m => [
+      m.role_accorde,m.membre,m.admin_option,m.inherit_option,m.set_option,
+    ]).sort((a,b) => (a[0]+a[1]).localeCompare(b[0]+b[1]));
+    const appartenancesRestaures = JSON.stringify(trierLiens(liensRestaures))
+      === JSON.stringify(trierLiens(appartenancesAvant));
+    const ok = rolesRestaures && appartenancesRestaures;
+    detail = `roles=${rolesRestaures ? 'restaures' : 'ECHEC'} appartenances=${appartenancesRestaures ? 'restaurees' : 'ECHEC'}`;
+    consigner('CI10_etat_cluster_restaure',
+      'Le harnais ne laisse aucun changement de rôles ou d’appartenances dans le cluster partagé',
+      'état initial exactement restauré', detail, ok);
+  } catch (e) {
+    detail = `${e.code || ''} ${String(e.message).slice(0,180)}`;
+    consigner('CI10_etat_cluster_restaure',
+      'Le harnais ne laisse aucun changement de rôles ou d’appartenances dans le cluster partagé',
+      'état initial exactement restauré', detail, false);
+  } finally {
+    await maintenance.end();
+  }
+}
+
 const admin = await baseVierge(DB);
 const version = (await admin.query('SELECT version() v')).rows[0].v;
 
@@ -77,7 +189,12 @@ consigner('CI01_chaine_appliquee', 'Toutes les migrations du checkout appliquees
   `${entrees.length}/${entrees.length} sans echec`,
   a.echec ? `${a.appliquees.length}/${entrees.length} — ${a.echec.nom} ${a.echec.sqlstate} ${a.echec.message}` : `${a.appliquees.length}/${entrees.length}`,
   !a.echec);
-if (a.echec) { fs.writeFileSync(SORTIE, JSON.stringify({ version_postgresql: version, scenarios }, null, 2)); await admin.end(); process.exit(1); }
+if (a.echec) {
+  await admin.end();
+  await restaurerEtatCluster();
+  fs.writeFileSync(SORTIE, JSON.stringify({ version_postgresql: version, scenarios }, null, 2));
+  process.exit(1);
+}
 
 consigner('CI02_version_postgresql', 'PostgreSQL 17.11 exactement (pas PGlite 18.6, pas une image non mesuree)',
   /PostgreSQL 17\.11/.test(version), version, /PostgreSQL 17\.11/.test(version));
@@ -176,6 +293,11 @@ if (garde.rows[0].presente) {
   console.log(`N/A  CI09_fail_closed                      garde #114 absente du checkout — voir C9 (p108:outbox)`);
 }
 
+await admin.end();
+// Rangement du cluster partagé : base jetable, puis rôles et appartenances
+// restaurés à l'état exact mesuré avant le harnais.
+await restaurerEtatCluster();
+
 const pass = scenarios.filter(s => s.statut === 'PASS').length;
 const fail = scenarios.filter(x => x.statut === 'FAIL' || x.statut === 'BLOCKED').length;
 const artefact = {
@@ -192,15 +314,4 @@ fs.mkdirSync(path.dirname(SORTIE), { recursive: true });
 fs.writeFileSync(SORTIE, JSON.stringify(artefact, null, 2) + '\n');
 console.log(`\nP10.8 CI : ${pass} PASS / ${fail} FAIL — ${version}`);
 console.log(`Artefact : ${SORTIE}`);
-await admin.end();
-// Rangement : le cluster de CI est detruit avec le runner, mais un harnais
-// jetable ne doit laisser aucune base derriere lui, y compris en local.
-try {
-  const maintenance = await connecter('postgres');
-  await maintenance.query(`DROP DATABASE IF EXISTS ${DB} WITH (FORCE)`);
-  await maintenance.end();
-  console.log(`Base jetable ${DB} detruite.`);
-} catch (e) {
-  console.log(`Base jetable ${DB} non detruite (${String(e.message).slice(0, 120)}) — le cluster reste jetable.`);
-}
 if (fail > 0) process.exit(1);
