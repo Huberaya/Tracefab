@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Matrice des 65 migrations : le decompte est RECALCULE, jamais recopie.
+ * Matrice des migrations : le decompte est RECALCULE, jamais recopie.
  *
  * Le mandat interdit de reprendre « 54 appliquees + 9 absentes + 2 annulees »
  * comme un acquis. Cette matrice le refait donc depuis l'etat courant du depot,
@@ -136,12 +136,13 @@ const absentes = compter('ABSENTE');
 const total = lignes.length;
 // Le TOTAL n'est pas fige : il augmente a chaque migration ajoutee, et le
 // figer transformait une livraison normale en echec. Ce qui doit rester fige,
-// ce sont les FAITS de production : 11 ecarts, 5 hors bande.
+// ce sont les FAITS de production : 11 ecarts historiques, 1 migration antidatee ajoutee apres le releve, 5 hors bande.
 if (appliquees + horsBande + annulees + absentes + nouvelles !== total) {
   erreurs.push(`l arithmetique ne ferme pas : ${appliquees}+${horsBande}+${annulees}+${absentes}+${nouvelles} != ${total}`);
 }
-// Les onze ECARTS de derive restent onze : une migration neuve n'en est pas un.
-if (annulees + absentes !== 11) erreurs.push(`${annulees + absentes} ecarts nommes, 11 attendus`);
+// Les onze ecarts historiques restent identifies, auxquels s'ajoute une migration
+// antidatee ajoutee au depot apres le releve et absente de Production.
+if (annulees + absentes !== 12) erreurs.push(`${annulees + absentes} entrees ECARTS, 12 attendues (11 historiques + 1 antidatee)`);
 if (nouvelles === 0) erreurs.push('aucune migration posterieure au releve : la regle de classement ne s applique pas');
 if (total < 65) erreurs.push(`le depot ne contient plus que ${total} migrations : une a disparu`);
 if (horsBande !== 5) erreurs.push(`${horsBande} migrations hors bande, 5 attendues`);
