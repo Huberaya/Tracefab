@@ -39,12 +39,13 @@ const rejouable = (n) => {
 
 // --- 1. La liste exacte, par categorie ------------------------------------
 const absentes = Object.keys(ECARTS).filter((n) => ECARTS[n].historique === 'ABSENTE');
-const annulees = Object.keys(ECARTS).filter((n) => ECARTS[n].historique === 'ANNULEE');
+const annulees = Object.keys(ECARTS).filter((n) =>
+  ECARTS[n].historique === 'ANNULEE' && !ECARTS[n].tentative_annulee_reprise_reussie);
 const horsBande = Object.keys(HORS_BANDE);
 // Meme regle derivee que la matrice : posterieure au releve, ni ecart ni hors bande.
 const nouvellesNoms = migrations.filter((n) => !ECARTS[n] && !HORS_BANDE[n] && n > BORNE_RELEVE);
 const NOUVELLES = Object.fromEntries(nouvellesNoms.map((n) => [n, true]));
-const appliquees = migrations.filter((n) => !ECARTS[n] && !HORS_BANDE[n] && !NOUVELLES[n]);
+const appliquees = migrations.filter((n) => (!ECARTS[n] || ECARTS[n].tentative_annulee_reprise_reussie) && !HORS_BANDE[n] && !NOUVELLES[n]);
 
 /**
  * L'action, deduite de DEUX faits seulement : ce que l'historique dit, et ce
