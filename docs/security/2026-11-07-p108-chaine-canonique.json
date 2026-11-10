@@ -21,7 +21,18 @@
     "tete_ancienne": "537bc310d0b6e857c4f74ec0017a130987b22497",
     "tete_actuelle": "f0aeb51cb52ce778f7f9a5e857438603d81fa5ad",
     "effet": "la collision 20261105120000 avec #110/#111/#112 disparait de la chaine canonique et de la chaine etendue",
-    "risque": "renommage d une migration deja deployee sur une Preview le 06/11 a 09:30Z : divergence possible du journal _prisma_migrations, mesuree sur base jetable (scenario E), lecture du journal REEL BLOCKED"
+    "risque": "journal Neon mesure en lecture seule le 2026-11-10 : 20261106130000_identite_systeme_signee est terminee sur Preview P11 le 2026-11-07T20:07:31.615Z et absente de Production ; conserver le nom exact comme entree distante, sans renommage ni rejeu",
+    "journal_preview": {
+      "branche": "tracefab-preproduction-p11-20261103",
+      "migration_name": "20261106130000_identite_systeme_signee",
+      "finished_at": "2026-11-07T20:07:31.615Z",
+      "rolled_back_at": null
+    },
+    "journal_production": {
+      "branche": "production",
+      "migration_name": "20261106130000_identite_systeme_signee",
+      "present": false
+    }
   },
   "renommages_pour_chaine_etendue_si_110_reconciliation": {},
   "migrations_historiques_reecrites_par_110_111_112": [
@@ -762,5 +773,13 @@
     "nouveau_emplacement": "prisma/migrations/20261107120000_p108_outbox_proprietaire_et_dependances/migration.sql",
     "raison": "Le nom du candidat triait AVANT la migration #114 20261106130000 dont il preconditionne le predicat. Le harnais P10.7 l ajoutait manuellement en fin de liste, ordre que Prisma ne reproduit pas. Le nom P10.8 trie APRES #114 : aucune ambiguite, aucune migration historique modifiee.",
     "sha256": "6bf720822f7a361bf2703a85c7583e66f056f05e5303a6c910ce783f0e7d31dc"
+  },
+  "entree_exclue_non_appliquee": {
+    "nom": "20261105180000_active_tenant_access_guards",
+    "depot_branche": false,
+    "depot_main": false,
+    "preview_p11_present": false,
+    "production_present": false,
+    "raison": "absente du depot de la branche et de main, et absente des journaux _prisma_migrations Preview P11 et Production ; la migration main 20261105180000_active_tenant_tc_registration_guard est la seule entree locale de cet horodatage"
   }
 }
