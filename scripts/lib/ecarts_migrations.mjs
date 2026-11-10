@@ -31,15 +31,17 @@ export const BORNE_RELEVE = '20261028150000';
 export const ECARTS = {
   '20261010120000_publication_explicite': {
     historique: 'ANNULEE',
+    tentative_annulee_reprise_reussie: true,
     objet: 'tracefab_product_is_public exige reviewed_at ; products_select_public ; purge des public_slug non revus',
-    effets: ['NON PROUVE', 'la fonction est creee par 20261009180000, deja appliquee : sa presence ne prouve rien'],
-    suite: 'sonde de la chaine, fait 1',
+    effets: ['MESURE', 'une tentative a ete annulee le 16/10 puis une seconde ligne a ete terminee avec applied_steps_count=1 ; la fonction actuelle exige reviewed_at'],
+    suite: 'deja appliquee apres reprise ; ne pas rejouer ni resoudre',
   },
   '20261017120000_active_tenant_context': {
     historique: 'ANNULEE',
+    tentative_annulee_reprise_reussie: true,
     objet: 'tracefab_active_organization_id, tracefab_in_active_tenant, tracefab_require_active_tenant',
-    effets: ['DEDUIT', '20261021120000, atteste, echoue sans ces trois fonctions (mesure sur base jetable)'],
-    suite: 'regularisation par resolve --applied, sur preuve',
+    effets: ['MESURE', 'une tentative a ete annulee le 18/10 puis une seconde ligne a ete terminee avec applied_steps_count=1 ; les trois fonctions existent en Production'],
+    suite: 'deja appliquee apres reprise ; ne pas rejouer ni resoudre',
   },
   '20261021170000_dpp_readiness_truthful_gates': {
     historique: 'ABSENTE',
@@ -98,19 +100,19 @@ export const ECARTS = {
   '20261028150000_reconcile_plm_erp_sync_job_policies': {
     historique: 'ABSENTE',
     objet: '2 politiques permissives retirees de plm_erp_sync_jobs',
-    effets: ['MESURE', 'la table porte 4 politiques au lieu de 2 (lecture du 28/10)'],
-    suite: 'seul correctif PLM retenu ; sonde C fait 11 en confirmation',
+    effets: ['MESURE', 'la lecture Production du 11/11 trouve exactement les deux politiques canoniques plm_sync_jobs_insert_brand et plm_sync_jobs_select_org'],
+    suite: 'migration idempotente : appliquer pour réconcilier le journal, sans changer les deux politiques canoniques',
   },
 };
 
 export const CATALOGUE = {
   '20261010120000_publication_explicite': {
-    catalogue: 'NON LU — la fonction qui la porte (20261009180000) existe deja',
-    statut: 'NON PROUVE',
+    catalogue: 'PRESENT MESURE — tracefab_product_is_public exige reviewed_at',
+    statut: 'CONFORME',
   },
   '20261017120000_active_tenant_context': {
-    catalogue: 'PRESENT — deduit : 20261021120000, attestee, echoue sans ces 3 fonctions',
-    statut: 'A QUALIFIER',
+    catalogue: 'PRESENT MESURE — les trois fonctions tenant existent en Production',
+    statut: 'CONFORME',
   },
   '20261021170000_dpp_readiness_truthful_gates': {
     catalogue: 'NON LU — redéfinie par 20261027100000 et 20261027130000',
@@ -149,8 +151,8 @@ export const CATALOGUE = {
     statut: 'NON PROUVE',
   },
   '20261028150000_reconcile_plm_erp_sync_job_policies': {
-    catalogue: 'DIVERGENCE MESUREE — 4 politiques au lieu de 2 ; les 2 surnumeraires n ont AUCUN createur dans le depot (provenance hors depot)',
-    statut: 'DIVERGENCE',
+    catalogue: 'PRESENT MESURE — deux politiques canoniques exactes ; les deux surnumeraires relevees le 28/10 ne sont plus presentes au 11/11',
+    statut: 'CONFORME',
   },
 };
 
