@@ -86,7 +86,7 @@ BEGIN
      AND policyname = 'organizations_insert_worker';
   IF v_insert_check IS NULL
      OR v_insert_check NOT ILIKE '%CURRENT_USER%'
-     OR v_insert_check NOT ILIKE '%tracefab_worker%' THEN
+     OR pg_catalog.strpos(pg_catalog.lower(v_insert_check), 'tracefab_worker') = 0 THEN
     RAISE EXCEPTION 'worker_organizations_insert_policy_missing_or_unbounded';
   END IF;
 
@@ -96,9 +96,9 @@ BEGIN
      AND policyname = 'organizations_update_worker';
   IF v_update_using IS NULL OR v_update_check IS NULL
      OR v_update_using NOT ILIKE '%CURRENT_USER%'
-     OR v_update_using NOT ILIKE '%tracefab_worker%'
+     OR pg_catalog.strpos(pg_catalog.lower(v_update_using), 'tracefab_worker') = 0
      OR v_update_check NOT ILIKE '%CURRENT_USER%'
-     OR v_update_check NOT ILIKE '%tracefab_worker%' THEN
+     OR pg_catalog.strpos(pg_catalog.lower(v_update_check), 'tracefab_worker') = 0 THEN
     RAISE EXCEPTION 'worker_organizations_update_policy_missing_or_unbounded';
   END IF;
 
