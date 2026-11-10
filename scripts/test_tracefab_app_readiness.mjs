@@ -171,6 +171,26 @@ try {
   // desormais echouer : c'est le privilege qui a ete retire, pas seulement le
   // drapeau de session.
   const stamp = Date.now();
+  // Diagnostic catalogue non-secret : identifie le rôle effectif de la fonction
+  // Clerk avant son appel, sans élargir aucun privilège.
+  const syncOrg = await un(`
+    SELECT pg_catalog.pg_get_userbyid(p.proowner) AS owner,
+           p.prosecdef AS security_definer,
+           pg_catalog.has_table_privilege(p.proowner, 'public.organizations', 'SELECT') AS can_select,
+           pg_catalog.has_table_privilege(p.proowner, 'public.organizations', 'INSERT') AS can_insert,
+           pg_catalog.has_table_privilege(p.proowner, 'public.organizations', 'UPDATE') AS can_update,
+           COALESCE((SELECT string_agg(policyname || ':' || cmd, ', ' ORDER BY policyname)
+             FROM pg_catalog.pg_policies
+            WHERE schemaname = 'public' AND tablename = 'organizations'), '') AS policies
+      FROM pg_catalog.pg_proc p
+      JOIN pg_catalog.pg_namespace n ON n.oid = p.pronamespace
+     WHERE n.nspname = 'public'
+       AND p.proname = 'tracefab_sync_clerk_organization'
+       AND pg_catalog.pg_get_function_identity_arguments(p.oid)
+           = 'p_clerk_organization_id text, p_legal_name text, p_display_name text, p_type organization_type'
+  `);
+  console.log('  diagnostic tracefab_sync_clerk_organization : '
+    + JSON.stringify(syncOrg || { missing: true }));
   const ecritureWorker = await dansContexte({}, async (c) => {
     const u = await c.query(`SELECT id, email FROM tracefab_upsert_clerk_user($1, $2, 'Sonde worker')`,
       [`sonde-worker-${stamp}`, `sonde-worker-${stamp}@sonde.invalid`]);
