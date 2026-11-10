@@ -302,6 +302,9 @@ const MIGRATIONS_AVEC_WORKER_TEMPORAIRE = new Set([
   // fonctions au worker ; elle doit pouvoir révoquer/accorder les droits
   // sur les fonctions dont tracefab_worker est propriétaire.
   '20261106010000_active_tenant_access_guards',
+  // P10.8 transfere les operations systeme gardees par #114 au worker ;
+  // la migration exige explicitement que le migrateur puisse SET ROLE worker.
+  '20261107120000_p108_outbox_proprietaire_et_dependances',
   '20261108120100_worker_fonctions_systeme_completes',
   '20261108120200_corrections_p106_ownership_et_appartenance',
 ]);
