@@ -64,9 +64,10 @@ function actionDe(nom) {
   const effets = e.effets[0];      // MESURE | DEDUIT | NON PROUVE
 
   if (nom === '20261028150000_reconcile_plm_erp_sync_job_policies') {
-    return { action: 'APPLIQUER SEULE', preuve: '4 politiques mesurees au lieu de 2',
-      risque: 'faible et borne : additive, idempotente, gardes fail-closed ; si la base ne ressemble pas a l attendu elle REFUSE et arrete la suite (c est voulu)',
-      prerequis: 'aucun (ne depend d aucune autre migration)' };
+    return { action: 'APPLIQUER SEULE (IDEMPOTENTE)',
+      preuve: 'la lecture Production du 11/11 trouve exactement les deux politiques canoniques attendues',
+      risque: 'aucun changement attendu sur les deux politiques canoniques ; la migration refuse tout nom ou nombre inattendu et ne supprime que les deux anciennes politiques surnuméraires si elles existent',
+      prerequis: 'sonde fraîche des deux noms, commandes et prédicats canoniques juste avant l’application' };
   }
   if (nom === '20261028120000_runtime_function_registry') {
     return { action: 'APPLIQUER EN PREMIER', preuve: 'table lue ABSENTE en production',
@@ -74,9 +75,14 @@ function actionDe(nom) {
       prerequis: 'releve du catalogue juste avant, et confirmation que la table est toujours absente' };
   }
   if (effets === 'MESURE' || effets === 'DEDUIT') {
-    return { action: 'RESOLVE --APPLIED SUR PREUVE', preuve: e.effets[1],
-      risque: 'aucun DDL rejoue ; documente un etat deja present sans le modifier',
-      prerequis: 'sonde confirmant les effets au moment de l execution' };
+    if (r.rejouable) {
+      return { action: 'APPLIQUER SEULE (IDEMPOTENTE)', preuve: e.effets[1],
+        risque: 'la migration est rejouable ; Prisma enregistre son application sans réécrire l historique existant',
+        prerequis: 'sonde fraîche confirmant l état et contrôle du SQL idempotent' };
+    }
+    return { action: 'STOP — AUCUN RESOLVE AUTORISE', preuve: e.effets[1],
+      risque: 'effet déjà présent et migration non rejouable ; aucune modification de _prisma_migrations autorisée',
+      prerequis: 'corriger le fichier de migration avec garde vérifiée ou obtenir une décision explicite distincte' };
   }
   // Effets NON PROUVES : le plan ne peut pas trancher a l avance, il porte donc
   // DEUX branches explicites, choisies par la sonde et par elle seule.
