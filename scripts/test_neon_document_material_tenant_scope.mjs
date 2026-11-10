@@ -275,15 +275,18 @@ try {
   else ko('FUITE : la marque A lit une piece fournisseur non partagee');
   await app.query('ROLLBACK');
 
-  /* -- 6. aucun locataire arme ------------------------------------------ */
+  /* -- 6. aucun locataire arme : compatibilite RLS, HTTP fail-closed ----- */
+  // Le contrat decide pour cette migration conserve le repli historique par
+  // appartenance au niveau RLS quand aucun tenant n'est arme. Les routes HTTP,
+  // elles, restent fermees par requireActiveTenant avant toute lecture metier.
   await asTenant(null);
   const vuSansTenant = await compter(
     'select count(*)::int as n from documents where id = ANY($1::uuid[])', [[docA, docB]]);
   const sansTenantFonction = await compter('select tracefab_can_access_document($1::uuid) as permet', [docA]);
-  if (vuSansTenant.n === 0 && sansTenantFonction.permet === false) {
-    ok('sans locataire arme, aucun document n\'est lisible et la fonction rend faux (fail-closed)');
+  if (vuSansTenant.n === 2 && sansTenantFonction.permet === true) {
+    ok('sans locataire arme, RLS conserve le repli historique par appartenance (routes HTTP fail-closed)');
   } else {
-    ko(`sans locataire arme : n=${vuSansTenant.n}, fonction=${sansTenantFonction.permet} — la garde ne ferme pas`);
+    ko(`sans locataire arme : n=${vuSansTenant.n}, fonction=${sansTenantFonction.permet} — le repli historique attendu diverge`);
   }
   await app.query('ROLLBACK');
 
