@@ -8,7 +8,7 @@
  * l'issue de chacune. Il ne suppose rien : il mesure.
  *
  * ETAT DE PRODUCTION RECONSTITUE :
- *   49 attestees + 5 hors bande + 2 annulees (dont les effets sont presents)
+ *   49 attestees + 5 hors bande + 2 migrations reussies apres une tentative annulee
  *   = 56 migrations jouees, et les 43 autres (10 absentes + 33 nouvelles) NON
  *   jouees. La migration 20261028120050, ajoutee apres le releve mais antidatee,
  *   est classee explicitement ABSENTE. Ce n'est pas une hypothese sur la production : c'est la seule
@@ -48,7 +48,7 @@ const dossiers = readdirSync(MIGRATIONS).filter((d) => /^\d{14}_/.test(d)).sort(
 const lire = (d) => readFileSync(join(MIGRATIONS, d, 'migration.sql'), 'utf8');
 
 const absentes = Object.keys(ECARTS).filter((n) => ECARTS[n].historique === 'ABSENTE').sort();
-const annulees = Object.keys(ECARTS).filter((n) => ECARTS[n].historique === 'ANNULEE').sort();
+const annulees = Object.keys(ECARTS).filter((n) => ECARTS[n].historique === 'ANNULEE' && !ECARTS[n].tentative_annulee_reprise_reussie).sort();
 // Derivee, pas recopiee : toute migration posterieure au releve et hors ecarts.
 const nouvelles = dossiers.filter((d) => !ECARTS[d] && !HORS_BANDE[d] && d > BORNE_RELEVE);
 const manquantes = [...absentes, ...nouvelles].sort();
@@ -78,9 +78,9 @@ async function jouer(db, d) {
 /** Etat de production reconstitue : tout sauf les 43 manquantes. */
 async function productionReconstituee() {
   const db = await nouveauCluster();
-  // On ne saute QUE les 43 migrations absentes du journal Production ou ajoutees apres le releve. Les 2 annulees sont jouees a leur
-  // place : la matrice a mesure qu'en les sautant, la chaine casse des
-  // 20261021120000 — donc leurs effets sont bien presents en production.
+  // On ne saute que les 43 migrations absentes du journal Production ou ajoutees apres le releve.
+  // Les deux tentatives annulees ont chacune une reprise reussie : elles sont donc
+  // deja appliquees dans l'etat reconstruit, pas dans la liste a appliquer.
   const sauter = new Set(manquantes);
   let jouees = 0;
   for (const d of dossiers) {
@@ -110,7 +110,7 @@ async function existe(db, regclass) {
 console.log('1. Reconstitution de l etat de production  [MESURE]');
 let base = await productionReconstituee();
 {
-  ok(`56 migrations jouees (49 attestees + 5 hors bande + 2 annulees) sur ${dossiers.length}`,
+  ok(`56 migrations jouees (49 attestees + 5 hors bande + 2 reprises reussies) sur ${dossiers.length}`,
     base.jouees === 56, `${base.jouees}`);
   console.log(`  --    ${manquantes.length} migrations restent a appliquer, dont ${nouvelles.length} nouvelle(s)`);
   const pol = await politiques(base.db);
@@ -179,20 +179,11 @@ console.log('\n4. Les suivantes DEPENDENT-elles du registre ?  [MESURE]');
 }
 
 // =========================================================================
-console.log('\n5. Un `deploy` global reprendrait aussi les 2 ANNULEES  [MESURE]');
-  // Elles sont DEJA dans la base reconstituee (leurs effets sont presents en
-  // production) : les rejouer est precisement ce que ferait un deploy, qui ne
-  // voit qu'une ligne sans `finished_at` reussi.{
+console.log('\n5. Les deux tentatives annulees ont une reprise reussie  [HISTORIQUE MESURE]');
 {
-  for (const d of annulees) {
-    const { db } = await productionReconstituee();
-    // La production porte deja leurs effets (deduit pour 20261017120000,
-    // inconnu pour 20261010120000). Les rejouer est ce que ferait un deploy.
-    const r = await jouer(db, d);
-    console.log(`  --    rejeu de ${d.slice(0, 20)} : ${r.ok ? 'PASSE' : 'CASSE'}${r.ok ? '' : ' — ' + String(r.message).slice(0, 80)}`);
-    ok(`${d.slice(0, 20)} : le rejeu est MESURE, pas suppose`, typeof r.ok === 'boolean');
-    await db.close();
-  }
+  const reprises = Object.keys(ECARTS).filter((d) => ECARTS[d].tentative_annulee_reprise_reussie);
+  ok('les deux migrations ont une ligne de reprise terminee en Production', reprises.length === 2, reprises.join(', '));
+  ok('aucune tentative annulee avec reprise reussie ne reste a appliquer', annulees.length === 0, annulees.join(', '));
 }
 
 // =========================================================================
