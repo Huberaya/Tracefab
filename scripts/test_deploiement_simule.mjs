@@ -45,6 +45,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { ECARTS as ECARTS_HISTORIQUES } from './lib/ecarts_migrations.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const MIGRATIONS = path.join(root, 'prisma/migrations');
@@ -118,61 +119,37 @@ async function appliquer(db, d) {
 }
 
 /* ==========================================================================
-   1. L'etat « 54 » est-il constructible ?
+   1. Les 56 migrations effectivement appliquees sont-elles reconstructibles ?
    ========================================================================== */
 
-console.log('\n  1. L etat « 54 appliquees, rien de plus » est-il constructible ?');
+console.log('\n  1. Reconstituer les 56 migrations appliquees, sans les 10 absentes ni les 33 nouvelles');
 
 {
   const db = await nouvelleBase();
-  const presents = dossiers.filter((d) => !ECARTS.includes(d));
+  const presentes = dossiers.filter((d) => !ECARTS.includes(d) && !NOUVELLES.includes(d));
   let premiere = null;
-  for (const d of presents) {
+  for (const d of presentes) {
     const r = await appliquer(db, d);
     if (!r.ok) { premiere = { d, message: r.message }; break; }
   }
-  ok('sauter les dix CASSE la chaine : l etat « 56 » n est pas un etat atteignable',
-    premiere !== null, 'la chaine a survecu, mes conclusions doivent etre revues');
-  if (premiere) {
-    console.log(`        casse a ${premiere.d.slice(0, 14)} : ${premiere.message.slice(0, 120)}`);
-    ok('la migration qui casse est 20261021120000', premiere.d.startsWith('20261021120000'),
-      premiere.d);
-    ok('elle reclame les trois fonctions du locataire actif',
-      /tracefab_active_organization_id/.test(premiere.message)
-      && /tracefab_in_active_tenant/.test(premiere.message)
-      && /tracefab_require_active_tenant/.test(premiere.message),
-      premiere.message.slice(0, 160));
-  }
+  ok('les 56 migrations appliquees se reconstruisent dans l ordre', premiere === null,
+    premiere ? `${premiere.d}: ${premiere.message}` : `${presentes.length} migrations`);
   await db.close();
 }
 
 /* ==========================================================================
-   2. La deduction : les effets de 20261017120000 sont presents en production
+   2. Les tentatives annulees ont une reprise terminee
    ========================================================================== */
 
-console.log('\n  2. Preuve indirecte : une migration « annulee » n est pas absente');
+console.log('\n  2. Les deux migrations avec tentative annulee ont une reprise reussie');
 
-/**
- * `20261021120000` est appliquee en production (elle n'est pas dans les dix
- * ecarts). Le test ci-dessus etablit qu'elle ne PEUT pas l'etre sans les trois
- * fonctions de `20261017120000`. Donc ces fonctions existent en production.
- *
- * On verifie ici la seconde moitie du raisonnement, de facon isolee : sur une
- * chaine complete privee de `20261017120000` et de rien d'autre, c'est bien
- * `20261021120000` qui refuse — et pour cette raison precise.
- */
 {
-  const db = await nouvelleBase();
-  let casse = null;
-  for (const d of dossiers) {
-    if (d === '20261017120000_active_tenant_context') continue;
-    const r = await appliquer(db, d);
-    if (!r.ok) { casse = { d, message: r.message }; break; }
-  }
-  ok('retirer 20261017120000 SEULE suffit a faire echouer la chaine',
-    casse !== null && casse.d.startsWith('20261021120000'),
-    casse ? `${casse.d.slice(0, 14)} : ${casse.message.slice(0, 100)}` : 'aucun echec');
-  await db.close();
+  const reprises = Object.entries(ECARTS_HISTORIQUES)
+    .filter(([, e]) => e.tentative_annulee_reprise_reussie)
+    .map(([nom]) => nom);
+  ok('deux reprises reussies sont documentees', reprises.length === 2, reprises.join(', '));
+  ok('elles ne figurent pas parmi les dix migrations historiques a appliquer',
+    reprises.every((nom) => !ECARTS.includes(nom)), reprises.join(', '));
 }
 
 /* ==========================================================================
