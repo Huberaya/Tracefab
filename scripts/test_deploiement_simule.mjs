@@ -247,6 +247,9 @@ console.log('\n  4. Echec injecte sur 20261028120000 — atomicite et blocage');
 
   // L'effet est deja present, comme le serait une table creee hors bande.
   await db.exec('CREATE TABLE public.tracefab_runtime_function_registry (id uuid PRIMARY KEY);');
+  const fonctionsAvant = (await db.query(
+    "SELECT count(*)::int AS n FROM pg_catalog.pg_proc WHERE proname = 'tracefab_apply_runtime_function_grants'"
+  )).rows[0].n;
 
   const apres = ECARTS.filter((d) => d > '20261028120000_runtime_function_registry');
   const avant = ECARTS.filter((d) => d < '20261028120000_runtime_function_registry');
@@ -262,8 +265,12 @@ console.log('\n  4. Echec injecte sur 20261028120000 — atomicite et blocage');
   ok('cet echec bloque les cinq migrations qui viennent apres', apres.length === 5,
     `${apres.length}`);
   console.log(`        bloquees : ${apres.map((d) => d.slice(0, 14)).join(', ')}`);
+  const fonctionsApres = (await db.query(
+    "SELECT count(*)::int AS n FROM pg_catalog.pg_proc WHERE proname = 'tracefab_apply_runtime_function_grants'"
+  )).rows[0].n;
   ok('l echec n a laisse aucune trace partielle (transaction annulee)',
-    (await db.query("SELECT count(*)::int AS n FROM pg_catalog.pg_proc WHERE proname = 'tracefab_apply_runtime_function_grants'")).rows[0].n === 0);
+    fonctionsApres === fonctionsAvant,
+    `fonctions avant/apres : ${fonctionsAvant}/${fonctionsApres}`);
   console.log(`        (${avant.length} migrations passees avant l echec, 0 apres)`);
   await db.close();
 }
