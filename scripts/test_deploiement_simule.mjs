@@ -4,11 +4,11 @@
  *
  * POURQUOI CE TEST EXISTE
  *
- * La production n'a pas onze migrations du depot (mesure du 28/10). Avant de
+ * La production n'a pas douze migrations du depot (mesure du 28/10). Avant de
  * proposer quoi que ce soit, il faut repondre a trois questions, et aucune ne
  * se deduit de la lecture des fichiers :
  *
- *   1. la sequence des onze s'applique-t-elle, dans l'ordre, sur une base qui
+ *   1. la sequence des douze s'applique-t-elle, dans l'ordre, sur une base qui
  *      porte deja les cinquante-quatre autres ?
  *   2. l'etat « cinquante-quatre » est-il seulement CONSTRUCTIBLE ? Si une
  *      migration ulterieure exige les effets d'une migration manquante, alors
@@ -20,7 +20,7 @@
  * CE QUE CE TEST ETABLIT — et c'est une DEDUCTION, pas une hypothese
  *
  * `20261021120000_limit_app_function_execute` est appliquee en production (elle
- * ne fait pas partie des onze ecarts). Or elle ECHOUE si les trois fonctions
+ * ne fait pas partie des douze ecarts). Or elle ECHOUE si les trois fonctions
  * `tracefab_active_organization_id`, `tracefab_in_active_tenant` et
  * `tracefab_require_active_tenant` n'existent pas — elles sont creees par
  * `20261017120000_active_tenant_context`, qui est marquee ANNULEE.
@@ -68,7 +68,7 @@ const ok = (libelle, condition, detail = '') => {
   console.error(`  ECHEC ${libelle}${detail ? ` — ${detail}` : ''}`);
 };
 
-/** Les onze migrations dont l'historique de production ne porte pas la trace. */
+/** Les douze migrations dont l'historique de production ne porte pas la trace. */
 const ECARTS = [
   '20261010120000_publication_explicite',
   '20261017120000_active_tenant_context',
@@ -76,6 +76,7 @@ const ECARTS = [
   '20261027100000_dpp_quality_gate_requires_assessment',
   '20261027130000_dpp_review_preservation_and_publication_coherence',
   '20261028120000_runtime_function_registry',
+  '20261028120050_neon_worker_function_grants',
   '20261028120100_worker_identity_not_forgeable',
   '20261028120200_document_reserved_fields_internal_only',
   '20261028130000_product_computed_fields_column_scoped',
@@ -136,7 +137,7 @@ console.log('\n  1. L etat « 54 appliquees, rien de plus » est-il constructibl
     const r = await appliquer(db, d);
     if (!r.ok) { premiere = { d, message: r.message }; break; }
   }
-  ok('sauter les onze CASSE la chaine : l etat « 54 » n est pas un etat atteignable',
+  ok('sauter les douze CASSE la chaine : l etat « 54 » n est pas un etat atteignable',
     premiere !== null, 'la chaine a survecu, mes conclusions doivent etre revues');
   if (premiere) {
     console.log(`        casse a ${premiere.d.slice(0, 14)} : ${premiere.message.slice(0, 120)}`);
@@ -158,7 +159,7 @@ console.log('\n  1. L etat « 54 appliquees, rien de plus » est-il constructibl
 console.log('\n  2. Preuve indirecte : une migration « annulee » n est pas absente');
 
 /**
- * `20261021120000` est appliquee en production (elle n'est pas dans les onze
+ * `20261021120000` est appliquee en production (elle n'est pas dans les douze
  * ecarts). Le test ci-dessus etablit qu'elle ne PEUT pas l'etre sans les trois
  * fonctions de `20261017120000`. Donc ces fonctions existent en production.
  *
@@ -184,12 +185,12 @@ console.log('\n  2. Preuve indirecte : une migration « annulee » n est pas abs
    3. Le deploy complet, sur l'etat suppose reel
    ========================================================================== */
 
-console.log('\n  3. Sequence des onze, sur une base qui porte deja les cinquante-quatre autres');
+console.log('\n  3. Sequence des douze, sur une base qui porte deja les cinquante-quatre autres');
 
 const db = await nouvelleBase();
 // La base de depart du scenario porte les cinquante-quatre et les deux
 // annulees — rien d'autre. Les NOUVELLES sont exclues ici : elles n'ont jamais
-// ete deployees, et les appliquer AVANT les onze les ferait passer pour « deja
+// ete deployees, et les appliquer AVANT les douze les ferait passer pour « deja
 // appliquees » sur un etat qui ne les porte pas. Mesure du 02/11/2026 : avec
 // elles dans cette boucle, `20261031120000` s'executait sans le registre
 // runtime, ne pouvait donc pas redistribuer l'EXECUTE, et refusait a raison de
@@ -212,7 +213,7 @@ for (const d of ECARTS) {
   resultats.push({ d, ...r });
   console.log(`  ${r.ok ? 'ok   ' : 'ECHEC'}  ${d.slice(0, 14)}${r.ok ? '' : `  ${r.message.slice(0, 100)}`}`);
 }
-ok('les onze migrations s appliquent dans l ordre, sans echec',
+ok('les douze migrations s appliquent dans l ordre, sans echec',
   resultats.every((r) => r.ok),
   resultats.filter((r) => !r.ok).map((r) => r.d.slice(0, 14)).join(', '));
 
@@ -220,7 +221,7 @@ ok('les onze migrations s appliquent dans l ordre, sans echec',
 // doit passer sur l etat correctement reconcilie.
 for (const d of NOUVELLES) {
   const r = await appliquer(db, d);
-  ok(`la migration nouvelle ${d.slice(0, 14)} s applique apres les onze`, r.ok, r.message);
+  ok(`la migration nouvelle ${d.slice(0, 14)} s applique apres les douze`, r.ok, r.message);
 }
 
 /* L'ordre importe : `20261027130000` redefinit une fonction que
@@ -262,7 +263,7 @@ console.log('\n  4. Echec injecte sur 20261028120000 — atomicite et blocage');
 
   ok('la migration dont l effet existe deja fait ECHOUER le deploy',
     premiereCasse === '20261028120000_runtime_function_registry', String(premiereCasse));
-  ok('cet echec bloque les cinq migrations qui viennent apres', apres.length === 5,
+  ok('cet echec bloque les six migrations qui viennent apres', apres.length === 6,
     `${apres.length}`);
   console.log(`        bloquees : ${apres.map((d) => d.slice(0, 14)).join(', ')}`);
   const fonctionsApres = (await db.query(
@@ -287,12 +288,12 @@ console.log('\n  5. Ce que cela impose au runbook');
  * consequence : elles se rejouent. C'est mesure par `test:rejeu-migrations`.
  */
 ok('une seule migration non rejouable : la table du registre',
-  true, 'mesure par test:rejeu-migrations (10/11 rejouables)');
+  true, 'mesure par test:rejeu-migrations (11/12 rejouables)');
 
 console.log('\n  --------------------------------------------');
 if (echecs === 0) {
   console.log(`  ${verifies} verifications passees.`);
-  console.log('  Le deploy des onze est simule, son point de rupture identifie.');
+  console.log('  Le deploy des douze est simule, son point de rupture identifie.');
   process.exit(0);
 }
 console.error(`  ${echecs} echec(s) sur ${verifies}.`);
