@@ -75,10 +75,10 @@ async function jouer(db, d) {
   }
 }
 
-/** Etat de production reconstitué : tout sauf les 10 manquantes. */
+/** Etat de production reconstitue : tout sauf les 43 manquantes. */
 async function productionReconstituee() {
   const db = await nouveauCluster();
-  // On ne saute QUE les 10 jamais deployees. Les 2 annulees sont jouees a leur
+  // On ne saute QUE les 43 migrations absentes du journal Production ou ajoutees apres le releve. Les 2 annulees sont jouees a leur
   // place : la matrice a mesure qu'en les sautant, la chaine casse des
   // 20261021120000 — donc leurs effets sont bien presents en production.
   const sauter = new Set(manquantes);
@@ -246,7 +246,7 @@ await base.db.close();
 console.log('\n--------------------------------------------');
 if (echecs === 0) {
   console.log(`${verifies} verifications passees.`);
-  console.log('Une application UNE PAR UNE est possible : les 10 manquantes passent');
+  console.log('Une application UNE PAR UNE est possible : les 43 manquantes passent');
   console.log('dans l ordre, sans rupture, et laissent 2 politiques.');
   console.log('Un `deploy` global passerait au PREMIER essai, mais tout rejeu casse a');
   console.log('20261028120000 (CREATE TABLE sans garde) et n essaie jamais les');
