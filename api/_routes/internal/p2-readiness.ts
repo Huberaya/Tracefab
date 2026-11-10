@@ -198,7 +198,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       identityTokens: jetonsIdentite,
       identitySysteme: jetonsSysteme,
       ...(databaseIdentity ? { databaseIdentity } : {}),
-    ...(notificationOutbox ? { notificationOutbox } : {}),
       ...(notificationOutbox ? { notificationOutbox } : {}),
     });
   }
@@ -219,5 +218,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     identityTokens: jetonsIdentite,
     identitySysteme: jetonsSysteme,
     ...(databaseIdentity ? { databaseIdentity } : {}),
+    ...(notificationOutbox ? { notificationOutbox } : {}),
   });
 }
