@@ -171,19 +171,54 @@ try {
   // desormais echouer : c'est le privilege qui a ete retire, pas seulement le
   // drapeau de session.
   const stamp = Date.now();
+  // Diagnostic catalogue non-secret : identifie le rôle effectif de la fonction
+  // Clerk avant son appel, sans élargir aucun privilège.
+  const syncOrg = await un(`
+    SELECT pg_catalog.pg_get_userbyid(p.proowner) AS owner,
+           p.prosecdef AS security_definer,
+           pg_catalog.has_table_privilege(p.proowner, 'public.organizations', 'SELECT') AS can_select,
+           pg_catalog.has_table_privilege(p.proowner, 'public.organizations', 'INSERT') AS can_insert,
+           pg_catalog.has_table_privilege(p.proowner, 'public.organizations', 'UPDATE') AS can_update,
+           COALESCE((SELECT string_agg(policyname || ':' || cmd, ', ' ORDER BY policyname)
+             FROM pg_catalog.pg_policies
+            WHERE schemaname = 'public' AND tablename = 'organizations'), '') AS policies
+      FROM pg_catalog.pg_proc p
+      JOIN pg_catalog.pg_namespace n ON n.oid = p.pronamespace
+     WHERE n.nspname = 'public'
+       AND p.proname = 'tracefab_sync_clerk_organization'
+       AND pg_catalog.pg_get_function_identity_arguments(p.oid)
+           = 'p_clerk_organization_id text, p_legal_name text, p_display_name text, p_type organization_type'
+  `);
+  console.log('  diagnostic tracefab_sync_clerk_organization : '
+    + JSON.stringify(syncOrg || { missing: true }));
   const ecritureWorker = await dansContexte({}, async (c) => {
     const u = await c.query(`SELECT id, email FROM tracefab_upsert_clerk_user($1, $2, 'Sonde worker')`,
       [`sonde-worker-${stamp}`, `sonde-worker-${stamp}@sonde.invalid`]);
+    const clerkOrgId = `sonde-org-${stamp}`;
     const o = await c.query(`SELECT * FROM tracefab_sync_clerk_organization($1, $2, $3, 'brand'::organization_type)`,
-      [`sonde-org-${stamp}`, `Sonde Worker ${stamp}`, `Sonde ${stamp}`]);
-    const orgId = o.rows[0] ? (o.rows[0].id || Object.values(o.rows[0])[0]) : null;
+      [clerkOrgId, `Sonde Worker ${stamp}`, `Sonde ${stamp}`]);
+    const orgId = o.rows[0] ? o.rows[0].id : null;
+    // Le webhook Clerk doit aussi pouvoir resynchroniser une organisation
+    // existante : cela exerce UPDATE sous FORCE RLS, pas seulement INSERT.
+    const oUpdated = await c.query(`SELECT * FROM tracefab_sync_clerk_organization($1, $2, $3, 'brand'::organization_type)`,
+      [clerkOrgId, `Sonde Worker modifiee ${stamp}`, `Sonde modifiee ${stamp}`]);
     const m = await c.query(`SELECT * FROM tracefab_sync_clerk_membership($1, $2::uuid, $3::uuid, 'owner'::membership_role)`,
       [`sonde-mbr-${stamp}`, orgId, u.rows[0].id]);
-    return { users: u.rowCount, organisations: o.rowCount, adhesions: m.rowCount };
+    return {
+      users: u.rowCount,
+      organisations: o.rowCount,
+      organisationsResynchronisees: oUpdated.rowCount,
+      organisationIdStable: oUpdated.rows[0]?.id === orgId,
+      nomOrganisationMisAJour: oUpdated.rows[0]?.display_name === `Sonde modifiee ${stamp}`,
+      adhesions: m.rowCount,
+    };
   });
-  verifier(ecritureWorker.users === 1 && ecritureWorker.organisations === 1 && ecritureWorker.adhesions === 1,
-    'contexte WORKER : le provisionnement Clerk passe par ses fonctions nommees',
-    `users=${ecritureWorker.users} organizations=${ecritureWorker.organisations} memberships=${ecritureWorker.adhesions}`);
+  verifier(ecritureWorker.users === 1 && ecritureWorker.organisations === 1
+      && ecritureWorker.organisationsResynchronisees === 1
+      && ecritureWorker.organisationIdStable && ecritureWorker.nomOrganisationMisAJour
+      && ecritureWorker.adhesions === 1,
+    'contexte WORKER : creation et resynchronisation Clerk passent par les fonctions nommees',
+    `users=${ecritureWorker.users} organizations=${ecritureWorker.organisations} update=${ecritureWorker.organisationsResynchronisees} idStable=${ecritureWorker.organisationIdStable} nomMisAJour=${ecritureWorker.nomOrganisationMisAJour} memberships=${ecritureWorker.adhesions}`);
 
   // Controle negatif : l'ecriture DIRECTE sur `users` sous le role applicatif
   // doit echouer. Sans lui, on ne saurait pas si le privilege a vraiment ete

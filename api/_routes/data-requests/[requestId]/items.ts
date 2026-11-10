@@ -1,7 +1,7 @@
 import { Prisma } from '@prisma/client';
 import type { VercelRequest, VercelResponse } from '../../../_lib/vercel-types.js';
 import { requireClerkUser, isUnauthorized } from '../../../_lib/auth.js';
-import { withTracefabUserContext } from '../../../_lib/context.js';
+import { withTracefabTenantContext } from '../../../_lib/context.js';
 import { json, methodNotAllowed, readJsonBody } from '../../../_lib/http.js';
 import { sqlBusinessError } from '../../../_lib/sql-errors.js';
 import { accessibleRequest, isUuid, jsonObject, requiredString } from '../../../_lib/data-requests.js';
@@ -68,8 +68,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (!isUuid(requestId)) return json(res, 400, { error: 'invalid_request_id' });
     const { user } = await requireClerkUser(req);
 
-    const result = await withTracefabUserContext(user.id, user.email, async (tx) => {
-      const request = await accessibleRequest(tx, user.id, requestId, { id: true });
+    const scope = req.method === 'POST'
+      ? { types: ['brand'] as Array<'brand'>, roles: ['owner', 'admin', 'manager', 'contributor'] as Array<'owner' | 'admin' | 'manager' | 'contributor'> }
+      : { types: ['brand'] as Array<'brand'> };
+    const result = await withTracefabTenantContext(req, user, scope, async (tx, tenant) => {
+      const request = await accessibleRequest(tx, requestId, tenant.organizationId, 'brand', { id: true });
       if (!request) return null;
 
       if (req.method === 'GET') {

@@ -2,8 +2,8 @@ import { createHash } from 'node:crypto';
 import { Prisma } from '@prisma/client';
 import type { VercelRequest, VercelResponse } from '../../../_lib/vercel-types.js';
 import { requireClerkUser, isUnauthorized } from '../../../_lib/auth.js';
-import { withTracefabUserContext } from '../../../_lib/context.js';
-import { activeBrandOrganizationIds, isUuid } from '../../../_lib/products.js';
+import { withTracefabTenantContext } from '../../../_lib/context.js';
+import { isUuid } from '../../../_lib/products.js';
 import { json, methodNotAllowed, readJsonBody } from '../../../_lib/http.js';
 import { sqlBusinessError } from '../../../_lib/sql-errors.js';
 import {
@@ -98,9 +98,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const sourceSha256 = createHash('sha256').update(body.csvContent, 'utf8').digest('hex');
     const validation = validateCatalogProductCsv(body.csvContent);
 
-    const result = await withTracefabUserContext(user.id, user.email, async (tx) => {
-      const organizationIds = await activeBrandOrganizationIds(tx, user.id);
-      if (!organizationIds.includes(body.brandOrganizationId!)) return null;
+    const result = await withTracefabTenantContext(
+      req,
+      user,
+      { types: ['brand'], roles: ['owner', 'admin', 'manager', 'contributor'] },
+      async (tx, tenant) => {
+      if (body.brandOrganizationId !== tenant.organizationId) throw new Error('organization_context_mismatch');
 
       const existingReferences = await loadExistingReferences(tx, body.brandOrganizationId!, validation.rows);
       const duplicateIssues: CatalogImportIssue[] = [];
@@ -194,7 +197,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         )
       `;
       return { job: jobPayload(updated[0] ?? job) };
-    });
+      },
+    );
 
     if (!result) return json(res, 403, { error: 'brand_organization_access_denied' });
     if ('preview' in result) return json(res, 200, result.preview);

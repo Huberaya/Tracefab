@@ -1,6 +1,4 @@
 import type { Prisma } from '@prisma/client';
-import { activeOrganizationIds } from './products.js';
-import { activeSupplierOrganizationIds } from './supplier-profile.js';
 
 export const REQUEST_SELECT = {
   id: true,
@@ -58,23 +56,18 @@ export function serializeRequest(request: RequestRecord) {
 
 export async function accessibleRequest<T extends Prisma.data_requestsSelect = typeof REQUEST_SELECT>(
   tx: Prisma.TransactionClient,
-  userId: string,
   requestId: string,
+  organizationId: string | null | undefined,
+  organizationType: 'brand' | 'supplier',
   select: T = REQUEST_SELECT as T,
 ): Promise<Prisma.data_requestsGetPayload<{ select: T }> | null> {
-  const organizationIds = await activeOrganizationIds(tx, userId);
-  if (organizationIds.length === 0) return null;
-
+  if (!organizationId) return null;
   return tx.data_requests.findFirst({
     where: {
       id: requestId,
-      OR: [
-        { brand_organization_id: { in: organizationIds } },
-        {
-          supplier_organization_id: { in: organizationIds },
-          status: { not: 'draft' },
-        },
-      ],
+      ...(organizationType === 'brand'
+        ? { brand_organization_id: organizationId }
+        : { supplier_organization_id: organizationId, status: { not: 'draft' } }),
     },
     select,
   });
@@ -82,18 +75,15 @@ export async function accessibleRequest<T extends Prisma.data_requestsSelect = t
 
 export async function accessibleSupplierRequest<T extends Prisma.data_requestsSelect = typeof REQUEST_SELECT>(
   tx: Prisma.TransactionClient,
-  userId: string,
   requestId: string,
+  organizationId: string | null | undefined,
   select: T = REQUEST_SELECT as T,
-  organizationId?: string | null,
 ): Promise<Prisma.data_requestsGetPayload<{ select: T }> | null> {
-  const organizationIds = await activeSupplierOrganizationIds(tx, userId, organizationId);
-  if (organizationIds.length === 0) return null;
-
+  if (!organizationId) return null;
   return tx.data_requests.findFirst({
     where: {
       id: requestId,
-      supplier_organization_id: { in: organizationIds },
+      supplier_organization_id: organizationId,
       status: { not: 'draft' },
     },
     select,

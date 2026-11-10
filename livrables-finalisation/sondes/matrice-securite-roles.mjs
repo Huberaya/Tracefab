@@ -242,11 +242,12 @@ try {
        JOIN pg_catalog.pg_roles r ON r.oid = p.proowner
        JOIN pg_catalog.pg_namespace n ON n.oid = p.pronamespace
       WHERE r.rolname = 'tracefab_worker'`);
-  // L'inventaire attendu inclut les six fonctions historiques Clerk/outbox,
-  // les deux fonctions Clerk transférées en 1201 et les quatre fonctions
-  // supplémentaires transférées par les migrations de fermeture et 1201.
-  // Comparer la liste exacte évite qu'un simple compteur masque un propriétaire
-  // inattendu ou une fonction manquante.
+  // Inventaire exact des fonctions systeme dont tracefab_worker doit etre
+  // proprietaire apres P10.8 : Clerk (organisation, membres, utilisateurs),
+  // outbox (claim/complete/health/enqueue) et identite. Les deux fonctions
+  // ajoutees par P10.8 sont necessaires : sync_clerk_organization est le
+  // prealable de 20261110120000 ; enqueue_manual_data_request_reminder ecrit
+  // dans l'outbox via le worker, jamais par DML direct de tracefab_app.
   const fonctionsWorkerAttendues = [
     'public.tracefab_archive_clerk_organization',
     'public.tracefab_claim_notification_outbox',
@@ -254,16 +255,18 @@ try {
     'public.tracefab_complete_notification_outbox',
     'public.tracefab_current_user_email',
     'public.tracefab_enqueue_due_data_request_reminders',
+    'public.tracefab_enqueue_manual_data_request_reminder',
     'public.tracefab_ensure_clerk_user',
     'public.tracefab_notification_outbox_health',
     'public.tracefab_revoke_clerk_membership',
     'public.tracefab_soft_delete_clerk_user',
     'public.tracefab_sync_clerk_membership',
+    'public.tracefab_sync_clerk_organization',
     'public.tracefab_upsert_clerk_user',
   ];
   const fonctionsWorkerExactes =
     JSON.stringify(w1.rows[0].fonctions) === JSON.stringify(fonctionsWorkerAttendues);
-  verifier('W1 inventaire exact des douze fonctions possédées par le worker',
+  verifier('W1 inventaire exact des quatorze fonctions possédées par le worker',
     w1.rows[0].n === fonctionsWorkerAttendues.length && fonctionsWorkerExactes,
     `${w1.rows[0].n} fonction(s) : ${w1.rows[0].fonctions.join(', ')}`);
 

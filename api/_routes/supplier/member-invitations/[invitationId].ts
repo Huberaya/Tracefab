@@ -2,7 +2,7 @@ import { createHash, randomBytes } from 'node:crypto';
 import { Prisma } from '@prisma/client';
 import type { VercelRequest, VercelResponse } from '../../../_lib/vercel-types.js';
 import { requireClerkUser, isUnauthorized } from '../../../_lib/auth.js';
-import { withTracefabUserContext } from '../../../_lib/context.js';
+import { withTracefabTenantContext } from '../../../_lib/context.js';
 import { manualInvitationFallbackAllowed, sendOrganizationMemberInvitationEmail } from '../../../_lib/email.js';
 import { json, methodNotAllowed } from '../../../_lib/http.js';
 import { sqlBusinessError } from '../../../_lib/sql-errors.js';
@@ -25,10 +25,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const invitationId = routeInvitationId(req);
     if (!isUuid(invitationId)) return json(res, 400, { error: 'invalid_invitation_id' });
     const { user } = await requireClerkUser(req);
-    const organizationId = requestedOrganizationId(req);
 
-    const result = await withTracefabUserContext(user.id, user.email, async (tx) => {
-      const supplier = await currentSupplier(tx, user.id, organizationId);
+    const result = await withTracefabTenantContext(req, user, { types: ['supplier'] }, async (tx, tenant) => {
+      const supplier = await currentSupplier(tx, user.id, tenant.organizationId);
       if (!supplier) return null;
       const actor = await tx.organization_memberships.findUnique({
         where: { organization_id_user_id: { organization_id: supplier.organization_id, user_id: user.id } },

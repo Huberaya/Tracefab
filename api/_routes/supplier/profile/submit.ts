@@ -1,7 +1,7 @@
 import { Prisma } from '@prisma/client';
 import type { VercelRequest, VercelResponse } from '../../../_lib/vercel-types.js';
 import { requireClerkUser, isUnauthorized } from '../../../_lib/auth.js';
-import { withTracefabUserContext } from '../../../_lib/context.js';
+import { withTracefabTenantContext } from '../../../_lib/context.js';
 import { json, methodNotAllowed } from '../../../_lib/http.js';
 import { sqlBusinessError } from '../../../_lib/sql-errors.js';
 import { currentSupplier, requestedOrganizationId, serializeSupplierProfile } from '../../../_lib/supplier-profile.js';
@@ -11,8 +11,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   try {
     const { user } = await requireClerkUser(req);
-    const profile = await withTracefabUserContext(user.id, user.email, async (tx) => {
-      const current = await currentSupplier(tx, user.id, requestedOrganizationId(req));
+    const profile = await withTracefabTenantContext(req, user, { types: ['supplier'] }, async (tx, tenant) => {
+      const current = await currentSupplier(tx, user.id, tenant.organizationId);
       if (!current) return null;
       const rows = await tx.$queryRaw<typeof current[]>`
         SELECT * FROM tracefab_submit_supplier_profile(${current.id}::uuid)

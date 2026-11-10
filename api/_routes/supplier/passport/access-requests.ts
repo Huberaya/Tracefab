@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '../../../_lib/vercel-types.js';
 import { requireClerkUser, isUnauthorized } from '../../../_lib/auth.js';
-import { withTracefabUserContext } from '../../../_lib/context.js';
+import { withTracefabTenantContext } from '../../../_lib/context.js';
 import { json, methodNotAllowed, readJsonBody } from '../../../_lib/http.js';
 import { sqlBusinessError } from '../../../_lib/sql-errors.js';
 import { reviewPassportAccess } from '../../../_lib/supplier-passport/passport-manager.js';
@@ -13,25 +13,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   try {
     const { user } = await requireClerkUser(req);
-    const orgIdQuery = typeof req.query.organizationId === 'string' ? req.query.organizationId : undefined;
-
-    const result = await withTracefabUserContext(user.id, user.email, async (tx) => {
-      let supplierOrgId = orgIdQuery;
-      if (!supplierOrgId) {
-        const membership = await tx.organization_memberships.findFirst({
-          where: {
-            user_id: user.id,
-            status: 'active',
-            organizations: { type: 'supplier' },
-          },
-          select: { organization_id: true },
-        });
-        supplierOrgId = membership?.organization_id;
-      }
-
-      if (!supplierOrgId) {
-        throw new Error('supplier_organization_not_found');
-      }
+    const result = await withTracefabTenantContext(req, user, { types: ['supplier'] }, async (tx, tenant) => {
+      const supplierOrgId = tenant.organizationId;
 
       if (req.method === 'GET') {
         const requests = await tx.supplier_passport_access_requests.findMany({

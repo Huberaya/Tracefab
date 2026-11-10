@@ -233,6 +233,16 @@ const REFUSED_WRITE_PROBE_DB_SUITES = [
  */
 const SELF_GUARDED_DB_TOOLS = [
   'scripts/db-deploy-throwaway.mjs',
+  // P10.8 : les trois harnais PostgreSQL 17.11 creent et detruissent leurs
+  // PROPRES bases `p108_*` dans un cluster jetable. Ils ecrivent (CREATE
+  // DATABASE, fixtures, modelisation des proprietaires) mais ne prennent
+  // JAMAIS une cible applicative fournie par l'operateur : `TF_P108_PG_URL`
+  // est classifiee par `requireThrowawayDb` au chargement du module, avec
+  // arret. La declaration n'est pas un blanc-seing : F2 relit le source et
+  // exige l'appel au chargement, sans `exitOnFailure: false`.
+  'scripts/harnais_p108_ci.mjs',
+  'scripts/harnais_p108_chaines.mjs',
+  'scripts/harnais_p108_outbox.mjs',
 ];
 
 /**
@@ -263,10 +273,8 @@ const OPERATOR_WRITER_SCRIPTS = [
   // de cible jetable refuse par construction.
   'scripts/provisionner_roles_db.mjs',
   'scripts/provisionner_cle_identite.mjs',
-  // Préflight Neon ponctuel : renomme le rôle worker géré par cloud_admin,
-  // transfère les propriétaires/ACL, puis neutralise le rôle legacy. Il ne
-  // s'exécute jamais en CI ; --appliquer exige un GO d'environnement explicite,
-  // l'hôte/base attendus et une liste de cibles Production à protéger.
+  // Remplacement de role worker Neon : mutation operateur explicite, avec
+  // TF_ALLOW_WORKER_ROLE_SWAP, confirmation de la cible directe et garde Production.
   'scripts/provisionner_worker_neon.mjs',
   'scripts/mesure_effet_migrations_dpp.mjs',
   'scripts/valider_branche_dpp.mjs',
@@ -459,13 +467,7 @@ for (const rel of OPERATOR_WRITER_SCRIPTS) {
   // Une invocation qui porte le drapeau sans ecriture ne peut pas ecrire.
   const enEcriture = invocations.filter(([, command]) => !command.includes('--dry-run'));
   const automatiques = enEcriture.filter(([name]) => reached.has(name));
-  // Le workflow de reproduction PR110 ajoute ces outils au commit du banc
-  // (git add) sans les exécuter. Seule une ligne de commande active qui nomme
-  // directement le script constitue une invocation CI.
-  const enCi = workflowText.some((text) => text.split('\n').some((line) =>
-    !/^\s*(?:#|git add\b)/.test(line)
-      && line.includes(rel.replace('scripts/', 'scripts/')),
-  ));
+  const enCi = workflowText.some((text) => text.includes(rel.replace('scripts/', 'scripts/')));
 
   if (automatiques.length > 0) {
     ko(`${rel} est atteignable en ecriture depuis test/build via : ${automatiques.map(([k]) => k).join(', ')}`);

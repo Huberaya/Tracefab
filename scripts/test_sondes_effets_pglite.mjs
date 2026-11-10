@@ -208,7 +208,8 @@ const attendu = {
   '20261027100000': 'requirement_met_lit_scores_du_produit|true',
   '20261027130000': 'suspend_nonconforming_posee|oui',
   '20261028120000': 'table_registre|oui',
-  '20261028120100': 'role_tracefab_worker|oui|politiques_sur_current_user|14',
+  // 14 politiques worker historiques + 2 politiques Clerk organizations ajoutées en 20261110120000.
+  '20261028120100': 'role_tracefab_worker|oui|politiques_sur_current_user|16',
   '20261028120200': 'mark_document_scanning_posee|oui|update_app_sur_documents|false',
   '20261028130000': 'update_app_sur_tracefab_products|false|trigger_lit_encore_le_guc|false',
   '20261028140000': 'garde_relation_invitation|true',

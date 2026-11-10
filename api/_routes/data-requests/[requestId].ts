@@ -1,11 +1,11 @@
 import { Prisma } from '@prisma/client';
 import type { VercelRequest, VercelResponse } from '../../_lib/vercel-types.js';
 import { requireClerkUser, isUnauthorized } from '../../_lib/auth.js';
-import { withTracefabUserContext } from '../../_lib/context.js';
+import { withTracefabTenantContext } from '../../_lib/context.js';
 import { json, methodNotAllowed } from '../../_lib/http.js';
 import { sqlBusinessError } from '../../_lib/sql-errors.js';
 import { accessibleRequest, accessibleSupplierRequest, isUuid, REQUEST_SELECT, serializeRequest } from '../../_lib/data-requests.js';
-import { requestedOrganizationId } from '../../_lib/supplier-profile.js';
+
 
 const DETAIL_SELECT = {
   ...REQUEST_SELECT,
@@ -102,13 +102,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (!isUuid(requestId)) return json(res, 400, { error: 'invalid_request_id' });
     const { user } = await requireClerkUser(req);
     const scope = Array.isArray(req.query.scope) ? req.query.scope[0] : req.query.scope;
-    const queryOrganizationId = Array.isArray(req.query.organizationId) ? req.query.organizationId[0] : req.query.organizationId;
-    if (queryOrganizationId && !isUuid(queryOrganizationId)) return json(res, 400, { error: 'invalid_organization_id' });
-    const organizationId = requestedOrganizationId(req) || queryOrganizationId;
-    const request = await withTracefabUserContext(user.id, user.email, (tx) =>
+    const tenantScope = scope === 'supplier' ? { types: ['supplier'] as Array<'supplier'> } : { types: ['brand'] as Array<'brand'> };
+    const request = await withTracefabTenantContext(req, user, tenantScope, (tx, tenant) =>
       scope === 'supplier'
-        ? accessibleSupplierRequest(tx, user.id, requestId, DETAIL_SELECT, organizationId)
-        : accessibleRequest(tx, user.id, requestId, DETAIL_SELECT),
+        ? accessibleSupplierRequest(tx, requestId, tenant.organizationId, DETAIL_SELECT)
+        : accessibleRequest(tx, requestId, tenant.organizationId, 'brand', DETAIL_SELECT),
     );
     if (!request) return json(res, 404, { error: 'data_request_not_found' });
     return json(res, 200, serializeDetail(request));

@@ -1,10 +1,10 @@
 import type { VercelRequest, VercelResponse } from '../../../../_lib/vercel-types.js';
 import { requireClerkUser, isUnauthorized } from '../../../../_lib/auth.js';
-import { withTracefabUserContext } from '../../../../_lib/context.js';
+import { withTracefabTenantContext } from '../../../../_lib/context.js';
 import { json, methodNotAllowed } from '../../../../_lib/http.js';
 import { sqlBusinessError } from '../../../../_lib/sql-errors.js';
 import { currentSupplier, requestedOrganizationId } from '../../../../_lib/supplier-profile.js';
-import { DOCUMENT_SELECT, serializeDocument } from '../../../../_lib/documents.js';
+import { DOCUMENT_SELECT, documentAccessibleFromTenant, serializeDocument } from '../../../../_lib/documents.js';
 import { presignedDownload } from '../../../../_lib/storage.js';
 
 function routeDocumentId(req: VercelRequest) { const value = req.query.documentId; return Array.isArray(value) ? value[0] : value; }
@@ -16,10 +16,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const documentId = routeDocumentId(req);
     if (!isUuid(documentId)) return json(res, 400, { error: 'invalid_document_id' });
     const { user } = await requireClerkUser(req);
-    const result = await withTracefabUserContext(user.id, user.email, async (tx) => {
-      const supplier = await currentSupplier(tx, user.id, requestedOrganizationId(req));
+    const result = await withTracefabTenantContext(req, user, { types: ['supplier'] }, async (tx, tenant) => {
+      const supplier = await currentSupplier(tx, user.id, tenant.organizationId);
       if (!supplier) return null;
-      const document = await tx.documents.findFirst({ where: { id: documentId, owner_organization_id: supplier.organization_id, status: 'available' }, select: DOCUMENT_SELECT });
+      // Autorisation deleguee au garde lie au tenant actif : ses propres
+      // documents (propriete) ET les pieces qu'une marque lui a explicitement
+      // partagees (certificat emis a son nom, reponse de collecte, partage
+      // explicite). L'ancien filtre `owner_organization_id` seul rendait ces
+      // partages legitimes introuvables au telechargement, alors que le garde
+      // les autorise. Aucun ID, chemin ou cle de stockage ne suffit : le garde
+      // exige une adhesion active et une voie de partage bornee au tenant.
+      if (!(await documentAccessibleFromTenant(tx, user.id, documentId, tenant))) return null;
+      const document = await tx.documents.findFirst({ where: { id: documentId, status: 'available' }, select: DOCUMENT_SELECT });
       if (!document) return null;
       return { document, download: presignedDownload(document.storage_path) };
     });

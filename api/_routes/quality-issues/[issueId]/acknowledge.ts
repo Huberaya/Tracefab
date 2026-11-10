@@ -1,7 +1,7 @@
 import type { VercelRequest, VercelResponse } from '../../../_lib/vercel-types.js';
 import type { QualityIssueRecord } from '../../../_lib/quality.js';
 import { requireClerkUser, isUnauthorized } from '../../../_lib/auth.js';
-import { withTracefabUserContext } from '../../../_lib/context.js';
+import { withTracefabTenantContext } from '../../../_lib/context.js';
 import { json, methodNotAllowed } from '../../../_lib/http.js';
 import { sqlBusinessError } from '../../../_lib/sql-errors.js';
 import { isUuid } from '../../../_lib/data-requests.js';
@@ -19,7 +19,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const issueId = routeIssueId(req);
     if (!isUuid(issueId)) return json(res, 400, { error: 'invalid_issue_id' });
     const { user } = await requireClerkUser(req);
-    const issue = await withTracefabUserContext(user.id, user.email, async (tx) => {
+    const issue = await withTracefabTenantContext(req, user, { types: ['brand'], roles: ['owner', 'admin', 'manager', 'auditor'] }, async (tx, tenant) => {
+      const scoped = await tx.data_quality_issues.findFirst({
+        where: { id: issueId, owner_organization_id: tenant.organizationId },
+        select: { id: true },
+      });
+      if (!scoped) return null;
       const rows = await tx.$queryRaw<QualityIssueRecord[]>`
         SELECT * FROM tracefab_acknowledge_quality_issue(${issueId}::uuid)
       `;

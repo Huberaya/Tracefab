@@ -1,4 +1,5 @@
 import type { Prisma } from '@prisma/client';
+import type { ActiveTenant } from './tenant.js';
 import { downloadObject, headObject, MAX_DOCUMENT_BYTES, scanWithAntivirus } from './storage.js';
 
 export const DOCUMENT_SELECT = {
@@ -23,6 +24,42 @@ export const DOCUMENT_SELECT = {
 } satisfies Prisma.documentsSelect;
 
 export type DocumentRecord = Prisma.documentsGetPayload<{ select: typeof DOCUMENT_SELECT }>;
+
+/**
+ * Accès à un document borné au tenant actif.
+ *
+ * Délègue la décision à `tracefab_document_accessible_in_active_tenant()`
+ * (migration 20261105180000), qui reprend les voies d'accès de
+ * `tracefab_can_access_document` — propriété, partage, réponses de collecte,
+ * certifications, points de donnée — en remplaçant l'union des adhésions du
+ * compte par l'organisation explicitement sélectionnée, et en exigeant une
+ * adhésion active et des relations fournisseur-marque actives.
+ */
+export async function documentAccessibleFromTenant(
+  tx: Prisma.TransactionClient,
+  userId: string,
+  documentId: string,
+  tenant: ActiveTenant,
+): Promise<boolean> {
+  // La decision d'autorisation est executee EN BASE, pas reconstruite cote
+  // applicatif : `tracefab_can_access_document()` et les politiques RLS bornent
+  // l'UTILISATEUR (union de ses adhesions), pas le LOCATAIRE ACTIF. Mesure sur
+  // la chaine complete : avec le tenant A arme, un compte membre de A, B et du
+  // fournisseur S voyait les documents des trois organisations.
+  //
+  // Les deux comparaisons supplementaires lient le contexte applicatif au
+  // contexte PostgreSQL : si le GUC arme par `withTracefab*Context` ne correspond
+  // pas au tenant valide par `requireActiveTenant`, ou si l'identite verifiee
+  // n'est pas celle resolue par Clerk, le garde rend faux.
+  const rows = await tx.$queryRaw<Array<{ accessible: boolean }>>`
+    SELECT (
+      tracefab_document_accessible_in_active_tenant(${documentId}::uuid)
+      AND tracefab_in_active_tenant(${tenant.organizationId}::uuid)
+      AND ${userId}::uuid = tracefab_current_user_id()
+    ) AS accessible
+  `;
+  return rows[0]?.accessible === true;
+}
 
 export function serializeDocument(document: DocumentRecord) {
   return {

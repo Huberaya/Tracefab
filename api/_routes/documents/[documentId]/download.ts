@@ -1,9 +1,9 @@
 import type { VercelRequest, VercelResponse } from '../../../_lib/vercel-types.js';
 import { requireClerkUser, isUnauthorized } from '../../../_lib/auth.js';
-import { withTracefabUserContext } from '../../../_lib/context.js';
+import { withTracefabTenantContext } from '../../../_lib/context.js';
 import { json, methodNotAllowed } from '../../../_lib/http.js';
 import { sqlBusinessError } from '../../../_lib/sql-errors.js';
-import { DOCUMENT_SELECT, serializeDocument } from '../../../_lib/documents.js';
+import { DOCUMENT_SELECT, documentAccessibleFromTenant, serializeDocument } from '../../../_lib/documents.js';
 import { presignedDownload } from '../../../_lib/storage.js';
 
 function routeDocumentId(req: VercelRequest) { const value = req.query.documentId; return Array.isArray(value) ? value[0] : value; }
@@ -15,9 +15,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const documentId = routeDocumentId(req);
     if (!isUuid(documentId)) return json(res, 400, { error: 'invalid_document_id' });
     const { user } = await requireClerkUser(req);
-    const result = await withTracefabUserContext(user.id, user.email, async (tx) => {
+    const result = await withTracefabTenantContext(req, user, { types: ['brand'] }, async (tx, tenant) => {
+      if (!(await documentAccessibleFromTenant(tx, user.id, documentId, tenant))) return null;
       const accessRows = await tx.$queryRaw<Array<{ can_access: boolean }>>`
-        SELECT tracefab_can_access_document(${documentId}::uuid) AS can_access
+        SELECT tracefab_document_accessible_in_active_tenant(${documentId}::uuid) AS can_access
       `;
       if (!accessRows[0]?.can_access) return null;
 

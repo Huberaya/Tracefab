@@ -1,9 +1,9 @@
 import type { VercelRequest, VercelResponse } from '../../_lib/vercel-types.js';
 import { requireClerkUser, isUnauthorized } from '../../_lib/auth.js';
-import { withTracefabUserContext } from '../../_lib/context.js';
+import { withTracefabTenantContext } from '../../_lib/context.js';
 import { json, methodNotAllowed, readJsonBody } from '../../_lib/http.js';
 import { sqlBusinessError } from '../../_lib/sql-errors.js';
-import { activeBrandOrganizationIds } from '../../_lib/products.js';
+
 import { ingestPlmErpData } from '../../_lib/plm-erp/ingestor.js';
 import type { PlmErpSystemType } from '../../_lib/plm-erp/types.js';
 
@@ -22,15 +22,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     const { user } = await requireClerkUser(req);
 
-    return await withTracefabUserContext(user.id, user.email, async (tx) => {
-      const brandOrgIds = await activeBrandOrganizationIds(tx, user.id);
-      const body = (await readJsonBody<IngestBody>(req).catch(() => ({}))) as IngestBody;
-      const { systemType, payload, organizationId, integrationId } = body || {};
-
-      const targetOrgId = organizationId || brandOrgIds[0];
-      if (!targetOrgId || !brandOrgIds.includes(targetOrgId)) {
-        return json(res, 403, { error: 'brand_product_role_required' });
-      }
+    const body = (await readJsonBody<IngestBody>(req).catch(() => ({}))) as IngestBody;
+    const { systemType, payload, organizationId, integrationId } = body || {};
+    return await withTracefabTenantContext(
+      req,
+      user,
+      { types: ['brand'], roles: ['owner', 'admin', 'manager'] },
+      async (tx, tenant) => {
+      if (organizationId && organizationId !== tenant.organizationId) throw new Error('organization_context_mismatch');
+      const targetOrgId = tenant.organizationId;
 
       if (!systemType || !payload) {
         return json(res, 400, { error: 'systemType and payload are required' });

@@ -110,9 +110,18 @@ const downloadTs = await readFile(
   new URL('../api/_routes/documents/[documentId]/download.ts', import.meta.url),
   'utf8',
 );
+// Le garde historique bornait l'utilisateur (union de ses adhesions) et non le
+// locataire actif : avec le tenant A arme, un compte membre de A, B et S lisait
+// les documents des trois organisations. La decision est desormais deleguee a
+// tracefab_document_accessible_in_active_tenant (migration 20261105180000),
+// verifiee en execution par scripts/test_isolation_globale_pglite.mjs.
 assert(
-  downloadTs.includes('tracefab_can_access_document'),
-  'Brand document download route must check tracefab_can_access_document',
+  downloadTs.includes('tracefab_document_accessible_in_active_tenant'),
+  'Brand document download route must check the active-tenant document guard',
+);
+assert(
+  !downloadTs.includes('tracefab_can_access_document('),
+  'Brand document download route must not fall back to the union-of-memberships guard',
 );
 assert(
   downloadTs.includes('if (!accessRows[0]?.can_access) return null;'),
@@ -128,7 +137,17 @@ assert(productPointsTs.includes("req.method !== 'GET' && req.method !== 'POST'")
 assert(productPointsTs.includes('requireActiveTenant') && productPointsTs.includes('tenantFilter(tenant)'), 'Route must enforce the one active brand tenant');
 assert(productPointsTs.includes('brand_product_role_required'), 'Route must require brand mutation role');
 assert(productPointsTs.includes('productDataPointMutation'), 'Route must use productDataPointMutation');
-assert(productPointsTs.includes('tracefab_can_access_document'), 'Route must verify source document access');
+// Meme garde lie au tenant actif pour le document source d'un point de donnee :
+// un document partage avec une autre marque du meme compte ne doit pas servir de
+// source depuis le locataire courant.
+assert(
+  productPointsTs.includes('tracefab_document_accessible_in_active_tenant'),
+  'Route must verify source document access in the active tenant',
+);
+assert(
+  !productPointsTs.includes('tracefab_can_access_document('),
+  'Route must not use the union-of-memberships document guard',
+);
 assert(productPointsTs.includes('supersedes_id'), 'Route must maintain supersedes_id chain');
 assert(productPointsTs.includes('version: current ? current.version + 1 : 1'), 'Route must increment version');
 
