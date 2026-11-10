@@ -7,7 +7,19 @@ import { runtimeProbeAuthorized, workerAuthorized, workerSecretConfigured } from
 import { databaseIdentityIsSafe, probeDatabaseIdentity, runLiveProbes } from '../../_lib/readiness-probes.js';
 import { etatCleIdentite } from '../../_lib/identite-jeton.js';
 import { prisma } from '../../_lib/prisma.js';
+import { withTracefabWorkerContext } from '../../_lib/contexte-systeme.js';
 import { etatCleSysteme, signerIdentiteSysteme } from '../../_lib/identite-systeme.js';
+
+type OutboxHealthRow = {
+  pending: number;
+  processing: number;
+  sent: number;
+  failed: number;
+  ready: number;
+  staleProcessing: number;
+  exhausted: number;
+  oldestReadyAt: Date | null;
+};
 
 function configured(name: string) {
   return Boolean(process.env[name]?.trim());
@@ -147,6 +159,32 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   };
 
   const databaseIdentity = wantIdentity ? await probeDatabaseIdentity() : undefined;
+
+  // P10.7 — verification reelle de l'outbox sous contexte systeme signe.
+  // Lecture seule : aucun element n'est reclame, modifie, ni envoye.
+  let notificationOutbox: { verified: boolean; detail: string; health?: OutboxHealthRow } | undefined;
+  if (req.query?.outbox === '1' && wantIdentity) {
+    try {
+      const rows = await withTracefabWorkerContext((tx) => tx.$queryRaw<OutboxHealthRow[]>`
+        SELECT * FROM tracefab_notification_outbox_health()
+      `);
+      notificationOutbox = {
+        verified: true,
+        detail: 'aller_retour_reussi',
+        health: rows[0] ?? {
+          pending: 0, processing: 0, sent: 0, failed: 0, ready: 0,
+          staleProcessing: 0, exhausted: 0, oldestReadyAt: null,
+        },
+      };
+    } catch (error) {
+      notificationOutbox = {
+        verified: false,
+        detail: error instanceof Error && /42501|authentication_required/.test(error.message)
+          ? 'identite_systeme_refusee'
+          : 'sonde_en_erreur',
+      };
+    }
+  }
   // En mode diagnostic, la readiness est rouge tant que l'identité effective
   // ne prouve pas le rôle applicatif sans privilèges de contournement RLS.
   const identitySafe = !wantIdentity || databaseIdentityIsSafe(databaseIdentity);
@@ -160,6 +198,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       identityTokens: jetonsIdentite,
       identitySysteme: jetonsSysteme,
       ...(databaseIdentity ? { databaseIdentity } : {}),
+    ...(notificationOutbox ? { notificationOutbox } : {}),
+      ...(notificationOutbox ? { notificationOutbox } : {}),
     });
   }
 
