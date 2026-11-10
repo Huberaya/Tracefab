@@ -9,12 +9,13 @@
  *
  * ETAT DE PRODUCTION RECONSTITUE :
  *   49 attestees + 5 hors bande + 2 annulees (dont les effets sont presents)
- *   = 56 migrations jouees, et les 10 autres (9 absentes + 1 nouvelle) NON
- *   jouees. Ce n'est pas une hypothese sur la production : c'est la seule
+ *   = 56 migrations jouees, et les 43 autres (10 absentes + 33 nouvelles) NON
+ *   jouees. La migration 20261028120050, ajoutee apres le releve mais antidatee,
+ *   est classee explicitement ABSENTE. Ce n'est pas une hypothese sur la production : c'est la seule
  *   combinaison compatible avec le releve du 28/10, et elle sert de support.
  *
  * CE QUE LE TEST DOIT ETABLIR :
- *   1. une par une, dans l'ordre, les 10 passent — donc un plan sequentiel est
+ *   1. une par une, dans l'ordre, les 43 passent — donc un plan sequentiel est
  *      possible sans `deploy` global ;
  *   2. `20261028120000` est la RUPTURE : elle n'est pas rejouable (CREATE TABLE
  *      sans garde), et un second passage casse ;
@@ -129,7 +130,7 @@ let base = await productionReconstituee();
 }
 
 // =========================================================================
-console.log('\n2. Les 10 manquantes, UNE PAR UNE, dans l ordre  [MESURE]');
+console.log('\n2. Les 43 manquantes, UNE PAR UNE, dans l ordre  [MESURE]');
 const issues = [];
 {
   for (const d of manquantes) {
