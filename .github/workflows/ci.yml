@@ -975,6 +975,9 @@ jobs:
         # d'analyse absent ne devient « sain ».
         run: npm run test:neon:document-lifecycle
 
+      - name: Isolation documents et matériaux — locataire actif, partages et chemins indirects
+        run: npm run test:neon:document-material-scope
+
       - name: Privilèges minimaux du rôle applicatif — provisioning réel
         # Ce contrôle couvre un trou : `bootstrap_app_role.mjs` n'était exécuté
         # par aucune étape, donc les privilèges que reçoit vraiment tracefab_app

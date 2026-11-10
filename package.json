@@ -284,7 +284,8 @@
     "test:tenant:autorisations": "node scripts/test_matrice_autorisations.mjs",
     "p108:ci": "node scripts/harnais_p108_ci.mjs",
     "db:preflight:worker-neon:check": "node scripts/provisionner_worker_neon.mjs --etat",
-    "db:preflight:worker-neon": "node scripts/provisionner_worker_neon.mjs --appliquer"
+    "db:preflight:worker-neon": "node scripts/provisionner_worker_neon.mjs --appliquer",
+    "test:neon:document-material-scope": "node scripts/run-db-suite.mjs scripts/test_neon_document_material_tenant_scope.mjs"
   },
   "devDependencies": {
     "@electric-sql/pglite": "^0.5.12",
