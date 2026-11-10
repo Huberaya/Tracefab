@@ -4,8 +4,8 @@
  * refs distantes (ce test tourne dans la boucle CI `test:*`).
  *
  * Ce qu'il prouve :
- *   1. le manifeste P10.8 est lisible, complet et annonce 73 entrees ;
- *   2. les 69 migrations deja appliquees sur `main` sont conservees BYTE POUR
+ *   1. le manifeste P10.8 est lisible, complet et annonce 100 entrees ;
+ *   2. les 95 migrations deja appliquees sur `main` sont conservees BYTE POUR
  *      BYTE — aucune n'est renommee ni reecrite (interdiction de la mission) ;
  *   3. les entrees dont la source est le depot local ont une empreinte qui
  *      correspond au fichier reel (le manifeste ne peut pas se perimer en
@@ -53,9 +53,9 @@ console.log('\n  1. manifeste et compte');
 ok('schema attendu', m.schema === 'tracefab-p108-chaine-canonique-v1', m.schema);
 ok('le manifeste P10.7 historique est conserve sans reecriture', fs.existsSync(MANIFESTE_P107));
 ok('total annoncé = nombre d’entrées', m.total === m.entrees.length, `${m.total}/${m.entrees.length}`);
-ok('73 entrées dans la chaîne canonique', m.entrees.length === 73, String(m.entrees.length));
-ok('69 migrations historiques de main conservées',
-  m.entrees.filter((e) => e.historique_appliquee).length === 69,
+ok('100 entrées dans la chaîne canonique', m.entrees.length === 100, String(m.entrees.length));
+ok('95 migrations historiques de main conservées',
+  m.entrees.filter((e) => e.historique_appliquee).length === 95,
   String(m.entrees.filter((e) => e.historique_appliquee).length));
 
 console.log('\n  2. aucune migration historique modifiée ou renommée');
@@ -68,7 +68,7 @@ const nomsManifest = new Set(m.entrees.map((e) => e.nom));
 for (const d of locales) {
   const e = m.entrees.find((x) => x.nom === d);
   if (!e) { ok(`migration locale ${d} présente dans la chaîne`, false); continue; }
-  if (e.source === 'HEAD' || e.source === 'main') {
+  if (e.source === 'HEAD' || e.source === 'main' || e.source === '#113') {
     ok(`empreinte locale exacte : ${d}`, e.sha256 === sha(path.join(MIGRATIONS, d, 'migration.sql')));
   }
 }
@@ -93,9 +93,13 @@ ok('correctif P10.8 réel présent dans la chaîne',
   m.entrees.some((e) => e.source === 'correctif-p108'));
 const correctif = m.entrees.find((e) => e.source === 'correctif-p108');
 ok('empreinte du correctif exacte', !!correctif && correctif.sha256 === sha(CORRECTIF));
-ok('le correctif trie APRÈS #114 (aucune ambiguïté d’ordre)',
+const indexCorrectif = m.entrees.findIndex((e) => e.source === 'correctif-p108');
+const index114 = m.entrees.findIndex((e) => e.nom === '20261106130000_identite_systeme_signee');
+ok('le correctif P10.8 trie après #114 et avant le prérequis Clerk #113',
   !!correctif && correctif.nom === '20261107120000_p108_outbox_proprietaire_et_dependances'
-  && m.entrees.at(-1).nom === correctif.nom, String(correctif?.nom));
+  && indexCorrectif > index114
+  && m.entrees.at(-1).nom === '20261110120000_worker_clerk_organization_prerequisites',
+  `${correctif?.nom} -> ${m.entrees.at(-1)?.nom}`);
 ok('ancien candidat 20261106120300 absent de la chaîne',
   !m.entrees.some((e) => e.nom === '20261106120300_outbox_owner_identite_systeme'));
 ok('substitution du candidat explicitement documentée',
@@ -106,9 +110,13 @@ ok('sept migrations historiques réécrites par #110/#111/#112 déclarées',
   && m.migrations_historiques_reecrites_par_110_111_112.length === 7);
 ok('décision d’exclusion explicite',
   /#110\/#111\/#112 exclues/.test(m.decision));
-ok('préparation des renommages pour la chaîne étendue documentée : il n’en reste qu’un',
-  Object.keys(m.renommages_pour_chaine_etendue_si_110_reconciliation || {}).length === 1
-  && !!m.renommages_pour_chaine_etendue_si_110_reconciliation['20261105180000_active_tenant_access_guards']);
+ok('aucun renommage de migration #113 requis sur la chaîne actuelle',
+  Object.keys(m.renommages_pour_chaine_etendue_si_110_reconciliation || {}).length === 0);
+ok('ancienne migration #113 non appliquée écartée et migration main substituée',
+  !m.entrees.some((e) => e.nom === '20261105180000_active_tenant_access_guards')
+  && m.entree_exclue_non_appliquee?.preview_p11_present === false
+  && m.entree_exclue_non_appliquee?.production_present === false
+  && m.entrees.some((e) => e.nom === '20261105180000_active_tenant_tc_registration_guard' && e.source === 'main'));
 
 console.log('\n  5. tête réelle de #114 et renommage effectué en amont');
 ok('tête #114 = f0aeb51cb52ce778f7f9a5e857438603d81fa5ad',
@@ -120,8 +128,15 @@ ok('renommage amont explicitement tracé (avant / après / SHA)',
   ren.avant === '20261105120000_identite_systeme_signee'
   && ren.apres === '20261106130000_identite_systeme_signee'
   && ren.tete_actuelle === m.pr114_head);
-ok('risque de divergence du journal Prisma documenté, non transformé en PASS',
-  /journal _prisma_migrations/.test(ren.risque || '') && /BLOCKED/.test(ren.risque || ''));
+ok('journal Preview P11 confirme #114 appliquée et non rollbackée',
+  ren.journal_preview?.migration_name === '20261106130000_identite_systeme_signee'
+  && ren.journal_preview?.finished_at === '2026-11-07T20:07:31.615Z'
+  && ren.journal_preview?.rolled_back_at === null);
+ok('journal Production confirme #114 absente',
+  ren.journal_production?.migration_name === '20261106130000_identite_systeme_signee'
+  && ren.journal_production?.present === false);
+ok('risque de divergence du journal est mesuré et explicitement encadré',
+  /sans renommage ni rejeu/.test(ren.risque || ''));
 ok('nouveau nom de migration #114 présent dans la chaîne',
   m.entrees.some((e) => e.nom === '20261106130000_identite_systeme_signee' && e.source === '#114'));
 ok('ancien nom de migration #114 absent de la chaîne',
