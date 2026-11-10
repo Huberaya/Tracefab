@@ -25,7 +25,7 @@ const checks = [
   ['claims servis par la projection publique SQL', route.includes('tracefab_public_dpp_claims')],
   ['cache public revalide apres 60 secondes', /public, max-age=60, must-revalidate/.test(route)],
   ['aucun stale-while-revalidate apres suspension', !route.includes('stale-while-revalidate')],
-  ['identifiant resolvable seulement si actif', /public_id=\$\{publicId\} AND status='active'/.test(identity)],
+  ['identifiant actif conserve sa destination canonique', /row\.status==='replaced'&&row\.replacement_public_id[\s\S]*\/dpp\/\?id=/.test(identity)],
   ['identifiant retire renvoie 410 sans cache', /status==='retired'/.test(identity) && /Cache-Control','no-store'/.test(identity)],
   ['identifiant remplace redirige de facon permanente', /row\.status==='replaced'/.test(identity) && /\?308:302/.test(identity)],
   ['page publique DPP expose un bandeau demo explicitement masque', /id="dpp-demo-banner"[^>]*hidden/.test(page)],
