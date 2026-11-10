@@ -63,7 +63,13 @@ export const ECARTS = {
     historique: 'ABSENTE',
     objet: 'table tracefab_runtime_function_registry (RLS + FORCE), tracefab_apply_runtime_function_grants',
     effets: ['MESURE', 'table lue absente en production le 28/10'],
-    suite: 'prerequis de 20261028120100 ; determine si un deploy passe',
+    suite: 'prerequis de 20261028120050 puis 20261028120100 ; determine si un deploy passe',
+  },
+  '20261028120050_neon_worker_function_grants': {
+    historique: 'ABSENTE',
+    objet: 'remplacement de tracefab_apply_runtime_function_grants pour assumer temporairement tracefab_worker sur les ACL',
+    effets: ['NON PROUVE', 'migration ajoutée au dépôt après le relevé du 28/10 avec un horodatage antérieur à la borne ; aucun historique Production ne la cite'],
+    suite: 'appliquer après 20261028120000 et avant 20261028120100 ; vérifier la capacité SET ROLE sur la cible',
   },
   '20261028120100_worker_identity_not_forgeable': {
     historique: 'ABSENTE',
@@ -121,6 +127,10 @@ export const CATALOGUE = {
   '20261028120000_runtime_function_registry': {
     catalogue: 'ABSENT — table tracefab_runtime_function_registry lue absente',
     statut: 'DIVERGENCE',
+  },
+  '20261028120050_neon_worker_function_grants': {
+    catalogue: 'NON LU — définition actuelle de tracefab_apply_runtime_function_grants à confronter avant application',
+    statut: 'NON PROUVE',
   },
   '20261028120100_worker_identity_not_forgeable': {
     catalogue: 'NON LU — depend du registre, dont l absence a ete lue',
