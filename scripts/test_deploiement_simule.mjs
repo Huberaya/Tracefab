@@ -4,13 +4,13 @@
  *
  * POURQUOI CE TEST EXISTE
  *
- * La production n'a pas douze migrations du depot (mesure du 28/10). Avant de
+ * La production a dix migrations historiques absentes du dépôt (mesure du 28/10). Avant de
  * proposer quoi que ce soit, il faut repondre a trois questions, et aucune ne
  * se deduit de la lecture des fichiers :
  *
- *   1. la sequence des douze s'applique-t-elle, dans l'ordre, sur une base qui
- *      porte deja les cinquante-quatre autres ?
- *   2. l'etat « cinquante-quatre » est-il seulement CONSTRUCTIBLE ? Si une
+ *   1. la séquence des dix migrations historiques absentes s'applique-t-elle, dans l'ordre, sur une base qui
+ *      porte deja les cinquante-six autres ?
+ *   2. l'etat « cinquante-six » est-il seulement CONSTRUCTIBLE ? Si une
  *      migration ulterieure exige les effets d'une migration manquante, alors
  *      cet etat ne peut pas avoir existe — et quelque chose de plus s'est
  *      passe en production.
@@ -23,7 +23,7 @@
  * ne fait pas partie des douze ecarts). Or elle ECHOUE si les trois fonctions
  * `tracefab_active_organization_id`, `tracefab_in_active_tenant` et
  * `tracefab_require_active_tenant` n'existent pas — elles sont creees par
- * `20261017120000_active_tenant_context`, qui est marquee ANNULEE.
+ * `20261017120000_active_tenant_context`, qui a une tentative annulee puis une reprise reussie.
  *
  *   production applique 20261021120000  (fait mesure)
  * + 20261021120000 exige ces 3 fonctions (fait reproduit ici)
@@ -68,10 +68,8 @@ const ok = (libelle, condition, detail = '') => {
   console.error(`  ECHEC ${libelle}${detail ? ` — ${detail}` : ''}`);
 };
 
-/** Les douze migrations dont l'historique de production ne porte pas la trace. */
+/** Les dix migrations réellement absentes du journal Production au relevé. */
 const ECARTS = [
-  '20261010120000_publication_explicite',
-  '20261017120000_active_tenant_context',
   '20261021170000_dpp_readiness_truthful_gates',
   '20261027100000_dpp_quality_gate_requires_assessment',
   '20261027130000_dpp_review_preservation_and_publication_coherence',
@@ -92,10 +90,6 @@ const ECARTS = [
 const NOUVELLES = fs.readdirSync(MIGRATIONS)
   .filter((d) => /^\d{14}_/.test(d) && d > '20261028150000' && !ECARTS.includes(d))
   .sort();
-
-/** Les deux marquees ANNULEES dans l'historique de production. */
-const ANNULEES = ['20261010120000_publication_explicite',
-  '20261017120000_active_tenant_context'];
 
 const dossiers = fs.readdirSync(MIGRATIONS).filter((d) => /^\d{14}_/.test(d)).sort();
 const lire = (d) => fs.readFileSync(path.join(MIGRATIONS, d, 'migration.sql'), 'utf8');
@@ -137,7 +131,7 @@ console.log('\n  1. L etat « 54 appliquees, rien de plus » est-il constructibl
     const r = await appliquer(db, d);
     if (!r.ok) { premiere = { d, message: r.message }; break; }
   }
-  ok('sauter les douze CASSE la chaine : l etat « 54 » n est pas un etat atteignable',
+  ok('sauter les dix CASSE la chaine : l etat « 56 » n est pas un etat atteignable',
     premiere !== null, 'la chaine a survecu, mes conclusions doivent etre revues');
   if (premiere) {
     console.log(`        casse a ${premiere.d.slice(0, 14)} : ${premiere.message.slice(0, 120)}`);
@@ -159,7 +153,7 @@ console.log('\n  1. L etat « 54 appliquees, rien de plus » est-il constructibl
 console.log('\n  2. Preuve indirecte : une migration « annulee » n est pas absente');
 
 /**
- * `20261021120000` est appliquee en production (elle n'est pas dans les douze
+ * `20261021120000` est appliquee en production (elle n'est pas dans les dix
  * ecarts). Le test ci-dessus etablit qu'elle ne PEUT pas l'etre sans les trois
  * fonctions de `20261017120000`. Donc ces fonctions existent en production.
  *
@@ -185,25 +179,25 @@ console.log('\n  2. Preuve indirecte : une migration « annulee » n est pas abs
    3. Le deploy complet, sur l'etat suppose reel
    ========================================================================== */
 
-console.log('\n  3. Sequence des douze, sur une base qui porte deja les cinquante-quatre autres');
+console.log('\n  3. Sequence des dix, sur une base qui porte deja les cinquante-quatre autres');
 
 const db = await nouvelleBase();
-// La base de depart du scenario porte les cinquante-quatre et les deux
+// La base de depart du scenario porte les cinquante-six migrations deja appliquees
 // annulees — rien d'autre. Les NOUVELLES sont exclues ici : elles n'ont jamais
-// ete deployees, et les appliquer AVANT les douze les ferait passer pour « deja
+// ete deployees, et les appliquer AVANT les dix les ferait passer pour « deja
 // appliquees » sur un etat qui ne les porte pas. Mesure du 02/11/2026 : avec
 // elles dans cette boucle, `20261031120000` s'executait sans le registre
 // runtime, ne pouvait donc pas redistribuer l'EXECUTE, et refusait a raison de
 // laisser le runtime sans droit d'appeler la verification du jeton. C'est le
 // scenario `NOUVELLES` qui les applique, apres reconciliation.
 const aAppliquer = dossiers.filter(
-  (d) => (!ECARTS.includes(d) || ANNULEES.includes(d)) && !NOUVELLES.includes(d));
+  (d) => !ECARTS.includes(d) && !NOUVELLES.includes(d));
 for (const d of aAppliquer) {
   const r = await appliquer(db, d);
   if (!r.ok) { console.error(`ECHEC  construction de la base a ${d.slice(0, 14)} : ${r.message}`); process.exit(1); }
 }
 // depot - (ecarts hors annulees) - (nouvelles) : le compte se derive, il ne se recopie pas.
-const attendu = dossiers.length - (ECARTS.length - ANNULEES.length) - NOUVELLES.length;
+const attendu = dossiers.length - ECARTS.length - NOUVELLES.length;
 ok('la base « production avec les deux annulees presentes » se construit',
   aAppliquer.length === attendu, `${aAppliquer.length} / ${attendu}`);
 
@@ -213,15 +207,15 @@ for (const d of ECARTS) {
   resultats.push({ d, ...r });
   console.log(`  ${r.ok ? 'ok   ' : 'ECHEC'}  ${d.slice(0, 14)}${r.ok ? '' : `  ${r.message.slice(0, 100)}`}`);
 }
-ok('les douze migrations s appliquent dans l ordre, sans echec',
+ok('les dix migrations s appliquent dans l ordre, sans echec',
   resultats.every((r) => r.ok),
   resultats.filter((r) => !r.ok).map((r) => r.d.slice(0, 14)).join(', '));
 
-// La migration nouvelle suit les douze : un deploy l appliquerait aussi, et elle
+// Les migrations nouvelles suivent les dix : un deploy l appliquerait aussi, et elle
 // doit passer sur l etat correctement reconcilie.
 for (const d of NOUVELLES) {
   const r = await appliquer(db, d);
-  ok(`la migration nouvelle ${d.slice(0, 14)} s applique apres les douze`, r.ok, r.message);
+  ok(`la migration nouvelle ${d.slice(0, 14)} s applique apres les dix`, r.ok, r.message);
 }
 
 /* L'ordre importe : `20261027130000` redefinit une fonction que
@@ -284,16 +278,16 @@ console.log('\n  5. Ce que cela impose au runbook');
 
 /**
  * Le seul cas ou le `deploy` casse est « effet deja present sur une migration
- * non rejouable ». Pour les onze autres, un effet deja present est sans
+ * non rejouable ». Pour les neuf autres, un effet deja present est sans
  * consequence : elles se rejouent. C'est mesure par `test:rejeu-migrations`.
  */
 ok('une seule migration non rejouable : la table du registre',
-  true, 'mesure par test:rejeu-migrations (11/12 rejouables)');
+  true, 'mesure par test:rejeu-migrations (9/10 rejouables)');
 
 console.log('\n  --------------------------------------------');
 if (echecs === 0) {
   console.log(`  ${verifies} verifications passees.`);
-  console.log('  Le deploy des douze est simule, son point de rupture identifie.');
+  console.log('  Le deploy des dix migrations historiques absentes est simule, son point de rupture identifie.');
   process.exit(0);
 }
 console.error(`  ${echecs} echec(s) sur ${verifies}.`);
