@@ -1,13 +1,13 @@
 {
   "schema": "tracefab-p108-chaine-canonique-v1",
-  "date": "2026-11-07",
+  "date": "2026-11-10",
   "branche": "arena/0f697b3e-tracefab",
-  "main": "788df22019c0d2b39301678ecfbc43ac868561bf",
+  "main": "71855014f4a4f6212b5475f4c208704c0054fb09",
   "sha_reference": "8846184735d8d27314b69ffc5f03511a6e5cfef9",
   "pr114_head": "f0aeb51cb52ce778f7f9a5e857438603d81fa5ad",
   "pr114_head_ancienne": "537bc310d0b6e857c4f74ec0017a130987b22497",
   "pr114_head_date": "2026-11-06T15:34:35Z",
-  "decision": "main(69) + #113(2) + #114(1, tete f0aeb51) + correctif P10.8 REEL(1) = 73 ; #110/#111/#112 exclues car elles reecrivent 7 migrations deja appliquees ; le candidat P10.7 20261106120300 est REMPLACE, pas ajoute, pour supprimer l ambiguite d ordre avec #114 20261106130000",
+  "decision": "main(95) + #113(3) + #114(1, tete f0aeb51) + correctif P10.8 REEL(1) = 100 ; l entree #113 20261105180000_active_tenant_access_guards est retiree : absente du depot, de Preview P11 et de Production ; la migration main 20261105180000_active_tenant_tc_registration_guard est conservee ; #114 reste une entree distante appliquee sur Preview P11 et absente de Production, journal lu en lecture seule ; #110/#111/#112 exclues car elles reecrivent 7 migrations deja appliquees ; le candidat P10.7 20261106120300 est REMPLACE, pas ajoute, pour supprimer l ambiguite d ordre avec #114 20261106130000",
   "collisions_historiques_acceptees": [
     "20261006120000",
     "20261006200000",
@@ -23,9 +23,7 @@
     "effet": "la collision 20261105120000 avec #110/#111/#112 disparait de la chaine canonique et de la chaine etendue",
     "risque": "renommage d une migration deja deployee sur une Preview le 06/11 a 09:30Z : divergence possible du journal _prisma_migrations, mesuree sur base jetable (scenario E), lecture du journal REEL BLOCKED"
   },
-  "renommages_pour_chaine_etendue_si_110_reconciliation": {
-    "20261105180000_active_tenant_access_guards": "20261105180010_active_tenant_access_guards"
-  },
+  "renommages_pour_chaine_etendue_si_110_reconciliation": {},
   "migrations_historiques_reecrites_par_110_111_112": [
     "20261005090000_supplier_portal_advanced_hardening",
     "20261009180000_public_read_context",
@@ -35,7 +33,7 @@
     "20261030140000_ingest_payload_role_guard_and_acl",
     "20261031120000_identite_hmac_liee_au_contexte"
   ],
-  "total": 73,
+  "total": 100,
   "entrees": [
     {
       "nom": "20260923130000_tracefab_neon_initial",
@@ -521,9 +519,128 @@
       "checksum_identique_a_main": true
     },
     {
-      "nom": "20261105180000_active_tenant_access_guards",
+      "nom": "20261104090000_plm_integrations_and_gs1_constraints",
+      "source": "main",
+      "sha256": "a040be467aaaa289822ec5fadd1dd8c6885744b4bb31120276ea0b0be6f3c2bb",
+      "historique_appliquee": true,
+      "checksum_identique_a_main": true
+    },
+    {
+      "nom": "20261104100000_supply_chain_status_enum_casts",
+      "source": "main",
+      "sha256": "418d4d8d4978e1b19ea5e19402e77135798ac70b1bbcfe8f149ab7a4eba8c606",
+      "historique_appliquee": true,
+      "checksum_identique_a_main": true
+    },
+    {
+      "nom": "20261105120000_active_tenant_plm_ingest_enforcement",
+      "source": "main",
+      "sha256": "40f37608024bbedaafd8e5a3d814f0f1a7cf82319647e0b265bc1aed56f27802",
+      "historique_appliquee": true,
+      "checksum_identique_a_main": true
+    },
+    {
+      "nom": "20261105130000_active_tenant_product_dpp_pef_rls",
+      "source": "main",
+      "sha256": "cf38feb4a8625d6529b09a88be4f7b40d6a701cceef8ed57bc73f40982ce838f",
+      "historique_appliquee": true,
+      "checksum_identique_a_main": true
+    },
+    {
+      "nom": "20261105140000_active_tenant_green_claims_rls",
+      "source": "main",
+      "sha256": "eadc14967cc9486ca28a3dab0ea2cafbc101684392af4e753b0c8302e8c2184c",
+      "historique_appliquee": true,
+      "checksum_identique_a_main": true
+    },
+    {
+      "nom": "20261105150000_active_tenant_dpp_claims_identity_rls",
+      "source": "main",
+      "sha256": "392c1e0358bcc43e49de77ca87bd9397ec835c97e9caad3f25539f96c1f38110",
+      "historique_appliquee": true,
+      "checksum_identique_a_main": true
+    },
+    {
+      "nom": "20261105160000_active_tenant_product_materials_rls",
+      "source": "main",
+      "sha256": "7787349c03507f13a364ec3c1bc0bff6a29bea6a8a3eff86c8780328f12eb7e7",
+      "historique_appliquee": true,
+      "checksum_identique_a_main": true
+    },
+    {
+      "nom": "20261105170000_active_tenant_security_definer_guards",
+      "source": "main",
+      "sha256": "667e1f29a7b15a66670932f590eb58259468d2ca2e894f653cfda8fbabc8943b",
+      "historique_appliquee": true,
+      "checksum_identique_a_main": true
+    },
+    {
+      "nom": "20261105180000_active_tenant_tc_registration_guard",
+      "source": "main",
+      "sha256": "5d59326faae7fed87e72fe0aa2374625296db79a45b760a2da594f5647be74bb",
+      "historique_appliquee": true,
+      "checksum_identique_a_main": true
+    },
+    {
+      "nom": "20261105190000_active_tenant_quality_collection_guards",
+      "source": "main",
+      "sha256": "71d7ad89c68fa8a7b6c7fdb7e2cd5409531ed0c091e0e72c12f8df2410d2a83c",
+      "historique_appliquee": true,
+      "checksum_identique_a_main": true
+    },
+    {
+      "nom": "20261105200000_active_tenant_material_certification_guards",
+      "source": "main",
+      "sha256": "f26f6d9d520cf0aabd23ea64339465f7644e94c4b5dd03a3c8838d380bdf193b",
+      "historique_appliquee": true,
+      "checksum_identique_a_main": true
+    },
+    {
+      "nom": "20261105210000_active_tenant_supplier_profile_passport_guards",
+      "source": "main",
+      "sha256": "dc5fd776d7d4f34fa236d2b378ff9d76778de025714c2c0e0b1ed385ea2089a7",
+      "historique_appliquee": true,
+      "checksum_identique_a_main": true
+    },
+    {
+      "nom": "20261105220000_active_tenant_quality_cap_guards",
+      "source": "main",
+      "sha256": "7af5c8e86671f3338b5c466ad86a974ce9c4da4e460ca703aaa4b8783c9102f8",
+      "historique_appliquee": true,
+      "checksum_identique_a_main": true
+    },
+    {
+      "nom": "20261105230000_active_tenant_invite_document_passport_guards",
+      "source": "main",
+      "sha256": "5f8b3f953f4bdbc85c716d710ef3125c6810232487d3b66861fccff583da8a80",
+      "historique_appliquee": true,
+      "checksum_identique_a_main": true
+    },
+    {
+      "nom": "20261105235900_active_tenant_policy_and_worker_closure",
+      "source": "main",
+      "sha256": "75f800b7f842c171e50714652b39fecc8fc281504d68816667921407e267ae9c",
+      "historique_appliquee": true,
+      "checksum_identique_a_main": true
+    },
+    {
+      "nom": "20261105240000_active_tenant_supplier_quality_guard",
+      "source": "main",
+      "sha256": "c06f18684eee66df4f69de2d50c337fc920218b6b78d62753be0327b5d6d76b2",
+      "historique_appliquee": true,
+      "checksum_identique_a_main": true
+    },
+    {
+      "nom": "20261106000000_active_tenant_supplier_passport_guards",
+      "source": "main",
+      "sha256": "e266e512b445e51242792d3ae0aa791561e1079625b09134b5c5dae9e81377f9",
+      "historique_appliquee": true,
+      "checksum_identique_a_main": true
+    },
+    {
+      "nom": "20261106010000_active_tenant_access_guards",
       "source": "#113",
-      "sha256": "4f55f443ad2e0f3208ccec2a5e4cada65205d3482ed29c162c3fd7dfe8f6c4ad",
+      "sha256": "a6e03efdb75d1bf393636ae1ddbc7122ba4efdf438f1737b4ae5b829806928d7",
       "historique_appliquee": false,
       "checksum_identique_a_main": false
     },
@@ -548,6 +665,76 @@
       "historique_appliquee": false,
       "checksum_identique_a_main": false,
       "chemin": "prisma/migrations/20261107120000_p108_outbox_proprietaire_et_dependances/migration.sql"
+    },
+    {
+      "nom": "20261108119900_assert_neon_worker_preflight",
+      "source": "main",
+      "sha256": "54a0d7ec80212ff82c5619379e9ee8e6c16a0a5c14fd0e56c34a715f469a1a57",
+      "historique_appliquee": true,
+      "checksum_identique_a_main": true
+    },
+    {
+      "nom": "20261108120000_ingest_plm_graphe_versionne",
+      "source": "main",
+      "sha256": "eebb9f2107c6a693824466fd0e659eb9d3da2ecbc640603589e7eb231939ac9a",
+      "historique_appliquee": true,
+      "checksum_identique_a_main": true
+    },
+    {
+      "nom": "20261108120100_worker_fonctions_systeme_completes",
+      "source": "main",
+      "sha256": "f3cb1f41fff8dcb5ef012fc95282368b2e86e634ab0fa3198a9f85be4397b6db",
+      "historique_appliquee": true,
+      "checksum_identique_a_main": true
+    },
+    {
+      "nom": "20261108120200_corrections_p106_ownership_et_appartenance",
+      "source": "main",
+      "sha256": "7ce5479ec198cf92d70a02ebb0536a76e3bda41f9cedab784ba2d8819fed2c69",
+      "historique_appliquee": true,
+      "checksum_identique_a_main": true
+    },
+    {
+      "nom": "20261108120300_acl_colonnes_bornees_au_runtime",
+      "source": "main",
+      "sha256": "205d108bcf03627389c0065ea45b8d803f0d720c449cfe28e0d1436352df460f",
+      "historique_appliquee": true,
+      "checksum_identique_a_main": true
+    },
+    {
+      "nom": "20261108120400_lien_graphe_statut_enum_type",
+      "source": "main",
+      "sha256": "b4e1afd9d5df1eea11f0d987986101016ed562b85338baaf91392b9bfd435b8d",
+      "historique_appliquee": true,
+      "checksum_identique_a_main": true
+    },
+    {
+      "nom": "20261108120500_lecture_users_requise_par_les_politiques",
+      "source": "main",
+      "sha256": "bdb339bf7d1ffb1f998094fc81de2d687860d2d31673467f8eb3f31388b8979c",
+      "historique_appliquee": true,
+      "checksum_identique_a_main": true
+    },
+    {
+      "nom": "20261108120600_lecture_orders_requise_par_le_runtime",
+      "source": "main",
+      "sha256": "8d1fc35d245ea42a3e2714ec007010ed6f6b7c88b9d0fa33b7f1345ec83403e5",
+      "historique_appliquee": true,
+      "checksum_identique_a_main": true
+    },
+    {
+      "nom": "20261108120700_assert_worker_membership_revoked",
+      "source": "main",
+      "sha256": "acffe9f4c264ca397c98b8883a87911cf2e823c669aea929ea20214883c134d9",
+      "historique_appliquee": true,
+      "checksum_identique_a_main": true
+    },
+    {
+      "nom": "20261110120000_worker_clerk_organization_prerequisites",
+      "source": "#113",
+      "sha256": "5b873aa198f98477502b71c09be3a60ac8f697ab36ae9cef473a4ee8bebb67d1",
+      "historique_appliquee": false,
+      "checksum_identique_a_main": false
     }
   ],
   "chaines_mesurees": {
