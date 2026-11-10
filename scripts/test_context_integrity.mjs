@@ -113,8 +113,8 @@ const workerCallers = sources.filter((file) => {
     && !/export\s+async\s+function\s+withTracefabWorkerContext/.test(code);
 });
 const importSystemContext = /import\s*\{\s*withTracefabWorkerContext\s*\}\s*from\s*['"]([^'"]+)['"]/;
-ok(workerCallers.length === 5,
-  '5 appelants systeme attendus, ' + workerCallers.length + ' trouve(s)');
+ok(workerCallers.length === 6,
+  '6 appelants systeme attendus, ' + workerCallers.length + ' trouve(s)');
 for (const file of workerCallers) {
   const code = readFileSync(file, 'utf8');
   const imported = code.match(importSystemContext)?.[1] ?? '';
