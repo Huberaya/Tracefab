@@ -194,16 +194,31 @@ try {
   const ecritureWorker = await dansContexte({}, async (c) => {
     const u = await c.query(`SELECT id, email FROM tracefab_upsert_clerk_user($1, $2, 'Sonde worker')`,
       [`sonde-worker-${stamp}`, `sonde-worker-${stamp}@sonde.invalid`]);
+    const clerkOrgId = `sonde-org-${stamp}`;
     const o = await c.query(`SELECT * FROM tracefab_sync_clerk_organization($1, $2, $3, 'brand'::organization_type)`,
-      [`sonde-org-${stamp}`, `Sonde Worker ${stamp}`, `Sonde ${stamp}`]);
-    const orgId = o.rows[0] ? (o.rows[0].id || Object.values(o.rows[0])[0]) : null;
+      [clerkOrgId, `Sonde Worker ${stamp}`, `Sonde ${stamp}`]);
+    const orgId = o.rows[0] ? o.rows[0].id : null;
+    // Le webhook Clerk doit aussi pouvoir resynchroniser une organisation
+    // existante : cela exerce UPDATE sous FORCE RLS, pas seulement INSERT.
+    const oUpdated = await c.query(`SELECT * FROM tracefab_sync_clerk_organization($1, $2, $3, 'brand'::organization_type)`,
+      [clerkOrgId, `Sonde Worker modifiee ${stamp}`, `Sonde modifiee ${stamp}`]);
     const m = await c.query(`SELECT * FROM tracefab_sync_clerk_membership($1, $2::uuid, $3::uuid, 'owner'::membership_role)`,
       [`sonde-mbr-${stamp}`, orgId, u.rows[0].id]);
-    return { users: u.rowCount, organisations: o.rowCount, adhesions: m.rowCount };
+    return {
+      users: u.rowCount,
+      organisations: o.rowCount,
+      organisationsResynchronisees: oUpdated.rowCount,
+      organisationIdStable: oUpdated.rows[0]?.id === orgId,
+      nomOrganisationMisAJour: oUpdated.rows[0]?.display_name === `Sonde modifiee ${stamp}`,
+      adhesions: m.rowCount,
+    };
   });
-  verifier(ecritureWorker.users === 1 && ecritureWorker.organisations === 1 && ecritureWorker.adhesions === 1,
-    'contexte WORKER : le provisionnement Clerk passe par ses fonctions nommees',
-    `users=${ecritureWorker.users} organizations=${ecritureWorker.organisations} memberships=${ecritureWorker.adhesions}`);
+  verifier(ecritureWorker.users === 1 && ecritureWorker.organisations === 1
+      && ecritureWorker.organisationsResynchronisees === 1
+      && ecritureWorker.organisationIdStable && ecritureWorker.nomOrganisationMisAJour
+      && ecritureWorker.adhesions === 1,
+    'contexte WORKER : creation et resynchronisation Clerk passent par les fonctions nommees',
+    `users=${ecritureWorker.users} organizations=${ecritureWorker.organisations} update=${ecritureWorker.organisationsResynchronisees} idStable=${ecritureWorker.organisationIdStable} nomMisAJour=${ecritureWorker.nomOrganisationMisAJour} memberships=${ecritureWorker.adhesions}`);
 
   // Controle negatif : l'ecriture DIRECTE sur `users` sous le role applicatif
   // doit echouer. Sans lui, on ne saurait pas si le privilege a vraiment ete
