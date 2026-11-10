@@ -298,6 +298,10 @@ const MIGRATIONS_AVEC_WORKER_TEMPORAIRE = new Set([
   // tracefab_worker ; le migrateur doit pouvoir les endosser pendant sa
   // transaction, puis perdre l'appartenance avant le COMMIT.
   '20261105235900_active_tenant_policy_and_worker_closure',
+  // Cette migration reconstruit le registre EXECUTE après le transfert de
+  // fonctions au worker ; elle doit pouvoir révoquer/accorder les droits
+  // sur les fonctions dont tracefab_worker est propriétaire.
+  '20261106010000_active_tenant_access_guards',
   '20261108120100_worker_fonctions_systeme_completes',
   '20261108120200_corrections_p106_ownership_et_appartenance',
 ]);
