@@ -217,7 +217,7 @@ ok('les douze migrations s appliquent dans l ordre, sans echec',
   resultats.every((r) => r.ok),
   resultats.filter((r) => !r.ok).map((r) => r.d.slice(0, 14)).join(', '));
 
-// La migration nouvelle suit les onze : un deploy l appliquerait aussi, et elle
+// La migration nouvelle suit les douze : un deploy l appliquerait aussi, et elle
 // doit passer sur l etat correctement reconcilie.
 for (const d of NOUVELLES) {
   const r = await appliquer(db, d);
@@ -284,7 +284,7 @@ console.log('\n  5. Ce que cela impose au runbook');
 
 /**
  * Le seul cas ou le `deploy` casse est « effet deja present sur une migration
- * non rejouable ». Pour les dix autres, un effet deja present est sans
+ * non rejouable ». Pour les onze autres, un effet deja present est sans
  * consequence : elles se rejouent. C'est mesure par `test:rejeu-migrations`.
  */
 ok('une seule migration non rejouable : la table du registre',
