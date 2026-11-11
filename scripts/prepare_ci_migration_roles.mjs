@@ -78,7 +78,7 @@ try {
   );
   await client.query(
     `CREATE ROLE ${ident(migratorRole)} LOGIN PASSWORD ${quote(migratorPassword)}
-       CREATEROLE NOCREATEDB NOBYPASSRLS NOSUPERUSER NOINHERIT`,
+       CREATEROLE NOCREATEDB BYPASSRLS NOSUPERUSER INHERIT`,
   );
   // Le grantor est postgres, distinct de l'administrateur : ADMIN-only est
   // transmissible sans accorder à l'admin SET/INHERIT par défaut.
@@ -110,10 +110,14 @@ try {
       ORDER BY rolname`,
     [[adminRole, migratorRole]],
   )).rows;
-  if (roles.length !== 2 || roles.some(r =>
-    r.rolsuper || r.rolbypassrls || r.rolcreatedb || !r.rolcreaterole
-      || !r.rolcanlogin || r.rolinherit)) {
-    throw new Error('attributs inattendus sur les identités de migration CI');
+  const adminAttrs = roles.find(r => r.rolname === adminRole);
+  const migratorAttrs = roles.find(r => r.rolname === migratorRole);
+  if (roles.length !== 2 || !adminAttrs || !migratorAttrs
+      || roles.some(r => r.rolsuper || r.rolcreatedb || !r.rolcreaterole
+        || !r.rolcanlogin || r.rolreplication)
+      || adminAttrs.rolbypassrls || adminAttrs.rolinherit
+      || !migratorAttrs.rolbypassrls || !migratorAttrs.rolinherit) {
+    throw new Error('attributs inattendus : admin sans BYPASSRLS, migrateur BYPASSRLS de migration uniquement, aucun SUPERUSER');
   }
   const schemaOwner = (await client.query(
     `SELECT pg_catalog.pg_get_userbyid(nspowner) AS owner
