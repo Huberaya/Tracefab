@@ -262,40 +262,63 @@ try {
   ok(true, 'R6 base de travail créée', baseTravail);
 
   // Le rôle applicatif est un objet de CLUSTER : il préexiste ici, ce qui est
-  // exactement la situation d'une seconde base jetable.
+  // exactement la situation d'une seconde base jetable. La chaîne s'exécute
+  // réellement sous tracefab_migrator (CREATEROLE/BYPASSRLS/NOINHERIT), tandis
+  // que TF_ADMIN_URL reste l'identité administrative du banc PostgreSQL.
   let bootstrap;
+  let chaine = { status: 1, stdout: '', stderr: 'bootstrap non exécuté' };
+  let baseAdmin = null;
+  const motDePasseMigrateur = randomBytes(32).toString('hex');
   try {
     verrou = await verrouillerCluster({ urlProprietaire: urlAdmin });
     bootstrap = spawnSync(process.execPath, ['scripts/bootstrap_app_role.mjs'], {
       env: { ...process.env, DATABASE_URL: urlBase.toString(), TF_APP_PASSWORD: process.env.TF_APP_PASSWORD || 'p106_jetable' },
       encoding: 'utf8',
     });
+    ok(bootstrap.status === 0, 'R6 rôle applicatif disponible avant la chaîne',
+      (bootstrap.stderr || bootstrap.stdout || '').trim().split('\n').pop() || `code ${bootstrap.status}`);
+
+    if (bootstrap.status === 0) {
+      await admin.query(`CREATE ROLE tracefab_migrator LOGIN PASSWORD '${motDePasseMigrateur}' CREATEROLE BYPASSRLS NOINHERIT NOSUPERUSER NOCREATEDB NOREPLICATION`);
+      baseAdmin = new pg.Client({ connectionString: urlBase.toString(), ssl: sslDepuisUrl(urlBase.toString()) });
+      await baseAdmin.connect();
+      // Neon installe pgcrypto côté plateforme ; le rôle migrateur ne reçoit
+      // jamais CREATE EXTENSION. On reproduit ce prérequis administratif.
+      await baseAdmin.query('CREATE EXTENSION IF NOT EXISTS pgcrypto');
+      await baseAdmin.query(`GRANT CREATE ON DATABASE ${baseTravail} TO tracefab_migrator`);
+      await baseAdmin.query('ALTER SCHEMA public OWNER TO tracefab_migrator');
+      await baseAdmin.end();
+      baseAdmin = null;
+    }
   } finally {
+    if (baseAdmin) await baseAdmin.end().catch(() => {});
     if (verrou) { await verrou.relacher(); verrou = null; }
   }
-  ok(bootstrap.status === 0, 'R6 rôle applicatif disponible avant la chaîne',
-    (bootstrap.stderr || bootstrap.stdout || '').trim().split('\n').pop() || `code ${bootstrap.status}`);
 
-  const chaine = spawnSync(process.execPath, ['scripts/migrer_fidelement.mjs'], {
-    env: {
-      ...process.env,
-      DATABASE_URL: urlBase.toString(),
-      TF_ADMIN_URL: urlAdmin.toString(),
-      TF_ALLOW_WRITE: 'oui',
-      TF_ALLOW_ELEVATION: 'oui',
-    },
-    encoding: 'utf8',
-  });
+  if (bootstrap?.status === 0) {
+    const urlMigrator = new URL(urlBase.toString());
+    urlMigrator.username = 'tracefab_migrator';
+    urlMigrator.password = motDePasseMigrateur;
+    chaine = spawnSync(process.execPath, ['scripts/migrer_fidelement.mjs'], {
+      env: {
+        ...process.env,
+        DATABASE_URL: urlMigrator.toString(),
+        TF_ADMIN_URL: urlBase.toString(),
+        TF_ALLOW_WRITE: 'oui',
+      },
+      encoding: 'utf8',
+    });
+  }
   const sortie = `${chaine.stdout || ''}${chaine.stderr || ''}`.trim().split('\n');
-  ok(chaine.status === 0, 'R6 la chaîne s applique sur une base neuve d un cluster déjà migré (défaut D5)',
-    chaine.status === 0 ? sortie.filter((l) => /appliquee\(s\)/.test(l)).pop() : sortie.filter((l) => /ECHEC/.test(l)).slice(-1)[0]);
+  ok(chaine.status === 0, 'R6 le runner applique la chaîne sous tracefab_migrator sans élévation SUPERUSER',
+    chaine.status === 0 ? sortie.filter((l) => /appliquee\(s\)/.test(l)).pop() : sortie.filter((l) => /ECHEC|ERREUR|ERROR/.test(l)).slice(-1)[0] || sortie.slice(-1)[0]);
 
   const client = new pg.Client({ connectionString: urlBase.toString(), ssl: sslDepuisUrl(urlBase.toString()) });
   await client.connect();
   try {
     const appliquees = (await client.query(
       'SELECT count(*)::int AS n FROM _prisma_migrations WHERE finished_at IS NOT NULL')).rows[0].n;
-    ok(appliquees >= 60, 'R6 toutes les migrations sont appliquées', `${appliquees} migration(s)`);
+    ok(appliquees >= 90, 'R6 toutes les migrations sont appliquées par le migrateur non-superuser', `${appliquees} migration(s)`);
 
     const membres = (await client.query(
       `SELECT r.rolname,
@@ -316,6 +339,25 @@ try {
       membresEffectifs.map((r) => r.rolname).join(', ') ||
         `aucun (lignes ADMIN-only résiduelles tolérées : ${membres.length})`);
 
+    const bailAdminActif = (await client.query(
+      `SELECT EXISTS (
+         SELECT 1 FROM pg_catalog.pg_auth_members m
+         JOIN pg_catalog.pg_roles r ON r.oid=m.member
+         JOIN pg_catalog.pg_roles w ON w.oid=m.roleid
+        WHERE r.rolname='postgres' AND w.rolname='tracefab_migrator'
+          AND (m.set_option OR m.inherit_option)
+      ) AS actif`)).rows[0].actif;
+    ok(bailAdminActif === false,
+      'R7 aucun bail SET/INHERIT du migrateur ne subsiste sur la session administrative');
+
+    const attributsMigrateur = (await client.query(
+      `SELECT rolsuper, rolbypassrls, rolcreaterole, rolinherit
+         FROM pg_catalog.pg_roles WHERE rolname='tracefab_migrator'`)).rows[0];
+    ok(!!attributsMigrateur && !attributsMigrateur.rolsuper
+      && attributsMigrateur.rolbypassrls && attributsMigrateur.rolcreaterole
+      && !attributsMigrateur.rolinherit,
+      'R7 le migrateur reste CREATEROLE/BYPASSRLS/NOINHERIT et jamais SUPERUSER');
+
     const appMembre = (await client.query(
       `SELECT count(*)::int AS n FROM pg_catalog.pg_auth_members m
          JOIN pg_catalog.pg_roles r ON r.oid = m.member
@@ -334,18 +376,33 @@ try {
 } catch (e) {
   ok(false, 'R6 la chaîne a pu être mesurée', (e.message || '').split('\n')[0].slice(0, 80));
 } finally {
-  // R7 — la base de travail disparaît, quoi qu'il arrive.
-  const destruction = await admin.query(
-    `SELECT pg_catalog.pg_terminate_backend(pid) FROM pg_catalog.pg_stat_activity
-      WHERE datname = $1 AND pid <> pg_catalog.pg_backend_pid()`, [baseTravail]).catch(() => ({ rows: [] }));
-  void destruction;
-  await admin.query(`DROP DATABASE IF EXISTS ${baseTravail} WITH (FORCE)`).catch((e) => {
-    console.error(`  info  destruction de ${baseTravail} : ${e.message}`);
-  });
-  const restantes = (await admin.query(
-    'SELECT count(*)::int AS n FROM pg_database WHERE datname = $1', [baseTravail])).rows[0].n;
-  ok(restantes === 0, 'R7 la base de travail est détruite (aucune base résiduelle)', `${restantes} restante(s)`);
-  if (verrou) await verrou.relacher();
+  // R7 — la base de travail et les rôles jetables disparaissent, quoi qu'il arrive.
+  try {
+    verrou = await verrouillerCluster({ urlProprietaire: urlAdmin });
+    const destruction = await admin.query(
+      `SELECT pg_catalog.pg_terminate_backend(pid) FROM pg_catalog.pg_stat_activity
+        WHERE datname = $1 AND pid <> pg_catalog.pg_backend_pid()`, [baseTravail]).catch(() => ({ rows: [] }));
+    void destruction;
+    await admin.query(`DROP DATABASE IF EXISTS ${baseTravail} WITH (FORCE)`).catch((e) => {
+      console.error(`  info  destruction de ${baseTravail} : ${e.message}`);
+    });
+    const restantes = (await admin.query(
+      'SELECT count(*)::int AS n FROM pg_database WHERE datname = $1', [baseTravail])).rows[0].n;
+    ok(restantes === 0, 'R7 la base de travail est détruite (aucune base résiduelle)', `${restantes} restante(s)`);
+    await admin.query('REVOKE tracefab_worker FROM tracefab_migrator').catch(() => {});
+    await admin.query('REVOKE tracefab_migrator FROM postgres').catch(() => {});
+    await admin.query('DROP ROLE IF EXISTS tracefab_worker').catch((e) => {
+      console.error(`  info  nettoyage tracefab_worker : ${e.message}`);
+    });
+    await admin.query('DROP ROLE IF EXISTS tracefab_migrator').catch((e) => {
+      console.error(`  info  nettoyage tracefab_migrator : ${e.message}`);
+    });
+    const rolesRestants = (await admin.query(
+      `SELECT count(*)::int AS n FROM pg_catalog.pg_roles WHERE rolname IN ('tracefab_migrator','tracefab_worker')`)).rows[0].n;
+    ok(rolesRestants === 0, 'R7 les rôles migrateur/worker jetables sont supprimés', `${rolesRestants} rôle(s) restant(s)`);
+  } finally {
+    if (verrou) { await verrou.relacher(); verrou = null; }
+  }
 }
 
 await admin.end();
