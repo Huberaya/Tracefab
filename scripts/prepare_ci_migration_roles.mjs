@@ -65,7 +65,7 @@ try {
   await client.query('BEGIN');
   await client.query(
     `CREATE ROLE ${ident(adminRole)} LOGIN PASSWORD ${quote(adminPassword)}
-       CREATEROLE NOCREATEDB NOBYPASSRLS NOSUPERUSER NOINHERIT`,
+       CREATEROLE BYPASSRLS NOCREATEDB NOSUPERUSER NOINHERIT`,
   );
   await client.query(
     `CREATE ROLE ${ident(migratorRole)} LOGIN PASSWORD ${quote(migratorPassword)}
@@ -102,9 +102,9 @@ try {
     [[adminRole, migratorRole]],
   )).rows;
   if (roles.length !== 2 || roles.some(r =>
-    r.rolsuper || r.rolbypassrls || r.rolcreatedb || !r.rolcreaterole
+    r.rolsuper || !r.rolbypassrls || r.rolcreatedb || !r.rolcreaterole
       || !r.rolcanlogin || r.rolinherit)) {
-    throw new Error('attributs inattendus sur les identités de migration CI');
+    throw new Error('attributs inattendus : admin/migrateur doivent être CREATEROLE+BYPASSRLS, jamais SUPERUSER');
   }
   const membership = (await client.query(
     `SELECT admin_option, set_option, inherit_option
