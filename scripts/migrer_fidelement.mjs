@@ -97,18 +97,19 @@ const migrationsDisque = readdirSync(DOSSIER)
 const empreinte = (fichier) => createHash('sha256').update(readFileSync(fichier)).digest('hex');
 
 // ---------------------------------------------------------------------------
-// Les migrations worker sont désormais autonomes et compatibles Neon.
+// Bootstrap du rôle worker et migrations suivantes.
 //
-// 20261028120100 crée le rôle avec ses attributs non privilégiés, accorde à
-// current_user une appartenance SET/INHERIT temporaire (ADMIN FALSE), transfère
-// les fonctions, puis révoque le grant dans la même transaction.
-// Les migrations documentaires/HMAC/fermeture RLS et P107 appliquent le même
-// principe lorsqu'elles doivent endosser tracefab_worker.
+// 20261028120100 crée tracefab_worker puis doit accorder à current_user une
+// appartenance SET/INHERIT temporaire (ADMIN FALSE). Avant cette création,
+// l'exécutant ne peut pas s'accorder lui-même ce droit : le runner de rehearsal
+// utilise donc une élévation administrative bornée autour de cette migration,
+// puis vérifie sa révocation avant de poursuivre.
+// Les migrations ultérieures utilisent l'appartenance temporaire dans leur
+// transaction lorsqu'elles doivent endosser tracefab_worker.
 //
-// Aucun SUPERUSER temporaire n'est requis. Le module migrations_assistees.mjs
-// reste vide pour compatibilité du runner historique. Ce runner continue de
-// refuser explicitement Production : l'exécution Production doit utiliser
-// Prisma migrate deploy après validation CI et préflight.
+// Ce runner reste explicitement INTERDIT en Production. Il sert au banc de
+// rehearsal et à ses tests ; la Production doit utiliser un mécanisme Prisma
+// supporté, avec l'identité Neon d'administration prévue, après CI et préflight.
 // ---------------------------------------------------------------------------
 const urlAdmin = (process.env.TF_ADMIN_URL || '').trim();
 const elevationAutorisee = process.env.TF_ALLOW_ELEVATION === 'oui';
