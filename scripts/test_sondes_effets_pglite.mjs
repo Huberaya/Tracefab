@@ -26,6 +26,7 @@
  *   npm run test:sondes-effets
  */
 import fs from 'node:fs';
+import { executerMigrationPglite } from './lib/pglite-worker-runner.mjs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -88,7 +89,7 @@ async function construire(sans = new Set()) {
   for (const d of dossiers) {
     if (sans.has(d)) { sautees.push(d); continue; }
     try {
-      await db.exec(lire(d));
+      await executerMigrationPglite(db, d, lire(d));
     } catch (e) {
       // Retirer une migration peut rendre la suivante impossible (elle modifie
       // une fonction que sa predecesseure cree). On le dit, on ne le masque pas.
