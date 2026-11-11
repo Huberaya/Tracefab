@@ -481,6 +481,7 @@ try {
     await admin.query('DROP OWNED BY tracefab_worker').catch(() => {});
     await admin.query('DROP OWNED BY tracefab_migrator').catch(() => {});
     await admin.query('DROP OWNED BY tracefab_admin').catch(() => {});
+    await admin.query('DROP OWNED BY tracefab_app').catch(() => {});
     await admin.query('DROP ROLE IF EXISTS tracefab_worker').catch((e) => {
       console.error(`  info  nettoyage tracefab_worker : ${e.message}`);
     });
@@ -490,9 +491,12 @@ try {
     await admin.query('DROP ROLE IF EXISTS tracefab_admin').catch((e) => {
       console.error(`  info  nettoyage tracefab_admin : ${e.message}`);
     });
+    await admin.query('DROP ROLE IF EXISTS tracefab_app').catch((e) => {
+      console.error(`  info  nettoyage tracefab_app : ${e.message}`);
+    });
     const rolesRestants = (await admin.query(
-      `SELECT count(*)::int AS n FROM pg_catalog.pg_roles WHERE rolname IN ('tracefab_migrator','tracefab_worker','tracefab_admin')`)).rows[0].n;
-    ok(rolesRestants === 0, 'R7 les rôles migrateur/worker/admin jetables sont supprimés', `${rolesRestants} rôle(s) restant(s)`);
+      `SELECT count(*)::int AS n FROM pg_catalog.pg_roles WHERE rolname IN ('tracefab_migrator','tracefab_worker','tracefab_admin','tracefab_app')`)).rows[0].n;
+    ok(rolesRestants === 0, 'R7 les rôles migrateur/worker/admin/app jetables sont supprimés', `${rolesRestants} rôle(s) restant(s)`);
   } finally {
     if (verrou) { await verrou.relacher(); verrou = null; }
   }
