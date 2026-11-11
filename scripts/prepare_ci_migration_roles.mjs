@@ -58,6 +58,10 @@ try {
     throw new Error(`rôle(s) CI préexistant(s), refus de les réutiliser : ${existing.map(x => x.rolname).join(', ')}`);
   }
 
+  // Neon fournit pgcrypto au niveau plateforme. Le banc local reproduit
+  // ce prérequis avant de donner au migrateur son seul privilège CREATE DB.
+  await client.query('CREATE EXTENSION IF NOT EXISTS pgcrypto');
+
   await client.query('BEGIN');
   await client.query(
     `CREATE ROLE ${ident(adminRole)} LOGIN PASSWORD ${quote(adminPassword)}
@@ -78,6 +82,15 @@ try {
   );
   await client.query(
     `GRANT CREATE ON SCHEMA public TO ${ident(migratorRole)} WITH GRANT OPTION`,
+  );
+  // Le rôle migrateur ne doit pas pouvoir créer l'extension lui-même :
+  // pgcrypto est préinstallée, mais CREATE DB est nécessaire pour que
+  // CREATE EXTENSION IF NOT EXISTS soit accepté par PostgreSQL 17.
+  await client.query(
+    `GRANT CREATE ON DATABASE ${ident('tracefab_test')} TO ${ident(migratorRole)}`,
+  );
+  await client.query(
+    `ALTER SCHEMA public OWNER TO ${ident(migratorRole)}`,
   );
 
   const roles = (await client.query(
