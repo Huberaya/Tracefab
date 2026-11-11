@@ -4,14 +4,13 @@
  *
  * Le SQL des migrations n'introduit aucun SUPERUSER et révoque ses grants.
  * Le SQL et le runner n'introduisent aucun SUPERUSER.
- * Le migrateur CREATEROLE crée tracefab_worker, s'accorde le bail technique
- * dans la migration de bootstrap puis le révoque lui-même. Les migrations
- * ultérieures reçoivent un bail transactionnel du runner administratif.
+ * L'administrateur CREATEROLE préprovisionne tracefab_worker et garde ADMIN-only.
+ * Il accorde SET/INHERIT au migrateur uniquement pendant chaque migration
+ * déclarée ; le runner révoque ce bail avant COMMIT.
  *
  * R1 aucun chemin ne rend le migrateur SUPERUSER ni ne demande d'élévation ;
- * R2 le migrateur délègue ADMIN-only au runner ; l'admin accorde ensuite
- *    SET/INHERIT temporaire au migrateur. Le runner révoque les deux baux
- *    administratifs et SET/INHERIT ; le migrateur conserve ADMIN-only.
+ * R2 l'admin préprovisionne le worker et accorde un bail SET/INHERIT sans ADMIN ;
+ *    le runner révoque ce bail après chaque migration ; l'admin garde ADMIN-only.
  * R3 la chaîne complète s'applique sur une base vierge d'un cluster déjà migré ;
  * R4 aucun droit SET/USAGE ni grant INHERIT actif vers tracefab_worker ne subsiste ;
  * R5 tracefab_app ne reçoit aucune appartenance et aucun rôle runtime n'est
@@ -65,13 +64,15 @@ const migration201 = readFileSync(
   'prisma/migrations/20261028120100_worker_identity_not_forgeable/migration.sql',
   'utf8'
 );
-ok(/WITH SET TRUE, INHERIT TRUE, ADMIN TRUE/.test(migration201),
-  'R1 le migrateur conserve ADMIN-only pour déléguer au runner');
-ok(!/ALTER ROLE tracefab_worker[\s\S]{0,240}NOSUPERUSER/i.test(migration201),
-  'R1 aucune ALTER ROLE NOSUPERUSER qui exige un superutilisateur');
-ok(/REVOKE SET OPTION FOR tracefab_worker/.test(migration201)
-   && /REVOKE INHERIT OPTION FOR tracefab_worker/.test(migration201),
-  'R1 le bootstrap retire SET/INHERIT tout en conservant ADMIN-only');
+ok(/tracefab_worker_must_be_preprovisioned_by_runner/.test(migration201),
+  'R1 le bootstrap refuse un worker absent au lieu de créer un rôle');
+ok(/tracefab\.worker_membership_managed/.test(migration201)
+   && /pg_has_role\(current_user, 'tracefab_worker', 'SET'\)/.test(migration201)
+   && /pg_has_role\(current_user, 'tracefab_worker', 'USAGE'\)/.test(migration201),
+  'R1 le bootstrap exige un bail runner SET/INHERIT explicite');
+ok(!/ADMIN TRUE/.test(migration201)
+   && !/ALTER ROLE tracefab_worker[\s\S]{0,240}NOSUPERUSER/i.test(migration201),
+  'R1 la migration ne délègue pas ADMIN et ne demande aucune élévation');
 
 const admin = new pg.Client({ connectionString: urlAdmin, ssl: sslDepuisUrl(urlAdmin), application_name: 'tracefab-p106-rejouable' });
 await admin.connect();
@@ -113,8 +114,8 @@ await admin.connect();
     )).rows[0]?.rolsuper;
     if (isSuper) throw new Error('le rôle CREATEROLE de test ne doit pas être SUPERUSER');
 
-    // Reproduire les deux baux du runner Neon dans une seule transaction :
-    // l'admin endosse temporairement le migrateur, qui endosse ensuite le worker.
+    // L'administrateur crée le worker et conserve ADMIN-only. Il accorde
+    // uniquement SET/INHERIT au migrateur, comme le runner réel.
     await operator.query(`GRANT ${migratorRole} TO ${adminRole} WITH SET TRUE, INHERIT TRUE, ADMIN FALSE`);
     const adminLease = (await operator.query(
       `SELECT pg_catalog.pg_has_role($1,$2,'SET') AS can_set,
@@ -124,24 +125,33 @@ await admin.connect();
     ok(adminLease.can_set && adminLease.can_use,
       'R2 le runner accorde temporairement SET/INHERIT du migrateur à sa session administrative');
 
-    await operator.query(`SET ROLE ${migratorRole}`);
-    const current = (await operator.query('SELECT current_user AS u, session_user AS s')).rows[0];
-    ok(current.u === migratorRole && current.s === adminRole,
-      'R2 la session administrative endosse le migrateur sans SUPERUSER');
-
     await operator.query(`CREATE ROLE ${workerRole} NOLOGIN NOINHERIT NOBYPASSRLS NOSUPERUSER NOCREATEROLE NOCREATEDB`);
-    await operator.query(`GRANT ${workerRole} TO ${migratorRole} WITH SET TRUE, INHERIT TRUE, ADMIN TRUE`);
+    const adminWorker = (await operator.query(
+      `SELECT EXISTS (SELECT 1 FROM pg_catalog.pg_auth_members m
+                       WHERE m.member=$1::regrole AND m.roleid=$2::regrole
+                         AND m.admin_option AND NOT m.set_option AND NOT m.inherit_option) AS admin_only`,
+      [adminRole, workerRole]
+    )).rows[0].admin_only;
+    ok(adminWorker,
+      'R2 le créateur du worker conserve ADMIN-only, sans SET ni INHERIT');
+
+    await operator.query(`GRANT ${workerRole} TO ${migratorRole} WITH SET TRUE, INHERIT TRUE, ADMIN FALSE`);
     await operator.query(`GRANT CREATE ON SCHEMA public TO ${workerRole}`);
-    const creatorLease = (await operator.query(
+    const workerLease = (await operator.query(
       `SELECT pg_catalog.pg_has_role($1,$2,'SET') AS can_set,
               pg_catalog.pg_has_role($1,$2,'USAGE') AS can_use,
               EXISTS (SELECT 1 FROM pg_catalog.pg_auth_members m
                        WHERE m.member=$1::regrole AND m.roleid=$2::regrole
-                         AND m.admin_option) AS has_admin`,
+                         AND NOT m.admin_option AND m.set_option AND m.inherit_option) AS set_inherit_only`,
       [migratorRole, workerRole]
     )).rows[0];
-    ok(creatorLease.can_set && creatorLease.can_use && creatorLease.has_admin,
-      'R2 le migrateur NOINHERIT conserve ADMIN/SET/INHERIT sur le worker créé');
+    ok(workerLease.can_set && workerLease.can_use && workerLease.set_inherit_only,
+      'R2 le migrateur reçoit SET/INHERIT sans ADMIN');
+
+    await operator.query(`SET ROLE ${migratorRole}`);
+    const current = (await operator.query('SELECT current_user AS u, session_user AS s')).rows[0];
+    ok(current.u === migratorRole && current.s === adminRole,
+      'R2 la session administrative endosse le migrateur sans SUPERUSER');
 
     await operator.query(`CREATE FUNCTION public.${fn}() RETURNS integer LANGUAGE sql AS 'SELECT 1'`);
     await operator.query(`ALTER FUNCTION public.${fn}() OWNER TO ${workerRole}`);
@@ -152,51 +162,38 @@ await admin.connect();
     ok(owner === workerRole,
       'R2 le migrateur transfère une fonction au worker sans SUPERUSER', owner || 'propriétaire absent');
 
-    // Comme le bootstrap, le migrateur retire SET/INHERIT mais garde ADMIN.
-    await operator.query(`REVOKE SET OPTION FOR ${workerRole} FROM ${migratorRole}`);
-    await operator.query(`REVOKE INHERIT OPTION FOR ${workerRole} FROM ${migratorRole}`);
-    const migratorBootstrap = (await operator.query(
+    // Fin de migration : le runner retire le bail SET/INHERIT du migrateur.
+    await operator.query('RESET ROLE');
+    await operator.query(`REVOKE ${workerRole} FROM ${migratorRole}`);
+    const workerAfter = (await operator.query(
       `SELECT pg_catalog.pg_has_role($1,$2,'SET') AS can_set,
               pg_catalog.pg_has_role($1,$2,'USAGE') AS can_use,
               EXISTS (SELECT 1 FROM pg_catalog.pg_auth_members m
                        WHERE m.member=$1::regrole AND m.roleid=$2::regrole
-                         AND m.admin_option) AS has_admin`,
+                         AND (m.admin_option OR m.set_option OR m.inherit_option)) AS any_membership`,
       [migratorRole, workerRole]
     )).rows[0];
-    ok(migratorBootstrap.can_set === false && migratorBootstrap.can_use === false
-      && migratorBootstrap.has_admin === true,
-      'R2 le migrateur ne conserve que ADMIN après le bootstrap');
+    ok(workerAfter.can_set === false && workerAfter.can_use === false
+      && workerAfter.any_membership === false,
+      'R2 le runner révoque entièrement le bail worker du migrateur');
 
-    // Le migrateur délègue ADMIN-only à la session administrative ; celle-ci
-    // peut alors accorder SET/INHERIT au migrateur pour la migration suivante.
-    await operator.query(`GRANT ${workerRole} TO ${adminRole} WITH ADMIN TRUE, SET FALSE, INHERIT FALSE`);
-    const adminWorkerAdmin = (await operator.query(
-      `SELECT EXISTS (SELECT 1 FROM pg_catalog.pg_auth_members m
-                       WHERE m.member=$1::regrole AND m.roleid=$2::regrole
-                         AND m.admin_option AND NOT m.set_option AND NOT m.inherit_option) AS has_admin`,
-      [adminRole, workerRole]
-    )).rows[0].has_admin;
-    ok(adminWorkerAdmin,
-      'R2 la session administrative reçoit ADMIN-only, sans SET ni INHERIT');
-
-    await operator.query('RESET ROLE');
+    // Migration suivante : l'admin peut réaccorder SET/INHERIT grâce à
+    // l'ADMIN-only qu'il conserve comme créateur du worker.
     await operator.query(`GRANT ${workerRole} TO ${migratorRole} WITH SET TRUE, INHERIT TRUE, ADMIN FALSE`);
-    const membership = (await operator.query(
+    const nextLease = (await operator.query(
       `SELECT pg_catalog.pg_has_role($1,$2,'SET') AS can_set,
               pg_catalog.pg_has_role($1,$2,'USAGE') AS can_use`,
       [migratorRole, workerRole]
     )).rows[0];
-    ok(membership.can_set && membership.can_use,
-      'R2 l admin accorde le bail SET/INHERIT au migrateur grâce à ADMIN-only');
-
+    ok(nextLease.can_set && nextLease.can_use,
+      'R2 le bail SET/INHERIT peut être réaccordé pour la migration suivante');
     await operator.query(`SET ROLE ${migratorRole}`);
     const session = (await operator.query('SELECT current_user AS u, session_user AS s')).rows[0];
     ok(session.u === migratorRole && session.s === adminRole,
-      'R2 le migrateur reprend son identité pendant la migration');
+      'R2 le migrateur reprend son identité pendant la migration suivante');
 
     await operator.query('RESET ROLE');
     await operator.query(`REVOKE ${workerRole} FROM ${migratorRole}`);
-    await operator.query(`REVOKE ${workerRole} FROM ${adminRole}`);
     await operator.query(`REVOKE ${migratorRole} FROM ${adminRole}`);
 
     const workerAfterRows = (await operator.query(
@@ -205,17 +202,8 @@ await admin.connect();
         WHERE member=$1::regrole AND roleid=$2::regrole`,
       [migratorRole, workerRole]
     )).rows;
-    const workerAfter = (await operator.query(
-      `SELECT pg_catalog.pg_has_role($1,$2,'SET') AS can_set,
-              pg_catalog.pg_has_role($1,$2,'USAGE') AS can_use`,
-      [migratorRole, workerRole]
-    )).rows[0];
-    const workerEffective = workerAfterRows.filter((r) => r.set_option || r.inherit_option);
-    const migratorAdminOnly = workerAfterRows.some((r) => r.admin_option && !r.set_option && !r.inherit_option);
-    ok(workerAfter.can_set === false && workerAfter.can_use === false
-      && workerEffective.length === 0 && migratorAdminOnly,
-      'R2 après nettoyage, le migrateur ne garde que ADMIN-only sur le worker',
-      `SET=${workerAfter.can_set} · USAGE=${workerAfter.can_use} · ADMIN-only=${migratorAdminOnly}`);
+    ok(workerAfterRows.length === 0,
+      'R2 aucun privilège worker ne subsiste sur le migrateur');
 
     const adminWorkerRows = (await operator.query(
       `SELECT admin_option, inherit_option, set_option
@@ -223,8 +211,9 @@ await admin.connect();
         WHERE member=$1::regrole AND roleid=$2::regrole`,
       [adminRole, workerRole]
     )).rows;
-    ok(adminWorkerRows.length === 0,
-      'R2 le bail ADMIN-only de la session administrative est révoqué');
+    ok(adminWorkerRows.length === 1 && adminWorkerRows[0].admin_option
+      && !adminWorkerRows[0].set_option && !adminWorkerRows[0].inherit_option,
+      'R2 la session administrative conserve uniquement ADMIN-only sur le worker');
 
     const migratorAfterRows = (await operator.query(
       `SELECT admin_option, inherit_option, set_option
@@ -433,8 +422,9 @@ try {
          JOIN pg_catalog.pg_roles w ON w.oid=m.roleid
         WHERE r.rolname='tracefab_admin' AND w.rolname='tracefab_worker'`
     )).rows;
-    ok(adminWorkerRows.length === 0,
-      'R7 le bail ADMIN-only du runner sur tracefab_worker est révoqué');
+    ok(adminWorkerRows.length === 1 && adminWorkerRows.every((r) =>
+      r.admin_option && !r.set_option && !r.inherit_option),
+      'R7 le runner conserve ADMIN-only sur tracefab_worker, sans SET ni INHERIT');
 
     const attributsMigrateur = (await client.query(
       `SELECT rolsuper, rolbypassrls, rolcreaterole, rolinherit
