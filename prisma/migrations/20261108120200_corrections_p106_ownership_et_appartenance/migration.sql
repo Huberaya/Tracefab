@@ -60,16 +60,8 @@ BEGIN
   SELECT rolsuper INTO v_superuser
     FROM pg_catalog.pg_roles WHERE rolname = current_user;
 
-  IF v_superuser IS DISTINCT FROM TRUE THEN
-    IF EXISTS (
-      SELECT 1 FROM pg_catalog.pg_auth_members m
-      JOIN pg_catalog.pg_roles r ON r.oid = m.member
-      JOIN pg_catalog.pg_roles w ON w.oid = m.roleid
-      WHERE r.rolname = current_user AND w.rolname = 'tracefab_worker'
-    ) THEN
-      RAISE EXCEPTION 'worker_membership_preexisting'
-        USING HINT = 'Aucune appartenance worker ne doit précéder la transaction de cette migration.';
-    END IF;
+  IF v_superuser IS DISTINCT FROM TRUE
+     AND NOT pg_catalog.pg_has_role(current_user, 'tracefab_worker', 'SET') THEN
     EXECUTE pg_catalog.format(
       'GRANT tracefab_worker TO %I WITH SET TRUE, INHERIT TRUE, ADMIN FALSE',
       current_user
@@ -91,10 +83,9 @@ BEGIN
           WHERE cible.rolname = 'tracefab_worker' AND membre.rolname = current_user)
     INTO v_peut_set, v_inherit, v_set, v_admin;
 
-  -- Cette migration ne GRANT jamais un rôle : tracefab_migrator ne possède
-  -- ni ADMIN OPTION ni CREATEROLE. Le runner accorde SET/INHERIT via sa
-  -- connexion administrative après 20261028120100, puis révoque avant la
-  -- migration terminale 20261108120700.
+  -- Sur Neon, current_user dispose de CREATEROLE. Si le runner a déjà
+  -- accordé l'appartenance temporaire, elle est vérifiée ; sinon la migration
+  -- la crée elle-même. Dans les deux cas, elle est révoquée avant COMMIT.
   IF v_superuser IS DISTINCT FROM TRUE THEN
     IF v_peut_set IS DISTINCT FROM TRUE OR v_inherit IS DISTINCT FROM TRUE
        OR v_set IS DISTINCT FROM TRUE THEN
