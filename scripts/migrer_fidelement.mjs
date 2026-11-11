@@ -291,45 +291,118 @@ if (roleExecutant !== 'tracefab_migrator') {
   }
 }
 
-/** Révoque l'appartenance worker et vérifie l'absence effective. */
+/** Révoque les baux temporaires worker ; ADMIN-only du migrateur reste isolé. */
 async function revoquerAppartenanceWorker(moment) {
-  // Toujours nettoyer le rôle courant ET le migrateur nominal : un run précédent
-  // peut avoir été lancé avec une autre identité administrative.
-  const cibles = [...new Set([roleExecutant, 'tracefab_migrator'])];
+  const roleAdmin = clientAdmin
+    ? (await clientAdmin.query('SELECT current_user AS u')).rows[0]?.u
+    : null;
+  const cibles = [...new Set([roleExecutant, 'tracefab_migrator', 'tracefab_app', roleAdmin].filter(Boolean))];
   for (const cible of cibles) {
     const etat = (await client.query(
       `SELECT r.rolsuper,
-              pg_catalog.pg_has_role(r.oid, w.oid, 'SET') AS peut_set,
-              pg_catalog.pg_has_role(r.oid, w.oid, 'USAGE') AS peut_utiliser
+              CASE WHEN r.rolsuper THEN false
+                   ELSE pg_catalog.pg_has_role(r.oid, w.oid, 'SET') END AS peut_set,
+              CASE WHEN r.rolsuper THEN false
+                   ELSE pg_catalog.pg_has_role(r.oid, w.oid, 'USAGE') END AS peut_utiliser,
+              COALESCE(bool_or(m.admin_option), false) AS admin_option,
+              COALESCE(bool_or(m.set_option OR m.inherit_option), false) AS grant_effectif
          FROM pg_catalog.pg_roles r CROSS JOIN pg_catalog.pg_roles w
-        WHERE r.rolname = $1 AND w.rolname = 'tracefab_worker'`,
+         LEFT JOIN pg_catalog.pg_auth_members m ON m.member = r.oid AND m.roleid = w.oid
+        WHERE r.rolname = $1 AND w.rolname = 'tracefab_worker'
+        GROUP BY r.rolsuper, r.oid, w.oid`,
       [cible],
     )).rows[0];
-    // PostgreSQL 16+ peut conserver une ligne ADMIN-only accordée par le
-    // bootstrap. Elle ne permet ni SET ROLE ni héritage : ne pas tenter de la
-    // révoquer depuis un grantor qui n'en est pas propriétaire.
-    if (!etat || etat.rolsuper === true || (!etat.peut_set && !etat.peut_utiliser)) continue;
+    if (!etat) continue;
+    const estAdmin = roleAdmin && cible === roleAdmin && cible !== roleExecutant;
+    const estApp = cible === 'tracefab_app';
+    const doitRevoquer = estAdmin || estApp
+      ? (etat.admin_option || etat.peut_set || etat.peut_utiliser || etat.grant_effectif)
+      : (etat.peut_set || etat.peut_utiliser || etat.grant_effectif);
+    // Le migrateur conserve ADMIN-only sur worker : il en a besoin pour déléguer
+    // ADMIN à la session du runner. Il ne conserve ni SET ni INHERIT.
+    if (!doitRevoquer) continue;
     if (!gestionRoles) {
       throw new Error(`appartenance tracefab_worker résiduelle pour ${cible}, sans connexion autorisée pour la révoquer (${moment})`);
     }
     await gestionRoles.query(`REVOKE tracefab_worker FROM ${identifiantSql(cible)}`);
     const verif = (await gestionRoles.query(
-      `SELECT pg_catalog.pg_has_role(r.oid, w.oid, 'SET') AS peut_set,
-              pg_catalog.pg_has_role(r.oid, w.oid, 'USAGE') AS peut_utiliser,
-              EXISTS (
-                SELECT 1 FROM pg_catalog.pg_auth_members m
-                 WHERE m.member = r.oid AND m.roleid = w.oid
-                   AND (m.set_option OR m.inherit_option)
-              ) AS grant_effectif
+      `SELECT r.rolsuper,
+              CASE WHEN r.rolsuper THEN false
+                   ELSE pg_catalog.pg_has_role(r.oid, w.oid, 'SET') END AS peut_set,
+              CASE WHEN r.rolsuper THEN false
+                   ELSE pg_catalog.pg_has_role(r.oid, w.oid, 'USAGE') END AS peut_utiliser,
+              COALESCE(bool_or(m.admin_option), false) AS admin_option,
+              COALESCE(bool_or(m.set_option OR m.inherit_option), false) AS grant_effectif
          FROM pg_catalog.pg_roles r CROSS JOIN pg_catalog.pg_roles w
-        WHERE r.rolname = $1 AND w.rolname = 'tracefab_worker'`,
+         LEFT JOIN pg_catalog.pg_auth_members m ON m.member = r.oid AND m.roleid = w.oid
+        WHERE r.rolname = $1 AND w.rolname = 'tracefab_worker'
+        GROUP BY r.rolsuper, r.oid, w.oid`,
       [cible],
     )).rows[0];
-    if (verif?.peut_set !== false || verif?.peut_utiliser !== false || verif?.grant_effectif !== false) {
-      throw new Error(`révocation tracefab_worker NON constatée pour ${cible} (${moment})`);
+    if (estAdmin || estApp) {
+      if (verif?.admin_option || verif?.peut_set || verif?.peut_utiliser || verif?.grant_effectif) {
+        throw new Error(`révocation worker ADMIN/SET/INHERIT NON constatée pour ${cible} (${moment})`);
+      }
+    } else if (verif?.peut_set || verif?.peut_utiliser || verif?.grant_effectif) {
+      throw new Error(`révocation worker SET/INHERIT NON constatée pour ${cible} (${moment})`);
     }
-    console.log(`             appartenance worker temporaire révoquée et vérifiée — ${cible} (${moment})`);
+    console.log(`             bail worker temporaire nettoyé et vérifié — ${cible} (${moment})`);
   }
+}
+
+/** Délègue ADMIN-only au rôle administratif ; aucun SET/INHERIT ne lui est accordé. */
+async function assurerBailAdminWorker(moment) {
+  if (!clientAdmin || roleExecutant !== 'tracefab_migrator') {
+    throw new Error(`bail ADMIN worker impossible sans tracefab_migrator + TF_ADMIN_URL (${moment})`);
+  }
+  const roleAdmin = (await clientAdmin.query('SELECT current_user AS u')).rows[0]?.u;
+  if (!roleAdmin || roleAdmin === roleExecutant) throw new Error('identité administrative invalide pour ADMIN worker');
+  const etatMigrateur = (await client.query(
+    `SELECT COALESCE(bool_or(m.admin_option), false) AS admin_option,
+            COALESCE(bool_or(m.set_option OR m.inherit_option), false) AS privileges_actifs
+       FROM pg_catalog.pg_auth_members m
+       JOIN pg_catalog.pg_roles r ON r.oid = m.member
+       JOIN pg_catalog.pg_roles w ON w.oid = m.roleid
+      WHERE r.rolname = $1 AND w.rolname = 'tracefab_worker'`,
+    [roleExecutant],
+  )).rows[0];
+  if (!etatMigrateur?.admin_option || etatMigrateur.privileges_actifs) {
+    throw new Error('tracefab_migrator doit détenir ADMIN-only sur tracefab_worker, sans SET/INHERIT');
+  }
+  const etatAdmin = (await client.query(
+    `SELECT COALESCE(bool_or(m.admin_option), false) AS admin_option,
+            COALESCE(bool_or(m.set_option OR m.inherit_option), false) AS privileges_actifs
+       FROM pg_catalog.pg_auth_members m
+       JOIN pg_catalog.pg_roles r ON r.oid = m.member
+       JOIN pg_catalog.pg_roles w ON w.oid = m.roleid
+      WHERE r.rolname = $1 AND w.rolname = 'tracefab_worker'`,
+    [roleAdmin],
+  )).rows[0];
+  if (etatAdmin.privileges_actifs) {
+    throw new Error('la session administrative possède déjà SET/INHERIT sur tracefab_worker');
+  }
+  if (etatAdmin.admin_option) return;
+  await client.query('BEGIN');
+  try {
+    await client.query(`GRANT tracefab_worker TO ${identifiantSql(roleAdmin)} WITH ADMIN TRUE, SET FALSE, INHERIT FALSE`);
+    await client.query('COMMIT');
+  } catch (e) {
+    await client.query('ROLLBACK').catch(() => {});
+    throw e;
+  }
+  const verif = (await client.query(
+    `SELECT COALESCE(bool_or(m.admin_option), false) AS admin_option,
+            COALESCE(bool_or(m.set_option OR m.inherit_option), false) AS privileges_actifs
+       FROM pg_catalog.pg_auth_members m
+       JOIN pg_catalog.pg_roles r ON r.oid = m.member
+       JOIN pg_catalog.pg_roles w ON w.oid = m.roleid
+      WHERE r.rolname = $1 AND w.rolname = 'tracefab_worker'`,
+    [roleAdmin],
+  )).rows[0];
+  if (!verif.admin_option || verif.privileges_actifs) {
+    throw new Error('délégation ADMIN-only worker non vérifiée');
+  }
+  console.log(`             ADMIN-only worker délégué à ${roleAdmin} (${moment})`);
 }
 
 // Nettoyage systématique au démarrage : toute appartenance résiduelle d'un
@@ -355,10 +428,9 @@ async function terminerSurSignal(signal, code) {
   if (transactionWorkerTemporaireEnCours && clientAdmin) {
     await clientAdmin.query('ROLLBACK').catch(() => {});
     transactionWorkerTemporaireEnCours = false;
-  } else {
-    try { await revoquerAppartenanceWorker(`signal ${signal}`); }
-    catch (e) { console.error(`ECHEC nettoyage signal : ${e.message}`); }
   }
+  try { await revoquerAppartenanceWorker(`signal ${signal}`); }
+  catch (e) { console.error(`ECHEC nettoyage signal : ${e.message}`); }
   await client.end().catch(() => {});
   if (clientAdmin) await clientAdmin.end().catch(() => {});
   await verrou.relacher().catch(() => {});
@@ -459,7 +531,19 @@ for (const nom of enAttente) {
     process.exit(3);
   }
 
-  if (workerTemporaire) console.log(`             worker temporaire transactionnel — ${nom}`);
+  if (workerTemporaire) {
+    try {
+      await assurerBailAdminWorker(`préparation ${nom}`);
+    } catch (e) {
+      console.error(`REFUS — délégation ADMIN worker impossible avant ${nom} : ${e.message}`);
+      await revoquerAppartenanceWorker('échec délégation ADMIN worker').catch((x) => console.error(x.message));
+      await client.end().catch(() => {});
+      if (clientAdmin) await clientAdmin.end().catch(() => {});
+      await verrou.relacher().catch(() => {});
+      process.exit(3);
+    }
+    console.log(`             worker temporaire transactionnel — ${nom}`);
+  }
   const executeur = workerTemporaire ? clientAdmin : client;
   let commitEffectue = false;
   let roleAdministrateurTemporaire = null;
