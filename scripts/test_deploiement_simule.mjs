@@ -46,6 +46,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { ECARTS as ECARTS_HISTORIQUES } from './lib/ecarts_migrations.mjs';
+import { preparerWorkerPglite } from './lib/pglite-worker-runner.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const MIGRATIONS = path.join(root, 'prisma/migrations');
@@ -107,13 +108,17 @@ async function nouvelleBase() {
 
 /** Applique en transaction : c'est ce que fait Prisma, migration par migration. */
 async function appliquer(db, d) {
-  await db.exec('BEGIN');
+  let nettoyer = async () => {};
   try {
+    nettoyer = await preparerWorkerPglite(db, d);
+    await db.exec('BEGIN');
     await db.exec(lire(d));
+    await nettoyer();
     await db.exec('COMMIT');
     return { ok: true };
   } catch (e) {
-    await db.exec('ROLLBACK');
+    await db.exec('ROLLBACK').catch(() => {});
+    await nettoyer().catch(() => {});
     return { ok: false, message: String(e.message).split('\n')[0] };
   }
 }
