@@ -258,19 +258,10 @@ async function revoquerElevation(moment) {
 }
 
 const MIGRATION_WORKER_TERMINALE = '20261108120700_assert_worker_membership_revoked';
-const MIGRATIONS_AVEC_WORKER_TEMPORAIRE = new Set([
-  // Ces migrations appellent une fonction worker depuis leur SQL, ou vérifient
-  // elles-mêmes pg_has_role(..., 'SET'). Le préflight de propriété ne détecte
-  // pas les appels à une fonction existante ni les ALTER OWNER dynamiques.
-  '20261028120200_document_reserved_fields_internal_only',
-  '20261031120000_identite_hmac_liee_au_contexte',
-  // Cette migration remplace des fonctions SECURITY DEFINER possédées par
-  // tracefab_worker ; le migrateur doit pouvoir les endosser pendant sa
-  // transaction, puis perdre l'appartenance avant le COMMIT.
-  '20261105235900_active_tenant_policy_and_worker_closure',
-  '20261108120100_worker_fonctions_systeme_completes',
-  '20261108120200_corrections_p106_ownership_et_appartenance',
-]);
+// Les migrations accordent elles-mêmes l'appartenance worker SET/INHERIT
+// lorsqu'elles en ont besoin, et révoquent uniquement le grant qu'elles créent.
+// Aucun pré-grant externe n'est requis par le runner.
+const MIGRATIONS_AVEC_WORKER_TEMPORAIRE = new Set();
 const identifiantSql = (v) => '"' + String(v).replace(/"/g, '""') + '"';
 const gestionRoles = dejaSuperuser ? client : clientAdmin;
 
