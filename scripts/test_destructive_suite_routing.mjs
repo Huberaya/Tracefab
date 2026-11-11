@@ -236,6 +236,9 @@ const REFUSED_WRITE_PROBE_DB_SUITES = [
  */
 const SELF_GUARDED_DB_TOOLS = [
   'scripts/db-deploy-throwaway.mjs',
+  // Provisionne les rôles uniquement sur le PostgreSQL local jetable de CI ;
+  // la garde commune est exécutée au chargement avant toute connexion.
+  'scripts/prepare_ci_migration_roles.mjs',
 ];
 
 /**
