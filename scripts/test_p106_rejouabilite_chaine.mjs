@@ -109,7 +109,7 @@ await admin.connect();
 
     // Reproduire les deux baux du runner Neon dans une seule transaction :
     // l'admin endosse temporairement le migrateur, qui endosse ensuite le worker.
-    await operator.query(`CREATE ROLE ${migratorRole} NOLOGIN CREATEROLE NOBYPASSRLS NOSUPERUSER NOCREATEDB`);
+    await operator.query(`CREATE ROLE ${migratorRole} NOLOGIN CREATEROLE NOBYPASSRLS NOSUPERUSER NOCREATEDB NOINHERIT`);
     await operator.query(`GRANT CREATE ON SCHEMA public TO ${migratorRole} WITH GRANT OPTION`);
     await operator.query(`GRANT ${migratorRole} TO ${adminRole} WITH SET TRUE, INHERIT TRUE, ADMIN FALSE`);
     const adminLease = (await operator.query(
