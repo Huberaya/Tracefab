@@ -84,13 +84,18 @@ await admin.connect();
   const password = randomBytes(16).toString('hex');
   let operator = null;
   let adminRoleCreated = false;
+  let migratorRoleCreated = false;
   try {
-    // Reproduire la connexion Neon réelle : session_user = current_user.
-    // SET ROLE depuis postgres fausse le grantor de pg_auth_members et ne
-    // représente pas le rôle CREATEROLE qui ouvre sa propre session.
+    // Le grantor du migrateur est le propriétaire du banc (postgres), pas
+    // la session administrative : PostgreSQL interdit de rendre ADMIN à son
+    // propre grantor. Cela reproduit la séparation cloud_admin / neondb_owner.
     await admin.query(`CREATE ROLE ${adminRole} LOGIN PASSWORD '${password}' CREATEROLE NOCREATEDB NOBYPASSRLS NOSUPERUSER NOINHERIT`);
     adminRoleCreated = true;
+    await admin.query(`CREATE ROLE ${migratorRole} NOLOGIN CREATEROLE NOBYPASSRLS NOSUPERUSER NOCREATEDB NOINHERIT`);
+    migratorRoleCreated = true;
+    await admin.query(`GRANT ${migratorRole} TO ${adminRole} WITH ADMIN TRUE, SET FALSE, INHERIT FALSE`);
     await admin.query(`GRANT CREATE ON SCHEMA public TO ${adminRole} WITH GRANT OPTION`);
+    await admin.query(`GRANT CREATE ON SCHEMA public TO ${migratorRole} WITH GRANT OPTION`);
 
     const operatorUrl = new URL(urlAdmin.toString());
     operatorUrl.username = adminRole;
@@ -110,8 +115,6 @@ await admin.connect();
 
     // Reproduire les deux baux du runner Neon dans une seule transaction :
     // l'admin endosse temporairement le migrateur, qui endosse ensuite le worker.
-    await operator.query(`CREATE ROLE ${migratorRole} NOLOGIN CREATEROLE NOBYPASSRLS NOSUPERUSER NOCREATEDB NOINHERIT`);
-    await operator.query(`GRANT CREATE ON SCHEMA public TO ${migratorRole} WITH GRANT OPTION`);
     await operator.query(`GRANT ${migratorRole} TO ${adminRole} WITH SET TRUE, INHERIT TRUE, ADMIN FALSE`);
     const adminLease = (await operator.query(
       `SELECT pg_catalog.pg_has_role($1,$2,'SET') AS can_set,
@@ -247,8 +250,15 @@ await admin.connect();
       await operator.query('ROLLBACK').catch(() => {});
       await operator.end().catch(() => {});
     }
+    if (migratorRoleCreated) {
+      await admin.query(`REVOKE ${migratorRole} FROM ${adminRole}`).catch(() => {});
+      await admin.query(`DROP OWNED BY ${migratorRole}`).catch(() => {});
+      await admin.query(`DROP ROLE IF EXISTS ${migratorRole}`).catch((e) => {
+        console.error(`  info  nettoyage du rôle ${migratorRole} : ${e.message}`);
+      });
+    }
     if (adminRoleCreated) {
-      await admin.query(`REVOKE CREATE ON SCHEMA public FROM ${adminRole}`).catch(() => {});
+      await admin.query(`DROP OWNED BY ${adminRole}`).catch(() => {});
       await admin.query(`DROP ROLE IF EXISTS ${adminRole}`).catch((e) => {
         console.error(`  info  nettoyage du rôle ${adminRole} : ${e.message}`);
       });
