@@ -194,6 +194,8 @@ console.log('\n6. Ce qu un `deploy` global ferait vraiment, en deux temps  [MESU
   const { db } = await productionReconstituee();
   const premier = await jouer(db, '20261028120000_runtime_function_registry');
   ok('1er essai : 20261028120000 passe (la table est absente)', premier.ok, premier.message);
+  const rejeuManuel = await jouer(db, '20261028120000_runtime_function_registry');
+  ok('un rejeu manuel du CREATE TABLE sans garde echoue', !rejeuManuel.ok, rejeuManuel.message);
 
   // 6.2 Simuler une migration ultérieure qui échoue après le registre.
   // Prisma 6.19.3/PostgreSQL a déjà enregistré 20261028120000 comme réussie :
