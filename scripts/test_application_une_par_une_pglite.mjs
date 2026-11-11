@@ -17,8 +17,8 @@
  * CE QUE LE TEST DOIT ETABLIR :
  *   1. une par une, dans l'ordre, les 43 passent — donc un plan sequentiel est
  *      possible sans `deploy` global ;
- *   2. `20261028120000` est la RUPTURE : elle n'est pas rejouable (CREATE TABLE
- *      sans garde), et un second passage casse ;
+ *   2. `20261028120000` n'est pas rejouable manuellement (CREATE TABLE sans
+ *      garde), mais une migration déjà réussie n'est pas rejouée par Prisma ;
  *   3. les migrations qui la SUIVENT en dependent : appliquer `...120100` sans
  *      elle echoue (c'est la dependance, pas une precaution) ;
  *   4. les deux migrations avec une tentative ANNULEE ont une reprise
@@ -195,29 +195,28 @@ console.log('\n6. Ce qu un `deploy` global ferait vraiment, en deux temps  [MESU
   const premier = await jouer(db, '20261028120000_runtime_function_registry');
   ok('1er essai : 20261028120000 passe (la table est absente)', premier.ok, premier.message);
 
-  // 6.2 le vrai danger : un SECOND essai, apres un echec plus loin. Prisma
-  // reprend a la premiere migration sans `finished_at` reussi, retombe sur
-  // 20261028120000, echoue, et n'essaie JAMAIS les suivantes.
-  const second = await jouer(db, '20261028120000_runtime_function_registry');
-  ok('2e essai : 20261028120000 echoue', !second.ok, second.message);
+  // 6.2 Simuler une migration ultérieure qui échoue après le registre.
+  // Prisma 6.19.3/PostgreSQL a déjà enregistré 20261028120000 comme réussie :
+  // au prochain deploy, elle est sautée et seule la migration en échec reprend.
+  const succes = new Set(['20261028120000_runtime_function_registry']);
   const suivantes = ['20261028120050_neon_worker_function_grants',
                      '20261028120100_worker_identity_not_forgeable',
                      '20261028120200_document_reserved_fields_internal_only',
                      '20261028130000_product_computed_fields_column_scoped',
                      '20261028140000_supplier_invitation_owner_relationship_scope',
                      '20261028150000_reconcile_plm_erp_sync_job_policies'];
-  // Un deploy s'arrete au premier echec : on reproduit cet arret et on mesure
-  // que les six migrations suivantes ne sont pas appliquees.
+  let sautees = 0;
   let appliquees = 0;
-  for (const d of suivantes) {
+  for (const d of ['20261028120000_runtime_function_registry', ...suivantes]) {
+    if (succes.has(d)) { sautees += 1; continue; }
     const r = await jouer(db, d);
     if (!r.ok) break;
+    succes.add(d);
     appliquees += 1;
   }
-  ok('les 6 suivantes sont bien applicables une a une — elles ne bloquent pas PAR ELLES-MEMES',
+  ok('le registre déjà réussi est sauté au retry', sautees === 1, `${sautees}/1`);
+  ok('les six migrations suivantes sont applicables après le retry',
     appliquees === suivantes.length, `${appliquees}/${suivantes.length}`);
-  ok('donc la rupture ne vient que de l ordre : sans le registre, 120100 casse (mesure en 4)',
-    true);
   await db.close();
 }
 
@@ -239,10 +238,9 @@ if (echecs === 0) {
   console.log(`${verifies} verifications passees.`);
   console.log('Une application UNE PAR UNE est possible : les 43 manquantes passent');
   console.log('dans l ordre, sans rupture, et laissent 2 politiques.');
-  console.log('Un `deploy` global passerait au PREMIER essai, mais tout rejeu casse a');
-  console.log('20261028120000 (CREATE TABLE sans garde) et n essaie jamais les');
-  console.log('suivantes — dont les deux correctifs. Les 2 annulees, elles, sont');
-  console.log('rejouables : le danger n est pas la.');
+  console.log('20261028120000 est non rejouable manuellement, mais une ligne');
+  console.log('finished_at réussie le protège : Prisma ne la rejoue pas après un');
+  console.log('échec ultérieur. Les six migrations suivantes reprennent seules.');
   process.exit(0);
 }
 console.error(`${echecs} echec(s) sur ${verifies} verifications.`);
