@@ -38,6 +38,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { executerMigrationPglite } from './lib/pglite-worker-runner.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const MIGRATIONS = path.join(root, 'prisma/migrations');
@@ -79,7 +80,7 @@ async function appliquer(db, avant) {
   let n = 0;
   for (const d of dossiers) {
     if (avant && d >= avant) break;
-    await db.exec(lire(d));
+    await executerMigrationPglite(db, d, lire(d));
     n += 1;
   }
   return n;
