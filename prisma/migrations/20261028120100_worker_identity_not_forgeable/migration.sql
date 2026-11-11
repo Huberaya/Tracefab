@@ -150,7 +150,8 @@ $$;
 
 -- 4. Le worker garde l'usage du schema, et rien de plus ----------------------
 GRANT USAGE ON SCHEMA public TO tracefab_worker;
-REVOKE CREATE ON SCHEMA public FROM tracefab_worker;
+-- CREATE est accordé uniquement autour du transfert de propriété (§ 6), puis
+-- révoqué avant la fin de la migration. Le worker n'en conserve aucun.
 
 -- 5. Les six operations systeme ----------------------------------------------
 --    Chacune : operation unique, parametree, `search_path` fige, aucune lecture
@@ -336,12 +337,16 @@ BEGIN
     );
   END IF;
 
+  -- PostgreSQL exige CREATE sur le schéma cible pour transférer la propriété.
+  -- Ce privilège est strictement temporaire et révoqué après les six transferts.
+  EXECUTE 'GRANT CREATE ON SCHEMA public TO tracefab_worker';
   EXECUTE 'ALTER FUNCTION public.tracefab_upsert_clerk_user(TEXT, TEXT, TEXT) OWNER TO tracefab_worker';
   EXECUTE 'ALTER FUNCTION public.tracefab_ensure_clerk_user(TEXT, TEXT, TEXT) OWNER TO tracefab_worker';
   EXECUTE 'ALTER FUNCTION public.tracefab_soft_delete_clerk_user(TEXT) OWNER TO tracefab_worker';
   EXECUTE 'ALTER FUNCTION public.tracefab_clerk_organization_uuid(TEXT) OWNER TO tracefab_worker';
   EXECUTE 'ALTER FUNCTION public.tracefab_archive_clerk_organization(TEXT) OWNER TO tracefab_worker';
   EXECUTE 'ALTER FUNCTION public.tracefab_notification_outbox_health() OWNER TO tracefab_worker';
+  EXECUTE 'REVOKE CREATE ON SCHEMA public FROM tracefab_worker';
 END
 $$;
 
