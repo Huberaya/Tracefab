@@ -109,10 +109,21 @@ await admin.connect();
       'R2 SET ROLE autorise le transfert de propriété sans SUPERUSER', owner || 'propriétaire absent');
     await admin.query(`REVOKE CREATE ON SCHEMA public FROM ${workerRole}`);
     await admin.query(`REVOKE ${workerRole} FROM ${adminRole}`);
+    const afterRows = (await admin.query(
+      `SELECT grantor::regrole::text AS grantor,
+              member::regrole::text AS member,
+              roleid::regrole::text AS granted_role,
+              admin_option, inherit_option, set_option
+         FROM pg_catalog.pg_auth_members
+        WHERE member = $1::regrole AND roleid = $2::regrole
+        ORDER BY grantor::regrole::text`,
+      [adminRole, workerRole]
+    )).rows;
     const after = (await admin.query(
       `SELECT pg_catalog.pg_has_role($1,$2,'MEMBER') AS member`,
       [adminRole, workerRole]
     )).rows[0].member;
+    console.log(`  info  R2 membership after REVOKE — rows=${JSON.stringify(afterRows)} · pg_has_role=${after}`);
     ok(after === false, "R2 l'appartenance temporaire est révoquée avant COMMIT");
     await admin.query('RESET ROLE');
     await admin.query('ROLLBACK');
