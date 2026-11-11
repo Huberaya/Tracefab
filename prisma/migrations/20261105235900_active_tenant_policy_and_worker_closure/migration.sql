@@ -15,6 +15,36 @@
 
 BEGIN;
 
+-- Appartenance worker temporaire : la migration se suffit à elle-même sur Neon.
+-- Si le runner l'a déjà accordée, les options sont vérifiées ; sinon elle est
+-- créée ici et révoquée avant le COMMIT.
+DO $worker_membership_begin$
+DECLARE v_superuser boolean;
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_catalog.pg_roles WHERE rolname = 'tracefab_worker') THEN
+    RAISE EXCEPTION 'tracefab_worker_role_missing';
+  END IF;
+  SELECT rolsuper INTO v_superuser FROM pg_catalog.pg_roles WHERE rolname = current_user;
+  IF v_superuser IS DISTINCT FROM TRUE
+     AND NOT pg_catalog.pg_has_role(current_user, 'tracefab_worker', 'SET') THEN
+    EXECUTE pg_catalog.format(
+      'GRANT tracefab_worker TO %I WITH SET TRUE, INHERIT TRUE, ADMIN FALSE',
+      current_user
+    );
+  END IF;
+  IF v_superuser IS DISTINCT FROM TRUE AND EXISTS (
+    SELECT 1 FROM pg_catalog.pg_auth_members m
+    JOIN pg_catalog.pg_roles r ON r.oid = m.member
+    JOIN pg_catalog.pg_roles w ON w.oid = m.roleid
+    WHERE r.rolname = current_user AND w.rolname = 'tracefab_worker'
+      AND (NOT m.inherit_option OR NOT m.set_option OR m.admin_option)
+  ) THEN
+    RAISE EXCEPTION 'worker_membership_options_invalid';
+  END IF;
+END
+$worker_membership_begin$;
+
+
 -- 1. Le worker ne reçoit que les droits nécessaires aux trois opérations
 --    globales de notification (lecture des demandes, claim/complete outbox).
 GRANT SELECT ON TABLE public.data_requests TO tracefab_worker;
@@ -734,5 +764,19 @@ BEGIN
   END IF;
 END
 $worker_public_postconditions$;
+
+-- L'appartenance ne doit jamais survivre à cette transaction.
+DO $worker_membership_revoke$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM pg_catalog.pg_auth_members m
+    JOIN pg_catalog.pg_roles r ON r.oid = m.member
+    JOIN pg_catalog.pg_roles w ON w.oid = m.roleid
+    WHERE r.rolname = current_user AND w.rolname = 'tracefab_worker'
+  ) THEN
+    EXECUTE pg_catalog.format('REVOKE tracefab_worker FROM %I', current_user);
+  END IF;
+END
+$worker_membership_revoke$;
 
 COMMIT;
