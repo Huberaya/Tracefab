@@ -218,8 +218,38 @@ aside_late() {
   done
 }
 
+# Cette intégration ne valide que les migrations #34/#36/#41. Les migrations
+# P10.6 postérieures au 14/10 imposent le runner dédié (préprovisionnement
+# worker + bail transactionnel) et ne doivent pas être passées par Prisma
+# migrate deploy dans ce banc historique. Elles sont donc mises à l'écart
+# pendant les deux scénarios, puis restaurées.
+aside_post_1414() {
+  mkdir -p /tmp/mig-post-1414
+  local d nom
+  for d in prisma/migrations/*; do
+    [[ -d "$d" ]] || continue
+    nom="$(basename "$d")"
+    [[ "$nom" =~ ^[0-9]{14}_ ]] || continue
+    if [[ "$nom" > "20261014140000" ]]; then
+      mv "$d" /tmp/mig-post-1414/
+    fi
+  done
+}
+
+restore_post_1414() {
+  local d
+  if [[ -d /tmp/mig-post-1414 ]]; then
+    for d in /tmp/mig-post-1414/*; do
+      [[ -d "$d" ]] || continue
+      [[ -d "prisma/migrations/$(basename "$d")" ]] || mv "$d" prisma/migrations/
+    done
+    rmdir /tmp/mig-post-1414 2>/dev/null || true
+  fi
+}
+
 restore_tree() {
-  # Le job est jetable ; on remet les dossiers deplacés si le script est relancé.
+  # Le job est jetable ; on remet les dossiers déplacés si le script est relancé.
+  restore_post_1414
   for d in 20261012120000_close_public_execute_gap 20261014100000_revoke_material_visible_public 20261014110000_revoke_dpp_functions_public; do
     if [[ -d "/tmp/mig-aside/$d" && ! -d "prisma/migrations/$d" ]]; then
       mv "/tmp/mig-aside/$d" prisma/migrations/
@@ -235,6 +265,7 @@ scenario_a() {
   reset_db
   prepare_role
   aside_late
+  aside_post_1414
   echo "-- baseline (sans 10120000/1212/1410/1411/1412+) --"
   deploy
   snapshot "A-baseline"
@@ -279,6 +310,7 @@ scenario_b() {
   restore_tree
   reset_db
   prepare_role
+  aside_post_1414
   echo "-- etat #36 : baseline + 1212 + 1410 + 1411 --"
   deploy
   snapshot "B-etat-36"
