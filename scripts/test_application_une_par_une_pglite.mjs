@@ -198,6 +198,9 @@ console.log('\n6. Ce qu un `deploy` global ferait vraiment, en deux temps  [MESU
   // 6.2 Simuler une migration ultérieure qui échoue après le registre.
   // Prisma 6.19.3/PostgreSQL a déjà enregistré 20261028120000 comme réussie :
   // au prochain deploy, elle est sautée et seule la migration en échec reprend.
+  let echecUlterieur = false;
+  try { await db.exec('SELECT 1 / 0'); } catch { echecUlterieur = true; }
+  ok('une migration ultérieure échoue (témoin contrôlé)', echecUlterieur);
   const succes = new Set(['20261028120000_runtime_function_registry']);
   const suivantes = ['20261028120050_neon_worker_function_grants',
                      '20261028120100_worker_identity_not_forgeable',
