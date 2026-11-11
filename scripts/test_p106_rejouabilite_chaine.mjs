@@ -3,18 +3,17 @@
  * P10.6/P11 — REJOUABILITÉ ET APPARTENANCE WORKER NEON.
  *
  * Le SQL des migrations n'introduit aucun SUPERUSER et révoque ses grants.
- * Le runner de rehearsal peut encadrer le tout premier bootstrap worker par
- * une assistance administrative bornée, car il exécute sous un rôle séparé.
- * En Production, le rôle qui crée tracefab_worker dispose de l'ADMIN OPTION
- * initiale et le SQL accorde/révoque SET/INHERIT dans sa transaction.
+ * Le SQL et le runner n'introduisent aucun SUPERUSER.
+ * Le migrateur CREATEROLE crée tracefab_worker, s'accorde le bail technique
+ * dans la migration de bootstrap puis le révoque lui-même. Les migrations
+ * ultérieures reçoivent un bail transactionnel du runner administratif.
  *
- * R1 le SQL ne rend aucun rôle SUPERUSER ; l'assistance du runner de rehearsal
- *    est strictement limitée au bootstrap initial ;
+ * R1 aucun chemin ne rend le migrateur SUPERUSER ni ne demande d'élévation ;
  * R2 un rôle CREATEROLE crée le worker, accorde temporairement SET/INHERIT,
  *    transfère une fonction, puis retire ces options. PostgreSQL 16+ conserve
  *    l'ADMIN-only automatique attribué par le bootstrap au créateur.
  * R3 la chaîne complète s'applique sur une base vierge d'un cluster déjà migré ;
- * R4 aucune appartenance directe permanente à tracefab_worker ne subsiste ;
+ * R4 aucun droit SET/USAGE ni grant INHERIT actif vers tracefab_worker ne subsiste ;
  * R5 tracefab_app ne reçoit aucune appartenance et aucun rôle runtime n'est
  *    SUPERUSER ni BYPASSRLS ;
  * R6 le préflight de propriété ne bloque pas le propriétaire légitime.
@@ -58,10 +57,9 @@ const ok = (cond, libelle, detail = '') => {
 console.log('  -- appartenance worker Neon, SQL sans SUPERUSER');
 
 const bootstrap = '20261028120100_worker_identity_not_forgeable';
-ok(Object.keys(MIGRATIONS_ASSISTEES).length === 1 &&
-   Object.keys(MIGRATIONS_ASSISTEES)[0] === bootstrap &&
-   exigeAssistance(bootstrap) === true,
-  'R1 l assistance du runner de rehearsal est limitée au seul bootstrap initial');
+ok(Object.keys(MIGRATIONS_ASSISTEES).length === 0 &&
+   exigeAssistance(bootstrap) === false,
+  'R1 le bootstrap ne requiert aucune assistance SUPERUSER');
 
 const migration201 = readFileSync(
   'prisma/migrations/20261028120100_worker_identity_not_forgeable/migration.sql',
@@ -208,7 +206,7 @@ console.log('  -- préflight de propriété des fonctions');
 
   const assistancesHorsBootstrap = Object.keys(MIGRATIONS_ASSISTEES).filter((n) => n !== bootstrap);
   ok(assistancesHorsBootstrap.length === 0,
-    'R6 le préflight de propriété ne dépend d aucune assistance hors bootstrap initial',
+    'R6 aucune migration ne dépend d une assistance SUPERUSER',
     assistancesHorsBootstrap.join(', ') || 'aucune');
 }
 
@@ -268,13 +266,23 @@ try {
     ok(appliquees >= 60, 'R6 toutes les migrations sont appliquées', `${appliquees} migration(s)`);
 
     const membres = (await client.query(
-      `SELECT r.rolname FROM pg_catalog.pg_auth_members m
+      `SELECT r.rolname,
+              pg_catalog.pg_has_role(r.oid, c.oid, 'SET') AS peut_set,
+              pg_catalog.pg_has_role(r.oid, c.oid, 'USAGE') AS peut_utiliser,
+              bool_or(m.set_option OR m.inherit_option) AS grant_effectif,
+              bool_or(m.admin_option) AS admin_only_possible
+         FROM pg_catalog.pg_auth_members m
          JOIN pg_catalog.pg_roles r ON r.oid = m.member
          JOIN pg_catalog.pg_roles c ON c.oid = m.roleid
-        WHERE c.rolname = 'tracefab_worker' ORDER BY 1`)).rows.map((r) => r.rolname);
-    ok(membres.length === 0,
-      'R7 aucune appartenance directe permanente à tracefab_worker après la chaîne',
-      membres.join(', ') || 'aucun');
+        WHERE c.rolname = 'tracefab_worker'
+        GROUP BY r.rolname, r.oid, c.oid
+        ORDER BY r.rolname`)).rows;
+    const membresEffectifs = membres.filter((r) =>
+      r.peut_set || r.peut_utiliser || r.grant_effectif);
+    ok(membresEffectifs.length === 0,
+      'R7 aucun droit SET/USAGE ni grant INHERIT actif vers tracefab_worker après la chaîne',
+      membresEffectifs.map((r) => r.rolname).join(', ') ||
+        `aucun (lignes ADMIN-only résiduelles tolérées : ${membres.length})`);
 
     const appMembre = (await client.query(
       `SELECT count(*)::int AS n FROM pg_catalog.pg_auth_members m
