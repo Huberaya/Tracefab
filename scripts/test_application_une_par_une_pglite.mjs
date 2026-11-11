@@ -33,6 +33,7 @@ import { readdirSync, readFileSync, existsSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { ECARTS, HORS_BANDE, BORNE_RELEVE } from './lib/ecarts_migrations.mjs';
+import { preparerWorkerPglite } from './lib/pglite-worker-runner.mjs';
 
 const racine = join(dirname(fileURLToPath(import.meta.url)), '..');
 const MIGRATIONS = join(racine, 'prisma', 'migrations');
@@ -65,12 +66,20 @@ const nouveauCluster = async () => {
 
 /** Joue une migration seule ; ne laisse jamais la session cassee. */
 async function jouer(db, d) {
+  let nettoyer = async () => {};
   try {
-    await db.exec('BEGIN'); await db.exec(lire(d)); await db.exec('COMMIT');
+    // Le worker est préprovisionné hors transaction : un échec SQL de la
+    // migration ne doit ni laisser un bail actif ni empêcher le nettoyage.
+    nettoyer = await preparerWorkerPglite(db, d);
+    await db.exec('BEGIN');
+    await db.exec(lire(d));
+    await nettoyer();
+    await db.exec('COMMIT');
     return { ok: true };
   } catch (e) {
     const message = String(e.message).split('\n')[0];
-    try { await db.exec('ROLLBACK'); } catch { /* deja fermee */ }
+    try { await db.exec('ROLLBACK'); } catch { /* déjà fermée */ }
+    await nettoyer().catch(() => {});
     return { ok: false, message };
   }
 }
