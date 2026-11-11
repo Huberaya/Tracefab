@@ -12,8 +12,8 @@ export const MIGRATIONS_ASSISTEES = Object.freeze({
   },
 });
 
-export function exigeAssistance(_nom) {
-  return false;
+export function exigeAssistance(nom) {
+  return Object.prototype.hasOwnProperty.call(MIGRATIONS_ASSISTEES, nom);
 }
 
 export async function preparerAppartenance(_client, _nom) {
