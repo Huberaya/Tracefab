@@ -336,6 +336,7 @@ try {
   let bootstrap;
   let chaine = { status: 1, stdout: '', stderr: 'bootstrap non exécuté' };
   let baseAdmin = null;
+  const motDePasseAdmin = randomBytes(32).toString('hex');
   const motDePasseMigrateur = randomBytes(32).toString('hex');
   try {
     verrou = await verrouillerCluster({ urlProprietaire: urlAdmin });
@@ -347,7 +348,11 @@ try {
       (bootstrap.stderr || bootstrap.stdout || '').trim().split('\n').pop() || `code ${bootstrap.status}`);
 
     if (bootstrap.status === 0) {
+      // Le grantor du migrateur est postgres (banc), pas tracefab_admin :
+      // PostgreSQL interdit de rendre ADMIN à son propre grantor.
+      await admin.query(`CREATE ROLE tracefab_admin LOGIN PASSWORD '${motDePasseAdmin}' CREATEROLE BYPASSRLS NOINHERIT NOSUPERUSER NOCREATEDB NOREPLICATION`);
       await admin.query(`CREATE ROLE tracefab_migrator LOGIN PASSWORD '${motDePasseMigrateur}' CREATEROLE BYPASSRLS NOINHERIT NOSUPERUSER NOCREATEDB NOREPLICATION`);
+      await admin.query('GRANT tracefab_migrator TO tracefab_admin WITH ADMIN TRUE, SET FALSE, INHERIT FALSE');
       baseAdmin = new pg.Client({ connectionString: urlBase.toString(), ssl: sslDepuisUrl(urlBase.toString()) });
       await baseAdmin.connect();
       // Neon installe pgcrypto côté plateforme ; le rôle migrateur ne reçoit
@@ -364,6 +369,9 @@ try {
   }
 
   if (bootstrap?.status === 0) {
+    const urlAdminRunner = new URL(urlBase.toString());
+    urlAdminRunner.username = 'tracefab_admin';
+    urlAdminRunner.password = motDePasseAdmin;
     const urlMigrator = new URL(urlBase.toString());
     urlMigrator.username = 'tracefab_migrator';
     urlMigrator.password = motDePasseMigrateur;
@@ -371,14 +379,14 @@ try {
       env: {
         ...process.env,
         DATABASE_URL: urlMigrator.toString(),
-        TF_ADMIN_URL: urlBase.toString(),
+        TF_ADMIN_URL: urlAdminRunner.toString(),
         TF_ALLOW_WRITE: 'oui',
       },
       encoding: 'utf8',
     });
   }
   const sortie = `${chaine.stdout || ''}${chaine.stderr || ''}`.trim().split('\n');
-  ok(chaine.status === 0, 'R6 le runner applique la chaîne sous tracefab_migrator sans élévation SUPERUSER',
+  ok(chaine.status === 0, 'R6 le runner applique la chaîne avec admin et migrateur non-SUPERUSER',
     chaine.status === 0 ? sortie.filter((l) => /appliquee\(s\)/.test(l)).pop() : sortie.filter((l) => /ECHEC|ERREUR|ERROR/.test(l)).slice(-1)[0] || sortie.slice(-1)[0]);
 
   const client = new pg.Client({ connectionString: urlBase.toString(), ssl: sslDepuisUrl(urlBase.toString()) });
@@ -412,11 +420,21 @@ try {
          SELECT 1 FROM pg_catalog.pg_auth_members m
          JOIN pg_catalog.pg_roles r ON r.oid=m.member
          JOIN pg_catalog.pg_roles w ON w.oid=m.roleid
-        WHERE r.rolname='postgres' AND w.rolname='tracefab_migrator'
+        WHERE r.rolname='tracefab_admin' AND w.rolname='tracefab_migrator'
           AND (m.set_option OR m.inherit_option)
       ) AS actif`)).rows[0].actif;
     ok(bailAdminActif === false,
       'R7 aucun bail SET/INHERIT du migrateur ne subsiste sur la session administrative');
+
+    const adminWorkerRows = (await client.query(
+      `SELECT admin_option, set_option, inherit_option
+         FROM pg_catalog.pg_auth_members m
+         JOIN pg_catalog.pg_roles r ON r.oid=m.member
+         JOIN pg_catalog.pg_roles w ON w.oid=m.roleid
+        WHERE r.rolname='tracefab_admin' AND w.rolname='tracefab_worker'`
+    )).rows;
+    ok(adminWorkerRows.length === 0,
+      'R7 le bail ADMIN-only du runner sur tracefab_worker est révoqué');
 
     const attributsMigrateur = (await client.query(
       `SELECT rolsuper, rolbypassrls, rolcreaterole, rolinherit
@@ -458,19 +476,23 @@ try {
       'SELECT count(*)::int AS n FROM pg_database WHERE datname = $1', [baseTravail])).rows[0].n;
     ok(restantes === 0, 'R7 la base de travail est détruite (aucune base résiduelle)', `${restantes} restante(s)`);
     await admin.query('REVOKE tracefab_worker FROM tracefab_migrator').catch(() => {});
-    await admin.query('REVOKE tracefab_worker FROM postgres').catch(() => {});
-    await admin.query('REVOKE tracefab_migrator FROM postgres').catch(() => {});
+    await admin.query('REVOKE tracefab_worker FROM tracefab_admin').catch(() => {});
+    await admin.query('REVOKE tracefab_migrator FROM tracefab_admin').catch(() => {});
     await admin.query('DROP OWNED BY tracefab_worker').catch(() => {});
     await admin.query('DROP OWNED BY tracefab_migrator').catch(() => {});
+    await admin.query('DROP OWNED BY tracefab_admin').catch(() => {});
     await admin.query('DROP ROLE IF EXISTS tracefab_worker').catch((e) => {
       console.error(`  info  nettoyage tracefab_worker : ${e.message}`);
     });
     await admin.query('DROP ROLE IF EXISTS tracefab_migrator').catch((e) => {
       console.error(`  info  nettoyage tracefab_migrator : ${e.message}`);
     });
+    await admin.query('DROP ROLE IF EXISTS tracefab_admin').catch((e) => {
+      console.error(`  info  nettoyage tracefab_admin : ${e.message}`);
+    });
     const rolesRestants = (await admin.query(
-      `SELECT count(*)::int AS n FROM pg_catalog.pg_roles WHERE rolname IN ('tracefab_migrator','tracefab_worker')`)).rows[0].n;
-    ok(rolesRestants === 0, 'R7 les rôles migrateur/worker jetables sont supprimés', `${rolesRestants} rôle(s) restant(s)`);
+      `SELECT count(*)::int AS n FROM pg_catalog.pg_roles WHERE rolname IN ('tracefab_migrator','tracefab_worker','tracefab_admin')`)).rows[0].n;
+    ok(rolesRestants === 0, 'R7 les rôles migrateur/worker/admin jetables sont supprimés', `${rolesRestants} rôle(s) restant(s)`);
   } finally {
     if (verrou) { await verrou.relacher(); verrou = null; }
   }
