@@ -128,7 +128,7 @@ process.exit(7);
 `);
 
   writeFileSync(join(harnessRoot, 'scripts', 'migrer_fidelement.mjs'), `#!/usr/bin/env node
-const { appendFileSync } = require('fs');
+import { appendFileSync } from 'node:fs';
 appendFileSync(process.env.TF_PRISMA_SENTINEL, JSON.stringify({ runner: true, argv: process.argv.slice(2) }) + '\\n');
 console.log('SENTINEL_RUNNER_FAKE');
 process.exit(43);
