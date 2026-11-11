@@ -673,7 +673,7 @@ jobs:
         # distinct du migrateur CREATEROLE. Les deux rôles sont jetables et
         # créés uniquement sur le service Postgres local, avec mots de passe
         # aléatoires masqués et sorties limitées à l'étape suivante.
-        run: node scripts/prepare_ci_migration_roles.mjs
+        run: npm run db:prepare-ci-migration-roles
 
       - name: Préparer le rôle applicatif avant migrations
         # Via le lanceur garde : refuse toute cible non jetable avant CREATE ROLE.
