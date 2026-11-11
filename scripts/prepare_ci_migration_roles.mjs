@@ -92,6 +92,11 @@ try {
   await client.query(
     `GRANT CREATE ON SCHEMA public TO ${ident(migratorRole)} WITH GRANT OPTION`,
   );
+  // Le migrateur Neon dispose de CREATE sur la base (pas de SUPERUSER) ;
+  // reproduire ce droit minimal dans le service PostgreSQL jetable.
+  await client.query(
+    `GRANT CREATE ON DATABASE ${ident(url.pathname.slice(1))} TO ${ident(migratorRole)}`,
+  );
 
   const roles = (await client.query(
     `SELECT rolname, rolsuper, rolbypassrls, rolcreaterole, rolcreatedb,
@@ -106,6 +111,12 @@ try {
       || !r.rolcanlogin || r.rolinherit)) {
     throw new Error('attributs inattendus sur les identités de migration CI');
   }
+  const databaseCreate = (await client.query(
+    `SELECT has_database_privilege($1, current_database(), 'CREATE') AS allowed`,
+    [migratorRole],
+  )).rows[0]?.allowed;
+  if (databaseCreate !== true) throw new Error('le migrateur doit disposer de CREATE sur la base jetable, sans SUPERUSER');
+
   const membership = (await client.query(
     `SELECT admin_option, set_option, inherit_option
        FROM pg_catalog.pg_auth_members
