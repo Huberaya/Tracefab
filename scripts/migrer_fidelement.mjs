@@ -97,48 +97,18 @@ const migrationsDisque = readdirSync(DOSSIER)
 const empreinte = (fichier) => createHash('sha256').update(readFileSync(fichier)).digest('hex');
 
 // ---------------------------------------------------------------------------
-// Assistance administrative, bornee a une liste fermee.
+// Les migrations worker sont désormais autonomes et compatibles Neon.
 //
-// POURQUOI ELLE EXISTE
+// 20261028120100 crée le rôle avec ses attributs non privilégiés, accorde à
+// current_user une appartenance SET/INHERIT temporaire (ADMIN FALSE), transfère
+// les fonctions, puis révoque le grant dans la même transaction.
+// Les migrations documentaires/HMAC/fermeture RLS et P107 appliquent le même
+// principe lorsqu'elles doivent endosser tracefab_worker.
 //
-// La migration 20261028120100 cree `tracefab_worker` puis lui transfere la
-// propriete de six fonctions. Sur PostgreSQL 16+, deux impasses mesurees le
-// 30/10/2026 sur un cluster jetable (PG 17.10) :
-//
-//   - role ABSENT : la migration le cree, mais un executant CREATEROLE ne
-//     recoit que l'option ADMIN (set_option = false, mesure). Le `GRANT` de la
-//     migration est saute parce que `pg_has_role(...,'MEMBER')` rend deja vrai,
-//     et le `ALTER FUNCTION ... OWNER TO tracefab_worker` echoue en
-//     « must be able to SET ROLE "tracefab_worker" » ;
-//   - role PRESENT : la branche ELSE joue `ALTER ROLE ... NOSUPERUSER`, et
-//     PostgreSQL 16+ exige SUPERUSER pour changer cet attribut
-//     (« Only roles with the SUPERUSER attribute may change the SUPERUSER
-//     attribute »).
-//
-// Aucune des deux branches n'est donc jouable par un role non superutilisateur
-// sur PostgreSQL 16+. La migration ne peut pas etre reecrite : elle est deja
-// appliquee en production, et changer son fichier changerait son empreinte.
-//
-// Deux autres voies ont ete essayees et mesurées, toutes deux fermees :
-//   - executer la migration par un role administratif distinct : le controle de
-//     propriete de la migration exige `current_user` = proprietaire des
-//     fonctions, donc l'executant doit etre le proprietaire des objets ;
-//   - `SET ROLE` vers le proprietaire depuis un compte superutilisateur : les
-//     controles d'`ALTER ROLE` portent sur `current_user`, qui redevient non
-//     superutilisateur — mesure : trois « permission denied to alter role ».
-//
-// CE QUI EST FAIT ICI, ET CE QUI N'EST PAS FAIT
-//
-// L'elevation est TEMPORAIRE, BORNEE A UNE MIGRATION, TRACEE ET REVOQUEE :
-// le role proprietaire recoit SUPERUSER juste avant cette migration, et le
-// perd juste apres, y compris en cas d'echec. Le role de migration n'est
-// jamais superutilisateur en dehors de cette fenetre, et le script refuse de
-// continuer si la revocation n'est pas constatee.
-//
-// Ce n'est pas la solution preferee : c'est la seule qui reste quand on refuse
-// de reecrire une migration deja appliquee. Elle exige un opt-in explicite
-// (`TF_ALLOW_ELEVATION=oui`) et une connexion administrative (`TF_ADMIN_URL`).
-// Sans les deux, le script REFUSE la migration au lieu de la contourner.
+// Aucun SUPERUSER temporaire n'est requis. Le module migrations_assistees.mjs
+// reste vide pour compatibilité du runner historique. Ce runner continue de
+// refuser explicitement Production : l'exécution Production doit utiliser
+// Prisma migrate deploy après validation CI et préflight.
 // ---------------------------------------------------------------------------
 const urlAdmin = (process.env.TF_ADMIN_URL || '').trim();
 const elevationAutorisee = process.env.TF_ALLOW_ELEVATION === 'oui';
