@@ -267,12 +267,14 @@ await admin.connect();
 // ---------------------------------------------------------------------------
 console.log('  -- préflight de propriété des fonctions');
 {
-  const sql = `CREATE OR REPLACE FUNCTION public.tracefab_current_user_id() RETURNS uuid
+  const fonctionExistante = `tf_p106_preflight_${randomBytes(3).toString('hex')}`;
+  await admin.query(`CREATE FUNCTION public.${fonctionExistante}() RETURNS uuid LANGUAGE sql AS 'SELECT NULL::uuid'`);
+  const sql = `CREATE OR REPLACE FUNCTION public.${fonctionExistante}() RETURNS uuid
                LANGUAGE sql AS 'SELECT NULL::uuid';
                CREATE OR REPLACE FUNCTION public.tracefab_fonction_a_venir() RETURNS int
                LANGUAGE sql AS 'SELECT 1';`;
   const cibles = fonctionsCibles(sql);
-  ok(cibles.length === 2 && cibles[0] === 'tracefab_current_user_id',
+  ok(cibles.length === 2 && cibles[0] === fonctionExistante,
     'R8 les fonctions visées sont lues dans le fichier de migration', cibles.join(', '));
 
   const pourAdmin = await propriétairesInjoignables(
@@ -293,10 +295,11 @@ console.log('  -- préflight de propriété des fonctions');
       admin, roleSansPropriete, [{ nom: 'sonde', sql }],
     );
   } finally {
-    await admin.query(`DROP ROLE IF EXISTS ${roleSansPropriete}`);
+    await admin.query(`DROP ROLE IF EXISTS ${roleSansPropriete}`)
+    await admin.query(`DROP FUNCTION IF EXISTS public.${fonctionExistante}()`);
   }
   const attendu = pourRoleSansPropriete.some((e) =>
-    e.fonction === 'tracefab_current_user_id' && e.proprietaire === 'postgres');
+    e.fonction === fonctionExistante && e.proprietaire === roleExecutant);
   ok(attendu,
     'R8 un exécutant non-propriétaire existant est REFUSÉ avant la chaîne',
     pourRoleSansPropriete.map((e) => `${e.fonction}→${e.proprietaire}`).join(', ') || 'aucun écart');
