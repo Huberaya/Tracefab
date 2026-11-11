@@ -517,6 +517,36 @@ for (const rel of SELF_GUARDED_DB_TOOLS) {
     : ko(`${rel} — exitOnFailure: false : le script continuerait sur une cible refusee`);
 }
 
+console.log('\n  F3. le bootstrap CI reproduit le contrat Neon du migrateur');
+{
+  const rel = 'scripts/prepare_ci_migration_roles.mjs';
+  const source = readFileSync(join(ROOT, rel), 'utf8');
+  const guardAt = source.indexOf('requireThrowawayDb(');
+  const connectAt = source.indexOf('await client.connect()');
+  ok(guardAt >= 0 && connectAt >= 0 && guardAt < connectAt
+    ? `${rel} — garde locale avant toute connexion`
+    : `${rel} — garde absente ou exécutée après connexion`);
+
+  const beginAt = source.indexOf("await client.query('BEGIN')");
+  const extensionAt = source.indexOf('CREATE EXTENSION IF NOT EXISTS pgcrypto');
+  const adminAt = source.indexOf('NOBYPASSRLS NOSUPERUSER NOINHERIT');
+  ok(beginAt >= 0 && extensionAt > beginAt && extensionAt < adminAt
+    ? 'pgcrypto préinstallée par le bootstrap avant les rôles non-superusers'
+    : 'pgcrypto doit être préinstallée avant la prise de rôle migrateur');
+
+  const adminNoBypass = source.includes('CREATEROLE NOCREATEDB NOBYPASSRLS NOSUPERUSER NOINHERIT');
+  const migratorBypass = source.includes('CREATEROLE NOCREATEDB BYPASSRLS NOSUPERUSER INHERIT');
+  ok(adminNoBypass && migratorBypass
+    ? 'admin NOBYPASSRLS et migrateur BYPASSRLS, tous deux NOSUPERUSER'
+    : 'contrat de privilèges admin/migrateur divergent');
+
+  const dbCreate = source.includes('GRANT CREATE ON DATABASE');
+  const schemaOwner = source.includes('ALTER SCHEMA public OWNER TO');
+  ok(dbCreate && schemaOwner
+    ? 'migrateur CREATE sur la base et propriétaire de public, comme Neon'
+    : 'droits CREATE base / propriété public absents du bootstrap');
+}
+ 
 console.log('\n  E. les suites declarees sans ecriture le sont vraiment');
 for (const rel of READ_ONLY_DB_SUITES) {
   if (!existsSync(join(ROOT, rel))) { ok(`${rel} — absent, rien a verifier`); continue; }
