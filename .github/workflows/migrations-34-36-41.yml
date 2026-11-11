@@ -106,3 +106,6 @@ jobs:
 
       - name: Intégration A (neuve) et B (10120000 tardif)
         run: bash scripts/test_migration_integration_34_36_41.sh
+
+      - name: Rejouabilité P10.6 — runner sous migrateur non-superuser
+        run: node scripts/test_p106_rejouabilite_chaine.mjs
