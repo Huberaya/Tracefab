@@ -54,26 +54,36 @@
 --   Voir docs/security/2026-10-28-correction-contexte-worker.md §7.
 -- ============================================================================
 
--- 1. L'identite worker -------------------------------------------------------
+-- 1. L'identité worker -------------------------------------------------------
+-- Le runner provisionne ce rôle via sa session administrative AVANT cette
+-- migration. Le migrateur ne crée pas de rôle et ne peut pas s'auto-accorder
+-- l'appartenance : le bail SET/INHERIT est accordé par l'administrateur dans
+-- la transaction qui exécute cette migration.
 DO $$
+DECLARE
+  worker RECORD;
 BEGIN
-  IF NOT EXISTS (SELECT 1 FROM pg_catalog.pg_roles WHERE rolname = 'tracefab_worker') THEN
-    CREATE ROLE tracefab_worker
-      NOLOGIN NOINHERIT NOBYPASSRLS NOSUPERUSER NOCREATEROLE NOCREATEDB;
-  ELSE
-    -- Neon interdit a un role non-superutilisateur de modifier l'attribut
-    -- SUPERUSER, meme pour le remettre a NOSUPERUSER. On ne tente donc aucun
-    -- ALTER ROLE ici : un role deja present doit deja respecter le contrat,
-    -- sinon la migration echoue sans le modifier.
-    IF EXISTS (
-      SELECT 1 FROM pg_catalog.pg_roles
-       WHERE rolname = 'tracefab_worker'
-         AND (rolcanlogin OR rolsuper OR rolbypassrls OR rolcreaterole
-              OR rolcreatedb OR rolreplication OR rolinherit)
-    ) THEN
-      RAISE EXCEPTION 'tracefab_worker_preexisting_attributes_invalid'
-        USING HINT = 'Le rôle existant doit être NOLOGIN, NOSUPERUSER, NOBYPASSRLS, NOINHERIT, NOCREATEROLE et NOCREATEDB.';
-    END IF;
+  SELECT rolcanlogin, rolsuper, rolbypassrls, rolcreaterole, rolcreatedb,
+         rolreplication, rolinherit
+    INTO worker
+    FROM pg_catalog.pg_roles
+   WHERE rolname = 'tracefab_worker';
+
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'tracefab_worker_must_be_preprovisioned_by_runner';
+  END IF;
+
+  IF worker.rolcanlogin OR worker.rolsuper OR worker.rolbypassrls
+     OR worker.rolcreaterole OR worker.rolcreatedb OR worker.rolreplication
+     OR worker.rolinherit THEN
+    RAISE EXCEPTION 'tracefab_worker_preexisting_attributes_invalid'
+      USING HINT = 'Le rôle doit être NOLOGIN, NOSUPERUSER, NOBYPASSRLS, NOINHERIT, NOCREATEROLE et NOCREATEDB.';
+  END IF;
+
+  IF current_setting('tracefab.worker_membership_managed', true) IS DISTINCT FROM 'true'
+     OR NOT pg_catalog.pg_has_role(current_user, 'tracefab_worker', 'SET')
+     OR NOT pg_catalog.pg_has_role(current_user, 'tracefab_worker', 'USAGE') THEN
+    RAISE EXCEPTION 'worker_membership_must_be_managed_by_runner';
   END IF;
 END
 $$;
@@ -313,29 +323,16 @@ AS $$
   FROM public.tracefab_notification_outbox o
 $$;
 
--- 6. Propriete des fonctions : `tracefab_worker` -----------------------------
---    C'est ce transfert qui rend les politiques worker efficaces. Attribuer la
---    propriete d'un objet exige d'etre membre du role cible (ou superutilisateur).
---    L'octroi ci-dessous est donc technique et borne au role qui execute les
---    migrations ; il n'ouvre rien a `tracefab_app`.
+-- 6. Propriété des fonctions : `tracefab_worker` ----------------------------
+-- Le runner a accordé SET/INHERIT au migrateur dans cette transaction. Le rôle
+-- worker est préprovisionné par l'administrateur et son bail est révoqué par le
+-- runner après les postconditions, avant COMMIT.
 DO $$
 BEGIN
-  IF pg_catalog.pg_has_role(current_user, 'tracefab_worker', 'SET') THEN
-    IF EXISTS (
-      SELECT 1 FROM pg_catalog.pg_auth_members m
-      JOIN pg_catalog.pg_roles r ON r.oid = m.member
-      JOIN pg_catalog.pg_roles w ON w.oid = m.roleid
-      WHERE r.rolname = current_user AND w.rolname = 'tracefab_worker'
-        AND (m.set_option OR m.inherit_option)
-    ) THEN
-      RAISE EXCEPTION 'worker_membership_preexisting'
-        USING HINT = 'Nettoyer toute appartenance worker antérieure avant le bootstrap.';
-    END IF;
-  ELSE
-    EXECUTE pg_catalog.format(
-      'GRANT tracefab_worker TO %I WITH SET TRUE, INHERIT TRUE, ADMIN TRUE',
-      current_user
-    );
+  IF current_setting('tracefab.worker_membership_managed', true) IS DISTINCT FROM 'true'
+     OR NOT pg_catalog.pg_has_role(current_user, 'tracefab_worker', 'SET')
+     OR NOT pg_catalog.pg_has_role(current_user, 'tracefab_worker', 'USAGE') THEN
+    RAISE EXCEPTION 'worker_membership_must_be_managed_by_runner';
   END IF;
 
   -- PostgreSQL exige CREATE sur le schéma cible pour transférer la propriété.
