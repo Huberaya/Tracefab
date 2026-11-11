@@ -47,6 +47,7 @@ export const API_RUNTIME_FUNCTION_NAMES = Object.freeze([
   'tracefab_get_product_traceability',
   'tracefab_get_public_supplier_passport',
   'tracefab_has_org_role',
+  'tracefab_identite_systeme_jeton_valide',
   'tracefab_in_active_tenant',
   'tracefab_ingest_plm_erp_payload',
   'tracefab_invite_supplier',
@@ -91,13 +92,13 @@ export const API_RUNTIME_FUNCTION_NAMES = Object.freeze([
 ]);
 
 export const RLS_POLICY_FUNCTION_NAMES = Object.freeze([
+  'tracefab_in_active_tenant',
   'tracefab_can_access_document',
   'tracefab_can_access_org',
   'tracefab_can_access_shared_subject',
   'tracefab_current_user_email',
   'tracefab_current_user_id',
   'tracefab_has_org_role',
-  'tracefab_in_active_tenant',
   'tracefab_is_org_member',
   'tracefab_material_is_public',
   'tracefab_material_visible_via_product',

@@ -1,25 +1,21 @@
--- TRACEFAB — sondes d'EFFET, LECTURE SEULE.
+-- TRACEFAB — sondes d'EFFET, LECTURE SEULE (relevé actualisé le 11/11/2026).
 --
--- POURQUOI CETTE SONDE EXISTE
+-- Les deux migrations 20261010120000 et 20261017120000 ont chacune une
+-- tentative rolled_back_at, puis une ligne ultérieure terminée avec
+-- applied_steps_count=1 : Prisma les considère donc appliquées. Elles ne sont
+-- ni à rejouer ni à résoudre.
 --
--- L'historique Prisma de production ne connait pas onze migrations du depot.
--- Deux d'entre elles y figurent comme ANNULEES (`rolled_back_at` renseigne) :
--- un `migrate resolve --rolled-back` a efface leur trace sans rien defaire.
--- Onze lignes d'historique ne disent donc pas onze effets absents — elles
--- disent qu'on ne sait pas.
+-- Le dépôt de release compte 43 migrations absentes du journal Production :
+-- 9 absences historiques, la migration antidatée 20261028120050 ajoutée après
+-- le relevé initial, et 33 migrations postérieures à la borne.
 --
--- Cette lecture ne demande rien a l'historique : elle interroge le CATALOGUE et
--- deux tables de reference, et mesure l'etat reel des objets que ces migrations
--- sont censees laisser derriere elles.
+-- Cette lecture n'écrit rien : elle interroge uniquement le CATALOGUE,
+-- les privilèges et l'historique Prisma. Aucune ligne métier n'est lue.
 --
--- Aucune ecriture, aucun appel de fonction applicative, aucune ligne metier
--- lue a part le libelle d'un profil de referentiel.
---
---   Sortie : une ligne par sonde, champs separes par `|`.
+--   Sortie : une ligne par sonde, champs séparés par `|`.
 --   S|migration|sonde|valeur
 --
--- A coller dans le SQL Editor de Neon, branche `Primary`.
-
+-- À exécuter dans le SQL Editor Neon sur la branche Production.
 WITH f AS (
   SELECT p.proname, pg_catalog.pg_get_functiondef(p.oid) AS def
     FROM pg_catalog.pg_proc p
@@ -82,6 +78,10 @@ SELECT ligne FROM (
          || '|politiques_sur_current_user|'
          || (SELECT count(*)::text FROM pg_catalog.pg_policies
               WHERE schemaname = 'public'
+                -- Cette sonde isole l effet de 20261028120100 : exclure la politique
+                -- ajoutee plus tard par 20261109190000, sinon son compteur reste a 15
+                -- meme lorsque la migration historique testee est retiree.
+                AND policyname <> 'organizations_worker_update'
                 -- `strpos` ET NON `LIKE`, pour la raison qui a produit un faux
                 -- positif ailleurs dans ce chantier : dans un motif LIKE, `_`
                 -- est un JOKER. `LIKE '%tracefab_worker%'` matche donc
@@ -111,15 +111,18 @@ SELECT ligne FROM (
   UNION ALL
   -- 9. `product_computed_fields_column_scoped`. Le declencheur doit avoir
   --    cesse de lire le GUC, et le role runtime ne doit plus ecrire la table.
-  SELECT 9, 'S|20261028130000|update_app_sur_tracefab_products|'
-         || coalesce((SELECT pg_catalog.has_table_privilege('tracefab_app', 'public.tracefab_products', 'UPDATE')::text), 'role absent')
-         || '|trigger_lit_encore_le_guc|'
+  SELECT 9, 'S|20261028130000|table_level_update_app|'
          || coalesce((
-              SELECT (pg_catalog.pg_get_triggerdef(tg.oid) LIKE '%internal_product_revision%')::text
-                FROM pg_catalog.pg_trigger tg
-               WHERE tg.tgrelid = 'public.tracefab_products'::regclass
-                 AND NOT tg.tgisinternal
-                 AND tg.tgname = 'products_validate_brand_ownership'), 'trigger absent')
+              SELECT bool_or(a.privilege_type = 'UPDATE')::text
+                FROM pg_catalog.pg_class c
+                CROSS JOIN LATERAL pg_catalog.aclexplode(c.relacl) a
+                JOIN pg_catalog.pg_roles r ON r.oid = a.grantee
+               WHERE c.oid = 'public.tracefab_products'::regclass
+                 AND r.rolname = 'tracefab_app'), 'false')
+         || '|update_version_calculee|'
+         || coalesce((SELECT pg_catalog.has_column_privilege('tracefab_app', 'public.tracefab_products', 'version', 'UPDATE')::text), 'role absent')
+         || '|update_name_metier|'
+         || coalesce((SELECT pg_catalog.has_column_privilege('tracefab_app', 'public.tracefab_products', 'name', 'UPDATE')::text), 'role absent')
 
   UNION ALL
   -- 10. `supplier_invitation_owner_relationship_scope`.
@@ -133,6 +136,32 @@ SELECT ligne FROM (
   SELECT 11, 'S|20261028150000|politiques_plm_erp_sync_jobs|'
          || (SELECT count(*)::text FROM pg_catalog.pg_policies
               WHERE schemaname = 'public' AND tablename = 'plm_erp_sync_jobs')
-         || '|attendu|2'
+         || '|noms|'
+         || coalesce((SELECT string_agg(policyname, ',' ORDER BY policyname)
+                        FROM pg_catalog.pg_policies
+                       WHERE schemaname = 'public' AND tablename = 'plm_erp_sync_jobs'), '(aucune)')
+         || '|insert_contributor|'
+         || coalesce((SELECT (with_check ILIKE '%contributor%')::text
+                        FROM pg_catalog.pg_policies
+                       WHERE schemaname = 'public' AND tablename = 'plm_erp_sync_jobs'
+                         AND policyname = 'plm_sync_jobs_insert_brand'), 'politique absente')
+
+  UNION ALL
+  -- 12. La migration 20261028120050 remplace cette fonction après création du registre.
+  SELECT 12, 'S|20261028120050|fonction_apply_runtime_function_grants|'
+         || coalesce((SELECT 'oui' FROM f WHERE proname = 'tracefab_apply_runtime_function_grants'), 'non')
+
+  UNION ALL
+  -- 13. Les tentatives annulées ont une reprise réussie : ne pas les rejouer.
+  SELECT 13, 'S|historique|20261010120000_et_20261017120000|'
+         || (SELECT count(*)::text FROM public._prisma_migrations
+              WHERE migration_name IN ('20261010120000_publication_explicite',
+                                       '20261017120000_active_tenant_context')
+                AND finished_at IS NOT NULL AND rolled_back_at IS NULL)
+         || '|tentatives_annulees|'
+         || (SELECT count(*)::text FROM public._prisma_migrations
+              WHERE migration_name IN ('20261010120000_publication_explicite',
+                                       '20261017120000_active_tenant_context')
+                AND rolled_back_at IS NOT NULL)
 ) x
 ORDER BY o, ligne;

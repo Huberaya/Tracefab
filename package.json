@@ -4,7 +4,7 @@
   "version": "0.1.0",
   "description": "Tracefab supplier data platform foundations",
   "scripts": {
-    "test": "npm run typecheck && npm run api:typecheck && npm run schema:static && npm run test:active-tenant && npm run test:security:chantier1 && npm run test:error-reporting && npm run test:sql-errors && npm run test:bridge:chantier2 && npm run test:supplychain:chantier3 && npm run test:supplychain:contract && npm run test:dpp:chantier4 && npm run test:dpp:quality-gate && npm run test:dpp:migrations && npm run test:brand-console:dpp-journey && npm run test:dpp:lifecycle && npm run test:dpp:evidence && npm run test:dpp:quality && npm run test:dpp:identity && npm run test:dpp:demo-separation && npm run test:context-integrity && npm run test:clerk-identity && npm run test:quality-actions:chantier5 && npm run test:cap:chantier5 && npm run test:universal-passport:chantier6 && npm run test:onboarding:chantier6 && npm run test:mass-balance:chantier7 && npm run test:bulk:chantier8 && npm run test:wallet:chantier9 && npm run test:storage:chantier10 && npm run test:docai:chantier1 && npm run test:plm-erp:chantier2 && npm run test:plm-erp:policy-dedup && npm run test:plm-sync-job-policy-reconciliation && npm run test:pef:chantier3 && npm run test:green-claims:chantier4 && npm run test:brand-console && npm run test:brand-journey && npm run test:brand-journey-58 && npm run test:customer-journey:blockers && npm run test:clerk-proxy && npm run test:supplier-portal && npm run test:questionnaires",
+    "test": "npm run typecheck && npm run api:typecheck && npm run schema:static && npm run test:active-tenant && npm run test:security:chantier1 && npm run test:error-reporting && npm run test:sql-errors && npm run test:bridge:chantier2 && npm run test:supplychain:chantier3 && npm run test:supplychain:contract && npm run test:dpp:chantier4 && npm run test:dpp:quality-gate && npm run test:dpp:migrations && npm run test:brand-console:dpp-journey && npm run test:dpp:lifecycle && npm run test:dpp:evidence && npm run test:dpp:quality && npm run test:dpp:identity && npm run test:dpp:demo-separation && npm run test:context-integrity && npm run test:clerk-identity && npm run test:clerk-webhook && npm run test:quality-actions:chantier5 && npm run test:cap:chantier5 && npm run test:universal-passport:chantier6 && npm run test:onboarding:chantier6 && npm run test:mass-balance:chantier7 && npm run test:bulk:chantier8 && npm run test:wallet:chantier9 && npm run test:storage:chantier10 && npm run test:docai:chantier1 && npm run test:plm-erp:chantier2 && npm run test:plm-erp:policy-dedup && npm run test:plm-sync-job-policy-reconciliation && npm run test:pef:chantier3 && npm run test:green-claims:chantier4 && npm run test:brand-console && npm run test:brand-journey && npm run test:brand-journey-58 && npm run test:customer-journey:blockers && npm run test:clerk-proxy && npm run test:supplier-portal && npm run test:questionnaires",
     "test:sql-errors": "node scripts/test_sql_business_errors.mjs",
     "test:plm-sync-job-policy-reconciliation": "node scripts/test_plm_sync_job_policy_reconciliation.mjs",
     "test:bulk:chantier8": "npx tsx scripts/test_bulk_operations_chantier8.mjs",
@@ -29,6 +29,9 @@
     "test:p107:sonde-runtime": "node scripts/run-db-suite.mjs scripts/test_p107_sonde_runtime.mjs",
     "test:p107:demonstration": "node scripts/run-db-suite.mjs scripts/test_p107_demonstration_strict.mjs",
     "test:p107:sonde-hmac": "node scripts/test_p107_sonde_hmac.mjs",
+    "test:p107:identite-systeme-module": "node --import tsx scripts/test_p107_identite_systeme_module.mjs",
+    "test:p107:identite-systeme": "node scripts/run-db-suite.mjs scripts/test_p107_identite_systeme_signee.mjs",
+    "test:p107:activation-stricte": "node scripts/run-db-suite.mjs scripts/test_p107_activation_mode_systeme.mjs",
     "sonde:p107:hmac": "node --import tsx scripts/sonde_p107_hmac.ts",
     "test:neon:write-policies": "node scripts/run-db-suite.mjs scripts/test_rls_write_policies.mjs",
     "test:neon:wallet:chantier9": "node scripts/run-db-suite.mjs scripts/test_neon_wallet_chantier9.ts",
@@ -178,7 +181,7 @@
     "test:diagnose-incident": "node scripts/test_diagnose_incident_offline.mjs",
     "test:sonde-preview": "node scripts/test_sonde_preview_hors_ligne.mjs",
     "diagnose:prod": "node scripts/diagnose_production_incident.mjs",
-    "postinstall": "node scripts/prisma-generate.mjs",
+    "postinstall": "node scripts/prisma-generate.mjs && node scripts/test_dpp_resolvable_identity.mjs",
     "test:router-load": "npx tsx scripts/test_router_module_load.mjs",
     "db:seed-rls": "node scripts/run-db-suite.mjs scripts/seed_rls_fixture.mjs",
     "audit:workflows": "node scripts/audit_workflows_all_refs.mjs",
@@ -188,6 +191,7 @@
     "test:migration-history": "node scripts/test_migration_history.mjs",
     "test:ci-no-production-access": "node scripts/test_ci_no_production_access.mjs",
     "db:prepare-ci-role": "node scripts/run-db-suite.mjs scripts/prepare_ci_db_role.mjs",
+    "db:prepare-ci-migration-roles": "node scripts/run-db-suite.mjs scripts/prepare_ci_migration_roles.mjs",
     "db:role-runtime": "node scripts/lire-role-runtime.mjs",
     "test:rate-limit": "npx tsx scripts/test_rate_limit.mjs",
     "test:product-edit:api": "npx tsx scripts/test_product_edit_api.ts",
@@ -270,8 +274,7 @@
     "test:jetables:reinitialiser-base": "node scripts/run-db-suite.mjs scripts/reinitialiser_base_jetable.mjs",
     "test:jetables:nettoyer": "node scripts/run-db-suite.mjs scripts/nettoyer_ressources_jetables.mjs",
     "test:jetables": "npm run test:jetables:verrou-cluster && npm run test:jetables:concurrence && npm run test:jetables:base-ephemere && npm run test:jetables:role-ephemere && npm run test:jetables:role-app && npm run test:jetables:destruction && npm run test:jetables:ressources-fixes && npm run test:jetables:reprise && npm run test:jetables:provisioning && npm run test:jetables:garde-cible && npm run test:jetables:migration-atomicite && npm run test:jetables:r4-inscription && npm run test:jetables:harnais-rls",
-    "db:preflight:worker-neon:check": "node scripts/provisionner_worker_neon.mjs --etat",
-    "db:preflight:worker-neon": "node scripts/provisionner_worker_neon.mjs --appliquer"
+    "test:clerk-webhook": "node --import tsx scripts/test_clerk_webhook_runtime.mjs"
   },
   "devDependencies": {
     "@electric-sql/pglite": "^0.5.12",
