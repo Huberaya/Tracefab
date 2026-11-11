@@ -60,7 +60,19 @@ await db.exec(`
   CREATE ROLE tracefab_app LOGIN PASSWORD 'runtime' NOSUPERUSER NOBYPASSRLS NOCREATEROLE NOCREATEDB;
 `);
 
-// Les 63 migrations, dans l'ordre.
+// Les migrations sont rejouees avec le contrat du runner, sans SUPERUSER
+// comme raccourci logique : le worker est preprovisionne avant le bootstrap,
+// puis le bail SET/INHERIT est accorde uniquement pendant les migrations qui
+// le declarent. PGlite execute le banc sous postgres ; il ne remplace pas le
+// test Neon/Postgres 17, mais le schema suit le meme protocole transactionnel.
+const migrationsAvecWorkerTemporaire = new Set([
+  '20261028120100_worker_identity_not_forgeable',
+  '20261028120200_document_reserved_fields_internal_only',
+  '20261031120000_identite_hmac_liee_au_contexte',
+  '20261105235900_active_tenant_policy_and_worker_closure',
+  '20261108120100_worker_fonctions_systeme_completes',
+  '20261108120200_corrections_p106_ownership_et_appartenance',
+]);
 const dossiers = fs.readdirSync(MIGRATIONS)
   .filter((d) => /^\d{14}_/.test(d))
   .sort();
@@ -68,7 +80,25 @@ let appliquees = 0;
 for (const d of dossiers) {
   const f = path.join(MIGRATIONS, d, 'migration.sql');
   if (!fs.existsSync(f)) continue;
+  if (d === '20261028120100_worker_identity_not_forgeable') {
+    await db.exec(`
+      CREATE ROLE tracefab_worker NOLOGIN NOINHERIT NOBYPASSRLS
+        NOSUPERUSER NOCREATEROLE NOCREATEDB NOREPLICATION;
+    `);
+  }
+  if (migrationsAvecWorkerTemporaire.has(d)) {
+    await db.exec(`
+      GRANT tracefab_worker TO postgres WITH SET TRUE, INHERIT TRUE, ADMIN FALSE;
+      SET tracefab.worker_membership_managed = 'true';
+    `);
+  }
   await db.exec(fs.readFileSync(f, 'utf8'));
+  if (migrationsAvecWorkerTemporaire.has(d)) {
+    await db.exec(`
+      RESET tracefab.worker_membership_managed;
+      REVOKE tracefab_worker FROM postgres;
+    `);
+  }
   appliquees += 1;
 }
 ok(`${appliquees} migrations appliquees`, appliquees === dossiers.length, `${appliquees}/${dossiers.length}`);

@@ -38,6 +38,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { executerMigrationPglite } from './lib/pglite-worker-runner.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const MIGRATIONS = path.join(root, 'prisma/migrations');
@@ -79,7 +80,7 @@ async function appliquer(db, avant) {
   let n = 0;
   for (const d of dossiers) {
     if (avant && d >= avant) break;
-    await db.exec(lire(d));
+    await executerMigrationPglite(db, d, lire(d));
     n += 1;
   }
   return n;
@@ -227,7 +228,7 @@ console.log('\n  3. Reprise complete d un historique bloque');
     );
   `);
   for (const d of appliquees) {
-    await db.exec(lire(d));
+    await executerMigrationPglite(db, d, lire(d));
     await db.exec(`INSERT INTO public._prisma_migrations (id, checksum, finished_at, migration_name, applied_steps_count)
       VALUES (gen_random_uuid()::text, repeat('0',64), now(), '${d}', 1)`);
   }
@@ -306,7 +307,7 @@ console.log('\n  3. Reprise complete d un historique bloque');
 
   // --- Etape 3 du plan : deploy applique les cinq manquantes.
   for (const d of manquantes) {
-    await db.exec(lire(d));
+    await executerMigrationPglite(db, d, lire(d));
     await db.exec(`INSERT INTO public._prisma_migrations (id, checksum, finished_at, migration_name, applied_steps_count)
       VALUES (gen_random_uuid()::text, repeat('1',64), now(), '${d}', 1)`);
   }

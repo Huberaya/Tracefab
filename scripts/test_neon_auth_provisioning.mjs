@@ -23,6 +23,10 @@
  * vaut pas un test qui passe.
  */
 import assert from 'node:assert/strict';
+import { randomBytes } from 'node:crypto';
+import { execFileSync } from 'node:child_process';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import pg from 'pg';
 import { createTestPrisma, injectPrismaSingleton } from './lib/test_prisma_client.mjs';
 
@@ -42,6 +46,29 @@ const ko = (m) => { console.log(`  ECHEC ${m}`); echecs += 1; };
 
 const proprio = new pg.Client({ connectionString: URL_PROPRIO });
 await proprio.connect();
+
+// P10.7 : le contexte worker refuse de s'ouvrir sans identite systeme signee.
+// Le banc tourne sur une base jetable ; il provisionne donc sa propre cle
+// ephemere par le meme outil d'exploitation que le runtime, sans secret CI,
+// sans valeur versionnee et sans afficher la cle.
+const cleTest = randomBytes(32).toString('hex');
+process.env.TRACEFAB_IDENTITY_KEY = cleTest;
+const provisionnement = execFileSync(process.execPath, [
+  join(dirname(fileURLToPath(import.meta.url)), 'provisionner_cle_identite.mjs'),
+], {
+  cwd: process.cwd(),
+  env: {
+    ...process.env,
+    DATABASE_ADMIN_URL: URL_PROPRIO,
+    TF_IDENTITY_KEY_HEX: cleTest,
+    TF_ALLOW_PROVISIONING: 'oui',
+  },
+  encoding: 'utf8',
+});
+if (!/VERDICT\s*:\s*clé provisionnée/i.test(provisionnement) || provisionnement.includes(cleTest)) {
+  throw new Error('La clé éphémère P10.7 n a pas été provisionnée proprement dans la base jetable.');
+}
+console.log('  clé de test P10.7 provisionnée par le script opérateur (valeur non affichée)');
 
 const U = {
   orgA: 'a1000000-0000-4000-8000-000000000001',
