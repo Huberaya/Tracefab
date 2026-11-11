@@ -97,9 +97,9 @@ try {
   await client.query(
     `GRANT CREATE ON DATABASE ${ident(url.pathname.slice(1))} TO ${ident(migratorRole)}`,
   );
-  // Dans Neon, tracefab_migrator est propriétaire du schéma public. Le
-  // reproduire est nécessaire pour les opérations historiques de la migration
-  // initiale (ACL du schéma), sans donner SUPERUSER ni BYPASSRLS au migrateur.
+  // Dans Neon, tracefab_migrator est propriétaire du schéma public et porte
+  // BYPASSRLS (contrat de migration, jamais de runtime). Le reproduire est
+  // nécessaire pour les opérations historiques de la migration initiale.
   await client.query(`ALTER SCHEMA public OWNER TO ${ident(migratorRole)}`);
 
   const roles = (await client.query(
@@ -158,4 +158,4 @@ const migratorUrl = `postgresql://${migratorRole}:${migratorPassword}@${host}:${
 const adminUrl = `postgresql://${adminRole}:${adminPassword}@${host}:${port}/${database}`;
 await import('node:fs/promises').then(({ appendFile }) =>
   appendFile(output, `migrator_url=${migratorUrl}\nadmin_url=${adminUrl}\n`));
-console.log('Identités CI créées et vérifiées : deux CREATEROLE non-superusers, sans BYPASSRLS.');
+console.log('Identités CI vérifiées : admin CREATEROLE/NOBYPASSRLS ; migrateur CREATEROLE/BYPASSRLS ; aucun SUPERUSER.');
