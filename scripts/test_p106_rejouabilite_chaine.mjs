@@ -448,7 +448,10 @@ try {
       'SELECT count(*)::int AS n FROM pg_database WHERE datname = $1', [baseTravail])).rows[0].n;
     ok(restantes === 0, 'R7 la base de travail est détruite (aucune base résiduelle)', `${restantes} restante(s)`);
     await admin.query('REVOKE tracefab_worker FROM tracefab_migrator').catch(() => {});
+    await admin.query('REVOKE tracefab_worker FROM postgres').catch(() => {});
     await admin.query('REVOKE tracefab_migrator FROM postgres').catch(() => {});
+    await admin.query('DROP OWNED BY tracefab_worker').catch(() => {});
+    await admin.query('DROP OWNED BY tracefab_migrator').catch(() => {});
     await admin.query('DROP ROLE IF EXISTS tracefab_worker').catch((e) => {
       console.error(`  info  nettoyage tracefab_worker : ${e.message}`);
     });
