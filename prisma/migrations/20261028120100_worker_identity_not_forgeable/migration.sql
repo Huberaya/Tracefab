@@ -445,9 +445,8 @@ DECLARE
   est_grantor BOOLEAN;
   appartenance_active BOOLEAN;
 BEGIN
-  -- Le migrateur conserve ADMIN-only sur le worker : il lui faut cette
-  -- capacité étroite pour déléguer ADMIN à la session administrative du runner.
-  -- SET et INHERIT sont, eux, retirés après le transfert des six fonctions.
+  -- Le migrateur conserve ADMIN-only sur le worker pour déléguer cette option
+  -- à la session administrative. SET et INHERIT sont retirés séparément.
   SELECT COALESCE(bool_or(m.set_option OR m.inherit_option), false),
          COALESCE(bool_or(pg_catalog.pg_get_userbyid(m.grantor) = current_user
                           AND (m.set_option OR m.inherit_option)), false)
