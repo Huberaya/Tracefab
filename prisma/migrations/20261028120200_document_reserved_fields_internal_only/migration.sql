@@ -57,6 +57,33 @@
 --   - elle ne touche a aucune donnee metier et ne cree aucun secret.
 -- ============================================================================
 
+-- 0. Appartenance worker temporaire pour le registre SECURITY DEFINER -------
+DO $worker_membership_begin$
+DECLARE v_superuser boolean;
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_catalog.pg_roles WHERE rolname = 'tracefab_worker') THEN
+    RAISE EXCEPTION 'tracefab_worker_absent';
+  END IF;
+  SELECT rolsuper INTO v_superuser FROM pg_catalog.pg_roles WHERE rolname = current_user;
+  IF v_superuser IS DISTINCT FROM TRUE
+     AND NOT pg_catalog.pg_has_role(current_user, 'tracefab_worker', 'SET') THEN
+    EXECUTE pg_catalog.format(
+      'GRANT tracefab_worker TO %I WITH SET TRUE, INHERIT TRUE, ADMIN FALSE',
+      current_user
+    );
+  END IF;
+  IF v_superuser IS DISTINCT FROM TRUE AND EXISTS (
+    SELECT 1 FROM pg_catalog.pg_auth_members m
+    JOIN pg_catalog.pg_roles r ON r.oid = m.member
+    JOIN pg_catalog.pg_roles w ON w.oid = m.roleid
+    WHERE r.rolname = current_user AND w.rolname = 'tracefab_worker'
+      AND (NOT m.inherit_option OR NOT m.set_option OR m.admin_option)
+  ) THEN
+    RAISE EXCEPTION 'worker_membership_options_invalid';
+  END IF;
+END
+$worker_membership_begin$;
+
 -- 1. La transition `scanning`, cote interne -----------------------------------
 --    Memes garde-fous que l'ancien chemin : le document doit exister, etre dans
 --    un etat scannable, et l'appelant doit avoir un role d'ecriture dans
@@ -136,3 +163,12 @@ $$;
 --    octroi existe hors registre. Deux valeurs retournees : (autorisees,
 --    revoquees). L'appel est idempotent.
 SELECT * FROM public.tracefab_apply_runtime_function_grants();
+
+-- 6. Retirer l'appartenance temporaire avant COMMIT --------------------------
+DO $worker_membership_revoke$
+BEGIN
+  IF pg_catalog.pg_has_role(current_user, 'tracefab_worker', 'MEMBER') THEN
+    EXECUTE pg_catalog.format('REVOKE tracefab_worker FROM %I', current_user);
+  END IF;
+END
+$worker_membership_revoke$;
