@@ -159,7 +159,9 @@ console.log('0. Les quatre noms signales absents existent-ils dans le depot ?');
   console.log('         NOLOGIN + politiques sur current_user + 6 fonctions nommees.');
   // Et les objets reels, eux, doivent etre dans le depot.
   const reel = lire('20261028120100_worker_identity_not_forgeable');
-  ok('le correctif reel cree bien le role tracefab_worker', /CREATE ROLE tracefab_worker/.test(reel));
+  ok('le bootstrap exige un worker préprovisionné par le runner',
+    /tracefab_worker_must_be_preprovisioned_by_runner/.test(reel)
+      && !/CREATE ROLE tracefab_worker/.test(reel));
   ok('il reindexe les politiques sur current_user', /current_user = ''tracefab_worker''/.test(reel));
 }
 
