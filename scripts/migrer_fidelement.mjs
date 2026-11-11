@@ -462,11 +462,17 @@ for (const nom of enAttente) {
   if (workerTemporaire) console.log(`             worker temporaire transactionnel — ${nom}`);
   const executeur = workerTemporaire ? clientAdmin : client;
   let commitEffectue = false;
+  let roleAdministrateurTemporaire = null;
   try {
     await executeur.query('BEGIN');
     if (workerTemporaire) {
       transactionWorkerTemporaireEnCours = true;
-      await executeur.query('GRANT tracefab_worker TO tracefab_migrator WITH INHERIT TRUE, SET TRUE, ADMIN FALSE');
+      roleAdministrateurTemporaire = (await executeur.query('SELECT current_user AS u')).rows[0]?.u;
+      if (!roleAdministrateurTemporaire || roleAdministrateurTemporaire === roleExecutant) {
+        throw new Error('identité administrative invalide pour le bail migrateur temporaire');
+      }
+      await executeur.query(`GRANT ${identifiantSql(roleExecutant)} TO ${identifiantSql(roleAdministrateurTemporaire)} WITH INHERIT TRUE, SET TRUE, ADMIN FALSE`);
+      await executeur.query(`GRANT tracefab_worker TO ${identifiantSql(roleExecutant)} WITH INHERIT TRUE, SET TRUE, ADMIN FALSE`);
       const options = (await executeur.query(
         `SELECT pg_catalog.pg_has_role($1, 'tracefab_worker', 'SET') AS peut_set,
                 pg_catalog.pg_has_role($1, 'tracefab_worker', 'USAGE') AS peut_utiliser,
@@ -501,20 +507,36 @@ for (const nom of enAttente) {
     );
     if (workerTemporaire) {
       await executeur.query('RESET ROLE');
-      await executeur.query('REVOKE tracefab_worker FROM tracefab_migrator');
+      await executeur.query(`REVOKE tracefab_worker FROM ${identifiantSql(roleExecutant)}`);
+      await executeur.query(`REVOKE ${identifiantSql(roleExecutant)} FROM ${identifiantSql(roleAdministrateurTemporaire)}`);
       const etatWorker = (await executeur.query(
-        `SELECT pg_catalog.pg_has_role('tracefab_migrator', 'tracefab_worker', 'SET') AS peut_set,
-                pg_catalog.pg_has_role('tracefab_migrator', 'tracefab_worker', 'USAGE') AS peut_utiliser,
+        `SELECT pg_catalog.pg_has_role($1, 'tracefab_worker', 'SET') AS peut_set,
+                pg_catalog.pg_has_role($1, 'tracefab_worker', 'USAGE') AS peut_utiliser,
                 EXISTS (
                   SELECT 1 FROM pg_catalog.pg_auth_members m
                   JOIN pg_catalog.pg_roles r ON r.oid=m.member
                   JOIN pg_catalog.pg_roles w ON w.oid=m.roleid
-                  WHERE r.rolname='tracefab_migrator' AND w.rolname='tracefab_worker'
+                  WHERE r.rolname=$1 AND w.rolname='tracefab_worker'
                     AND (m.set_option OR m.inherit_option)
                 ) AS grant_effectif`,
+        [roleExecutant],
       )).rows[0];
       if (etatWorker?.peut_set !== false || etatWorker?.peut_utiliser !== false || etatWorker?.grant_effectif !== false) {
         throw new Error('révocation worker non constatée avant COMMIT');
+      }
+      const etatAdministrateur = (await executeur.query(
+        `SELECT pg_catalog.pg_has_role($1, $2, 'SET') AS peut_set,
+                pg_catalog.pg_has_role($1, $2, 'USAGE') AS peut_utiliser,
+                EXISTS (
+                  SELECT 1 FROM pg_catalog.pg_auth_members m
+                  WHERE m.member = $1::regrole AND m.roleid = $2::regrole
+                    AND (m.set_option OR m.inherit_option)
+                ) AS grant_effectif`,
+        [roleAdministrateurTemporaire, roleExecutant],
+      )).rows[0];
+      if (etatAdministrateur?.peut_set !== false || etatAdministrateur?.peut_utiliser !== false
+          || etatAdministrateur?.grant_effectif !== false) {
+        throw new Error('révocation du bail migrateur administratif non constatée avant COMMIT');
       }
     }
     await executeur.query('COMMIT');
