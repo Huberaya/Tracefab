@@ -61,11 +61,19 @@ BEGIN
     CREATE ROLE tracefab_worker
       NOLOGIN NOINHERIT NOBYPASSRLS NOSUPERUSER NOCREATEROLE NOCREATEDB;
   ELSE
-    -- On ne touche pas a LOGIN : les environnements jetables rendent ce role
-    -- connectable pour eprouver les chemins worker, la production le cree ici,
-    -- donc NOLOGIN. Forcer NOLOGIN casserait la base de test sans rien apporter.
-    ALTER ROLE tracefab_worker
-      NOINHERIT NOBYPASSRLS NOSUPERUSER NOCREATEROLE NOCREATEDB;
+    -- Neon interdit a un role non-superutilisateur de modifier l'attribut
+    -- SUPERUSER, meme pour le remettre a NOSUPERUSER. On ne tente donc aucun
+    -- ALTER ROLE ici : un role deja present doit deja respecter le contrat,
+    -- sinon la migration echoue sans le modifier.
+    IF EXISTS (
+      SELECT 1 FROM pg_catalog.pg_roles
+       WHERE rolname = 'tracefab_worker'
+         AND (rolcanlogin OR rolsuper OR rolbypassrls OR rolcreaterole
+              OR rolcreatedb OR rolreplication OR rolinherit)
+    ) THEN
+      RAISE EXCEPTION 'tracefab_worker_preexisting_attributes_invalid'
+        USING HINT = 'Le rôle existant doit être NOLOGIN, NOSUPERUSER, NOBYPASSRLS, NOINHERIT, NOCREATEROLE et NOCREATEDB.';
+    END IF;
   END IF;
 END
 $$;
@@ -311,8 +319,11 @@ $$;
 --    migrations ; il n'ouvre rien a `tracefab_app`.
 DO $$
 BEGIN
-  IF NOT pg_catalog.pg_has_role(current_user, 'tracefab_worker', 'MEMBER') THEN
-    EXECUTE pg_catalog.format('GRANT tracefab_worker TO %I', current_user);
+  IF NOT pg_catalog.pg_has_role(current_user, 'tracefab_worker', 'SET') THEN
+    EXECUTE pg_catalog.format(
+      'GRANT tracefab_worker TO %I WITH SET TRUE, INHERIT FALSE, ADMIN FALSE',
+      current_user
+    );
   END IF;
 
   EXECUTE 'ALTER FUNCTION public.tracefab_upsert_clerk_user(TEXT, TEXT, TEXT) OWNER TO tracefab_worker';
