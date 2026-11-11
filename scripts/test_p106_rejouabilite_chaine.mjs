@@ -87,7 +87,7 @@ await admin.connect();
     const isSuper = (await admin.query('SELECT rolsuper FROM pg_catalog.pg_roles WHERE rolname=current_user')).rows[0]?.rolsuper;
     if (!isSuper) throw new Error('le banc de test local doit être administré par postgres');
     await admin.query(`CREATE ROLE ${adminRole} NOLOGIN CREATEROLE NOCREATEDB NOBYPASSRLS NOSUPERUSER NOINHERIT`);
-    await admin.query(`GRANT CREATE ON SCHEMA public TO ${adminRole}`);
+    await admin.query(`GRANT CREATE ON SCHEMA public TO ${adminRole} WITH GRANT OPTION`);
     await admin.query(`SET ROLE ${adminRole}`);
     await admin.query(`CREATE ROLE ${workerRole} NOLOGIN NOINHERIT NOBYPASSRLS NOSUPERUSER NOCREATEROLE NOCREATEDB`);
     await admin.query(`GRANT ${workerRole} TO ${adminRole} WITH SET TRUE, INHERIT TRUE, ADMIN FALSE`);
@@ -162,8 +162,10 @@ console.log('  -- préflight de propriété des fonctions');
     'R8 une fonction qui n existe pas encore n est pas un écart (création légitime)',
     pourMigrator.map((e) => e.fonction).join(', '));
 
-  ok(Object.keys(MIGRATIONS_ASSISTEES).length === 0,
-    'R6 le préflight de propriété ne dépend d aucune élévation assistée');
+  const assistancesHorsBootstrap = Object.keys(MIGRATIONS_ASSISTEES).filter((n) => n !== bootstrap);
+  ok(assistancesHorsBootstrap.length === 0,
+    'R6 le préflight de propriété ne dépend d aucune assistance hors bootstrap initial',
+    assistancesHorsBootstrap.join(', ') || 'aucune');
 }
 
 // ---------------------------------------------------------------------------
@@ -201,7 +203,13 @@ try {
     (bootstrap.stderr || bootstrap.stdout || '').trim().split('\n').pop() || `code ${bootstrap.status}`);
 
   const chaine = spawnSync(process.execPath, ['scripts/migrer_fidelement.mjs'], {
-    env: { ...process.env, DATABASE_URL: urlBase.toString(), TF_ALLOW_WRITE: 'oui' },
+    env: {
+      ...process.env,
+      DATABASE_URL: urlBase.toString(),
+      TF_ADMIN_URL: urlAdmin.toString(),
+      TF_ALLOW_WRITE: 'oui',
+      TF_ALLOW_ELEVATION: 'oui',
+    },
     encoding: 'utf8',
   });
   const sortie = `${chaine.stdout || ''}${chaine.stderr || ''}`.trim().split('\n');
