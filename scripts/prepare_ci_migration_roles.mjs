@@ -97,6 +97,10 @@ try {
   await client.query(
     `GRANT CREATE ON DATABASE ${ident(url.pathname.slice(1))} TO ${ident(migratorRole)}`,
   );
+  // Dans Neon, tracefab_migrator est propriétaire du schéma public. Le
+  // reproduire est nécessaire pour les opérations historiques de la migration
+  // initiale (ACL du schéma), sans donner SUPERUSER ni BYPASSRLS au migrateur.
+  await client.query(`ALTER SCHEMA public OWNER TO ${ident(migratorRole)}`);
 
   const roles = (await client.query(
     `SELECT rolname, rolsuper, rolbypassrls, rolcreaterole, rolcreatedb,
@@ -111,6 +115,12 @@ try {
       || !r.rolcanlogin || r.rolinherit)) {
     throw new Error('attributs inattendus sur les identités de migration CI');
   }
+  const schemaOwner = (await client.query(
+    `SELECT pg_catalog.pg_get_userbyid(nspowner) AS owner
+       FROM pg_catalog.pg_namespace WHERE nspname = 'public'`,
+  )).rows[0]?.owner;
+  if (schemaOwner !== migratorRole) throw new Error('tracefab_migrator doit être propriétaire du schéma public jetable');
+
   const databaseCreate = (await client.query(
     `SELECT has_database_privilege($1, current_database(), 'CREATE') AS allowed`,
     [migratorRole],
