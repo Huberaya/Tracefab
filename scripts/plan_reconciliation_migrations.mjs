@@ -30,7 +30,7 @@ const lireSql = (n) => readFileSync(join(dossier, n, 'migration.sql'), 'utf8');
 const rejouable = (n) => {
   const sql = lireSql(n);
   // Une migration est NON rejouable si elle cree un objet sans garde.
-  const creationsNues = [...sql.matchAll(/CREATE\s+TABLE\s+(?!IF\s+NOT\s+EXISTS)/gi)];
+  const creationsNues = [...sql.matchAll(/CREATE\s+(?:TABLE|ROLE|USER|SCHEMA|TYPE)\s+(?!IF\s+NOT\s+EXISTS)/gi)];
   const policyNues = [...sql.matchAll(/CREATE\s+POLICY\s+(?!IF\s+NOT\s+EXISTS)/gi)];
   const typeNus = [...sql.matchAll(/CREATE\s+TYPE\s+(?!IF\s+NOT\s+EXISTS)/gi)];
   return { rejouable: creationsNues.length + policyNues.length + typeNus.length === 0,
@@ -75,14 +75,25 @@ function actionDe(nom) {
       prerequis: 'releve du catalogue juste avant, et confirmation que la table est toujours absente' };
   }
   if (effets === 'MESURE' || effets === 'DEDUIT') {
-    if (r.rejouable) {
-      return { action: 'APPLIQUER SEULE (IDEMPOTENTE)', preuve: e.effets[1],
-        risque: 'la migration est rejouable ; Prisma enregistre son application sans réécrire l historique existant',
-        prerequis: 'sonde fraîche confirmant l état et contrôle du SQL idempotent' };
+    const catalogue = c?.catalogue ?? '';
+    if (/^ABSENT MESURE/.test(catalogue)) {
+      return { action: 'APPLIQUER SEULE APRES PREFLIGHT',
+        preuve: e.effets[1],
+        risque: r.rejouable
+          ? 'migration rejouable ; appliquer après confirmation fraîche de l absence de l effet'
+          : 'migration non rejouable ; une seule tentative autorisée après confirmation fraîche que l objet ciblé est absent',
+        prerequis: 'rejouer la sonde Production immédiatement avant application et vérifier la propriété/les privilèges requis' };
     }
-    return { action: 'STOP — AUCUN RESOLVE AUTORISE', preuve: e.effets[1],
-      risque: 'effet déjà présent et migration non rejouable ; aucune modification de _prisma_migrations autorisée',
-      prerequis: 'corriger le fichier de migration avec garde vérifiée ou obtenir une décision explicite distincte' };
+    if (/^PRESENT MESURE/.test(catalogue)) {
+      if (r.rejouable) {
+        return { action: 'APPLIQUER SEULE (IDEMPOTENTE)', preuve: e.effets[1],
+          risque: 'l effet est déjà conforme ; la migration idempotente ne doit rien modifier et réconcilie le journal par Prisma',
+          prerequis: 'sonde fraîche confirmant l état et contrôle du SQL idempotent' };
+      }
+      return { action: 'STOP — AUCUN RESOLVE AUTORISE', preuve: e.effets[1],
+        risque: 'effet déjà présent et migration non rejouable ; aucune modification de _prisma_migrations autorisée',
+        prerequis: 'corriger le fichier avec une garde vérifiée ou obtenir une décision explicite distincte' };
+    }
   }
   // Effets NON PROUVES : le plan ne peut pas trancher a l avance, il porte donc
   // DEUX branches explicites, choisies par la sonde et par elle seule.
