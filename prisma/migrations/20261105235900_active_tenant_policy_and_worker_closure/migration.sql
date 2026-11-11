@@ -31,6 +31,7 @@ BEGIN
       'GRANT tracefab_worker TO %I WITH SET TRUE, INHERIT TRUE, ADMIN FALSE',
       current_user
     );
+    PERFORM pg_catalog.set_config('tracefab.worker_membership_created_by_migration', 'true', true);
   END IF;
   IF v_superuser IS DISTINCT FROM TRUE AND EXISTS (
     SELECT 1 FROM pg_catalog.pg_auth_members m
@@ -768,12 +769,13 @@ $worker_public_postconditions$;
 -- L'appartenance ne doit jamais survivre à cette transaction.
 DO $worker_membership_revoke$
 BEGIN
-  IF EXISTS (
-    SELECT 1 FROM pg_catalog.pg_auth_members m
-    JOIN pg_catalog.pg_roles r ON r.oid = m.member
-    JOIN pg_catalog.pg_roles w ON w.oid = m.roleid
-    WHERE r.rolname = current_user AND w.rolname = 'tracefab_worker'
-  ) THEN
+  IF coalesce(pg_catalog.current_setting('tracefab.worker_membership_created_by_migration', true), '') = 'true'
+     AND EXISTS (
+       SELECT 1 FROM pg_catalog.pg_auth_members m
+       JOIN pg_catalog.pg_roles r ON r.oid = m.member
+       JOIN pg_catalog.pg_roles w ON w.oid = m.roleid
+       WHERE r.rolname = current_user AND w.rolname = 'tracefab_worker'
+     ) THEN
     EXECUTE pg_catalog.format('REVOKE tracefab_worker FROM %I', current_user);
   END IF;
 END
