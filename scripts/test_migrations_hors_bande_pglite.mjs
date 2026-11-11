@@ -47,6 +47,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { executerMigrationPglite } from './lib/pglite-worker-runner.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const MIGRATIONS = path.join(root, 'prisma/migrations');
@@ -273,7 +274,7 @@ let appliqueesD = 0;
 for (const d of dossiers) {
   if (estCible(d)) continue;
   try {
-    await baseD.exec(lire(d));
+    await executerMigrationPglite(baseD, d, lire(d));
     appliqueesD += 1;
   } catch (e) {
     premierEchec = { migration: d, code: e.code, message: String(e.message || e) };
