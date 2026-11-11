@@ -9,6 +9,10 @@
  */
 import { randomBytes } from 'node:crypto';
 import pg from 'pg';
+import { requireThrowawayDb } from './lib/require-throwaway-db.mjs';
+
+// Refus par défaut hors base locale jetable, avant toute connexion ou mutation.
+requireThrowawayDb({ variables: ['DATABASE_URL'], purpose: 'provisionnement des rôles de migration CI jetables' });
 
 const raw = (process.env.DATABASE_URL || '').trim();
 const output = process.env.GITHUB_OUTPUT;
