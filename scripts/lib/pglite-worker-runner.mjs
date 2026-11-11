@@ -73,3 +73,19 @@ export async function executerMigrationPglite(db, migration, sql) {
   }
   await nettoyer();
 }
+
+/** Variante atomique : préprovisionnement, SQL et révocation dans la même transaction. */
+export async function executerMigrationPgliteTransaction(db, migration, sql) {
+  await db.exec('BEGIN');
+  let nettoyer = async () => {};
+  try {
+    nettoyer = await preparerWorkerPglite(db, migration);
+    await db.exec(sql);
+    await nettoyer();
+    await db.exec('COMMIT');
+  } catch (erreur) {
+    await db.exec('ROLLBACK').catch(() => {});
+    await nettoyer().catch(() => {});
+    throw erreur;
+  }
+}
