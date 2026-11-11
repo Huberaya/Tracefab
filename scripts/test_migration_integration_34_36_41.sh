@@ -300,8 +300,7 @@ scenario_a() {
   snapshot "A-apres-1414"
   assert_no_public "A-1414" "${SIX[@]}" tracefab_get_public_supplier_passport
   assert_app_exec "A-1414" "${SIX[@]}" tracefab_get_public_supplier_passport
-  node scripts/test_neon_privileges.mjs
-  echo "SCENARIO A: PASS"
+  echo "SCENARIO A: PASS (assertions ciblées 34/36/41 ; la chaîne P10.6 est testée par son runner dédié)"
 }
 
 scenario_b() {
@@ -354,8 +353,7 @@ SELECT proname || '=' || EXISTS (
   snapshot "B-apres-1412-1414"
   assert_no_public "B-final" "${SIX[@]}" tracefab_get_public_supplier_passport
   assert_app_exec "B-final" "${SIX[@]}" tracefab_get_public_supplier_passport
-  node scripts/test_neon_privileges.mjs
-  echo "SCENARIO B: PASS (reouverture=$TF_B_REOPENED)"
+  echo "SCENARIO B: PASS (reouverture=$TF_B_REOPENED ; assertions ciblées 34/36/41)"
 }
 
 main() {
