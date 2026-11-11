@@ -282,16 +282,27 @@ console.log('  -- préflight de propriété des fonctions');
     'R8 le propriétaire des fonctions n est pas bloqué (aucun faux refus)',
     pourAdmin.map((e) => e.fonction).join(', ') || 'aucun écart');
 
-  const pourMigrator = await propriétairesInjoignables(
-    admin, 'tracefab_migrator', [{ nom: 'sonde', sql }],
-  );
-  const attendu = pourMigrator.some((e) => e.fonction === 'tracefab_current_user_id' && e.proprietaire === 'postgres');
+  // Le migrateur de la chaîne n'est créé qu'après ce contrôle. Utiliser
+  // ici un rôle non-propriétaire réellement présent, sinon la sonde ne teste
+  // qu'un nom absent et ne peut pas démontrer le refus attendu.
+  const roleSansPropriete = `tf_p106_nonowner_${randomBytes(3).toString('hex')}`;
+  await admin.query(`CREATE ROLE ${roleSansPropriete} NOLOGIN NOSUPERUSER NOCREATEROLE NOCREATEDB`);
+  let pourRoleSansPropriete;
+  try {
+    pourRoleSansPropriete = await propriétairesInjoignables(
+      admin, roleSansPropriete, [{ nom: 'sonde', sql }],
+    );
+  } finally {
+    await admin.query(`DROP ROLE IF EXISTS ${roleSansPropriete}`);
+  }
+  const attendu = pourRoleSansPropriete.some((e) =>
+    e.fonction === 'tracefab_current_user_id' && e.proprietaire === 'postgres');
   ok(attendu,
-    'R8 un exécutant qui ne peut pas endosser le propriétaire est REFUSÉ avant la chaîne',
-    pourMigrator.map((e) => `${e.fonction}→${e.proprietaire}`).join(', ') || 'aucun écart');
-  ok(!pourMigrator.some((e) => e.fonction === 'tracefab_fonction_a_venir'),
+    'R8 un exécutant non-propriétaire existant est REFUSÉ avant la chaîne',
+    pourRoleSansPropriete.map((e) => `${e.fonction}→${e.proprietaire}`).join(', ') || 'aucun écart');
+  ok(!pourRoleSansPropriete.some((e) => e.fonction === 'tracefab_fonction_a_venir'),
     'R8 une fonction qui n existe pas encore n est pas un écart (création légitime)',
-    pourMigrator.map((e) => e.fonction).join(', '));
+    pourRoleSansPropriete.map((e) => e.fonction).join(', '));
 
   const assistancesHorsBootstrap = Object.keys(MIGRATIONS_ASSISTEES).filter((n) => n !== bootstrap);
   ok(assistancesHorsBootstrap.length === 0,
