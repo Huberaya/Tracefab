@@ -37,6 +37,7 @@
  *   npm run test:rejeu-migrations
  */
 import fs from 'node:fs';
+import { executerMigrationPglite } from './lib/pglite-worker-runner.mjs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -108,7 +109,7 @@ await db.exec(`
     started_at timestamptz NOT NULL DEFAULT now(), applied_steps_count integer NOT NULL DEFAULT 0
   );
 `);
-for (const d of dossiers) await db.exec(lire(d));
+for (const d of dossiers) await executerMigrationPglite(db, d, lire(d));
 console.log(`  ${dossiers.length} migrations appliquees.`);
 
 /* -------------------------------------------------------------------------
