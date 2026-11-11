@@ -136,11 +136,6 @@ function controler(ls, ms, hb) {
     for (const [re, quoi] of INTERDIT) {
       if (re.test(`${l.action} ${l.risque}`)) erreurs.push(`${l.nom} : action interdite — ${quoi}`);
     }
-    // Un resolve --applied sans sonde ni preuve nommee est une affirmation gratuite.
-    if (/RESOLVE --APPLIED/.test(l.action) && !/SONDE/.test(l.action)
-        && (!l.preuve || /^(aucune mesure|effets NON PROUVES)/.test(l.preuve))) {
-      erreurs.push(`${l.nom} : resolve --applied sans preuve nommee`);
-    }
     if (!ms.includes(l.nom)) erreurs.push(`${l.nom} : cite mais absent du depot`);
   }
   for (const n of hb) if (!ms.includes(n)) erreurs.push(`${n} : hors bande absent du depot`);
@@ -183,7 +178,7 @@ if (process.argv.includes('--autotest')) {
       (l) => { l[0] = { ...l[0], action: 'resolve --rolled-back' }; }],
     ['deploy global',
       (l) => { l[0] = { ...l[0], action: 'migrate deploy' }; }],
-    ['resolve --applied sans preuve',
+    ['resolve --applied (même sur preuve)',
       (l) => { l[0] = { ...l[0], action: 'RESOLVE --APPLIED SUR PREUVE', preuve: 'effets NON PROUVES' }; }],
     ['ordre inverse (registre apres 120100)',
       (l) => { const i = l.findIndex((x) => x.nom.startsWith('20261028120000'));
@@ -225,7 +220,7 @@ if (markdown) {
   console.log('\n## 3. Interdits du plan, verifies\n');
   console.log('Le generateur refuse : `UPDATE`/`DELETE` sur `_prisma_migrations`,');
   console.log('`resolve --rolled-back`, `deploy` global, `resolve --applied` sans preuve nommee.');
-  console.log('`resolve --applied` n ecrit aucune ligne de migration : il documente un etat deja la.\n');
+  console.log('`resolve --applied` ecrit dans `_prisma_migrations` : il est donc interdit ici, même sur preuve.\n');
   console.log(`Controles : ${erreurs.length === 0 ? 'aucune violation' : erreurs.join(' ; ')}`);
 } else {
   console.log(`migrations du depot : ${migrations.length}`);
