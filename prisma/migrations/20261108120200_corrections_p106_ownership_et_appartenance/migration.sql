@@ -20,10 +20,10 @@
 --    C'est documenté dans `scripts/lib/migrations_assistees.mjs`, qui traite
 --    cette migration comme « assistée ».
 --
---    LA CORRECTION EST PORTÉE PAR LE RUNNER : dans la transaction de cette
---    migration, il accorde `INHERIT TRUE, SET TRUE, ADMIN FALSE` au migrateur,
---    puis révoque avant COMMIT. Cette migration vérifie l'appartenance ; elle
---    ne tente pas de la créer. Aucun GRANT ne reste ouvert entre migrations.
+--    LA CORRECTION EST BORNEE DANS LA MIGRATION : elle accorde à current_user
+--    `INHERIT TRUE, SET TRUE, ADMIN FALSE` au début de sa transaction, vérifie
+--    les options, puis révoque avant COMMIT. Aucun GRANT ne reste ouvert entre
+--    migrations et aucun runner externe n'est nécessaire sur Neon.
 --    `tracefab_app` ne devient jamais membre de `tracefab_worker`.
 --
 -- 2. OBJETS EXISTANTS NON TRANSFERES
@@ -38,7 +38,8 @@
 --   — elle n'accorde rien à `tracefab_app` (aucun privilège, aucune
 --     appartenance) ;
 --   — elle ne modifie aucune politique RLS ;
---   — elle ne crée, ne supprime et ne révoque aucun rôle ;
+--   — elle ne crée ni ne supprime aucun rôle ; elle accorde puis révoque
+--     uniquement l'appartenance temporaire de current_user à tracefab_worker ;
 --   — elle n'écrit pas dans `_prisma_migrations`.
 -- ============================================================================
 
@@ -58,6 +59,22 @@ BEGIN
 
   SELECT rolsuper INTO v_superuser
     FROM pg_catalog.pg_roles WHERE rolname = current_user;
+
+  IF v_superuser IS DISTINCT FROM TRUE THEN
+    IF EXISTS (
+      SELECT 1 FROM pg_catalog.pg_auth_members m
+      JOIN pg_catalog.pg_roles r ON r.oid = m.member
+      JOIN pg_catalog.pg_roles w ON w.oid = m.roleid
+      WHERE r.rolname = current_user AND w.rolname = 'tracefab_worker'
+    ) THEN
+      RAISE EXCEPTION 'worker_membership_preexisting'
+        USING HINT = 'Aucune appartenance worker ne doit précéder la transaction de cette migration.';
+    END IF;
+    EXECUTE pg_catalog.format(
+      'GRANT tracefab_worker TO %I WITH SET TRUE, INHERIT TRUE, ADMIN FALSE',
+      current_user
+    );
+  END IF;
 
   SELECT pg_catalog.pg_has_role(current_user, 'tracefab_worker', 'SET'),
          (SELECT bool_and(m.inherit_option) FROM pg_catalog.pg_auth_members m
@@ -113,3 +130,16 @@ BEGIN
   END IF;
 END
 $worker_isolation$;
+-- 3. L'appartenance temporaire est retirée avant COMMIT -----------------------
+DO $worker_membership_revoke$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM pg_catalog.pg_auth_members m
+    JOIN pg_catalog.pg_roles r ON r.oid = m.member
+    JOIN pg_catalog.pg_roles w ON w.oid = m.roleid
+    WHERE r.rolname = current_user AND w.rolname = 'tracefab_worker'
+  ) THEN
+    EXECUTE pg_catalog.format('REVOKE tracefab_worker FROM %I', current_user);
+  END IF;
+END
+$worker_membership_revoke$;
