@@ -21,6 +21,7 @@ import { uuid_ossp } from '@electric-sql/pglite/contrib/uuid_ossp';
 import { readFileSync, readdirSync, existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
+import { executerMigrationPgliteTransaction } from './lib/pglite-worker-runner.mjs';
 
 const ici = dirname(fileURLToPath(import.meta.url));
 const racine = join(ici, '..');
@@ -100,7 +101,7 @@ async function base({ corrige }) {
     if (!corrige && d.slice(0, 14) > BORNE_RELEVE) continue;
     if (!existsSync(join(MIGRATIONS, d, 'migration.sql'))) continue;
     try {
-      await db.exec('BEGIN'); await db.exec(lire(d)); await db.exec('COMMIT');
+      await executerMigrationPgliteTransaction(db, d, lire(d));
     } catch (e) {
       try { await db.exec('ROLLBACK'); } catch { /* deja fermee */ }
       throw new Error(`${d} : ${String(e.message).split('\n')[0]}`);
