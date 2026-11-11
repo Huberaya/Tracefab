@@ -65,7 +65,7 @@ const migration201 = readFileSync(
 );
 ok(/WITH SET TRUE, INHERIT TRUE, ADMIN FALSE/.test(migration201),
   'R1 le bootstrap accorde une appartenance SET/INHERIT temporaire sans ADMIN');
-ok(!/ALTER ROLE tracefab_worker[\\s\\S]{0,240}NOSUPERUSER/i.test(migration201),
+ok(!/ALTER ROLE tracefab_worker[\s\S]{0,240}NOSUPERUSER/i.test(migration201),
   'R1 aucune ALTER ROLE NOSUPERUSER qui exige un superutilisateur');
 ok(/REVOKE tracefab_worker FROM/.test(migration201),
   'R1 le bootstrap révoque son appartenance temporaire');
