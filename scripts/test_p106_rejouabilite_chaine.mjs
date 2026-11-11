@@ -10,8 +10,9 @@
  *
  * R1 le SQL ne rend aucun rôle SUPERUSER ; l'assistance du runner de rehearsal
  *    est strictement limitée au bootstrap initial ;
- * R2 un rôle CREATEROLE créateur du rôle worker accorde SET TRUE, endosse le rôle,
- *    transfère une fonction, puis révoque son appartenance ;
+ * R2 un rôle CREATEROLE crée le worker, accorde temporairement SET/INHERIT,
+ *    transfère une fonction, puis retire ces options. PostgreSQL 16+ conserve
+ *    l'ADMIN-only automatique attribué par le bootstrap au créateur.
  * R3 la chaîne complète s'applique sur une base vierge d'un cluster déjà migré ;
  * R4 aucune appartenance directe permanente à tracefab_worker ne subsiste ;
  * R5 tracefab_app ne reçoit aucune appartenance et aucun rôle runtime n'est
@@ -139,12 +140,16 @@ await admin.connect();
       [adminRole, workerRole]
     )).rows;
     const after = (await operator.query(
-      `SELECT pg_catalog.pg_has_role($1,$2,'MEMBER') AS member`,
+      `SELECT pg_catalog.pg_has_role($1,$2,'SET') AS can_set,
+              pg_catalog.pg_has_role($1,$2,'USAGE') AS can_use,
+              pg_catalog.pg_has_role($1,$2,'MEMBER') AS member`,
       [adminRole, workerRole]
-    )).rows[0].member;
-    ok(after === false && afterRows.length === 0,
-      "R2 l'appartenance temporaire est révoquée avant COMMIT",
-      `pg_has_role=${after} · grantors restants=${afterRows.map((r) => r.grantor).join(',') || 'aucun'}`);
+    )).rows[0];
+    const grantsEffectifs = afterRows.filter((r) => r.set_option || r.inherit_option);
+    console.log(`  info  R2 membership after REVOKE — rows=${JSON.stringify(afterRows)} · SET=${after.can_set} · USAGE=${after.can_use} · MEMBER=${after.member}`);
+    ok(after.can_set === false && after.can_use === false && grantsEffectifs.length === 0,
+      "R2 le grant temporaire SET/INHERIT est révoqué avant COMMIT (l'ADMIN-only bootstrap peut subsister)",
+      `SET=${after.can_set} · USAGE=${after.can_use} · MEMBER=${after.member} · grants effectifs restants=${grantsEffectifs.length}`);
 
     await operator.query('ROLLBACK');
   } catch (e) {
