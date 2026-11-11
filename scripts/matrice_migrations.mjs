@@ -168,10 +168,14 @@ for (const nom of Object.keys(ECARTS)) {
   if (c && (!c.catalogue || c.catalogue.trim() === '')) erreurs.push(`catalogue vide pour ${nom}`);
 }
 // Le niveau « historique » et le niveau « catalogue » ne doivent pas etre
-// fusionnes : un ecart dont les deux se contredisent doit porter DIVERGENCE.
+// fusionnes : un effet peut etre present avant l'enregistrement de cette
+// migration (reconciliation idempotente). Dans ce cas, CONFORME est permis
+// uniquement si le catalogue prouve explicitement la presence de l'effet.
+// Une absence d'historique sans preuve catalogue reste une incoherence.
 for (const l of lignes) {
-  if (l.statut === 'CONFORME' && (l.historique === 'ABSENTE' || l.catalogue === 'NON LU')) {
-    erreurs.push(`CONFORME incompatible avec un historique absent ou un catalogue non lu : ${l.nom}`);
+  const effetPresentMesure = l.catalogue?.startsWith('PRESENT MESURE');
+  if (l.statut === 'CONFORME' && (l.catalogue === 'NON LU' || (l.historique === 'ABSENTE' && !effetPresentMesure))) {
+    erreurs.push(`CONFORME sans preuve catalogue suffisante : ${l.nom}`);
   }
 }
 
