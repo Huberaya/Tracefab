@@ -63,10 +63,11 @@
 --
 -- CE QU'ELLE EXIGE
 --
---   L'exécutant doit pouvoir endosser `tracefab_worker` : soit il en est membre
---   avec SET, soit il est SUPERUSER — c'est le cas de la CI, qui migre avec
---   `postgres`. La migration ÉCHOUE EXPLICITEMENT (fail-closed) si ce n'est pas
---   le cas, plutôt que de laisser les fonctions en place silencieusement.
+--   Sur Neon, l'exécutant n'est pas SUPERUSER. La migration accorde donc
+--   elle-même une appartenance directe SET TRUE / INHERIT FALSE / ADMIN FALSE,
+--   limitée à cette transaction, puis la révoque avant le COMMIT. Une
+--   appartenance préexistante est refusée : aucune identité worker permanente
+--   ne doit être laissée au rôle de migration.
 --
 -- REJOUABLE : `ALTER ... OWNER TO` sur un objet déjà possédé par la cible est
 -- sans effet ; le contrôle préalable le constate et la migration ne fait rien.
@@ -85,11 +86,30 @@ DECLARE
   v_nom text;
   v_proprietaire text;
   v_deplaces int := 0;
+  v_superuser boolean := false;
+  v_appartenance_temporaire boolean := false;
 BEGIN
-  IF NOT pg_catalog.pg_has_role(current_user, 'tracefab_worker', 'SET')
-     AND NOT (SELECT rolsuper FROM pg_catalog.pg_roles WHERE rolname = current_user) THEN
-    RAISE EXCEPTION 'worker_ownership_requires_set_role'
-      USING HINT = 'Executer la chaine avec un role SUPERUSER ou membre de tracefab_worker avec SET.';
+  SELECT rolsuper INTO v_superuser
+    FROM pg_catalog.pg_roles WHERE rolname = current_user;
+
+  IF v_superuser IS DISTINCT FROM TRUE THEN
+    IF NOT pg_catalog.pg_has_role(current_user, 'tracefab_worker', 'SET') THEN
+      EXECUTE pg_catalog.format(
+        'GRANT tracefab_worker TO %I WITH SET TRUE, INHERIT TRUE, ADMIN FALSE',
+        current_user
+      );
+      v_appartenance_temporaire := true;
+    END IF;
+    IF EXISTS (
+      SELECT 1
+        FROM pg_catalog.pg_auth_members m
+        JOIN pg_catalog.pg_roles r ON r.oid = m.member
+        JOIN pg_catalog.pg_roles w ON w.oid = m.roleid
+       WHERE r.rolname = current_user AND w.rolname = 'tracefab_worker'
+         AND (NOT m.inherit_option OR NOT m.set_option OR m.admin_option)
+    ) THEN
+      RAISE EXCEPTION 'worker_membership_options_invalid';
+    END IF;
   END IF;
 
   -- Prerequis mesure de `ALTER ... OWNER TO` : le nouveau proprietaire doit
@@ -122,6 +142,11 @@ BEGIN
   -- transferts ci-dessus. Il est retire immediatement : le worker ne doit
   -- pouvoir creer aucun objet. Le retrait est verifie dans le bloc suivant.
   EXECUTE 'REVOKE CREATE ON SCHEMA public FROM tracefab_worker';
+
+  IF v_appartenance_temporaire
+     AND pg_catalog.pg_has_role(current_user, 'tracefab_worker', 'MEMBER') THEN
+    EXECUTE pg_catalog.format('REVOKE tracefab_worker FROM %I', current_user);
+  END IF;
 
   -- Contrôle final : les deux fonctions appartiennent au worker, ou la
   -- migration échoue. Un transfert partiel serait pire que pas de transfert.

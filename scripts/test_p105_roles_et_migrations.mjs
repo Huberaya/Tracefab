@@ -1,12 +1,13 @@
 #!/usr/bin/env node
 /**
- * P10.5 — B2 et B3 : la chaîne de migrations tourne avec un rôle dédié, sans
- * SUPERUSER, et le runtime ne peut ni migrer ni s'élever.
+ * P10.5 — B2 et B3 : la chaîne tourne avec un rôle dédié ; seul le bootstrap
+ * initial du worker reçoit une élévation administrative bornée et révoquée.
+ * Le runtime ne peut ni migrer ni s'élever.
  *
  * CE QUE CE TEST ÉPROUVE, ET POURQUOI CHAQUE POINT COMPTE
  *
- *   B2.1  77/77 migrations sur une base VIERGE, exécutées par
- *         `tracefab_migrator` — un rôle `NOSUPERUSER` qui possède les objets.
+ *   B2.1  99/99 migrations sur une base VIERGE, exécutées par
+ *         `tracefab_migrator` ; l'élévation initiale est bornée et révoquée.
  *   B2.2  reprise : relancer ne rejoue rien et ne casse rien.
  *   B2.3  `tracefab_app` ne peut PAS exécuter de migration (42501).
  *   B2.4  `tracefab_app` ne peut PAS prendre le rôle propriétaire ni le rôle
@@ -143,6 +144,11 @@ try {
   });
   const appliquees = (mig1.stdout.match(/appliquee\s+20/g) || []).length;
   ok(mig1.status === 0, 'B2.1 la chaîne s applique intégralement', `sortie ${mig1.status}, ${appliquees} appliquée(s)`);
+  const elevationBootstrap = /assistée — élévation temporaire de tracefab_migrator/.test(mig1.stdout);
+  const revocationBootstrap = /élévation révoquée — tracefab_migrator n est plus superutilisateur/.test(mig1.stdout);
+  ok(elevationBootstrap && revocationBootstrap,
+    'B2.1 bootstrap worker : élévation temporaire puis révocation vérifiée',
+    `élévation=${elevationBootstrap}, révocation=${revocationBootstrap}`);
   if (mig1.status !== 0) console.log(mig1.stdout.split('\n').filter((l) => /ECHEC|REFUS/.test(l)).join('\n'));
 
   const cible = new pg.Client({ connectionString: url(ROLE_MIGRATOR), ssl: sslDepuisUrl(url(ROLE_MIGRATOR)) });

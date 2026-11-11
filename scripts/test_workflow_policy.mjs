@@ -210,6 +210,112 @@ function usesHorsListe(uses) {
   return !USES_SANS_MIGRATE.has(action);
 }
 
+// Exception unique et verifiable : migration P10.7 sur Neon Preview P11.
+// La cible, le commit declencheur, le secret, l'environnement et les six
+// commandes sont compares au registre ; aucune autre migration distante ne
+// sort de la liste blanche T1.8.
+function previewMigrationEstDeclaree(file, doc) {
+  const rule = entryFor('previewMigrationWorkflows', file);
+  if (!rule) return false;
+  const job = doc.jobs?.[rule.job];
+  if (!job || !Array.isArray(job.steps)) return false;
+  const trigger = doc.on ?? doc.true;
+  const branches = trigger?.push?.branches;
+  const expectedIf = "${{ github.event.head_commit.message == '" + rule.commit_message + "' }}";
+  const expectedSecret = "${{ secrets." + rule.secret + " }}";
+  const runSteps = job.steps.filter((step) => typeof step.run === 'string').map((step) => step.run.trim());
+  const checkout = job.steps.find((step) => String(step.uses || '').startsWith('actions/checkout@'));
+  const setupNode = job.steps.find((step) => String(step.uses || '').startsWith('actions/setup-node@'));
+  const common = job.environment === rule.environment
+    && job.if === expectedIf
+    && Array.isArray(branches) && branches.length === 1 && branches[0] === rule.branch
+    && doc.permissions?.contents === 'read'
+    && Boolean(checkout?.with?.['persist-credentials'] === false)
+    && Boolean(setupNode);
+
+  if (rule.kind === 'expiry') {
+    const expectedRuns = [
+      'node --check scripts/verification_p107_expiry_migration.mjs && node --check scripts/resolve_p107_expiry_failed_migration.mjs && node --check scripts/verification_p107_preview_migration.mjs',
+      'npm ci',
+      rule.preflight,
+      rule.resolve,
+      rule.migration,
+      rule.status,
+      rule.postflight,
+    ];
+    const preflightStep = job.steps.find((step) => step.run?.trim() === rule.preflight);
+    const preflightSource = readFileSync(join(ROOT, 'scripts/verification_p107_expiry_migration.mjs'), 'utf8');
+    const resolveSource = readFileSync(join(ROOT, 'scripts/resolve_p107_expiry_failed_migration.mjs'), 'utf8');
+    const migrationSource = readFileSync(join(ROOT, 'prisma/migrations/20261109170000_p107_expiration_floor/migration.sql'), 'utf8');
+    return common
+      && preflightStep?.env?.DATABASE_URL === expectedSecret
+      && !job.env?.DATABASE_URL
+      && JSON.stringify(runSteps) === JSON.stringify(expectedRuns)
+      && preflightSource.includes("MIGRATION = '20261109170000_p107_expiration_floor'")
+      && preflightSource.includes("P107 = '20261106130000_identite_systeme_signee'")
+      && preflightSource.includes('attempts.filter')
+      && preflightSource.includes('TRACEFAB_P11_EXPIRY_NEEDS_RESOLVE')
+      && preflightSource.includes('pg_has_role')
+      && resolveSource.includes("const migration = '20261109170000_p107_expiration_floor'")
+      && resolveSource.includes("process.env.TRACEFAB_P11_EXPIRY_NEEDS_RESOLVE")
+      && resolveSource.includes("'prisma', 'migrate', 'resolve', '--rolled-back'")
+      && migrationSource.includes('floor(extract(epoch FROM pg_catalog.now()))::BIGINT');
+  }
+
+  if (rule.kind === 'workerRls') {
+    const expectedRuns = [
+      'npm ci',
+      rule.preflight,
+      rule.resolve,
+      rule.migration,
+      rule.status,
+      rule.postflight,
+    ];
+    const preflightStep = job.steps.find((step) => step.run?.trim() === rule.preflight);
+    const resolveStep = job.steps.find((step) => step.run?.trim() === rule.resolve);
+    const migrationStep = job.steps.find((step) => step.run?.trim() === rule.migration);
+    const statusStep = job.steps.find((step) => step.run?.trim() === rule.status);
+    const postflightStep = job.steps.find((step) => step.run?.trim() === rule.postflight);
+    const preflightSource = readFileSync(join(ROOT, 'scripts/verification_p107_worker_rls_migration.mjs'), 'utf8');
+    const resolveSource = readFileSync(join(ROOT, 'scripts/resolve_p107_worker_rls_failed_migration.mjs'), 'utf8');
+    const migrationSource = readFileSync(join(ROOT, 'prisma/migrations/20261109190000_p107_worker_organizations_update/migration.sql'), 'utf8');
+    return common
+      && [preflightStep, resolveStep, migrationStep, statusStep, postflightStep].every((step) => step?.env?.DATABASE_URL === expectedSecret)
+      && !job.env?.DATABASE_URL
+      && JSON.stringify(runSteps) === JSON.stringify(expectedRuns)
+      && preflightSource.includes("MIGRATION = '20261109190000_p107_worker_organizations_update'")
+      && preflightSource.includes("EXPECTED_ENDPOINT = 'ep-lively-field-b1wicg4v'")
+      && preflightSource.includes('pendingExpected')
+      && preflightSource.includes('systeme_strict')
+      && resolveSource.includes("const MIGRATION = '20261109190000_p107_worker_organizations_update'")
+      && resolveSource.includes("'prisma', 'migrate', 'resolve', '--rolled-back'")
+      && migrationSource.includes('organizations_worker_update')
+      && migrationSource.includes('tracefab_identite_systeme()')
+      && migrationSource.includes('CURRENT_USER');
+  }
+
+  const expectedRuns = [
+    'node --check scripts/verification_p107_preview_migration.mjs',
+    'npm ci',
+    rule.preflight,
+    rule.migration,
+    rule.status,
+    rule.postflight,
+  ];
+  const preflightStep = job.steps.find((step) => step.run?.trim() === rule.preflight);
+  const preflightSource = readFileSync(join(ROOT, 'scripts/verification_p107_preview_migration.mjs'), 'utf8');
+  return common
+    && preflightStep?.env?.DATABASE_URL === expectedSecret
+    && !job.env?.DATABASE_URL
+    && JSON.stringify(runSteps) === JSON.stringify(expectedRuns)
+    && preflightSource.includes("EXPECTED_ENDPOINT = 'ep-lively-field-b1wicg4v'")
+    && preflightSource.includes("MIGRATION = '20261106130000_identite_systeme_signee'")
+    && preflightSource.includes('missing.length === 1')
+    && preflightSource.includes('tracefab_identite_systeme_jeton_valide')
+    && preflightSource.includes('TRACEFAB_P11_NEEDS_RESOLVE')
+    && preflightSource.includes('options');
+}
+
 function estMigrateNUE(frag) {
   if (estEchoInoffensif(frag) || estFormeMigrateAutorisee(frag)) return false;
   const t = sansPrefixeShell(frag);
@@ -330,9 +436,14 @@ for (const file of files) {
   const secretDatabase = /DATABASE_URL\s*:\s*\$\{\{\s*secrets\./i.test(code)
     || /NEON_TEST_DATABASE_URL\s*:\s*\$\{\{\s*secrets\./i.test(code)
     || /secrets\.[A-Za-z0-9_]*(?:DATABASE|DB)_[A-Za-z0-9_]*/i.test(code);
-  secretDatabase
-    ? ko('B. une connexion de base est alimentee par le contexte secrets')
-    : ok('B. aucune connexion de base alimentee par un secret');
+  const previewMigrationAllowed = previewMigrationEstDeclaree(file, doc);
+  if (secretDatabase && previewMigrationAllowed) {
+    ok('B. connexion admin bornee a la migration P10.7 de Neon Preview P11, avec preflight et environnement approuve');
+  } else if (secretDatabase) {
+    ko('B. une connexion de base est alimentee par le contexte secrets hors exception Preview strictement declaree');
+  } else {
+    ok('B. aucune connexion de base alimentee par un secret');
+  }
 
   const destructiveAgainstSecret = /run\s*:\s*\|?[\s\S]{0,400}?npm\s+run\s+(test:neon|test:neon:)/.test(code)
     && secretRefs.length > 0;
@@ -558,6 +669,9 @@ for (const file of files) {
   // exactement le wrapper autorise. Fichiers locaux suivis sur 2 sauts.
   // uses: hors {checkout, setup-node, upload-artifact} = non autorise.
   const nues = [];
+  if (previewMigrationAllowed) {
+    ok('K. migration P10.7 distante bornee a Neon Preview P11 par le registre, le preflight, le commit explicite et le postflight');
+  } else {
   for (const [nomJob, job] of Object.entries(jobs)) {
     if (!job || typeof job !== 'object' || !Array.isArray(job.steps)) continue;
     for (const step of job.steps) {
@@ -586,6 +700,7 @@ for (const file of files) {
     }
   } else {
     ok(`K. ${file} : aucune migrate prisma nue dans les etapes run`);
+  }
   }
 }
 
