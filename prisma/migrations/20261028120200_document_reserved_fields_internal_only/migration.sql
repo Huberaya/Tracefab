@@ -167,7 +167,12 @@ SELECT * FROM public.tracefab_apply_runtime_function_grants();
 -- 6. Retirer l'appartenance temporaire avant COMMIT --------------------------
 DO $worker_membership_revoke$
 BEGIN
-  IF pg_catalog.pg_has_role(current_user, 'tracefab_worker', 'MEMBER') THEN
+  IF EXISTS (
+    SELECT 1 FROM pg_catalog.pg_auth_members m
+    JOIN pg_catalog.pg_roles r ON r.oid = m.member
+    JOIN pg_catalog.pg_roles w ON w.oid = m.roleid
+    WHERE r.rolname = current_user AND w.rolname = 'tracefab_worker'
+  ) THEN
     EXECUTE pg_catalog.format('REVOKE tracefab_worker FROM %I', current_user);
   END IF;
 END
