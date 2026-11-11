@@ -110,7 +110,7 @@ await admin.connect();
       `SELECT pg_catalog.pg_has_role($1,$2,'MEMBER') AS member`,
       [adminRole, workerRole]
     )).rows[0].member;
-    ok(after === false, 'R2 l'appartenance temporaire est révoquée avant COMMIT');
+    ok(after === false, "R2 l'appartenance temporaire est révoquée avant COMMIT");
     await admin.query('RESET ROLE');
     await admin.query('ROLLBACK');
     tx = false;
