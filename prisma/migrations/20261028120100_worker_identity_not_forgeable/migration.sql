@@ -321,7 +321,7 @@ DO $$
 BEGIN
   IF NOT pg_catalog.pg_has_role(current_user, 'tracefab_worker', 'SET') THEN
     EXECUTE pg_catalog.format(
-      'GRANT tracefab_worker TO %I WITH SET TRUE, INHERIT FALSE, ADMIN FALSE',
+      'GRANT tracefab_worker TO %I WITH SET TRUE, INHERIT TRUE, ADMIN FALSE',
       current_user
     );
   END IF;
