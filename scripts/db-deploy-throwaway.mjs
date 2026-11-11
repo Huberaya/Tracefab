@@ -1,12 +1,14 @@
 #!/usr/bin/env node
 /**
- * Applique `prisma migrate deploy` UNIQUEMENT sur une base jetable locale.
+ * Point d'entrée de migration UNIQUEMENT sur une base jetable locale.
  *
- * `npm run db:deploy` est la commande operationnelle : `prisma migrate deploy`,
- * sans garde. Un operateur qui l'invoque a choisi sa cible. La CI n'est pas
- * un operateur. Cette commande inverse l'ordre : garde d'abord, binaire
- * prisma LOCAL ensuite. Jamais `npx`. Aucun argument. Aucun opt-in distant :
- * TRACEFAB_ALLOW_* ne rend pas une cible migrable ici.
+ * Mode par défaut : Prisma CLI local, sans npx.
+ * Mode CI explicite (TF_MIGRATION_ENGINE=fidele) : runner transactionnel
+ * avec administrateur et migrateur distincts, pour les migrations qui exigent
+ * un bail worker que Prisma CLI ne sait pas injecter dans sa transaction.
+ * Les deux modes passent par la même classification stricte de cible locale.
+ * Aucun argument. Aucun opt-in distant : TRACEFAB_ALLOW_* ne rend pas une cible
+ * migrable ici. Le runner fidèle reste interdit en Production.
  *
  * CE N'EST PAS UN REMPLACEMENT DE `db:deploy`.
  *
@@ -42,7 +44,12 @@ if (moteur === 'fidele') {
   let db, admin;
   try { db = new URL(process.env.DATABASE_URL || ''); admin = new URL(process.env.TF_ADMIN_URL || ''); }
   catch { db = null; admin = null; }
-  if (!db || !admin || db.username !== 'tracefab_migrator'
+  const memeCible = db && admin
+    && db.protocol === admin.protocol
+    && db.hostname === admin.hostname
+    && (db.port || '5432') === (admin.port || '5432')
+    && db.pathname === admin.pathname;
+  if (!memeCible || db.username !== 'tracefab_migrator'
       || admin.username !== 'tracefab_ci_admin'
       || process.env.TF_ALLOW_WRITE !== 'oui') {
     console.error('  REFUS — le runner fidèle exige tracefab_migrator, tracefab_ci_admin et TF_ALLOW_WRITE=oui.');
@@ -68,6 +75,11 @@ for (const entry of result.verdicts) {
 for (const line of result.summary) console.log(`  garde cible : ${line}`);
 console.log('');
 
+const runnerFidele = join(HERE, 'migrer_fidelement.mjs');
+if (moteur === 'fidele' && !existsSync(runnerFidele)) {
+  console.error('  NON EXECUTE — runner transactionnel absent.');
+  process.exit(2);
+}
 if (moteur === 'prisma' && !existsSync(prismaBin)) {
   console.error('  NON EXECUTE — binaire prisma local absent (node_modules/.bin/prisma).');
   console.error('  npm ci avant de migrer. npx est interdit ici : sortie 2.');
@@ -117,7 +129,7 @@ const verrou = moteur === 'fidele'
 
 const executable = moteur === 'fidele' ? process.execPath : prismaBin;
 const argumentsEnfant = moteur === 'fidele'
-  ? [join(HERE, 'migrer_fidelement.mjs')]
+  ? [runnerFidele]
   : ['migrate', 'deploy'];
 const child = spawn(
   executable,
