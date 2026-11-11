@@ -125,7 +125,7 @@ console.log(`  A — chaine complete : ${dossiers.length - a.sautees.length}/${d
 ok('la chaine complete s applique sans erreur', a.sautees.length === 0, a.sautees.join(' ; '));
 
 const sa = await sonder(a.db);
-ok('onze sondes rendues', sa.size === 11, `${sa.size}`);
+ok('treize lignes de sonde rendues (11 migrations + 2 controles transverses)', sa.size === 13, `${sa.size}`);
 
 /* -------------------------------------------------------------------------
    2. La calibration : UNE base par migration, retiree SEULE
@@ -210,9 +210,11 @@ const attendu = {
   '20261028120000': 'table_registre|oui',
   '20261028120100': 'role_tracefab_worker|oui|politiques_sur_current_user|14',
   '20261028120200': 'mark_document_scanning_posee|oui|update_app_sur_documents|false',
-  '20261028130000': 'update_app_sur_tracefab_products|false|trigger_lit_encore_le_guc|false',
+  '20261028130000': 'table_level_update_app|false|update_version_calculee|false|update_name_metier|true',
   '20261028140000': 'garde_relation_invitation|true',
-  '20261028150000': 'politiques_plm_erp_sync_jobs|2|attendu|2',
+  '20261028150000': 'politiques_plm_erp_sync_jobs|2|noms|plm_sync_jobs_insert_brand,plm_sync_jobs_select_org|insert_contributor|false',
+  '20261028120050': 'fonction_apply_runtime_function_grants|oui',
+  historique: '20261010120000_et_20261017120000|0|tentatives_annulees|0',
 };
 
 for (const [m, v] of Object.entries(attendu)) {
