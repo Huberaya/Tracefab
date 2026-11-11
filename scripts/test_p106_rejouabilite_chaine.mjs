@@ -2,13 +2,15 @@
 /**
  * P10.6/P11 — REJOUABILITÉ ET APPARTENANCE WORKER NEON.
  *
- * Les migrations n'exigent plus de SUPERUSER temporaire ni de runner privilégié :
- * elles accordent SET/INHERIT à current_user dans leur transaction lorsqu'il le
- * faut, puis révoquent uniquement le grant qu'elles ont créé. Les grants du
- * runner historique restent compatibles et sont nettoyés par celui-ci.
+ * Le SQL des migrations n'introduit aucun SUPERUSER et révoque ses grants.
+ * Le runner de rehearsal peut encadrer le tout premier bootstrap worker par
+ * une assistance administrative bornée, car il exécute sous un rôle séparé.
+ * En Production, le rôle qui crée tracefab_worker dispose de l'ADMIN OPTION
+ * initiale et le SQL accorde/révoque SET/INHERIT dans sa transaction.
  *
- * R1 aucune migration ne demande d'élévation SUPERUSER ;
- * R2 un rôle CREATEROLE non-SUPERUSER accorde SET TRUE, endosse le rôle worker,
+ * R1 le SQL ne rend aucun rôle SUPERUSER ; l'assistance du runner de rehearsal
+ *    est strictement limitée au bootstrap initial ;
+ * R2 un rôle CREATEROLE créateur du rôle worker accorde SET TRUE, endosse le rôle,
  *    transfère une fonction, puis révoque son appartenance ;
  * R3 la chaîne complète s'applique sur une base vierge d'un cluster déjà migré ;
  * R4 aucune appartenance directe permanente à tracefab_worker ne subsiste ;
@@ -50,14 +52,15 @@ const ok = (cond, libelle, detail = '') => {
 };
 
 // ---------------------------------------------------------------------------
-// R1/R2 — aucun SUPERUSER temporaire ; test réel du modèle Neon CREATEROLE
+// R1/R2 — SQL sans élévation ; assistance du runner de rehearsal bornée
 // ---------------------------------------------------------------------------
-console.log('  -- appartenance worker Neon, sans SUPERUSER');
+console.log('  -- appartenance worker Neon, SQL sans SUPERUSER');
 
-ok(Object.keys(MIGRATIONS_ASSISTEES).length === 0,
-  'R1 aucune migration ne demande une assistance SUPERUSER');
-ok(exigeAssistance('20261028120100_worker_identity_not_forgeable') === false,
-  'R1 le bootstrap worker ne déclenche aucune élévation externe');
+const bootstrap = '20261028120100_worker_identity_not_forgeable';
+ok(Object.keys(MIGRATIONS_ASSISTEES).length === 1 &&
+   Object.keys(MIGRATIONS_ASSISTEES)[0] === bootstrap &&
+   exigeAssistance(bootstrap) === true,
+  'R1 l assistance du runner de rehearsal est limitée au seul bootstrap initial');
 
 const migration201 = readFileSync(
   'prisma/migrations/20261028120100_worker_identity_not_forgeable/migration.sql',
