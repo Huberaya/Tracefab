@@ -124,6 +124,15 @@ const DOIVENT_VERROUILLER = [
   // provisionnent : elle prend le verrou, et le relache avant d'appeler
   // `migrer_fidelement.mjs` (verrou non reentrant).
   'scripts/test_p106_preflight_avant_ecriture.mjs',
+  // P10.7 : cree une base jetable dans le cluster partage et y provisionne le
+  // role applicatif (`bootstrap_app_role.mjs`) pour eprouver l'activation du
+  // mode strict. Elle PRENAIT le verrou dans son corps, mais son nom ne
+  // figurait dans aucune des deux listes : cette enumeration le signalait donc
+  // comme un chemin non classe. La mesure etait juste sur le fond (le verrou
+  // est bien pose, relache avant `migrer_fidelement.mjs` — non reentrant) et
+  // fausse dans sa forme : un chemin qui prend le verrou doit etre DECLARE ici,
+  // sinon la liste ne dit plus la verite sur le depot.
+  'scripts/test_p107_activation_mode_systeme.mjs',
 ];
 
 // Chemins qui ne doivent PAS le prendre, avec la raison.
@@ -286,21 +295,12 @@ console.log('\n  E. apres une suite complete, aucun verrou ne reste');
 
 {
   const suite = join(RACINE, 'scripts', 'test_isolation_lignes_reelles.mjs');
-  const resultat = await new Promise((resoudre) => {
+  const code = await new Promise((resoudre) => {
     const p = spawn(process.execPath, [join(RACINE, 'scripts', 'run-db-suite.mjs'), suite],
-      { env: process.env, stdio: ['ignore', 'pipe', 'pipe'] });
-    let stdout = '';
-    let stderr = '';
-    p.stdout.setEncoding('utf8').on('data', (chunk) => { stdout = (stdout + chunk).slice(-6000); });
-    p.stderr.setEncoding('utf8').on('data', (chunk) => { stderr = (stderr + chunk).slice(-6000); });
-    p.on('exit', (code, signal) => resoudre({ code: code ?? 1, signal, stdout, stderr }));
+      { env: process.env, stdio: 'ignore' });
+    p.on('exit', resoudre);
   });
-  const diagnostic = resultat.code === 0 ? '' : [
-    `signal=${resultat.signal ?? 'aucun'}`,
-    resultat.stderr.trim(),
-    resultat.stdout.trim().split('\n').slice(-22).join('\n'),
-  ].filter(Boolean).join('\n');
-  verifier('la suite verrouillee aboutit', resultat.code === 0, `exit=${resultat.code}\n${diagnostic}`);
+  verifier('la suite verrouillee aboutit', code === 0, `exit=${code}`);
   verifier('aucun verrou residuel apres la suite', (await detenteurs()) === 0, `${await detenteurs()}`);
 }
 

@@ -134,6 +134,8 @@ SELECT format(
 --      ATTENDU : 1 ligne. `fonctions=6`, `role=present` et
 --      `politiques_current_user=11` signifient que 20261028120100 est
 --      appliquee. `fonctions=0`, `role=absent` et
+--      Depuis 20261109190000, le total corrige inclut une politique worker UPDATE
+--      supplementaire (organizations_worker_update) : le total attendu est 15.
 --      `politiques_current_user=0` signifient qu'elle ne l'est pas — ce qui est
 --      l'etat lu.
 -- =====================================================================

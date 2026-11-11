@@ -1,12 +1,14 @@
 #!/usr/bin/env node
 /**
- * Applique `prisma migrate deploy` UNIQUEMENT sur une base jetable locale.
+ * Point d'entrée de migration UNIQUEMENT sur une base jetable locale.
  *
- * `npm run db:deploy` est la commande operationnelle : `prisma migrate deploy`,
- * sans garde. Un operateur qui l'invoque a choisi sa cible. La CI n'est pas
- * un operateur. Cette commande inverse l'ordre : garde d'abord, binaire
- * prisma LOCAL ensuite. Jamais `npx`. Aucun argument. Aucun opt-in distant :
- * TRACEFAB_ALLOW_* ne rend pas une cible migrable ici.
+ * Mode par défaut : Prisma CLI local, sans npx.
+ * Mode CI explicite (TF_MIGRATION_ENGINE=fidele) : runner transactionnel
+ * avec administrateur et migrateur distincts, pour les migrations qui exigent
+ * un bail worker que Prisma CLI ne sait pas injecter dans sa transaction.
+ * Les deux modes passent par la même classification stricte de cible locale.
+ * Aucun argument. Aucun opt-in distant : TRACEFAB_ALLOW_* ne rend pas une cible
+ * migrable ici. Le runner fidèle reste interdit en Production.
  *
  * CE N'EST PAS UN REMPLACEMENT DE `db:deploy`.
  *
@@ -33,10 +35,32 @@ if (process.argv.length > 2) {
   process.exit(2);
 }
 
-const variablesPresentes = ['DATABASE_URL', 'DIRECT_URL']
+const moteur = process.env.TF_MIGRATION_ENGINE || 'prisma';
+if (!['prisma', 'fidele'].includes(moteur)) {
+  console.error('  REFUS — moteur de migration non reconnu.');
+  process.exit(2);
+}
+if (moteur === 'fidele') {
+  let db, admin;
+  try { db = new URL(process.env.DATABASE_URL || ''); admin = new URL(process.env.TF_ADMIN_URL || ''); }
+  catch { db = null; admin = null; }
+  const memeCible = db && admin
+    && db.protocol === admin.protocol
+    && db.hostname === admin.hostname
+    && (db.port || '5432') === (admin.port || '5432')
+    && db.pathname === admin.pathname;
+  if (!memeCible || db.username !== 'tracefab_migrator'
+      || admin.username !== 'tracefab_ci_admin'
+      || process.env.TF_ALLOW_WRITE !== 'oui') {
+    console.error('  REFUS — le runner fidèle exige tracefab_migrator, tracefab_ci_admin et TF_ALLOW_WRITE=oui.');
+    process.exit(3);
+  }
+}
+
+const variablesPresentes = ['DATABASE_URL', 'DIRECT_URL', 'TF_ADMIN_URL', 'TF_RLS_APP_URL']
   .filter((variable) => (process.env[variable] || '').trim());
 const result = requireThrowawayDb({
-  purpose: 'prisma migrate deploy (base jetable)',
+  purpose: moteur === 'fidele' ? 'runner transactionnel fidèle (base jetable)' : 'prisma migrate deploy (base jetable)',
   variables: variablesPresentes.length > 0 ? variablesPresentes : ['DATABASE_URL'],
 });
 
@@ -51,7 +75,12 @@ for (const entry of result.verdicts) {
 for (const line of result.summary) console.log(`  garde cible : ${line}`);
 console.log('');
 
-if (!existsSync(prismaBin)) {
+const runnerFidele = join(HERE, 'migrer_fidelement.mjs');
+if (moteur === 'fidele' && !existsSync(runnerFidele)) {
+  console.error('  NON EXECUTE — runner transactionnel absent.');
+  process.exit(2);
+}
+if (moteur === 'prisma' && !existsSync(prismaBin)) {
   console.error('  NON EXECUTE — binaire prisma local absent (node_modules/.bin/prisma).');
   console.error('  npm ci avant de migrer. npx est interdit ici : sortie 2.');
   process.exit(2);
@@ -59,7 +88,7 @@ if (!existsSync(prismaBin)) {
 
 function caviarderFlux(texte) {
   let s = String(texte);
-  for (const nom of ['DATABASE_URL', 'DIRECT_URL']) {
+  for (const nom of ['DATABASE_URL', 'DIRECT_URL', 'TF_ADMIN_URL', 'TF_RLS_APP_URL']) {
     const valeur = (process.env[nom] || '').trim();
     if (valeur.length >= 8) s = s.split(valeur).join(`[redacted:${nom}]`);
   }
@@ -94,11 +123,17 @@ async function prendreVerrouCluster() {
   }
 }
 
-const verrou = await prendreVerrouCluster();
+const verrou = moteur === 'fidele'
+  ? { relacher: async () => {} } // le runner fidèle prend et libère son propre verrou de cluster
+  : await prendreVerrouCluster();
 
+const executable = moteur === 'fidele' ? process.execPath : prismaBin;
+const argumentsEnfant = moteur === 'fidele'
+  ? [runnerFidele]
+  : ['migrate', 'deploy'];
 const child = spawn(
-  prismaBin,
-  ['migrate', 'deploy'],
+  executable,
+  argumentsEnfant,
   { stdio: ['ignore', 'pipe', 'pipe'], cwd: ROOT, env: process.env },
 );
 
@@ -120,6 +155,6 @@ child.on('close', (code, signal) => {
   tenterSortie();
 });
 child.on('error', (error) => {
-  console.error(`  ECHEC du lancement prisma : ${error.message}`);
+  console.error(`  ECHEC du lancement du moteur ${moteur} : ${error.message}`);
   process.exit(1);
 });

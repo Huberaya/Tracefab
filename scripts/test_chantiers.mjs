@@ -33,7 +33,7 @@ function controle(libelle, condition, detail) {
 
 /* --- 1. Le compte du depot et l'etat Neon sont distingues. ------------- */
 {
-  const annonce = texte.match(/État courant du dépôt \(branche corrective, 8 novembre 2026\)\s*:\s*Dépôt\s*:\s*(\d+)\s*migrations/);
+  const annonce = texte.match(/État courant du dépôt \(branche corrective, 10 novembre 2026\)\s*:\s*Dépôt\s*:\s*(\d+)\s*migrations/);
   assert.ok(annonce, `${REGISTRE} doit annoncer le nombre de migrations du dépôt`);
   const reel = readdirSync('prisma/migrations').filter((d) => /^\d/.test(d)).length;
   controle(

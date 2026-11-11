@@ -140,10 +140,15 @@ section('Workflows GitHub Actions');
 const dossierWf = join(ROOT, '.github', 'workflows');
 const workflows = existsSync(dossierWf) ? readdirSync(dossierWf).filter((f) => f.endsWith('.yml')) : [];
 const secretsReferences = new Set();
+const secretsParWorkflow = new Map();
 const urlsNonLocales = [];
 for (const w of workflows) {
   const texte = sansCommentaires(readFileSync(join(dossierWf, w), 'utf8'), { yaml: true });
-  for (const m of texte.matchAll(/secrets\.([A-Z0-9_]+)/g)) secretsReferences.add(m[1]);
+  for (const m of texte.matchAll(/secrets\.([A-Z0-9_]+)/g)) {
+    secretsReferences.add(m[1]);
+    if (!secretsParWorkflow.has(w)) secretsParWorkflow.set(w, new Set());
+    secretsParWorkflow.get(w).add(m[1]);
+  }
   for (const m of texte.matchAll(/(postgres(?:ql)?:\/\/[^\s"'`]+)/g)) {
     const url = m[1];
     if (!/@(localhost|127\.0\.0\.1)[:/]/.test(url)) urlsNonLocales.push(`${w} : ${url.replace(/:\/\/[^@]*@/, '://…@')}`);
@@ -152,10 +157,41 @@ for (const w of workflows) {
 note('secrets references', [...secretsReferences].sort().join(', ') || 'aucun');
 note('URL de base non locale', urlsNonLocales.length ? String(urlsNonLocales.length) : 'aucune');
 for (const u of urlsNonLocales) note('  a examiner', u);
-const secretsBase = [...secretsReferences].filter((s) => /DATABASE|POSTGRES|NEON/.test(s));
-if (secretsBase.length) violations.push(`workflow(s) referencant un secret de base : ${secretsBase.join(', ')}`);
+const secretsBase = [...secretsParWorkflow.entries()].flatMap(([workflow, secrets]) =>
+  [...secrets].filter((secret) => /DATABASE|POSTGRES|NEON/.test(secret))
+    .map((secret) => ({ workflow, secret })));
+const registrePrivileges = JSON.parse(lire('docs/security/workflow-privileged-allowlist.json'));
+const workflowsP11Autorises = [
+  'p11-preview-p107-migration.yml',
+  'p11-preview-p107-worker-rls.yml',
+];
+const exceptionsP11 = workflowsP11Autorises.map((workflow) => ({
+  workflow,
+  migration: registrePrivileges.previewMigrationWorkflows?.[workflow],
+  secret: registrePrivileges.secretUsingWorkflows?.[workflow],
+  environnement: registrePrivileges.environmentBoundJobs?.[workflow],
+}));
+const exceptionP11Valide = exceptionsP11.every(({ workflow, migration, secret, environnement }) =>
+  migration?.job === 'migrate-preview-p11'
+  && migration?.branch === 'arena/b8fe1a44-tracefab'
+  && typeof migration?.commit_message === 'string'
+  && migration.commit_message.length > 0
+  && migration?.environment === 'tracefab-p11-preview'
+  && migration?.secret === 'TRACEFAB_P11_DATABASE_ADMIN_URL'
+  && secret?.secret === migration.secret
+  && environnement?.environnement === migration.environment
+  && environnement?.job === migration.job
+  && secretsParWorkflow.get(workflow)?.has(migration.secret) === true);
+const secretsBaseNonAutorises = secretsBase.filter(({ workflow, secret }) =>
+  !(exceptionP11Valide && workflowsP11Autorises.includes(workflow)
+    && secret === 'TRACEFAB_P11_DATABASE_ADMIN_URL'));
+if (secretsBaseNonAutorises.length) {
+  violations.push(`workflow(s) referencant un secret de base hors exception Preview declaree : ${JSON.stringify(secretsBaseNonAutorises)}`);
+}
 if (urlsNonLocales.length) violations.push('une URL de base non locale figure dans un workflow');
-note(secretsBase.length === 0 ? 'ok   aucun workflow ne lit de secret de base' : 'ECHEC', secretsBase.join(', '));
+note(secretsBaseNonAutorises.length === 0 ? 'ok   aucun secret de base hors exception Preview strictement declaree' : 'ECHEC',
+  JSON.stringify(secretsBaseNonAutorises));
+if (secretsBase.length && !exceptionP11Valide) violations.push('le registre de l\'exception migration Preview P11 est incomplet ou incoherent');
 note('limite', 'la liste des secrets RELLEMENT stockes demande un droit d\'administration : non verifiable ici');
 
 // 5. Scripts qui ouvrent une connexion ------------------------------------
@@ -193,6 +229,8 @@ const rapport = {
   clients_prisma: clients,
   crons_vercel: crons,
   secrets_workflows: [...secretsReferences].sort(),
+  secrets_base_workflows: secretsBase,
+  secrets_base_non_autorises: secretsBaseNonAutorises,
   urls_non_locales: urlsNonLocales,
   scripts_connectes: connectes,
   scripts_refusant_production: refusentProd,

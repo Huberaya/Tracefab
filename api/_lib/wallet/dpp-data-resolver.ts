@@ -4,6 +4,26 @@ import { validateGtin, buildGs1DigitalLink } from '../plm-erp/gtin-engine.js';
 
 type PrismaTx = PrismaClient | Prisma.TransactionClient;
 
+/** URL canonique unique pour toutes les surfaces publiques du passeport. */
+export function getConfiguredPublicBaseUrl(): URL | null {
+  const raw = process.env.TRACEFAB_PUBLIC_BASE_URL?.trim();
+  if (!raw) return null;
+  try {
+    const url = new URL(raw);
+    if (
+      (url.protocol !== 'https:' && !['localhost', '127.0.0.1'].includes(url.hostname)) ||
+      url.username !== '' ||
+      url.password !== '' ||
+      url.pathname !== '/' ||
+      url.search !== '' ||
+      url.hash !== ''
+    ) return null;
+    return url;
+  } catch {
+    return null;
+  }
+}
+
 /**
  * Resolution des donnees de passeport — sans la moindre valeur substituee.
  *
@@ -105,7 +125,7 @@ const PRODUIT_INCLUS = {
 export async function resolveDppPassData(
   tx: PrismaTx,
   identifierOrId: string,
-  baseUrl: string = 'https://tracefab.com'
+  baseUrl: string = process.env.TRACEFAB_PUBLIC_BASE_URL?.trim() || ''
 ): Promise<DppPassData | null> {
   const cleanId = String(identifierOrId || '').trim();
   if (!cleanId) return null;
@@ -153,7 +173,7 @@ export async function resolveDppPassData(
 export async function resolveDppPassDataByGtin(
   tx: PrismaTx,
   rawGtin: string,
-  baseUrl: string = 'https://tracefab.com'
+  baseUrl: string = process.env.TRACEFAB_PUBLIC_BASE_URL?.trim() || ''
 ): Promise<DppPassData | null> {
   const validation = validateGtin(rawGtin);
   if (!validation.isValid) return null;
