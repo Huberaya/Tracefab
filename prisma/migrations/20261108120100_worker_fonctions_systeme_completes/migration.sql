@@ -98,8 +98,8 @@ BEGIN
         'GRANT tracefab_worker TO %I WITH SET TRUE, INHERIT TRUE, ADMIN FALSE',
         current_user
       );
+      v_appartenance_temporaire := true;
     END IF;
-    v_appartenance_temporaire := true;
     IF EXISTS (
       SELECT 1
         FROM pg_catalog.pg_auth_members m
