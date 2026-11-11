@@ -80,58 +80,86 @@ await admin.connect();
   const adminRole = `tf_neon_admin_${randomBytes(3).toString('hex')}`;
   const workerRole = `tf_neon_worker_${randomBytes(3).toString('hex')}`;
   const fn = `tf_neon_owner_${randomBytes(3).toString('hex')}`;
-  let tx = false;
+  const password = randomBytes(16).toString('hex');
+  let operator = null;
+  let adminRoleCreated = false;
   try {
-    await admin.query('BEGIN');
-    tx = true;
-    const isSuper = (await admin.query('SELECT rolsuper FROM pg_catalog.pg_roles WHERE rolname=current_user')).rows[0]?.rolsuper;
-    if (!isSuper) throw new Error('le banc de test local doit être administré par postgres');
-    await admin.query(`CREATE ROLE ${adminRole} NOLOGIN CREATEROLE NOCREATEDB NOBYPASSRLS NOSUPERUSER NOINHERIT`);
+    // Reproduire la connexion Neon réelle : session_user = current_user.
+    // SET ROLE depuis postgres fausse le grantor de pg_auth_members et ne
+    // représente pas le rôle CREATEROLE qui ouvre sa propre session.
+    await admin.query(`CREATE ROLE ${adminRole} LOGIN PASSWORD '${password}' CREATEROLE NOCREATEDB NOBYPASSRLS NOSUPERUSER NOINHERIT`);
+    adminRoleCreated = true;
     await admin.query(`GRANT CREATE ON SCHEMA public TO ${adminRole} WITH GRANT OPTION`);
-    await admin.query(`SET ROLE ${adminRole}`);
-    await admin.query(`CREATE ROLE ${workerRole} NOLOGIN NOINHERIT NOBYPASSRLS NOSUPERUSER NOCREATEROLE NOCREATEDB`);
-    await admin.query(`GRANT ${workerRole} TO ${adminRole} WITH SET TRUE, INHERIT TRUE, ADMIN FALSE`);
-    const membership = (await admin.query(
+
+    const operatorUrl = new URL(urlAdmin.toString());
+    operatorUrl.username = adminRole;
+    operatorUrl.password = password;
+    operator = new pg.Client({
+      connectionString: operatorUrl.toString(),
+      ssl: sslDepuisUrl(operatorUrl.toString()),
+      application_name: 'tracefab-p106-neon-createrole',
+    });
+    await operator.connect();
+    await operator.query('BEGIN');
+
+    const isSuper = (await operator.query(
+      'SELECT rolsuper FROM pg_catalog.pg_roles WHERE rolname = current_user'
+    )).rows[0]?.rolsuper;
+    if (isSuper) throw new Error('le rôle CREATEROLE de test ne doit pas être SUPERUSER');
+
+    await operator.query(`CREATE ROLE ${workerRole} NOLOGIN NOINHERIT NOBYPASSRLS NOSUPERUSER NOCREATEROLE NOCREATEDB`);
+    await operator.query(`GRANT ${workerRole} TO ${adminRole} WITH SET TRUE, INHERIT TRUE, ADMIN FALSE`);
+    const membership = (await operator.query(
       `SELECT pg_catalog.pg_has_role($1,$2,'SET') AS can_set,
               pg_catalog.pg_has_role($1,$2,'MEMBER') AS member`,
       [adminRole, workerRole]
     )).rows[0];
     ok(membership.can_set && membership.member,
       'R2 CREATEROLE accorde SET TRUE/INHERIT TRUE sans ADMIN');
-    await admin.query(`GRANT CREATE ON SCHEMA public TO ${workerRole}`);
-    await admin.query(`CREATE FUNCTION public.${fn}() RETURNS integer LANGUAGE sql AS 'SELECT 1'`);
-    await admin.query(`ALTER FUNCTION public.${fn}() OWNER TO ${workerRole}`);
-    const owner = (await admin.query(
+
+    await operator.query(`GRANT CREATE ON SCHEMA public TO ${workerRole}`);
+    await operator.query(`CREATE FUNCTION public.${fn}() RETURNS integer LANGUAGE sql AS 'SELECT 1'`);
+    await operator.query(`ALTER FUNCTION public.${fn}() OWNER TO ${workerRole}`);
+    const owner = (await operator.query(
       `SELECT pg_catalog.pg_get_userbyid(proowner) AS owner FROM pg_catalog.pg_proc WHERE oid=$1::regprocedure`,
       [`public.${fn}()`]
     )).rows[0]?.owner;
     ok(owner === workerRole,
       'R2 SET ROLE autorise le transfert de propriété sans SUPERUSER', owner || 'propriétaire absent');
-    await admin.query(`REVOKE CREATE ON SCHEMA public FROM ${workerRole}`);
-    await admin.query(`REVOKE ${workerRole} FROM ${adminRole}`);
-    const afterRows = (await admin.query(
+
+    await operator.query(`REVOKE CREATE ON SCHEMA public FROM ${workerRole}`);
+    await operator.query(`REVOKE ${workerRole} FROM ${adminRole}`);
+    const afterRows = (await operator.query(
       `SELECT grantor::regrole::text AS grantor,
               member::regrole::text AS member,
               roleid::regrole::text AS granted_role,
               admin_option, inherit_option, set_option
          FROM pg_catalog.pg_auth_members
-        WHERE member = $1::regrole AND roleid = $2::regrole
-        ORDER BY grantor::regrole::text`,
+        WHERE member = $1::regrole AND roleid = $2::regrole`,
       [adminRole, workerRole]
     )).rows;
-    const after = (await admin.query(
+    const after = (await operator.query(
       `SELECT pg_catalog.pg_has_role($1,$2,'MEMBER') AS member`,
       [adminRole, workerRole]
     )).rows[0].member;
-    console.log(`  info  R2 membership after REVOKE — rows=${JSON.stringify(afterRows)} · pg_has_role=${after}`);
-    ok(after === false, "R2 l'appartenance temporaire est révoquée avant COMMIT");
-    await admin.query('RESET ROLE');
-    await admin.query('ROLLBACK');
-    tx = false;
+    ok(after === false && afterRows.length === 0,
+      "R2 l'appartenance temporaire est révoquée avant COMMIT",
+      `pg_has_role=${after} · grantors restants=${afterRows.map((r) => r.grantor).join(',') || 'aucun'}`);
+
+    await operator.query('ROLLBACK');
   } catch (e) {
     ok(false, 'R2 le modèle CREATEROLE Neon fonctionne sans SUPERUSER', (e.message || '').slice(0,100));
   } finally {
-    if (tx) await admin.query('ROLLBACK').catch(() => {});
+    if (operator) {
+      await operator.query('ROLLBACK').catch(() => {});
+      await operator.end().catch(() => {});
+    }
+    if (adminRoleCreated) {
+      await admin.query(`REVOKE CREATE ON SCHEMA public FROM ${adminRole}`).catch(() => {});
+      await admin.query(`DROP ROLE IF EXISTS ${adminRole}`).catch((e) => {
+        console.error(`  info  nettoyage du rôle ${adminRole} : ${e.message}`);
+      });
+    }
   }
 }
 
