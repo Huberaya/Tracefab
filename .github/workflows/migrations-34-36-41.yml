@@ -78,8 +78,31 @@ jobs:
       - name: Generer le client Prisma
         run: npm run db:generate
 
-      - name: Installer le client psql
-        run: sudo apt-get update && sudo apt-get install -y postgresql-client
+      - name: Utiliser psql du conteneur PostgreSQL 17
+        run: |
+          container_id="$(docker ps --filter 'label=com.github.actions.service=postgres' --format '{{.ID}}' | head -n1)"
+          if [[ -z "$container_id" ]]; then
+            container_id="$(docker ps --filter 'ancestor=postgres:17' --format '{{.ID}}' | head -n1)"
+          fi
+          test -n "$container_id"
+          export TRACEFAB_PSQL_CONTAINER_ID="$container_id"
+          echo "TRACEFAB_PSQL_CONTAINER_ID=$container_id" >> "$GITHUB_ENV"
+          mkdir -p "$RUNNER_TEMP/psql-bin"
+          cat > "$RUNNER_TEMP/psql-bin/psql" <<'EOF'
+          #!/usr/bin/env bash
+          set -euo pipefail
+          : "${TRACEFAB_PSQL_CONTAINER_ID:?conteneur PostgreSQL 17 introuvable}"
+          exec docker exec \
+            -e PGHOST=127.0.0.1 \
+            -e "PGPORT=${PGPORT:-5432}" \
+            -e "PGUSER=${PGUSER:-postgres}" \
+            -e "PGPASSWORD=${PGPASSWORD:-postgres}" \
+            -e "PGDATABASE=${PGDATABASE:-tracefab_test}" \
+            "$TRACEFAB_PSQL_CONTAINER_ID" psql "$@"
+          EOF
+          chmod +x "$RUNNER_TEMP/psql-bin/psql"
+          echo "$RUNNER_TEMP/psql-bin" >> "$GITHUB_PATH"
+          "$RUNNER_TEMP/psql-bin/psql" -X --no-password -v ON_ERROR_STOP=1 -tAc "SHOW server_version"
 
       - name: Intégration A (neuve) et B (10120000 tardif)
         run: bash scripts/test_migration_integration_34_36_41.sh
