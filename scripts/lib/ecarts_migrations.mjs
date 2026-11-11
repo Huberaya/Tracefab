@@ -46,19 +46,19 @@ export const ECARTS = {
   '20261021170000_dpp_readiness_truthful_gates': {
     historique: 'ABSENTE',
     objet: 'profil DPP renomme, 13 prerequis, tracefab_dpp_requirement_met, tracefab_mark_dpp_ready_to_publish',
-    effets: ['NON PROUVE', 'redéfinie par 20261027100000 et 20261027130000'],
+    effets: ['MESURE', 'le profil reste Tracefab textile readiness MVP au lieu de Tracefab textile technical readiness'], 
     suite: 'sonde, fait 3',
   },
   '20261027100000_dpp_quality_gate_requires_assessment': {
     historique: 'ABSENTE',
     objet: 'quality.no_open_issues exige une evaluation persistee',
-    effets: ['NON PROUVE', 'aucune mesure'],
+    effets: ['MESURE', 'tracefab_dpp_requirement_met ne lit pas encore data_quality_scores par product_id'],
     suite: 'sonde, fait 4',
   },
   '20261027130000_dpp_review_preservation_and_publication_coherence': {
     historique: 'ABSENTE',
     objet: 'tracefab_suspend_nonconforming_publication, tracefab_compute_dpp_readiness, tracefab_mark_dpp_ready_to_publish',
-    effets: ['NON PROUVE', 'aucune mesure'],
+    effets: ['MESURE', 'tracefab_suspend_nonconforming_publication est absente'],
     suite: 'sonde, fait 5',
   },
   '20261028120000_runtime_function_registry': {
@@ -70,31 +70,31 @@ export const ECARTS = {
   '20261028120050_neon_worker_function_grants': {
     historique: 'ABSENTE',
     objet: 'remplacement de tracefab_apply_runtime_function_grants pour assumer temporairement tracefab_worker sur les ACL',
-    effets: ['NON PROUVE', 'migration ajoutée au dépôt après le relevé du 28/10 avec un horodatage antérieur à la borne ; aucun historique Production ne la cite'],
+    effets: ['MESURE', 'tracefab_apply_runtime_function_grants est absente en Production ; migration ajoutée au dépôt après le relevé du 28/10 avec un horodatage antérieur à la borne'], 
     suite: 'appliquer après 20261028120000 et avant 20261028120100 ; vérifier la capacité SET ROLE sur la cible',
   },
   '20261028120100_worker_identity_not_forgeable': {
     historique: 'ABSENTE',
     objet: 'role tracefab_worker, 11 politiques reindexees sur current_user',
-    effets: ['NON PROUVE', 'depend du registre'],
+    effets: ['MESURE', 'tracefab_worker est absent et aucune politique publique mesurée ne mentionne current_user + tracefab_worker'], 
     suite: 'deploy apres 20261028120000',
   },
   '20261028120200_document_reserved_fields_internal_only': {
     historique: 'ABSENTE',
     objet: 'tracefab_mark_document_scanning ; tracefab_app sans INSERT/UPDATE/DELETE sur documents',
-    effets: ['NON PROUVE', 'aucune mesure'],
+    effets: ['MESURE', 'tracefab_mark_document_scanning est absente et tracefab_app conserve UPDATE sur documents'],
     suite: 'deploy',
   },
   '20261028130000_product_computed_fields_column_scoped': {
     historique: 'ABSENTE',
     objet: 'ecriture au niveau COLONNE sur tracefab_products ; le declencheur ne lit plus le GUC',
-    effets: ['NON PROUVE', 'aucune mesure'],
+    effets: ['MESURE', 'tracefab_app conserve UPDATE au niveau table et peut encore modifier la colonne calculée version'],
     suite: 'decision separee : pas de deploy global pour ce seul point',
   },
   '20261028140000_supplier_invitation_owner_relationship_scope': {
     historique: 'ABSENTE',
     objet: 'tracefab_validate_member_invitation_role avec controle d appartenance et de statut',
-    effets: ['NON PROUVE', 'aucune mesure'],
+    effets: ['MESURE', 'tracefab_validate_member_invitation_role ne contient pas la garde invitation_relationship_organization_mismatch'],
     suite: 'deploy',
   },
   '20261028150000_reconcile_plm_erp_sync_job_policies': {
@@ -115,40 +115,40 @@ export const CATALOGUE = {
     statut: 'CONFORME',
   },
   '20261021170000_dpp_readiness_truthful_gates': {
-    catalogue: 'NON LU — redéfinie par 20261027100000 et 20261027130000',
-    statut: 'NON PROUVE',
+    catalogue: 'ABSENT MESURE — le profil garde le libellé MVP historique',
+    statut: 'DIVERGENCE',
   },
   '20261027100000_dpp_quality_gate_requires_assessment': {
-    catalogue: 'NON LU',
-    statut: 'NON PROUVE',
+    catalogue: 'ABSENT MESURE — la fonction ne lit pas les scores persistés par produit',
+    statut: 'DIVERGENCE',
   },
   '20261027130000_dpp_review_preservation_and_publication_coherence': {
-    catalogue: 'NON LU',
-    statut: 'NON PROUVE',
+    catalogue: 'ABSENT MESURE — tracefab_suspend_nonconforming_publication absente',
+    statut: 'DIVERGENCE',
   },
   '20261028120000_runtime_function_registry': {
     catalogue: 'ABSENT — table tracefab_runtime_function_registry lue absente',
     statut: 'DIVERGENCE',
   },
   '20261028120050_neon_worker_function_grants': {
-    catalogue: 'NON LU — définition actuelle de tracefab_apply_runtime_function_grants à confronter avant application',
-    statut: 'NON PROUVE',
+    catalogue: 'ABSENT MESURE — tracefab_apply_runtime_function_grants absente',
+    statut: 'DIVERGENCE',
   },
   '20261028120100_worker_identity_not_forgeable': {
-    catalogue: 'NON LU — depend du registre, dont l absence a ete lue',
-    statut: 'NON PROUVE',
+    catalogue: 'ABSENT MESURE — rôle tracefab_worker absent et 0 politique sur current_user',
+    statut: 'DIVERGENCE',
   },
   '20261028120200_document_reserved_fields_internal_only': {
-    catalogue: 'NON LU — les droits sur documents se lisent avec le SQL des privileges effectifs',
-    statut: 'NON PROUVE',
+    catalogue: 'ABSENT MESURE — fonction interne absente et UPDATE tracefab_app toujours accordé',
+    statut: 'DIVERGENCE',
   },
   '20261028130000_product_computed_fields_column_scoped': {
-    catalogue: 'NON LU — les droits sur tracefab_products se lisent de meme',
-    statut: 'NON PROUVE',
+    catalogue: 'ABSENT MESURE — UPDATE table encore accordé, y compris sur version',
+    statut: 'DIVERGENCE',
   },
   '20261028140000_supplier_invitation_owner_relationship_scope': {
-    catalogue: 'NON LU — decision separee, aucun deploy global pour ce seul point',
-    statut: 'NON PROUVE',
+    catalogue: 'ABSENT MESURE — garde relation/statut absente de la fonction',
+    statut: 'DIVERGENCE',
   },
   '20261028150000_reconcile_plm_erp_sync_job_policies': {
     catalogue: 'PRESENT MESURE — deux politiques canoniques exactes ; les deux surnumeraires relevees le 28/10 ne sont plus presentes au 11/11',
