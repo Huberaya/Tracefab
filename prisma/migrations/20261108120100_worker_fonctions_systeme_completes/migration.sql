@@ -100,6 +100,16 @@ BEGIN
       );
     END IF;
     v_appartenance_temporaire := true;
+    IF EXISTS (
+      SELECT 1
+        FROM pg_catalog.pg_auth_members m
+        JOIN pg_catalog.pg_roles r ON r.oid = m.member
+        JOIN pg_catalog.pg_roles w ON w.oid = m.roleid
+       WHERE r.rolname = current_user AND w.rolname = 'tracefab_worker'
+         AND (NOT m.inherit_option OR NOT m.set_option OR m.admin_option)
+    ) THEN
+      RAISE EXCEPTION 'worker_membership_options_invalid';
+    END IF;
   END IF;
 
   -- Prerequis mesure de `ALTER ... OWNER TO` : le nouveau proprietaire doit
