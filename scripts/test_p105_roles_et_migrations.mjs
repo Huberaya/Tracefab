@@ -1,12 +1,13 @@
 #!/usr/bin/env node
 /**
- * P10.5 — B2 et B3 : la chaîne de migrations tourne avec un rôle dédié, sans
- * SUPERUSER, et le runtime ne peut ni migrer ni s'élever.
+ * P10.5 — B2 et B3 : la chaîne tourne avec un rôle dédié ; seul le bootstrap
+ * initial du worker reçoit une élévation administrative bornée et révoquée.
+ * Le runtime ne peut ni migrer ni s'élever.
  *
  * CE QUE CE TEST ÉPROUVE, ET POURQUOI CHAQUE POINT COMPTE
  *
- *   B2.1  77/77 migrations sur une base VIERGE, exécutées par
- *         `tracefab_migrator` — un rôle `NOSUPERUSER` qui possède les objets.
+ *   B2.1  99/99 migrations sur une base VIERGE, exécutées par
+ *         `tracefab_migrator` ; l'élévation initiale est bornée et révoquée.
  *   B2.2  reprise : relancer ne rejoue rien et ne casse rien.
  *   B2.3  `tracefab_app` ne peut PAS exécuter de migration (42501).
  *   B2.4  `tracefab_app` ne peut PAS prendre le rôle propriétaire ni le rôle
