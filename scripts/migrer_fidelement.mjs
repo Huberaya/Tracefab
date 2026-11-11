@@ -556,25 +556,23 @@ for (const nom of enAttente) {
         throw new Error('identité administrative invalide pour le bail migrateur temporaire');
       }
       await executeur.query(`GRANT ${identifiantSql(roleExecutant)} TO ${identifiantSql(roleAdministrateurTemporaire)} WITH INHERIT TRUE, SET TRUE, ADMIN FALSE`);
-      await executeur.query(`GRANT tracefab_worker TO ${identifiantSql(roleExecutant)} WITH INHERIT TRUE, SET TRUE, ADMIN FALSE`);
+      // Le migrateur reçoit d'abord ADMIN seul, sans SET ni INHERIT.
+      // La migration peut alors s'accorder le bail SET/INHERIT qu'elle exige,
+      // sans donner au migrateur une capacité d'endossement avant l'exécution.
+      await executeur.query(`GRANT tracefab_worker TO ${identifiantSql(roleExecutant)} WITH INHERIT FALSE, SET FALSE, ADMIN TRUE`);
       const options = (await executeur.query(
         `SELECT pg_catalog.pg_has_role($1, 'tracefab_worker', 'SET') AS peut_set,
                 pg_catalog.pg_has_role($1, 'tracefab_worker', 'USAGE') AS peut_utiliser,
-                (SELECT COALESCE(bool_or(m.inherit_option AND m.set_option), false)
+                (SELECT COALESCE(bool_or(m.admin_option AND NOT m.inherit_option AND NOT m.set_option), false)
                    FROM pg_catalog.pg_auth_members m
                    JOIN pg_catalog.pg_roles r ON r.oid = m.roleid
                    JOIN pg_catalog.pg_roles u ON u.oid = m.member
-                  WHERE r.rolname = 'tracefab_worker' AND u.rolname = $1) AS bail_set_inherit,
-                (SELECT COALESCE(bool_or(m.admin_option AND (m.inherit_option OR m.set_option)), false)
-                   FROM pg_catalog.pg_auth_members m
-                   JOIN pg_catalog.pg_roles r ON r.oid = m.roleid
-                   JOIN pg_catalog.pg_roles u ON u.oid = m.member
-                  WHERE r.rolname = 'tracefab_worker' AND u.rolname = $1) AS admin_effectif`,
+                  WHERE r.rolname = 'tracefab_worker' AND u.rolname = $1) AS bail_admin_seul`,
         [roleExecutant],
       )).rows[0];
-      if (options?.peut_set !== true || options?.peut_utiliser !== true
-          || options?.bail_set_inherit !== true || options?.admin_effectif !== false) {
-        throw new Error(`appartenance worker temporaire non conforme : SET=${options?.peut_set}, USAGE=${options?.peut_utiliser}, bail SET/INHERIT=${options?.bail_set_inherit}, ADMIN effectif=${options?.admin_effectif}`);
+      if (options?.peut_set !== false || options?.peut_utiliser !== false
+          || options?.bail_admin_seul !== true) {
+        throw new Error(`bail ADMIN worker initial non conforme : SET=${options?.peut_set}, USAGE=${options?.peut_utiliser}, ADMIN seul=${options?.bail_admin_seul}`);
       }
       await executeur.query(`SET LOCAL ROLE ${identifiantSql(roleExecutant)}`);
       await executeur.query("SET LOCAL tracefab.worker_membership_managed = 'true'");
