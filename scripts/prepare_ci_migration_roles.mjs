@@ -69,7 +69,7 @@ try {
   );
   await client.query(
     `CREATE ROLE ${ident(migratorRole)} LOGIN PASSWORD ${quote(migratorPassword)}
-       CREATEROLE NOCREATEDB NOBYPASSRLS NOSUPERUSER NOINHERIT`,
+       CREATEROLE BYPASSRLS NOCREATEDB NOSUPERUSER NOINHERIT`,
   );
   // Le grantor est postgres, distinct de l'administrateur : ADMIN-only est
   // transmissible sans accorder à l'admin SET/INHERIT par défaut.
