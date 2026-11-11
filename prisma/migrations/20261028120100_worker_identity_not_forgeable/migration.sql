@@ -358,23 +358,8 @@ $$;
 --    Consequence a connaitre : une migration ULTERIEURE qui voudrait changer le
 --    proprietaire d une de ces fonctions devra re-accorder l appartenance le
 --    temps du transfert, puis la retirer de la meme facon.
-DO $$
-BEGIN
-  -- `pg_has_role` rend vrai pour un superutilisateur meme sans octroi explicite
-  -- (il est membre implicite de tout role). On interroge donc pg_auth_members :
-  -- seule une appartenance REELLEMENT accordee a quelque chose a retirer.
-  IF EXISTS (
-    SELECT 1
-      FROM pg_catalog.pg_auth_members m
-      JOIN pg_catalog.pg_roles r ON r.oid = m.member
-      JOIN pg_catalog.pg_roles c ON c.oid = m.roleid
-     WHERE r.rolname = current_user
-       AND c.rolname = 'tracefab_worker'
-  ) THEN
-    EXECUTE pg_catalog.format('REVOKE tracefab_worker FROM %I', current_user);
-  END IF;
-END
-$$;
+-- L'appartenance temporaire est révoquée après les postconditions finales.
+
 
 -- 7. Privileges du worker : le strict necessaire a ces six fonctions ---------
 --    Rien n'est copie du role applicatif : chaque table listee ici est lue ou
@@ -452,3 +437,21 @@ REVOKE ALL ON FUNCTION tracefab_notification_outbox_health() FROM PUBLIC;
 -- registre. Les 84 fonctions heritees restent ouvertes, les 6 nouvelles
 -- s'ajoutent, et toute fonction hors registre fait echouer la migration.
 SELECT * FROM public.tracefab_apply_runtime_function_grants();
+
+DO $$
+BEGIN
+  -- `pg_has_role` rend vrai pour un superutilisateur meme sans octroi explicite
+  -- (il est membre implicite de tout role). On interroge donc pg_auth_members :
+  -- seule une appartenance REELLEMENT accordee a quelque chose a retirer.
+  IF EXISTS (
+    SELECT 1
+      FROM pg_catalog.pg_auth_members m
+      JOIN pg_catalog.pg_roles r ON r.oid = m.member
+      JOIN pg_catalog.pg_roles c ON c.oid = m.roleid
+     WHERE r.rolname = current_user
+       AND c.rolname = 'tracefab_worker'
+  ) THEN
+    EXECUTE pg_catalog.format('REVOKE tracefab_worker FROM %I', current_user);
+  END IF;
+END
+$$;
