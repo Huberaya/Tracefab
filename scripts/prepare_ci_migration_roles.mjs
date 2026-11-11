@@ -63,6 +63,15 @@ try {
   }
 
   await client.query('BEGIN');
+  // Neon fournit pgcrypto via son rôle interne cloud_admin : le migrateur
+  // applicatif non-superuser ne doit pas créer l'extension. Le banc local
+  // reproduit ce prérequis en l'installant une fois avec postgres SUPERUSER,
+  // avant de remettre la main au couple admin/migrateur non-superusers.
+  await client.query('CREATE EXTENSION IF NOT EXISTS pgcrypto');
+  const extension = (await client.query(
+    `SELECT extname FROM pg_catalog.pg_extension WHERE extname = 'pgcrypto'`,
+  )).rows[0];
+  if (!extension) throw new Error('pgcrypto doit être préinstallée par le bootstrap SUPERUSER jetable');
   await client.query(
     `CREATE ROLE ${ident(adminRole)} LOGIN PASSWORD ${quote(adminPassword)}
        CREATEROLE NOCREATEDB NOBYPASSRLS NOSUPERUSER NOINHERIT`,
