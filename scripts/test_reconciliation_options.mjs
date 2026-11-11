@@ -45,6 +45,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { executerMigrationPglite } from './lib/pglite-worker-runner.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const MIGRATIONS = path.join(root, 'prisma/migrations');
@@ -112,7 +113,7 @@ async function baseRealiste({ avecTableRegistre = false } = {}) {
     // elles n'ont jamais ete deployees. Depuis 20261031120000, les inclure est
     // une erreur mesurable (elle exige le registre runtime, absent d'ici).
     if (d.slice(0, 14) > BORNE_RELEVE) continue;
-    await db.exec(lire(d));
+    await executerMigrationPglite(db, d, lire(d));
   }
   /**
    * L'HISTORIQUE EST AUSSI IMPORTANT QUE LE CATALOGUE.
