@@ -54,6 +54,8 @@ const WRITE_PATTERNS = [
  */
 const DESTRUCTIVE_DB_SUITES = [
   'scripts/test_neon_security.mjs',
+  // Provisionnement des identités CI : CREATE ROLE/GRANT strictement local, via le lanceur commun.
+  'scripts/prepare_ci_migration_roles.mjs',
   'scripts/test_rls_isolation.mjs',
   'scripts/test_migration_owner_guard.mjs',
   'scripts/test_neon_dpp_provenance.mjs',
