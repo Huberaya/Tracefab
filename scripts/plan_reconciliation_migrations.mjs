@@ -126,7 +126,7 @@ const INTERDIT = [
   [/UPDATE\s+_prisma_migrations/i, 'UPDATE sur _prisma_migrations'],
   [/DELETE\s+FROM\s+_prisma_migrations/i, 'DELETE sur _prisma_migrations'],
   [/resolve\s+--rolled-back/i, 'resolve --rolled-back (ferait rejouer un fichier non rejouable)'],
-  [/resolve\\s+--applied/i, 'resolve --applied (modifie _prisma_migrations, interdit par le mandat)'],
+  [/resolve\s+--applied/i, 'resolve --applied (modifie _prisma_migrations, interdit par le mandat)'],
   [/migrate\s+deploy(?!.*seule)/i, 'migrate deploy global'],
 ];
 
