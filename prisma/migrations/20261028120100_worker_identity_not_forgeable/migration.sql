@@ -326,13 +326,14 @@ BEGIN
       JOIN pg_catalog.pg_roles r ON r.oid = m.member
       JOIN pg_catalog.pg_roles w ON w.oid = m.roleid
       WHERE r.rolname = current_user AND w.rolname = 'tracefab_worker'
+        AND (m.set_option OR m.inherit_option)
     ) THEN
       RAISE EXCEPTION 'worker_membership_preexisting'
         USING HINT = 'Nettoyer toute appartenance worker antérieure avant le bootstrap.';
     END IF;
   ELSE
     EXECUTE pg_catalog.format(
-      'GRANT tracefab_worker TO %I WITH SET TRUE, INHERIT TRUE, ADMIN FALSE',
+      'GRANT tracefab_worker TO %I WITH SET TRUE, INHERIT TRUE, ADMIN TRUE',
       current_user
     );
   END IF;
@@ -440,16 +441,17 @@ SELECT * FROM public.tracefab_apply_runtime_function_grants();
 
 DO $$
 DECLARE
-  admin_option BOOLEAN;
   executant_superuser BOOLEAN;
   est_grantor BOOLEAN;
+  appartenance_active BOOLEAN;
 BEGIN
-  -- pg_has_role rend vrai pour un superutilisateur meme sans octroi explicite.
-  -- Sur Neon, le runner detient le grantor neondb_owner et retire le bail
-  -- temporaire apres RESET ROLE, avant COMMIT. Le migrateur ne peut pas
-  -- revoquer une appartenance dont ADMIN=false : il ne doit pas s'elever.
-  SELECT COALESCE(bool_or(m.admin_option), false)
-    INTO admin_option
+  -- Le migrateur conserve ADMIN-only sur le worker : il lui faut cette
+  -- capacité étroite pour déléguer ADMIN à la session administrative du runner.
+  -- SET et INHERIT sont, eux, retirés après le transfert des six fonctions.
+  SELECT COALESCE(bool_or(m.set_option OR m.inherit_option), false),
+         COALESCE(bool_or(pg_catalog.pg_get_userbyid(m.grantor) = current_user
+                          AND (m.set_option OR m.inherit_option)), false)
+    INTO appartenance_active, est_grantor
     FROM pg_catalog.pg_auth_members m
     JOIN pg_catalog.pg_roles r ON r.oid = m.member
     JOIN pg_catalog.pg_roles c ON c.oid = m.roleid
@@ -460,24 +462,10 @@ BEGIN
     FROM pg_catalog.pg_roles
    WHERE rolname = current_user;
 
-  SELECT COALESCE(bool_or(pg_catalog.pg_get_userbyid(m.grantor) = current_user), false)
-    INTO est_grantor
-    FROM pg_catalog.pg_auth_members m
-    JOIN pg_catalog.pg_roles r ON r.oid = m.member
-    JOIN pg_catalog.pg_roles c ON c.oid = m.roleid
-   WHERE r.rolname = current_user
-     AND c.rolname = 'tracefab_worker';
-
-  IF EXISTS (
-    SELECT 1
-      FROM pg_catalog.pg_auth_members m
-      JOIN pg_catalog.pg_roles r ON r.oid = m.member
-      JOIN pg_catalog.pg_roles c ON c.oid = m.roleid
-     WHERE r.rolname = current_user
-       AND c.rolname = 'tracefab_worker'
-  ) THEN
-    IF admin_option OR executant_superuser OR est_grantor THEN
-      EXECUTE pg_catalog.format('REVOKE tracefab_worker FROM %I', current_user);
+  IF appartenance_active THEN
+    IF executant_superuser OR est_grantor THEN
+      EXECUTE pg_catalog.format('REVOKE SET OPTION FOR tracefab_worker FROM %I', current_user);
+      EXECUTE pg_catalog.format('REVOKE INHERIT OPTION FOR tracefab_worker FROM %I', current_user);
     ELSIF current_setting('tracefab.worker_membership_managed', true) IS DISTINCT FROM 'true' THEN
       RAISE EXCEPTION 'worker_membership_cleanup_not_managed'
         USING HINT = 'Le runner administratif doit révoquer le bail worker avant COMMIT.';
