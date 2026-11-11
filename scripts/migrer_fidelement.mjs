@@ -259,10 +259,18 @@ async function revoquerElevation(moment) {
 }
 
 const MIGRATION_WORKER_TERMINALE = '20261108120700_assert_worker_membership_revoked';
-// Les migrations accordent elles-mêmes l'appartenance worker SET/INHERIT
-// lorsqu'elles en ont besoin, et révoquent uniquement le grant qu'elles créent.
-// Aucun pré-grant externe n'est requis par le runner.
-const MIGRATIONS_AVEC_WORKER_TEMPORAIRE = new Set();
+// Ces migrations testent l'appartenance worker de current_user avant de
+// transférer ou modifier des objets protégés. Un migrateur non membre ne peut
+// pas s'accorder lui-même ce droit : le runner l'accorde depuis la connexion
+// administrative, dans la transaction de la migration, puis le révoque avant
+// COMMIT. La liste est fermée et limitée aux migrations mesurées.
+const MIGRATIONS_AVEC_WORKER_TEMPORAIRE = new Set([
+  '20261028120200_document_reserved_fields_internal_only',
+  '20261031120000_identite_hmac_liee_au_contexte',
+  '20261105235900_active_tenant_policy_and_worker_closure',
+  '20261108120100_worker_fonctions_systeme_completes',
+  '20261108120200_corrections_p106_ownership_et_appartenance',
+]);
 const identifiantSql = (v) => '"' + String(v).replace(/"/g, '""') + '"';
 const gestionRoles = dejaSuperuser ? client : clientAdmin;
 
