@@ -348,7 +348,7 @@ process.exit(43);
       TF_MIGRATION_ENGINE: 'fidele',
     });
     const runner = sentinelInvocations().find(x => x.runner === true);
-    r.status === 43 && r.invocations.length === 0
+    r.status === 43 && r.invocations.filter(x => !x.runner).length === 0
       && Boolean(runner) && /SENTINEL_RUNNER_FAKE/.test(r.combined)
       && /throwaway_local/.test(r.combined)
       ? ok('runner fidèle : cible locale validée, runner appelé, Prisma jamais appelé')
