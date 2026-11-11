@@ -104,8 +104,8 @@ jobs:
           echo "$RUNNER_TEMP/psql-bin" >> "$GITHUB_PATH"
           "$RUNNER_TEMP/psql-bin/psql" -X --no-password -v ON_ERROR_STOP=1 -tAc "SHOW server_version"
 
+      - name: Rejouabilité P10.6 — runner sous admin/migrateur non-superusers
+        run: node scripts/test_p106_rejouabilite_chaine.mjs
+
       - name: Intégration A (neuve) et B (10120000 tardif)
         run: bash scripts/test_migration_integration_34_36_41.sh
-
-      - name: Rejouabilité P10.6 — runner sous migrateur non-superuser
-        run: node scripts/test_p106_rejouabilite_chaine.mjs
