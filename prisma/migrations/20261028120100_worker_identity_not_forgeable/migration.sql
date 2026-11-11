@@ -439,10 +439,35 @@ REVOKE ALL ON FUNCTION tracefab_notification_outbox_health() FROM PUBLIC;
 SELECT * FROM public.tracefab_apply_runtime_function_grants();
 
 DO $$
+DECLARE
+  admin_option BOOLEAN;
+  executant_superuser BOOLEAN;
+  est_grantor BOOLEAN;
 BEGIN
-  -- `pg_has_role` rend vrai pour un superutilisateur meme sans octroi explicite
-  -- (il est membre implicite de tout role). On interroge donc pg_auth_members :
-  -- seule une appartenance REELLEMENT accordee a quelque chose a retirer.
+  -- pg_has_role rend vrai pour un superutilisateur meme sans octroi explicite.
+  -- Sur Neon, le runner detient le grantor neondb_owner et retire le bail
+  -- temporaire apres RESET ROLE, avant COMMIT. Le migrateur ne peut pas
+  -- revoquer une appartenance dont ADMIN=false : il ne doit pas s'elever.
+  SELECT COALESCE(bool_or(m.admin_option), false)
+    INTO admin_option
+    FROM pg_catalog.pg_auth_members m
+    JOIN pg_catalog.pg_roles r ON r.oid = m.member
+    JOIN pg_catalog.pg_roles c ON c.oid = m.roleid
+   WHERE r.rolname = current_user
+     AND c.rolname = 'tracefab_worker';
+
+  SELECT rolsuper INTO executant_superuser
+    FROM pg_catalog.pg_roles
+   WHERE rolname = current_user;
+
+  SELECT COALESCE(bool_or(pg_catalog.pg_get_userbyid(m.grantor) = current_user), false)
+    INTO est_grantor
+    FROM pg_catalog.pg_auth_members m
+    JOIN pg_catalog.pg_roles r ON r.oid = m.member
+    JOIN pg_catalog.pg_roles c ON c.oid = m.roleid
+   WHERE r.rolname = current_user
+     AND c.rolname = 'tracefab_worker';
+
   IF EXISTS (
     SELECT 1
       FROM pg_catalog.pg_auth_members m
@@ -451,7 +476,12 @@ BEGIN
      WHERE r.rolname = current_user
        AND c.rolname = 'tracefab_worker'
   ) THEN
-    EXECUTE pg_catalog.format('REVOKE tracefab_worker FROM %I', current_user);
+    IF admin_option OR executant_superuser OR est_grantor THEN
+      EXECUTE pg_catalog.format('REVOKE tracefab_worker FROM %I', current_user);
+    ELSIF current_setting('tracefab.worker_membership_managed', true) IS DISTINCT FROM 'true' THEN
+      RAISE EXCEPTION 'worker_membership_cleanup_not_managed'
+        USING HINT = 'Le runner administratif doit révoquer le bail worker avant COMMIT.';
+    END IF;
   END IF;
 END
 $$;
