@@ -143,6 +143,11 @@ try {
   });
   const appliquees = (mig1.stdout.match(/appliquee\s+20/g) || []).length;
   ok(mig1.status === 0, 'B2.1 la chaîne s applique intégralement', `sortie ${mig1.status}, ${appliquees} appliquée(s)`);
+  const elevationBootstrap = /assistée — élévation temporaire de tracefab_migrator/.test(mig1.stdout);
+  const revocationBootstrap = /élévation révoquée — tracefab_migrator n est plus superutilisateur/.test(mig1.stdout);
+  ok(elevationBootstrap && revocationBootstrap,
+    'B2.1 bootstrap worker : élévation temporaire puis révocation vérifiée',
+    `élévation=${elevationBootstrap}, révocation=${revocationBootstrap}`);
   if (mig1.status !== 0) console.log(mig1.stdout.split('\n').filter((l) => /ECHEC|REFUS/.test(l)).join('\n'));
 
   const cible = new pg.Client({ connectionString: url(ROLE_MIGRATOR), ssl: sslDepuisUrl(url(ROLE_MIGRATOR)) });
