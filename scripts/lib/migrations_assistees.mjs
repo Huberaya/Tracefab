@@ -1,16 +1,9 @@
-// Le premier bootstrap de tracefab_worker crée le rôle puis doit accorder
-// temporairement SET/INHERIT à l'exécutant pour transférer les fonctions.
-// Un rôle non membre ne peut pas s'accorder lui-même cette appartenance.
-// Le runner de rehearsal encadre donc cette migration par une élévation
-// administrative bornée, puis vérifie sa révocation avant de poursuivre.
-// Les migrations suivantes gèrent leur appartenance temporaire dans leur
-// transaction, avec le rôle worker déjà créé.
+// Le bootstrap initial crée tracefab_worker et accorde à l'exécutant
+// CREATEROLE une appartenance temporaire qu'il révoque lui-même.
+// Les migrations suivantes utilisent un bail SET/INHERIT fourni par le runner
+// administratif dans leur transaction, puis révoqué avant COMMIT.
 
-export const MIGRATIONS_ASSISTEES = Object.freeze({
-  '20261028120100_worker_identity_not_forgeable': {
-    raison: 'bootstrap initial de tracefab_worker : l executant doit pouvoir accorder puis retirer son appartenance SET/INHERIT dans la migration; assistance administrative bornee necessaire au premier CREATE ROLE',
-  },
-});
+export const MIGRATIONS_ASSISTEES = Object.freeze({});
 
 export function exigeAssistance(nom) {
   return Object.prototype.hasOwnProperty.call(MIGRATIONS_ASSISTEES, nom);
