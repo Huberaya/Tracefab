@@ -93,19 +93,12 @@ BEGIN
     FROM pg_catalog.pg_roles WHERE rolname = current_user;
 
   IF v_superuser IS DISTINCT FROM TRUE THEN
-    IF EXISTS (
-      SELECT 1 FROM pg_catalog.pg_auth_members m
-      JOIN pg_catalog.pg_roles r ON r.oid = m.member
-      JOIN pg_catalog.pg_roles w ON w.oid = m.roleid
-      WHERE r.rolname = current_user AND w.rolname = 'tracefab_worker'
-    ) THEN
-      RAISE EXCEPTION 'worker_membership_preexisting'
-        USING HINT = 'Aucune appartenance worker ne doit précéder la transaction de cette migration.';
+    IF NOT pg_catalog.pg_has_role(current_user, 'tracefab_worker', 'SET') THEN
+      EXECUTE pg_catalog.format(
+        'GRANT tracefab_worker TO %I WITH SET TRUE, INHERIT TRUE, ADMIN FALSE',
+        current_user
+      );
     END IF;
-    EXECUTE pg_catalog.format(
-      'GRANT tracefab_worker TO %I WITH SET TRUE, INHERIT FALSE, ADMIN FALSE',
-      current_user
-    );
     v_appartenance_temporaire := true;
   END IF;
 
@@ -140,7 +133,8 @@ BEGIN
   -- pouvoir creer aucun objet. Le retrait est verifie dans le bloc suivant.
   EXECUTE 'REVOKE CREATE ON SCHEMA public FROM tracefab_worker';
 
-  IF v_appartenance_temporaire THEN
+  IF v_appartenance_temporaire
+     AND pg_catalog.pg_has_role(current_user, 'tracefab_worker', 'MEMBER') THEN
     EXECUTE pg_catalog.format('REVOKE tracefab_worker FROM %I', current_user);
   END IF;
 
