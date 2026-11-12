@@ -714,7 +714,14 @@ jobs:
       - name: Privilèges SQL après migrations, avant le seed
         # Vérifie les GRANT conditionnels dans le scénario où tracefab_app
         # existe déjà, comme en production, avant que le seed n'accorde des droits.
-        run: npm run test:neon:privileges
+        # Enveloppe : le journal de ce job n'est pas lisible depuis la session
+        # de travail (l'API rend EOF). Sans annotation, un echec ici ne laisse
+        # que « exit code 1 » et un numero d'etape — mesure du 2026-11-12, ou
+        # l'etape a echoue en 0,0 s sans rien laisser d'exploitable. Le wrapper
+        # ne change ni la commande ni son code de sortie : il ajoute une
+        # annotation `::error::` avec la trace, en masquant toute chaine de
+        # connexion.
+        run: node scripts/executer_avec_erreur_annotee.mjs "privileges SQL apres migrations" npm run test:neon:privileges
 
       - name: Privilèges du rôle applicatif — minimaux, et éprouvés par écriture
         # L'audit precedent lit le catalogue. Celui-ci se CONNECTE avec le role
