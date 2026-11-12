@@ -32,6 +32,13 @@ export const MIGRATIONS_AVEC_WORKER_TEMPORAIRE = Object.freeze([
   '20261105235900_active_tenant_policy_and_worker_closure',
   '20261108120100_worker_fonctions_systeme_completes',
   '20261108120200_corrections_p106_ownership_et_appartenance',
+  // 20261112120000 : `tracefab_current_user_email()` appartient a
+  // `tracefab_worker` ; seul un membre de ce role peut accorder EXECUTE sur
+  // une fonction dont il n'est pas proprietaire. Mesure du 2026-11-12 : sans
+  // le bail, la migration echoue en `42501 permission denied for function
+  // tracefab_current_user_email` — et c'est le runner qui la refuse, pas
+  // PostgreSQL seul, puisque la garde exige la declaration explicite.
+  '20261112120000_grants_helpers_entre_fonctions_definer',
 ]);
 
 const ENSEMBLE = new Set(MIGRATIONS_AVEC_WORKER_TEMPORAIRE);

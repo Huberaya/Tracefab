@@ -70,6 +70,11 @@ BEGIN
     RAISE EXCEPTION 'grants_helpers_definer_not_effective: tracefab_migrator ne peut pas executer tracefab_current_user_email';
   END IF;
 
+  -- Le GRANT est refait a chaque execution (base neuve comme base deja
+  -- migree) : la migration est idempotente et ne depend pas d'un etat
+  -- anterieur. Trace pour la lecture des journaux de deploiement.
+  RAISE NOTICE 'grants helpers definer : EXECUTE accorde a tracefab_migrator sur tracefab_current_user_email()';
+
   -- Post-condition : PUBLIC reste ferme. C'est l'etat que la migration du
   -- 20261105 avait etabli et que celle-ci ne doit pas defaire.
   SELECT count(*) INTO v_once

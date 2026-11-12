@@ -84,7 +84,16 @@ if (!connApp) {
  */
 async function appelSousRoleApp(sqlLiteral, parametres) {
   const c = new pg.Client({ connectionString: connApp });
-  await c.connect();
+  try {
+    await c.connect();
+  } catch (e) {
+    // Un mot de passe perime ou un role absent n'est pas un echec de la mesure :
+    // c'est une precondition non tenue. Le dire, au lieu de laisser remonter une
+    // exception non rattrapee qui masquerait ce que la suite etablit.
+    console.error(`NON EXECUTE — connexion applicative impossible : ${e.code ?? ''} ${String(e.message).split('\n')[0]}`);
+    console.error('  Verifier TF_RLS_APP_URL / TF_APP_PASSWORD (le role applicatif a pu etre recree).');
+    process.exit(2);
+  }
   try {
     await c.query('BEGIN');
     // Le contexte est celui du parcours reel : sans `tracefab.user_id`, les
