@@ -37,6 +37,10 @@ if (!['localhost', '127.0.0.1', '::1'].includes(url.hostname)
 
 const adminRole = 'tracefab_ci_admin';
 const migratorRole = 'tracefab_migrator';
+// Le role de la session d'amorcage (verifie SUPERUSER juste apres) : il ecrit
+// lui aussi des objets — extension, schema — et son defaut EXECUTE doit etre
+// ferme au meme titre que celui du role de migration.
+const sessionRole = 'postgres';
 const adminPassword = randomBytes(32).toString('hex');
 const migratorPassword = randomBytes(32).toString('hex');
 const quote = (v) => "'" + String(v).replace(/'/g, "''") + "'";
@@ -249,6 +253,68 @@ try {
   }
 
   await client.query('COMMIT');
+
+  // ET LE DEFAUT DES FONCTIONS A VENIR DOIT ETRE FERME POUR LES DEUX ROLES.
+  //
+  // MESURE DU 2026-11-12, annotation du job `base-de-donnees` : l'etape
+  // « Privileges SQL apres migrations » echouait sur
+  //
+  //   D. une fonction creee maintenant est encore executable par PUBLIC
+  //
+  // La chaine ferme bien ce defaut (migrations 20261012120000 et
+  // 20261014120000), mais toujours pour `current_user` — c'est-a-dire pour LE
+  // role qui applique cette migration. Rejoue localement, ce banc ne l'a
+  // jamais vu : il appliquait la chaine avec `postgres`, donc les deux
+  // commandes etaient redondantes. En CI la chaine est appliquee par
+  // `tracefab_migrator` : le defaut de `postgres` restait OUVERT, et toute
+  // fonction creee par `postgres` naissait executable par PUBLIC.
+  //
+  // Ce n'est pas un defaut de la chaine (elle ne peut pas, et ne doit pas,
+  // modifier les defauts d'un AUTRE role) : c'est un prerequis administratif,
+  // comme l'extension. Il est pose APRES le COMMIT — une connexion ouverte
+  // sous un role cree dans la transaction courante ne le verrait pas encore.
+  // L'instruction est globale (sans `IN SCHEMA`) : la variante par schema ne
+  // retire pas le defaut integre du moteur, c'est la lecon du 07/10.
+  const fermerDefautExecute = async (role) => {
+    await client.query(`ALTER DEFAULT PRIVILEGES FOR ROLE ${ident(role)} REVOKE EXECUTE ON FUNCTIONS FROM PUBLIC`);
+    // Mesure, pas lecture d'instruction : une fonction temoin est creee PAR CE
+    // ROLE, sur une connexion dediee ouverte sous son nom, puis annulee.
+    //
+    // La connexion est construite sans mot de passe quand le role en est
+    // depourvu : le service de CI est en `trust` sur `localhost`, et exiger un
+    // mot de passe ici rendrait la mesure dependante d'un detail de
+    // l'environnement plutot que du contrat du role.
+    const u = new URL(url.toString());
+    u.username = role;
+    if (role === migratorRole) u.password = migratorPassword;
+    else u.password = '';
+    const sonde = new pg.Client({ connectionString: u.toString() });
+    await sonde.connect();
+    try {
+      await sonde.query('BEGIN');
+      await sonde.query('CREATE FUNCTION public.tf_ci_default_execute_probe() RETURNS boolean LANGUAGE sql AS $p$ SELECT true $p$');
+      const { publicPeut } = (await sonde.query(`
+        SELECT COALESCE(bool_or(acl.grantee = 0 AND acl.privilege_type = 'EXECUTE'), false) AS "publicPeut"
+          FROM pg_catalog.pg_proc p
+          CROSS JOIN LATERAL pg_catalog.aclexplode(
+            COALESCE(p.proacl, pg_catalog.acldefault('f', p.proowner))) acl
+         WHERE p.oid = 'public.tf_ci_default_execute_probe()'::pg_catalog.regprocedure`)).rows[0];
+      await sonde.query('ROLLBACK');
+      if (publicPeut !== false) {
+        throw new Error(`defaut EXECUTE non ferme pour ${role} : une fonction creee par ce role reste executable par PUBLIC`);
+      }
+    } finally {
+      await sonde.query('ROLLBACK').catch(() => {});
+      await sonde.end().catch(() => {});
+    }
+  };
+  for (const role of new Set([migratorRole, sessionRole])) {
+    await fermerDefautExecute(role);
+  }
+
+  for (const role of new Set([migratorRole, sessionRole])) {
+    await fermerDefautExecute(role);
+  }
 } catch (error) {
   await client.query('ROLLBACK').catch(() => {});
   throw error;
