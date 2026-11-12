@@ -125,6 +125,11 @@ await admin.connect();
 
 let verrou = null;
 let registreAvant = null;
+// Administrateur de banc : declare ici parce que le nettoyage vit dans le
+// `finally` EXTERIEUR, hors de la portee du `try` de mesure.
+let adminBancs = null;
+let mdpAdminBancs = null;
+let adminBancsCree = false;
 
 try {
   await admin.query(`CREATE DATABASE ${baseTravail}`);
@@ -149,17 +154,106 @@ try {
   ok(bootstrap.status === 0, 'E0 rôle applicatif disponible avant la chaîne',
     (bootstrap.stderr || bootstrap.stdout || '').trim().split('\n').pop() || `code ${bootstrap.status}`);
 
-  // --- E1 : la chaîne jusqu'au rang 67, jouée par le PROPRIÉTAIRE ----------
+  // --- E1 : la chaîne jusqu'au rang 67, jouée par `tracefab_migrator` ------
+  //
+  // E1 la jouait par le PROPRIÉTAIRE (`postgres`). Depuis que la 62e migration
+  // n'est plus « assistée » mais PRÉPROVISIONNÉE, le runner refuse une session
+  // qui n'est pas le migrateur : `roleExecutant !== 'tracefab_migrator'`, et le
+  // contrôle positif s'arrêtait au rang 62. Le scénario ne ressemblait plus à
+  // la production, où c'est toujours le migrateur qui applique la chaîne.
+  //
+  // On lui donne donc le même cadre qu'en production, celui que reproduit
+  // `test_p106_rejouabilite_chaine` : un administrateur conforme (CREATEROLE
+  // non-superuser, ADMIN sur migrateur et worker), `pgcrypto` installé par
+  // l'administration — le migrateur ne reçoit jamais CREATE EXTENSION — et le
+  // schéma `public` qui lui appartient.
+  adminBancs = 'tf_d6_admin';
+  mdpAdminBancs = `adm_${baseTravail.slice(-6)}`;
+  const mdpMigrateurBancs = `mig_${baseTravail.slice(-6)}`;
+  if (!(process.env.TF_ADMIN_URL || '').trim()) {
+    await admin.query(`DO $$ BEGIN
+        IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = '${adminBancs}') THEN
+          CREATE ROLE ${adminBancs} LOGIN CREATEROLE NOSUPERUSER NOBYPASSRLS NOCREATEDB;
+        END IF;
+      END $$;`);
+    await admin.query(`ALTER ROLE ${adminBancs} WITH LOGIN CREATEROLE NOSUPERUSER NOBYPASSRLS NOCREATEDB PASSWORD ${admin.escapeLiteral(mdpAdminBancs)}`);
+    await admin.query(`DO $$ BEGIN
+        IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'tracefab_worker') THEN
+          CREATE ROLE tracefab_worker NOLOGIN NOINHERIT NOBYPASSRLS NOSUPERUSER NOCREATEROLE NOCREATEDB NOREPLICATION;
+        END IF;
+      END $$;`);
+    await admin.query(`DO $$ BEGIN
+        IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'tracefab_migrator') THEN
+          CREATE ROLE tracefab_migrator LOGIN CREATEROLE NOCREATEDB BYPASSRLS NOSUPERUSER INHERIT;
+        END IF;
+      END $$;`);
+    await admin.query(`ALTER ROLE tracefab_migrator WITH LOGIN CREATEROLE NOCREATEDB BYPASSRLS NOSUPERUSER INHERIT PASSWORD ${admin.escapeLiteral(mdpMigrateurBancs)}`);
+    await admin.query(`GRANT tracefab_worker TO ${adminBancs} WITH ADMIN TRUE, SET FALSE, INHERIT FALSE`);
+    await admin.query(`GRANT tracefab_migrator TO ${adminBancs} WITH ADMIN TRUE, SET FALSE, INHERIT FALSE`);
+    adminBancsCree = true;
+  }
+  // Prérequis d'administration que la production installe et que le migrateur
+  // ne peut pas poser lui-même.
+  {
+    const prep = new pg.Client({ connectionString: urlBase.toString(), ssl: sslDepuisUrl(urlBase.toString()) });
+    await prep.connect();
+    try {
+      await prep.query('CREATE EXTENSION IF NOT EXISTS pgcrypto');
+      await prep.query(`GRANT CREATE ON DATABASE ${baseTravail} TO tracefab_migrator`);
+      await prep.query('ALTER SCHEMA public OWNER TO tracefab_migrator');
+      await prep.query(`GRANT CONNECT ON DATABASE ${baseTravail} TO tracefab_migrator`);
+    } finally {
+      await prep.end();
+    }
+  }
+  const envChaine = {
+    ...process.env,
+    DATABASE_URL: urlPour('tracefab_migrator', mdpMigrateurBancs).toString(),
+    TF_ALLOW_WRITE: 'oui',
+    ...(process.env.TF_ADMIN_URL ? {} : {
+      TF_ADMIN_URL: `postgresql://${adminBancs}:${mdpAdminBancs}@${new URL(urlAdmin).host}/${baseTravail}`,
+    }),
+  };
   const jusquA = spawnSync(process.execPath, ['scripts/migrer_fidelement.mjs', '--jusqu-a', DERNIERE_APPLIQUEE], {
-    env: { ...process.env, DATABASE_URL: urlBase.toString(), TF_ALLOW_WRITE: 'oui' },
+    env: envChaine,
     encoding: 'utf8',
   });
   const lignesJusquA = `${jusquA.stdout || ''}${jusquA.stderr || ''}`.trim().split('\n');
   ok(jusquA.status === 0,
-    'E1 jouée par le PROPRIÉTAIRE, la chaîne s applique jusqu au rang 66 (contrôle positif)',
+    'E1 jouée par le MIGRATEUR, la chaîne s applique jusqu au rang 66 (contrôle positif)',
     jusquA.status === 0
       ? lignesJusquA.filter((l) => /appliquee\(s\)/.test(l)).pop()
       : lignesJusquA.filter((l) => /ECHEC|REFUS/.test(l)).slice(-1)[0]);
+
+  // LA PRÉCONDITION DU SCÉNARIO, rétablie explicitement.
+  //
+  // D6 existe pour mesurer un refus : « cette migration remplace une fonction
+  // dont l'EXÉCUTANT ne peut pas endosser le propriétaire ». Il faut donc que
+  // cette fonction appartienne réellement au propriétaire, et non au migrateur.
+  //
+  // Sur `main`, E1 était jouée par le PROPRIÉTAIRE (`postgres`) : la fonction
+  // lui appartenait donc par construction, et la précondition était un effet de
+  // bord. Depuis que la 62e migration n'est plus assistée mais préprovisionnée,
+  // E1 doit être jouée par le migrateur — et la fonction lui appartient alors,
+  // ce qui DISSOUT le scénario : le préflight n'a plus rien à refuser, et E2/E3
+  // passaient au vert sans rien mesurer.
+  //
+  // On rend donc la fonction au propriétaire, comme l'état de production que ce
+  // contrôle prétend reproduire. C'est une mise en scène assumée, écrite ici et
+  // non déduite d'un effet de bord : la propriété est l'hypothèse testée.
+  {
+    // `admin` est connecte a la base de CLUSTER (`DATABASE_URL`), pas a la base
+    // de travail : c'est sur `baseTravail` que la chaine vient de s'appliquer.
+    const surBase = new pg.Client({ connectionString: urlBase.toString(), ssl: sslDepuisUrl(urlBase.toString()) });
+    await surBase.connect();
+    try {
+      await surBase.query(`ALTER FUNCTION public.tracefab_current_user_id() OWNER TO ${roleProprietaire}`);
+    } catch (e) {
+      console.error(`  info  propriete non rendue au proprietaire : ${e.message.split('\n')[0]}`);
+    } finally {
+      await surBase.end();
+    }
+  }
 
   const client = new pg.Client({ connectionString: urlBase.toString(), ssl: sslDepuisUrl(urlBase.toString()) });
   await client.connect();
@@ -337,6 +431,14 @@ try {
     const reste = (await admin.query(
       'SELECT count(*)::int AS n FROM pg_catalog.pg_roles WHERE rolname = $1', [roleJetableCree])).rows[0].n;
     ok(reste === 0, 'E7 le rôle jetable est détruit (aucun rôle résiduel)', `${reste} restant(s)`);
+  }
+  // L'administrateur de banc n'existe que si la suite l'a cree.
+  if (adminBancsCree) {
+    await admin.query(`REVOKE tracefab_worker FROM ${adminBancs}`).catch(() => {});
+    await admin.query(`REVOKE tracefab_migrator FROM ${adminBancs}`).catch(() => {});
+    await admin.query(`DROP ROLE IF EXISTS ${adminBancs}`).catch((e) => {
+      console.error(`  info  suppression de l administrateur de banc : ${e.message}`);
+    });
   }
   if (verrou) await verrou.relacher();
 }
