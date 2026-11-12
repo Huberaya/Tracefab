@@ -1306,6 +1306,17 @@ jobs:
         # pour sur.
         run: node scripts/executer_avec_erreur_annotee.mjs "P10.7 activation stricte" npm run test:p107:activation-stricte
 
+      - name: P10.7 — un SECURITY DEFINER peut appeler le helper qu il emploie
+        # Mesure l etat de la base + controle NEGATIF : le GRANT est retire,
+        # le 42501 doit revenir, puis l etat est retabli.
+        run: node scripts/executer_avec_erreur_annotee.mjs "P10.7 grants helpers definer" npm run test:p107:grants-helpers-definer
+
+      - name: P10.7 — la chaine rejouee depuis une base neuve porte ce GRANT
+        # Deux rejeux complets : sans la migration 20261112120000 le defaut est
+        # reproduit, avec elle il disparait. C est la seule preuve qui distingue
+        # « la base est configuree » de « la migration configure la base ».
+        run: node scripts/executer_avec_erreur_annotee.mjs "P10.7 chaine grants helpers" npm run test:p107:chaine-grants-helpers
+
       - name: P10.7 — les droits du runtime sont DERIVES du code, pas d une liste
         # R4 : la sonde d exploitation n est jamais un droit du runtime.
         # R5 : la verification systeme est accordee parce que api/ l appelle.

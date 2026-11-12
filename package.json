@@ -32,6 +32,8 @@
     "test:p107:identite-systeme-module": "node --import tsx scripts/test_p107_identite_systeme_module.mjs",
     "test:p107:identite-systeme": "node scripts/run-db-suite.mjs scripts/test_p107_identite_systeme_signee.mjs",
     "test:p107:activation-stricte": "node scripts/run-db-suite.mjs scripts/test_p107_activation_mode_systeme.mjs",
+    "test:p107:grants-helpers-definer": "node scripts/run-db-suite.mjs scripts/test_p107_grants_helpers_definer.mjs",
+    "test:p107:chaine-grants-helpers": "node scripts/run-db-suite.mjs scripts/test_p107_chaine_grants_helpers.mjs",
     "sonde:p107:hmac": "node --import tsx scripts/sonde_p107_hmac.ts",
     "test:neon:write-policies": "node scripts/run-db-suite.mjs scripts/test_rls_write_policies.mjs",
     "test:neon:wallet:chantier9": "node scripts/run-db-suite.mjs scripts/test_neon_wallet_chantier9.ts",
