@@ -57,8 +57,19 @@ BEGIN
      AND p.proname = 'tracefab_current_user_email'
      AND pg_get_function_identity_arguments(p.oid) = '';
 
-  IF v_migrator IS NULL OR v_helper IS NULL THEN
-    RAISE EXCEPTION 'grants_helpers_definer_target_missing: worker=% helper=%', v_migrator, v_helper;
+  -- Sans le role de migration, il n'y a rien a accorder : la migration reste
+  -- un no-op plutot que d'echouer. C'est le cas d'une base ou le bootstrap n'a
+  -- pas encore tourne — et c'est la convention du depot, posee par
+  -- 20261019120000_restreindre_dml_role_applicatif pour la meme raison. Les
+  -- bancs qui rejouent la chaine sur PGlite (moteur WASM, aucun role cree)
+  -- doivent pouvoir la traverser : `test:diagnostic-m6` mesure le schema, pas
+  -- les roles.
+  IF v_migrator IS NULL THEN
+    RAISE NOTICE 'role tracefab_migrator absent : octroi du helper ignore';
+    RETURN;
+  END IF;
+  IF v_helper IS NULL THEN
+    RAISE EXCEPTION 'grants_helpers_definer_helper_missing: tracefab_current_user_email() absent';
   END IF;
 
   -- Idempotent : `GRANT` l'est deja, la verification ci-dessous le mesure
