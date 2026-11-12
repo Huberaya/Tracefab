@@ -682,7 +682,12 @@ jobs:
         # distinct du migrateur CREATEROLE. Les deux rôles sont jetables et
         # créés uniquement sur le service Postgres local, avec mots de passe
         # aléatoires masqués et sorties limitées à l'étape suivante.
-        run: node scripts/prepare_ci_migration_roles.mjs
+        # Enveloppe : ce script a deja echoue en CI sans laisser de trace
+        # exploitable (l'API des journaux rend EOF pour ce depot). Mesure du
+        # 2026-11-12 : etape 7 en echec, aucune annotation, aucun moyen de
+        # savoir laquelle de ses assertions est tombee. Le wrapper ajoute une
+        # annotation `::error::` avec la cause, sans changer le code de sortie.
+        run: node scripts/executer_avec_erreur_annotee.mjs "provisionnement des identites de migration" node scripts/prepare_ci_migration_roles.mjs
 
       - name: Préparer le rôle applicatif avant migrations
         # Via le lanceur garde : refuse toute cible non jetable avant CREATE ROLE.
