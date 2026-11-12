@@ -216,17 +216,49 @@ if (!url) {
   try {
     // 1. Une fonction autorisee doit exister, une seule fois, chez un
     //    proprietaire de confiance.
+    //
+    // LE PROPRIETAIRE DE CONFIANCE N'EST PAS `current_user` — MESURE DU
+    // 2026-11-12. La propriete est decrite par la migration elle-meme
+    // (`20261028120000_runtime_function_registry`, section 3.a) : les fonctions
+    // du registre appartiennent au PROPRIETAIRE DES MIGRATIONS ou a
+    // `tracefab_worker`, et a personne d'autre. Ecrire `current_user` revenait a
+    // faire dependre le controle de l'identite du BANC plutot que de celle du
+    // schema :
+    //
+    //   - en CI, la chaine est appliquee par `tracefab_migrator` (le job passe
+    //     `migrator_url` a `db:deploy:throwaway`), mais les controles tournent
+    //     avec le `DATABASE_URL` du job, `postgres`. `postgres` n'est PAS
+    //     proprietaire d'une seule des 81 fonctions du registre : la propriete
+    //     signalait 81 anomalies inexistantes ;
+    //   - sur un banc applique par `postgres`, la meme requete passe — d'ou un
+    //     faux vert qui ne prouvait rien sur la propriete reelle.
+    //
+    // Le proprietaire des migrations se LIT dans le catalogue : c'est celui de
+    // `tracefab_apply_runtime_function_grants()`, la fonction que la migration
+    // vient de creer dans ce role (et que la migration 3.c cite comme
+    // `proprietaires`). Aucun nom n'est code en dur, et le controle reste
+    // strict : un transfert de propriete vers un role non prevu reste detecte.
     const invalides = await client.query(`
+      with migrations as (
+        select pg_catalog.pg_get_userbyid(p.proowner) as proprietaire
+          from pg_catalog.pg_proc p
+          join pg_catalog.pg_namespace n on n.oid = p.pronamespace
+         where n.nspname = 'public'
+           and p.proname = 'tracefab_apply_runtime_function_grants'
+      ), confiance as (
+        select proprietaire from migrations
+        union select 'tracefab_worker'
+      )
       select r.name,
              count(p.oid) filter (where n.nspname = 'public') as trouvees,
-             coalesce(bool_or(pg_get_userbyid(p.proowner) not in (current_user, 'tracefab_worker'))
+             coalesce(bool_or(pg_get_userbyid(p.proowner) not in (select proprietaire from confiance))
                       filter (where n.nspname = 'public'), false) as proprietaire_suspect
         from public.tracefab_runtime_function_registry r
         left join pg_proc p on p.proname = r.name and p.prokind = 'f'
         left join pg_namespace n on n.oid = p.pronamespace
        group by r.name
       having count(p.oid) filter (where n.nspname = 'public') <> 1
-          or coalesce(bool_or(pg_get_userbyid(p.proowner) not in (current_user, 'tracefab_worker'))
+          or coalesce(bool_or(pg_get_userbyid(p.proowner) not in (select proprietaire from confiance))
                       filter (where n.nspname = 'public'), false)
        order by r.name`);
     ok(

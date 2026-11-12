@@ -169,6 +169,15 @@ jobs:
         # horodatages. Aucun des deux n'a besoin de base ni de client Prisma.
         run: npm run test:migrations:controle && npm run test:migrations:horodatages
 
+      - name: Restauration du role d entree des migrations
+        # Mesure du 2026-11-12 : `RESET ROLE` ne retablit pas le role etabli par
+        # `SET LOCAL ROLE` par le runner, mais l'utilisateur de session. Dans
+        # `tracefab_apply_runtime_function_grants()`, cela vidait la lecture du
+        # registre (FORCE RLS), revoquait les 84 droits et faisait echouer la
+        # 61e migration. Le controle est statique et mord dans les deux sens :
+        # la version fautive est signalee par 5 assertions.
+        run: npm run test:migrations:restauration-role
+
       - name: Validation TLS jamais desactivee
         # Verifie qu'aucun chemin de connexion ne pose rejectUnauthorized: false
         # ni NODE_TLS_REJECT_UNAUTHORIZED=0. Une regression ici annulerait

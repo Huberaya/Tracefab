@@ -173,6 +173,7 @@
     "test:neon:isolation-lignes": "node scripts/run-db-suite.mjs scripts/test_isolation_lignes_reelles.mjs",
     "test:tls:validation": "node scripts/test_tls_validation_active.mjs",
     "test:migrations:horodatages": "node scripts/verifier-horodatages-migrations.mjs",
+    "test:migrations:restauration-role": "node scripts/test_role_restauration_migrations.mjs",
     "test:neon:privileges-role-app": "node scripts/run-db-suite.mjs scripts/test_privileges_role_app.mjs",
     "test:neon:privileges": "node scripts/run-db-suite.mjs scripts/test_neon_privileges.mjs",
     "db:migration-owner-guard": "node scripts/run-db-suite.mjs scripts/test_migration_owner_guard.mjs",

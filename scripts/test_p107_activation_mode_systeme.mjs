@@ -73,13 +73,18 @@ const ok = (condition, libelle, detail = '') => {
  * l'operateur executera, avec ses codes de sortie. Un import testerait une
  * fonction, pas l'outil.
  */
-const lancer = (script, args, url, { sansConsentement = false } = {}) => new Promise((resoudre) => {
+const lancer = (script, args, url, { sansConsentement = false, adminUrl = null } = {}) => new Promise((resoudre) => {
   const enfant = spawn(process.execPath, [join(RACINE, 'scripts', script), ...args], {
     cwd: RACINE,
     env: {
       ...process.env,
       DATABASE_ADMIN_URL: url,
       DATABASE_URL: url,
+      // `TF_ADMIN_URL` est retiree par defaut : une suite qui mesure un refus
+      // ne doit pas heriter silencieusement d'une identite administrative. La
+      // seule etape qui en a besoin (la chaine de migrations) la recoit
+      // explicitement.
+      ...(adminUrl ? { TF_ADMIN_URL: adminUrl } : { TF_ADMIN_URL: '' }),
       ...(sansConsentement ? {} : { TF_ALLOW_WRITE: 'oui' }),
       // Le lanceur de suite herite de la garde de cible : on lui donne une cible
       // locale jetable, deja reclassifiee par `creerBaseEphemere`.
@@ -122,13 +127,134 @@ await avecBaseEphemere({
       if (verrou) await verrou.relacher();
     }
 
+    // TOPOLOGIE DE LA CHAINE — mesuree le 2026-11-12.
+    //
+    // `migrer_fidelement.mjs` exige, depuis P10.7, une identite de migration
+    // NON superutilisatrice et une session d'administration DISTINCTE
+    // (`TF_ADMIN_URL`) : la migration 20261028120100 fait porter les fonctions
+    // systeme par `tracefab_worker`, ce qui exige un bail SET/INHERIT accorde
+    // par un administrateur. Lancer la chaine sous `postgres` ne peut donc pas
+    // reussir : le role n'a pas besoin d'elevation, mais les six fonctions
+    // appartiennent a `tracefab_worker` et il ne peut pas endosser ce role.
+    //
+    // Le banc est donc monte comme la CI et comme `test:p106:rejouabilite-chaine` :
+    // grantor `postgres`, administrateur CREATEROLE sans SUPERUSER, migrateur
+    // CREATEROLE/BYPASSRLS sans SUPERUSER. Les mots de passe sont tires au
+    // hasard pour la duree de l'execution et ne sont jamais affiches.
+    //
+    // Les deux roles du banc portent un suffixe aleatoire : ce sont des objets
+    // de CLUSTER, et deux executions concurrentes (ou une execution interrompue)
+    // ne doivent ni se heurter a un homonyme ni laisser derriere elles un role
+    // fictif. Les noms sont supprimes dans le `finally` ci-dessous.
+    //
+    // Le role MIGRATEUR ne peut pas porter un nom quelconque : le runner
+    // n'accorde le bail temporaire worker qu'a `tracefab_migrator`
+    // (`migrer_fidelement.mjs`, garde fermee). Ce nom est donc impose. Comme le
+    // role est un objet de CLUSTER, il peut preexister — c'est le cas en CI, ou
+    // `prepare_ci_migration_roles.mjs` le cree avant la chaine avec un mot de
+    // passe tire au hasard et JAMAIS publie. Aucune suite ne peut donc s'y
+    // connecter sans le reapprovisionner.
+    //
+    // Ce fichier le fait donc, sous trois conditions qui rendent l'operation
+    // inoffensive : (a) le role preexistant doit respecter le contrat du role de
+    // migration (LOGIN, NOSUPERUSER, CREATEROLE, BYPASSRLS, NOCREATEDB,
+    // NOREPLICATION) — sinon la suite refuse sans rien toucher, et ses
+    // ATTRIBUTS ne sont jamais modifies ; (b) le mot de passe est tire au hasard
+    // pour la duree de l'execution ; (c) la cible est une base jetable deja
+    // classee. Ce n'est pas un contournement de la garde de cible : c'est la
+    // seule facon d'obtenir une session sous l'identite que la chaine exige.
+    const suffixe = randomBytes(4).toString('hex');
+    const roleAdmin = `tf_p107_admin_${suffixe}`;
+    const roleMigrateur = 'tracefab_migrator';
+    const roleMigrateurExistant = (await admin.query(
+      `SELECT rolcanlogin, rolsuper, rolcreaterole, rolbypassrls, rolinherit, rolcreatedb, rolreplication
+         FROM pg_catalog.pg_roles WHERE rolname = $1`, [roleMigrateur])).rows[0];
+    // Contrat aligne sur les deux bancs du depot (`prepare_ci_migration_roles.mjs`
+    // cree le migrateur INHERIT, `test:p106:rejouabilite-chaine` le cree
+    // NOINHERIT : les deux sont acceptes, la chaine ne depend pas de cet
+    // attribut). Ce qui est refuse, c'est un role PRIVILEGIE ou connectable hors
+    // contrat : la suite ne modifie jamais les attributs d'un role existant.
+    if (roleMigrateurExistant
+        && !(roleMigrateurExistant.rolcanlogin && !roleMigrateurExistant.rolsuper
+             && roleMigrateurExistant.rolcreaterole && roleMigrateurExistant.rolbypassrls
+             && !roleMigrateurExistant.rolcreatedb && !roleMigrateurExistant.rolreplication)) {
+      await admin.end();
+      throw new Error(`role de banc ${roleMigrateur} preexistant hors contrat (LOGIN/NOSUPERUSER/CREATEROLE/BYPASSRLS/NOCREATEDB attendu) : la suite ne le modifie pas`);
+    }
+    const mdpAdmin = randomBytes(32).toString('hex');
+    const mdpMigrateur = randomBytes(32).toString('hex');
+    let urlMigrateur = null;
+    let urlAdministrateur = null;
+    {
+      let verrou = null;
+      let connecte = false;
+      try {
+        verrou = await verrouillerCluster({ urlProprietaire: base.url });
+        await admin.query(
+          `CREATE ROLE ${roleAdmin} LOGIN PASSWORD '${mdpAdmin}' CREATEROLE BYPASSRLS NOINHERIT NOSUPERUSER NOCREATEDB NOREPLICATION`,
+        );
+        if (roleMigrateurExistant) {
+          // Réapprovisionnement du mot de passe SEUL : les attributs ont ete
+          // verifies ci-dessus, et aucun n'est modifie.
+          await admin.query(`ALTER ROLE ${roleMigrateur} LOGIN PASSWORD '${mdpMigrateur}'`);
+        } else {
+          await admin.query(
+            `CREATE ROLE ${roleMigrateur} LOGIN PASSWORD '${mdpMigrateur}' CREATEROLE BYPASSRLS NOINHERIT NOSUPERUSER NOCREATEDB NOREPLICATION`,
+          );
+        }
+        // Le grantor est `postgres` (la session de la base jetable), distinct de
+        // l'administrateur : ADMIN est ainsi transmissible sans donner SET ni
+        // INHERIT a l'administrateur. C'est ce qui evite « ADMIN option cannot
+        // be granted back to your own grantor ».
+        await admin.query(`GRANT ${roleMigrateur} TO ${roleAdmin} WITH ADMIN TRUE, SET FALSE, INHERIT FALSE`);
+        // `tracefab_worker` est un objet de CLUSTER. Il peut donc preexister a
+        // cette execution (autre suite du meme banc, execution precedente). Dans
+        // ce cas son grantor n'est pas l'administrateur fraichement cree, qui
+        // n'en detient alors aucune option : `migrer_fidelement` refuse, a juste
+        // titre, de fournir un bail qu'il ne peut pas accorder. On delegue donc
+        // ADMIN depuis la session d'administration du cluster — ADMIN SEUL, sans
+        // SET ni INHERIT, comme `prepare_ci_migration_roles.mjs` le fait pour
+        // `tracefab_migrator`.
+        await admin.query(`
+          DO $worker$
+          BEGIN
+            IF NOT EXISTS (SELECT 1 FROM pg_catalog.pg_roles WHERE rolname = 'tracefab_worker') THEN
+              EXECUTE 'CREATE ROLE tracefab_worker NOLOGIN NOINHERIT NOBYPASSRLS NOSUPERUSER NOCREATEROLE NOCREATEDB NOREPLICATION';
+            END IF;
+          END
+          $worker$`);
+        await admin.query(`GRANT tracefab_worker TO ${roleAdmin} WITH ADMIN TRUE, SET FALSE, INHERIT FALSE`);
+        connecte = true;
+      } finally {
+        if (verrou) await verrou.relacher();
+      }
+      if (connecte) {
+        // Meme prerequis administratif que la CI et que les autres bancs : le
+        // role de migration est proprietaire du schema public (la premiere
+        // migration pose `COMMENT ON SCHEMA`, qui exige cette propriete) et
+        // dispose de CREATE sur la base jetable. Aucun SUPERUSER.
+        await admin.query(`GRANT CREATE ON DATABASE ${base.nom} TO ${roleMigrateur}`);
+        await admin.query(`ALTER SCHEMA public OWNER TO ${roleMigrateur}`);
+        const avecIdentite = (identite, mdp) => {
+          const u = new URL(base.url);
+          u.username = identite;
+          u.password = mdp;
+          return u.toString();
+        };
+        urlAdministrateur = avecIdentite(roleAdmin, mdpAdmin);
+        urlMigrateur = avecIdentite(roleMigrateur, mdpMigrateur);
+      }
+    }
+
     try {
       /* --- mise en place : la chaine, puis ce qu'une migration ne peut pas faire --- */
       console.log('\n  mise en place');
       // La cible a deja ete classee et PROUVEE (OID + identite de cluster) par
       // `creerBaseEphemere` : la garde de `migrer_fidelement` n'a plus rien a
       // decider, et le consentement d'ecriture est explicite.
-      const migration = await lancer('migrer_fidelement.mjs', [], base.url);
+      const migration = urlMigrateur
+        ? await lancer('migrer_fidelement.mjs', [], urlMigrateur, { adminUrl: urlAdministrateur })
+        : { code: 1, sortie: 'topologie de migration non montee' };
       ok(migration.code === 0, 'la chaine complete s applique SANS aucune cle (c est le point de la correction)',
         migration.code === 0 ? 'code 0' : `code ${migration.code}`);
       if (migration.code !== 0) {
@@ -203,6 +329,40 @@ await avecBaseEphemere({
       ok(await compterOrganisations() === 0, 'APRES activation : aucune organisation ecrite',
         `${await compterOrganisations()} ligne(s)`);
 
+      // PREREQUIS ADMINISTRATIF DE LA VERIFICATION SIGNEE — EXACTEMENT celui que
+      // `scripts/provisionner_roles_db.mjs` documente depuis le 02/11, dans la
+      // forme mesurable ici.
+      //
+      // `pgcrypto` est cree par la PREMIERE migration (`CREATE EXTENSION IF NOT
+      // EXISTS`), donc dans la transaction de celle-ci, donc avec l'identite qui
+      // applique la chaine : le role de migration est proprietaire de
+      // l'EXTENSION, mais PAS des fonctions qu'elle installe — mesure du
+      // 2026-11-12, `pg_get_userbyid(proowner)` rend `postgres` pour
+      // `hmac(bytea,bytea,text)` et pour `hmac(text,text,text)`.
+      //
+      // Consequence : la migration de durcissement du 02/11 n'a pas pu retirer
+      // l'EXECUTE de `hmac` a PUBLIC (elle ne possede pas la fonction), et le
+      // proprietaire du verificateur SECURITY DEFINER — le role de migration —
+      // ne peut plus l'appeler. Mesure : « 42501 permission denied for function
+      // hmac » sur le chemin LEGITIME, dans les DEUX modes. Une base ou le
+      // chemin legitime est casse ne mesure pas la fermeture du mode strict :
+      // elle mesure une panne.
+      //
+      // Le STRICT necessaire au proprietaire du verificateur, et rien de plus.
+      // Aucun droit n'est accorde au runtime : `tracefab_app` reste sans EXECUTE
+      // sur l'extension. Meme prerequis, et meme assertion, que le bootstrap de
+      // la CI (`scripts/prepare_ci_migration_roles.mjs`).
+      await admin.query('REVOKE EXECUTE ON FUNCTION public.hmac(bytea, bytea, text) FROM PUBLIC');
+      await admin.query(`GRANT EXECUTE ON FUNCTION public.hmac(bytea, bytea, text) TO ${roleMigrateur}`);
+      ok((await admin.query(
+        `SELECT pg_catalog.has_function_privilege($1, 'public.hmac(bytea,bytea,text)', 'EXECUTE') AS mig,
+                pg_catalog.has_function_privilege('tracefab_app', 'public.hmac(bytea,bytea,text)', 'EXECUTE') AS app`,
+        [roleMigrateur])).rows[0].mig === true,
+        'prerequis : le proprietaire du verificateur peut appeler hmac');
+      ok((await admin.query(
+        `SELECT pg_catalog.has_function_privilege('tracefab_app', 'public.hmac(bytea,bytea,text)', 'EXECUTE') AS app`)).rows[0].app === false,
+        'prerequis : le runtime N obtient PAS EXECUTE sur hmac');
+
       const jeton = signerJetonSysteme({ cle: cleActive.toString('hex'), expiration: Math.floor(Date.now() / 1000) + 60 });
       const legitime = await tentativeEscalade(jeton);
       ok(legitime.accepte,
@@ -258,9 +418,11 @@ await avecBaseEphemere({
       // Le retour arriere ne doit pas casser le chemin legitime : un jeton signe
       // reste accepte AVANT comme APRES la bascule. C'est la propriete qui rend
       // la decision reversible sans risque d'interruption.
-      ok((await tentativeEscalade(signerJetonSysteme({
+      const jetonLegitime = await tentativeEscalade(signerJetonSysteme({
         cle: cleActive.toString('hex'), expiration: Math.floor(Date.now() / 1000) + 60,
-      }))).accepte, 'en mode permissif, le jeton signe est toujours accepte');
+      }));
+      if (!jetonLegitime.accepte) console.log('  DIAG legitime:', jetonLegitime.code, jetonLegitime.message);
+      ok(jetonLegitime.accepte, 'en mode permissif, le jeton signe est toujours accepte');
       await admin.query(`DELETE FROM organizations WHERE clerk_organization_id = 'org_p107_mode'`);
 
       // Idempotence : rejouer la desactivation ne doit pas produire d'erreur, et
@@ -275,6 +437,24 @@ await avecBaseEphemere({
 
       await app.end();
     } finally {
+      // Les deux roles du banc sont des objets de CLUSTER : sans ce nettoyage,
+      // chaque execution laisserait deux roles derriere elle. Le nom porte un
+      // suffixe aleatoire, donc une suppression qui echoue (role encore
+      // proprietaire d'un objet, execution concurrente) ne peut pas atteindre
+      // autre chose que ce que cette execution a cree.
+      // L'administrateur est TOUJOURS cree par cette suite : il est supprime.
+      // `tracefab_migrator` n'est supprime que si cette suite l'a cree : un role
+      // preexistant (CI) ne lui appartient pas, et le detruire casserait le banc
+      // pour les suites suivantes du meme job.
+      const rolesACreer = roleMigrateurExistant ? [roleAdmin] : [roleAdmin, roleMigrateur];
+      for (const role of rolesACreer) {
+        try {
+          await admin.query(`DROP OWNED BY ${role} CASCADE`);
+          await admin.query(`DROP ROLE IF EXISTS ${role}`);
+        } catch (e) {
+          console.log(`  remarque : role de banc ${role} non supprime — ${String(e.message).split('\n')[0]}`);
+        }
+      }
       await admin.end();
     }
   },

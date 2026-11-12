@@ -328,6 +328,11 @@ urlBase.pathname = `/${baseTravail}`;
 // réentrant, et le garder ici ferait attendre la chaîne jusqu'au délai
 // (mesuré : 600 s, aucune sortie).
 let verrou = null;
+// Ce que cette suite a CREE, et donc ce qu'elle a le droit de detruire a la fin.
+// Un role preexistant (CI, suite voisine) ne lui appartient pas : le supprimer
+// casserait le banc pour les suites suivantes. Declare ici, hors du `try` de
+// mesure, parce que le nettoyage R7 vit dans le `finally` EXTERIEUR.
+const rolesPreexistants = new Set();
 try {
   await admin.query(`CREATE DATABASE ${baseTravail}`);
   ok(true, 'R6 base de travail créée', baseTravail);
@@ -353,9 +358,80 @@ try {
     if (bootstrap.status === 0) {
       // Le grantor du migrateur est postgres (banc), pas tracefab_admin :
       // PostgreSQL interdit de rendre ADMIN à son propre grantor.
-      await admin.query(`CREATE ROLE tracefab_admin LOGIN PASSWORD '${motDePasseAdmin}' CREATEROLE BYPASSRLS NOINHERIT NOSUPERUSER NOCREATEDB NOREPLICATION`);
-      await admin.query(`CREATE ROLE tracefab_migrator LOGIN PASSWORD '${motDePasseMigrateur}' CREATEROLE BYPASSRLS NOINHERIT NOSUPERUSER NOCREATEDB NOREPLICATION`);
+      // Les deux roles sont des objets de CLUSTER : ils peuvent avoir ete laisses
+      // par une execution precedente interrompue, ou etre ceux qu'une autre suite
+      // du meme banc vient de provisionner (`prepare_ci_migration_roles.mjs` en
+      // CI — avec un mot de passe aleatoire et jamais publie). Un `CREATE ROLE`
+      // inconditionnel rendait donc la chaine NON MESUREE dans ces deux cas
+      // (« role "tracefab_migrator" already exists », puis 2 roles restants et
+      // deux assertions en echec). On repart d'un etat propre, en ne touchant
+      // qu'a des roles non superutilisateurs, et en reaffirmant leur contrat.
+      for (const [role, mdp] of [[ 'tracefab_admin', motDePasseAdmin ], [ 'tracefab_migrator', motDePasseMigrateur ]]) {
+        // Un role « preexistant » n'est pas seulement un nom deja pris : c'est
+        // aussi un role qui POSSEDE des objets dans la base courante. Un
+        // `DROP ROLE` echouerait alors sur ces dependances, et un
+        // `DROP OWNED BY` les effacerait — c'est-a-dire detruirait un etat du
+        // banc que cette suite n'a pas produit (mesure du 2026-11-12 : le
+        // schema `public` et 11 fonctions de `tracefab_test` appartiennent a
+        // `tracefab_worker` apres une application de la chaine).
+        const dejaPresents = (await admin.query(
+          `SELECT 1 FROM pg_catalog.pg_roles r
+            WHERE r.rolname = $1
+              AND (EXISTS (SELECT 1 FROM pg_catalog.pg_shdepend d
+                            WHERE d.refobjid = r.oid AND d.deptype = 'o'
+                              AND d.dbid = (SELECT oid FROM pg_catalog.pg_database
+                                             WHERE datname = pg_catalog.current_database()))
+                OR EXISTS (SELECT 1 FROM pg_catalog.pg_auth_members m
+                            WHERE m.member = r.oid OR m.roleid = r.oid))`, [role])).rows.length > 0;
+        if (dejaPresents) rolesPreexistants.add(role);
+        const existant = (await admin.query(
+          `SELECT rolcanlogin, rolsuper, rolcreaterole, rolbypassrls, rolcreatedb, rolreplication
+             FROM pg_catalog.pg_roles WHERE rolname = $1`, [role])).rows[0];
+        if (existant && (existant.rolsuper || existant.rolcreatedb || !existant.rolcanlogin || !existant.rolcreaterole)) {
+          throw new Error(`role preexistant ${role} hors contrat ou privilegie : la suite ne le modifie pas`);
+        }
+        if (existant) {
+          await admin.query(`ALTER ROLE ${role} LOGIN PASSWORD '${mdp}' CREATEROLE BYPASSRLS NOINHERIT NOSUPERUSER NOCREATEDB NOREPLICATION`);
+        } else {
+          await admin.query(`CREATE ROLE ${role} LOGIN PASSWORD '${mdp}' CREATEROLE BYPASSRLS NOINHERIT NOSUPERUSER NOCREATEDB NOREPLICATION`);
+        }
+      }
       await admin.query('GRANT tracefab_migrator TO tracefab_admin WITH ADMIN TRUE, SET FALSE, INHERIT FALSE');
+      // `tracefab_worker` est un objet de CLUSTER : il peut preexister, cree par
+      // une autre suite du meme banc ou par une execution precedente. Son
+      // grantor n'est alors pas l'administrateur fraichement cree, qui n'en
+      // detient aucune option, et le runner refuse — a juste titre — de fournir
+      // un bail qu'il ne peut pas accorder. On delegue donc ADMIN depuis la
+      // session d'administration, ADMIN SEUL, comme le fait la CI.
+      const workerDejaLa = (await admin.query(
+        'SELECT 1 FROM pg_catalog.pg_roles WHERE rolname = $1', ['tracefab_worker'])).rows.length > 0;
+      await admin.query(`
+        DO $worker$
+        BEGIN
+          IF NOT EXISTS (SELECT 1 FROM pg_catalog.pg_roles WHERE rolname = 'tracefab_worker') THEN
+            EXECUTE 'CREATE ROLE tracefab_worker NOLOGIN NOINHERIT NOBYPASSRLS NOSUPERUSER NOCREATEROLE NOCREATEDB NOREPLICATION';
+          END IF;
+        END
+        $worker$`);
+      // Un role de CLUSTER qui POSSEDE des objets dans la base courante ne peut
+      // pas etre supprime par cette suite : il appartient a l'etat du banc, pas
+      // a elle. Mesure du 2026-11-12 : `tracefab_worker` possede le schema
+      // `public` et 11 fonctions de `tracefab_test` apres une application de la
+      // chaine. Ni `DROP ROLE` (dependances) ni `DROP OWNED BY` (destruction
+      // silencieuse, erreur avalee par `.catch`) ne sont acceptables : le role
+      // est donc CONSERVE et l'assertion R7 ne le compte plus.
+      if (workerDejaLa || (await admin.query(
+        `SELECT 1 FROM pg_catalog.pg_roles r
+          WHERE r.rolname = 'tracefab_worker'
+            AND (EXISTS (SELECT 1 FROM pg_catalog.pg_shdepend d
+                          WHERE d.refobjid = r.oid AND d.deptype = 'o'
+                            AND d.dbid = (SELECT oid FROM pg_catalog.pg_database
+                                           WHERE datname = pg_catalog.current_database()))
+              OR EXISTS (SELECT 1 FROM pg_catalog.pg_auth_members m
+                          WHERE m.member = r.oid OR m.roleid = r.oid))`)).rows.length > 0) {
+        rolesPreexistants.add('tracefab_worker');
+      }
+      await admin.query('GRANT tracefab_worker TO tracefab_admin WITH ADMIN TRUE, SET FALSE, INHERIT FALSE');
       baseAdmin = new pg.Client({ connectionString: urlBase.toString(), ssl: sslDepuisUrl(urlBase.toString()) });
       await baseAdmin.connect();
       // Neon installe pgcrypto côté plateforme ; le rôle migrateur ne reçoit
@@ -482,25 +558,43 @@ try {
     await admin.query('REVOKE tracefab_worker FROM tracefab_migrator').catch(() => {});
     await admin.query('REVOKE tracefab_worker FROM tracefab_admin').catch(() => {});
     await admin.query('REVOKE tracefab_migrator FROM tracefab_admin').catch(() => {});
-    await admin.query('DROP OWNED BY tracefab_worker').catch(() => {});
-    await admin.query('DROP OWNED BY tracefab_migrator').catch(() => {});
-    await admin.query('DROP OWNED BY tracefab_admin').catch(() => {});
-    await admin.query('DROP OWNED BY tracefab_app').catch(() => {});
-    await admin.query('DROP ROLE IF EXISTS tracefab_worker').catch((e) => {
-      console.error(`  info  nettoyage tracefab_worker : ${e.message}`);
-    });
-    await admin.query('DROP ROLE IF EXISTS tracefab_migrator').catch((e) => {
-      console.error(`  info  nettoyage tracefab_migrator : ${e.message}`);
-    });
-    await admin.query('DROP ROLE IF EXISTS tracefab_admin').catch((e) => {
-      console.error(`  info  nettoyage tracefab_admin : ${e.message}`);
-    });
+    // PAS de `DROP OWNED BY` ici. Cette suite ne CREE d'objets que dans
+    // `baseTravail`, detruite juste au-dessus : ses roles n'ont donc plus rien
+    // a eux. En revanche `DROP OWNED BY` s'applique a la base COURANTE
+    // (`tracefab_test`) et effacerait les objets d'un role PREEXISTANT — mesure
+    // du 2026-11-12 : le schema `public` et 11 fonctions appartiennent a
+    // `tracefab_worker` dans la base de test, et l'instruction les detruisait
+    // silencieusement (erreur avalee par `.catch(() => {})`), avant d'echouer
+    // sur `DROP ROLE`. Le nettoyage est donc limite aux roles CREES ici.
+    if (rolesPreexistants.has('tracefab_worker')) {
+      console.log('  info  tracefab_worker preexistait ou possede des objets : conserve');
+    } else {
+      await admin.query('DROP ROLE IF EXISTS tracefab_worker').catch((e) => {
+        console.error(`  info  nettoyage tracefab_worker : ${e.message}`);
+      });
+    }
+    for (const role of ['tracefab_migrator', 'tracefab_admin']) {
+      if (rolesPreexistants.has(role)) {
+        console.log(`  info  ${role} preexistait : conserve (il n appartient pas a cette suite)`);
+        continue;
+      }
+      await admin.query(`DROP ROLE IF EXISTS ${role}`).catch((e) => {
+        console.error(`  info  nettoyage ${role} : ${e.message}`);
+      });
+    }
     await admin.query('DROP ROLE IF EXISTS tracefab_app').catch((e) => {
       console.error(`  info  nettoyage tracefab_app : ${e.message}`);
     });
+    // Seuls les roles CREES par cette suite doivent avoir disparu ; un role
+    // preexistant n'a jamais ete a elle.
+    const jetables = ['tracefab_migrator', 'tracefab_worker', 'tracefab_admin', 'tracefab_app'];
+    const attendusSupprimes = jetables.filter((r) => !rolesPreexistants.has(r));
     const rolesRestants = (await admin.query(
-      `SELECT count(*)::int AS n FROM pg_catalog.pg_roles WHERE rolname IN ('tracefab_migrator','tracefab_worker','tracefab_admin','tracefab_app')`)).rows[0].n;
-    ok(rolesRestants === 0, 'R7 les rôles migrateur/worker/admin/app jetables sont supprimés', `${rolesRestants} rôle(s) restant(s)`);
+      'SELECT count(*)::int AS n FROM pg_catalog.pg_roles WHERE rolname = ANY($1::text[])',
+      [attendusSupprimes])).rows[0].n;
+    ok(rolesRestants === 0, 'R7 les rôles jetables CREES par la suite sont supprimés',
+      `${rolesRestants} restant(s) sur ${attendusSupprimes.length} créé(s)`
+      + (rolesPreexistants.size ? ` ; préexistants conservés : ${[...rolesPreexistants].join(', ')}` : ''));
   } finally {
     if (verrou) { await verrou.relacher(); verrou = null; }
   }

@@ -72,6 +72,60 @@ try {
     `SELECT extname FROM pg_catalog.pg_extension WHERE extname = 'pgcrypto'`,
   )).rows[0];
   if (!extension) throw new Error('pgcrypto doit être préinstallée par le bootstrap SUPERUSER jetable');
+
+  // ET IL FAUT AUSSI FERMER SON `EXECUTE` A PUBLIC — MESURE DU 2026-11-12.
+  //
+  // `CREATE EXTENSION` installe les fonctions avec `proacl = NULL`, donc avec
+  // l'ACL PAR DEFAUT : `EXECUTE` accorde a PUBLIC. `prepare_ci_migration_roles`
+  // creait l'extension sous `postgres` SUPERUSER et s'arretait la. Or le
+  // proprietaire des fonctions n'est PAS le migrateur, et la chaine ne peut pas
+  // les fermer : la migration 20261028120000 ne revoque que sur les fonctions
+  // dont `proowner = ANY (proprietaires)` — les 37 fonctions de l'extension en
+  // sont exclues. Resultat en CI, mesure dans la session du 2026-11-12 :
+  //
+  //   npm run audit:privileges -> 37 anomalies bloquantes, dont
+  //     « BLOQUANT fonction executable par PUBLIC : hmac »
+  //     « BLOQUANT fonction executable par PUBLIC : digest »
+  //   npm run test:neon:privileges-role-app -> les mesures d'ACL tombent
+  //
+  // et la garde runtime chercherait a revoquer des droits qu'elle ne possede
+  // pas, en laissant les 37 fonctions ouvertes a tout role du cluster.
+  //
+  // La procedure existe, elle est documentee et mesuree : le script de
+  // provisionnement des roles (celui de la section 9 de
+  // docs/security/2026-10-31-p105-connexions-runtime.md) fait exactement ces
+  // REVOKE dans sa fonction d'installation d'extension. Ce banc de CI doit donc
+  // appliquer le MEME prerequis administratif, une fois, sous le SUPERUSER
+  // jetable : c'est le role de la plateforme (Neon : cloud_admin) et non celui
+  // du migrateur. Aucun droit n'est accorde a `tracefab_app`.
+  const fonctionsExtension = (await client.query(
+    `SELECT p.oid::pg_catalog.regprocedure::text AS signature
+       FROM pg_catalog.pg_depend d
+       JOIN pg_catalog.pg_proc p ON p.oid = d.objid
+      WHERE d.refclassid = 'pg_catalog.pg_extension'::pg_catalog.regclass
+        AND d.classid = 'pg_catalog.pg_proc'::pg_catalog.regclass
+        AND d.deptype = 'e'
+        AND d.refobjid = (SELECT oid FROM pg_catalog.pg_extension WHERE extname = 'pgcrypto')
+      ORDER BY 1`,
+  )).rows.map((r) => r.signature);
+  for (const signature of fonctionsExtension) {
+    await client.query(`REVOKE EXECUTE ON FUNCTION ${signature} FROM PUBLIC`);
+  }
+  const encoreOuvertes = (await client.query(
+    `SELECT count(*)::int AS n
+       FROM pg_catalog.pg_depend d
+       JOIN pg_catalog.pg_proc p ON p.oid = d.objid
+      WHERE d.refclassid = 'pg_catalog.pg_extension'::pg_catalog.regclass
+        AND d.classid = 'pg_catalog.pg_proc'::pg_catalog.regclass
+        AND d.deptype = 'e'
+        AND d.refobjid = (SELECT oid FROM pg_catalog.pg_extension WHERE extname = 'pgcrypto')
+        AND EXISTS (SELECT 1 FROM pg_catalog.aclexplode(
+              COALESCE(p.proacl, pg_catalog.acldefault('f', p.proowner))) acl
+             WHERE acl.grantee = 0 AND acl.privilege_type = 'EXECUTE')`,
+  )).rows[0].n;
+  if (encoreOuvertes !== 0) {
+    throw new Error(`pgcrypto : ${encoreOuvertes} fonction(s) encore executable(s) par PUBLIC apres REVOKE`);
+  }
   await client.query(
     `CREATE ROLE ${ident(adminRole)} LOGIN PASSWORD ${quote(adminPassword)}
        CREATEROLE NOCREATEDB NOBYPASSRLS NOSUPERUSER NOINHERIT`,
@@ -101,6 +155,40 @@ try {
   // BYPASSRLS (contrat de migration, jamais de runtime). Le reproduire est
   // nécessaire pour les opérations historiques de la migration initiale.
   await client.query(`ALTER SCHEMA public OWNER TO ${ident(migratorRole)}`);
+
+  // LE PROPRIETAIRE DU VERIFICATEUR SIGNE DOIT POUVOIR APPELER `hmac`.
+  //
+  // MESURE DU 2026-11-12, en rejouant le job `base-de-donnees` pas a pas :
+  // `npm run test:neon:app-readiness` sortait en `42501 permission denied for
+  // function hmac` sur le chemin LEGITIME — le jeton systeme signe, accepte par
+  // construction. Ce n'est PAS un defaut de securite : c'est un prerequis
+  // administratif manquant, et celui que la procedure de production documente
+  // (`docs/security/2026-10-31-p105-provisionnement.md` § 4, et le script de
+  // provisionnement des roles, fonction d'installation d'extension).
+  //
+  // Le raisonnement, mesure :
+  //   - `pgcrypto` est installee par ce bootstrap SUPERUSER. Ses 37 fonctions
+  //     appartiennent donc a `postgres`, PAS au role de migration ;
+  //   - la chaine ne peut pas leur retirer l'EXECUTE (la migration de registre
+  //     ne revoque que sur les fonctions de `proprietaires`) — d'ou les REVOKE
+  //     faits plus haut, sous l'autorite qui possede reellement les fonctions ;
+  //   - une fois PUBLIC ferme, seul le PROPRIETAIRE des fonctions peut appeler
+  //     `hmac`. Le proprietaire du verificateur SECURITY DEFINER est le role de
+  //     migration : il doit donc recevoir le STRICT necessaire.
+  //
+  // On n'accorde RIEN au runtime : `tracefab_app` reste sans EXECUTE sur
+  // l'extension, et l'assertion ci-dessous le prouve explicitement. Accorder
+  // `hmac` au role applicatif serait precisement l'affaiblissement que la
+  // procedure interdit.
+  await client.query('GRANT EXECUTE ON FUNCTION public.hmac(bytea, bytea, text) TO ' + ident(migratorRole));
+  const hmac = (await client.query(
+    `SELECT pg_catalog.has_function_privilege($1, 'public.hmac(bytea,bytea,text)', 'EXECUTE') AS migrateur,
+            pg_catalog.has_function_privilege('tracefab_app', 'public.hmac(bytea,bytea,text)', 'EXECUTE') AS app`,
+    [migratorRole],
+  )).rows[0];
+  if (hmac.migrateur !== true || hmac.app !== false) {
+    throw new Error(`hmac : EXECUTE doit aller au seul ${migratorRole} (migrateur=${hmac.migrateur}, app=${hmac.app})`);
+  }
 
   const roles = (await client.query(
     `SELECT rolname, rolsuper, rolbypassrls, rolcreaterole, rolcreatedb,

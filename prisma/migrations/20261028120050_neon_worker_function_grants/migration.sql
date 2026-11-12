@@ -1,11 +1,42 @@
 -- P11 Neon compatibility: switch to tracefab_worker for ACL changes on worker-owned functions.
 -- The function remains SECURITY INVOKER; the caller must hold temporary SET membership.
+--
+-- DEFAUT MESURE LE 2026-11-12 — `RESET ROLE` ne revient pas au role de l'appelant
+--
+-- Le corps ci-dessous revient de `tracefab_worker` par `RESET ROLE`. Or `RESET
+-- ROLE` ne defait que le dernier `SET ROLE` de la SESSION : il retablit
+-- l'utilisateur de session, pas celui que le runner avait etabli par
+-- `SET LOCAL ROLE tracefab_migrator` avant d'appeler cette fonction.
+--
+-- Mesure, chaine du depot rejouee sur PostgreSQL 17.6 jetable, topologie CI
+-- (session `tracefab_ci_admin` -> `SET LOCAL ROLE tracefab_migrator`, registre a
+-- 84 noms) :
+--
+--     runner                        current_user = tracefab_migrator, registre = 84
+--     SET ROLE tracefab_worker      current_user = tracefab_worker
+--     RESET ROLE                    current_user = tracefab_ci_admin, registre = 0
+--
+-- Le registre etant en FORCE RLS avec une politique `current_user = proprietaire`,
+-- cette identite ne voit AUCUNE ligne : `noms_enregistres` devient vide, les 84
+-- GRANT sont REVOQUES, puis le controle 3.g refuse 84 fonctions d'un coup —
+-- « Registre runtime : EXECUTE accorde hors registre : tracefab_accept_...
+-- tracefab_waive_quality_issue ». C'est le rouge du job « Base — isolation RLS
+-- executee ».
+--
+-- Le retour se fait desormais par `SET LOCAL ROLE <role d'entree>`, dont la
+-- restauration est exacte (mesuree dans les deux sens). `SET LOCAL` est employe
+-- partout, y compris au premier basculement : un role perime ne doit pas
+-- survivre a la transaction.
 CREATE OR REPLACE FUNCTION public.tracefab_apply_runtime_function_grants()
 RETURNS TABLE (fonctions_autorisees INTEGER, fonctions_revoquees INTEGER)
 LANGUAGE plpgsql
 SET search_path = pg_catalog
 AS $$
 DECLARE
+  -- Role d'ENTREE, capture avant tout changement d'identite : c'est lui qu'il
+  -- faut retablir, et non l'utilisateur de session (voir le defaut mesure
+  -- ci-dessus).
+  role_entree TEXT := current_user;
   owner_oid OID := (SELECT oid FROM pg_catalog.pg_roles WHERE rolname = current_user);
   owner_name TEXT := current_user;
   app_oid OID := (SELECT oid FROM pg_catalog.pg_roles WHERE rolname = 'tracefab_app');
@@ -104,9 +135,9 @@ BEGIN
        AND p.prosecdef
        AND p.proowner = ANY (proprietaires)
   LOOP
-    IF worker_oid IS NOT NULL AND f.proprietaire = worker_oid THEN EXECUTE 'SET ROLE tracefab_worker'; END IF;
+    IF worker_oid IS NOT NULL AND f.proprietaire = worker_oid THEN EXECUTE 'SET LOCAL ROLE tracefab_worker'; END IF;
     EXECUTE pg_catalog.format('REVOKE EXECUTE ON FUNCTION %s FROM PUBLIC', f.signature);
-    IF worker_oid IS NOT NULL AND f.proprietaire = worker_oid THEN EXECUTE 'RESET ROLE'; END IF;
+    IF worker_oid IS NOT NULL AND f.proprietaire = worker_oid THEN EXECUTE format('SET LOCAL ROLE %I', role_entree); END IF;
   END LOOP;
 
   -- 3.d — On repart de zero : tout EXECUTE accorde au role applicatif est
@@ -121,9 +152,9 @@ BEGIN
        AND p.proowner = ANY (proprietaires)
        AND pg_catalog.has_function_privilege('tracefab_app', p.oid, 'EXECUTE')
   LOOP
-    IF worker_oid IS NOT NULL AND f.proprietaire = worker_oid THEN EXECUTE 'SET ROLE tracefab_worker'; END IF;
+    IF worker_oid IS NOT NULL AND f.proprietaire = worker_oid THEN EXECUTE 'SET LOCAL ROLE tracefab_worker'; END IF;
     EXECUTE pg_catalog.format('REVOKE EXECUTE ON FUNCTION %s FROM tracefab_app', f.signature);
-    IF worker_oid IS NOT NULL AND f.proprietaire = worker_oid THEN EXECUTE 'RESET ROLE'; END IF;
+    IF worker_oid IS NOT NULL AND f.proprietaire = worker_oid THEN EXECUTE format('SET LOCAL ROLE %I', role_entree); END IF;
     nb_revoquees := nb_revoquees + 1;
   END LOOP;
 
@@ -137,10 +168,10 @@ BEGIN
     owner_name
   );
   IF worker_oid IS NOT NULL AND worker_oid <> owner_oid THEN
-    EXECUTE 'SET ROLE tracefab_worker';
+    EXECUTE 'SET LOCAL ROLE tracefab_worker';
     EXECUTE 'ALTER DEFAULT PRIVILEGES FOR ROLE tracefab_worker IN SCHEMA public REVOKE EXECUTE ON FUNCTIONS FROM tracefab_app';
     EXECUTE 'ALTER DEFAULT PRIVILEGES FOR ROLE tracefab_worker IN SCHEMA public REVOKE EXECUTE ON FUNCTIONS FROM PUBLIC';
-    EXECUTE 'RESET ROLE';
+    EXECUTE format('SET LOCAL ROLE %I', role_entree);
   END IF;
 
   -- 3.f — Reconstruction : uniquement les noms du registre.
@@ -153,9 +184,9 @@ BEGIN
        AND p.proowner = ANY (proprietaires)
        AND p.proname = ANY (noms_enregistres)
   LOOP
-    IF worker_oid IS NOT NULL AND f.proprietaire = worker_oid THEN EXECUTE 'SET ROLE tracefab_worker'; END IF;
+    IF worker_oid IS NOT NULL AND f.proprietaire = worker_oid THEN EXECUTE 'SET LOCAL ROLE tracefab_worker'; END IF;
     EXECUTE pg_catalog.format('GRANT EXECUTE ON FUNCTION %s TO tracefab_app', f.signature);
-    IF worker_oid IS NOT NULL AND f.proprietaire = worker_oid THEN EXECUTE 'RESET ROLE'; END IF;
+    IF worker_oid IS NOT NULL AND f.proprietaire = worker_oid THEN EXECUTE format('SET LOCAL ROLE %I', role_entree); END IF;
     nb_autorisees := nb_autorisees + 1;
   END LOOP;
 
@@ -213,6 +244,14 @@ BEGIN
   IF secdef_publiques <> 0 THEN
     RAISE EXCEPTION 'Registre runtime : % fonction(s) SECURITY DEFINER executable(s) par PUBLIC', secdef_publiques
       USING ERRCODE = '42501';
+  END IF;
+
+  -- 3.j — L identite d entree est retablie. Sans ce controle, une fonction qui
+  --       rend le role changerait silencieusement l identite de tout ce que
+  --       l appelant execute ensuite dans la meme transaction.
+  IF current_user <> role_entree THEN
+    RAISE EXCEPTION 'Registre runtime : identite non retablie (entree %, sortie %)',
+      role_entree, current_user USING ERRCODE = '42501';
   END IF;
 
   RETURN QUERY SELECT nb_autorisees, nb_revoquees;
