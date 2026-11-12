@@ -23,7 +23,7 @@
 import pg from 'pg';
 import { creerBaseEphemere, verrouillerCluster } from './lib/ephemeral-db.mjs';
 import { assertRoleApplicatif } from './lib/identite_app.mjs';
-import { declarerBailWorkerSiRequis } from './lib/appliquer_chaine_comme_le_runner.mjs';
+import { appliquerCommeLeRunner, declarerBailWorkerSiRequis } from './lib/appliquer_chaine_comme_le_runner.mjs';
 import { readdirSync, readFileSync, writeFileSync, statSync } from 'node:fs';
 import { createHash, randomUUID } from 'node:crypto';
 import { join, dirname } from 'node:path';
@@ -681,8 +681,18 @@ console.log('\n  I. sauvegarde logique et restauration vérifiée');
   await restore.connect();
   {
     const dirs = readdirSync(MIG_DIR).filter((n) => statSync(join(MIG_DIR, n)).isDirectory()).sort(); // y compris la 36
+    // Comme le runner : transaction par migration + declaration du bail worker
+    // pour les six migrations qui l exigent (module partage avec le runner).
+    // Ce rejeu traverse la CHAINE ENTIERE sur une base neuve, donc ces six
+    // migrations aussi. Sans le preambule, mesure du 2026-11-12 : la chaine
+    // s'arretait sur la 62e, 20261028120100_worker_identity_not_forgeable, en
+    // P0001 « worker_membership_must_be_managed_by_runner » — c'est l'echec de
+    // l'etape 31 du job base-de-donnees (section I de ce banc), et non un
+    // defaut de la chaine : le runner, lui, declare le bail.
     for (const nom of dirs) {
-      await restore.query(readFileSync(join(MIG_DIR, nom, 'migration.sql'), 'utf8'));
+      const fichier = join(MIG_DIR, nom, 'migration.sql');
+      if (!statSync(fichier).isFile()) continue;
+      await appliquerCommeLeRunner(restore, nom, readFileSync(fichier, 'utf8'));
     }
     ok('structure rejouée par la chaîne de migrations complète (1..36)');
   }
