@@ -284,10 +284,14 @@ try {
     // depourvu : le service de CI est en `trust` sur `localhost`, et exiger un
     // mot de passe ici rendrait la mesure dependante d'un detail de
     // l'environnement plutot que du contrat du role.
+    // Le mot de passe de l'amorcage est celui de `DATABASE_URL` : en CI, le
+    // service Postgres de GitHub exige SCRAM (mesure du 2026-11-12 : sans lui,
+    // « SASL: SCRAM-SERVER-FIRST-MESSAGE: client password must be a string »),
+    // alors qu'un cluster local en `trust` n'en demande aucun. Le role de
+    // migration recoit, lui, le mot de passe aleatoire de cette execution.
     const u = new URL(url.toString());
     u.username = role;
-    if (role === migratorRole) u.password = migratorPassword;
-    else u.password = '';
+    u.password = role === migratorRole ? migratorPassword : url.password;
     const sonde = new pg.Client({ connectionString: u.toString() });
     await sonde.connect();
     try {
