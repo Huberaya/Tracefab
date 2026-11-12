@@ -674,7 +674,7 @@ jobs:
         run: npm ci
 
       - name: Generer le client Prisma
-        run: npm run db:generate
+        run: node scripts/executer_avec_erreur_annotee.mjs "generation client prisma" npm run db:generate
 
       - name: Provisionner les identités de migration non-superutilisatrices
         id: migration-identities
@@ -946,7 +946,7 @@ jobs:
         # ont besoin. C'est la regression constatee : la migration
         # 20261009120000 a rendu tracefab_material_visible_via_product
         # executable par PUBLIC.
-        run: npm run test:neon:privileges
+        run: node scripts/executer_avec_erreur_annotee.mjs "privileges des fonctions" npm run test:neon:privileges
 
       - name: Isolation inter-organisations
         # Prouve que deux organisations distinctes ne peuvent pas accéder aux
@@ -1011,7 +1011,7 @@ jobs:
         # Il embarque son propre contrôle négatif : avec
         # ISOLATION_CONTROLE_NEGATIF=desactive_rls_documents, huit assertions
         # passent au rouge. C'est ce qui prouve qu'elles mesurent la RLS.
-        run: npm run test:neon:isolation-lignes
+        run: node scripts/executer_avec_erreur_annotee.mjs "isolation RLS sur lignes reelles" npm run test:neon:isolation-lignes
 
       - name: Limitation de débit — opérations légitimes et abus refusés
         # La politique rate_limit_counters_global était FOR ALL USING (true)
@@ -1031,7 +1031,7 @@ jobs:
         # migration 20261019140000 il tombe à 8/18. Sans la seule garde sur
         # expires_at il tombe à 27/30 : raccourcir la fenêtre puis supprimer
         # suffit alors à éliminer un compteur actif en deux étapes autorisées.
-        run: npm run test:neon:compteurs-debit
+        run: node scripts/executer_avec_erreur_annotee.mjs "limitation de debit" npm run test:neon:compteurs-debit
 
       - name: Sonde d'identité du runtime — justesse de l'instrument
         # Toute la sécurité du runtime repose sur la RLS, et la RLS ne
@@ -1046,7 +1046,7 @@ jobs:
         # discriminer un rôle soumis (bypasses_rls false) du rôle propriétaire
         # (true). Il borne aussi ce que la sonde expose et vérifie que la route
         # interne authentifie avant de l'appeler.
-        run: npm run test:neon:sonde-identite
+        run: node scripts/executer_avec_erreur_annotee.mjs "sonde identite runtime" npm run test:neon:sonde-identite
 
       # ---------------------------------------------------------------------
       # Six suites qui n'etaient cablees dans AUCUN workflow
@@ -1078,21 +1078,21 @@ jobs:
         # n'ouvre rien entre locataires : lecture des organisations et des
         # fournisseurs, ecriture directe refusee, et refus explicite de la
         # fonction de mise a jour de profil pour un viewer.
-        run: npm run test:neon:security
+        run: node scripts/executer_avec_erreur_annotee.mjs "securite multi-tenant" npm run test:neon:security
 
       - name: Parcours produit — donnees, composition, identifiants
         # Cree deux marques, un produit et sa composition de chaque cote, puis
         # verifie l'isolation de lecture et le refus d'ecriture pour un viewer.
-        run: npm run test:neon:product
+        run: node scripts/executer_avec_erreur_annotee.mjs "parcours produit" npm run test:neon:product
 
       - name: Parcours fournisseur — invitation, partage, portee
-        run: npm run test:neon:supplier
+        run: node scripts/executer_avec_erreur_annotee.mjs "parcours fournisseur" npm run test:neon:supplier
 
       - name: Parcours qualite — signalement, actions correctives, roles
-        run: npm run test:neon:quality
+        run: node scripts/executer_avec_erreur_annotee.mjs "parcours qualite" npm run test:neon:quality
 
       - name: Collecte de donnees — demandes, reponses, isolation
-        run: npm run test:neon:collection
+        run: node scripts/executer_avec_erreur_annotee.mjs "collecte de donnees" npm run test:neon:collection
 
       # Non-regression 20261028130000 : les champs calcules d'un produit ne
       # dependent plus d'un GUC falsifiable — l'ecriture du role runtime est
@@ -1100,12 +1100,12 @@ jobs:
       # data_ready_at. Le test echoue sur l'etat vulnerable, pas seulement sur
       # le correctif, et verifie que l'INSERT et la revision fonctionnent encore.
       - name: Champs calcules produit — hors de portee du role runtime
-        run: npm run test:neon:produit-champs-calcules
+        run: node scripts/executer_avec_erreur_annotee.mjs "champs calcules produit" npm run test:neon:produit-champs-calcules
 
       - name: Quotas de stockage — calcul et refus au-dela du quota
         # Celui-ci passe par TF_RLS_APP_URL quand il est fourni ; il exige le
         # client Prisma, genere plus haut dans ce job.
-        run: npm run test:neon:storage:chantier10
+        run: node scripts/executer_avec_erreur_annotee.mjs "quotas de stockage" npm run test:neon:storage:chantier10
 
       # ---------------------------------------------------------------------
       # P10.2 — CHANTIERS A, B, C.
@@ -1128,7 +1128,7 @@ jobs:
         # Le test passe par le VRAI chemin (role applicatif + GUC transactionnel)
         # et mesure les refus : role non autorise, identite absente, GUC
         # falsifie, identite d'une AUTRE organisation.
-        run: npm run test:jetables:ingest-acl
+        run: node scripts/executer_avec_erreur_annotee.mjs "ingestion PLM ERP ACL" npm run test:jetables:ingest-acl
 
       - name: Scripts de migration obsoletes — absents, et non reintroduits
         # Chantier B. Les quatre `apply_migration_chantier{2,3,4,5}` rejouaient
@@ -1137,14 +1137,14 @@ jobs:
         # doit etre mesuree, pas seulement les controles statiques.
         env:
           TF_EXIGER_CATALOGUE: '1'
-        run: npm run test:scripts-migration-obsoletes
+        run: node scripts/executer_avec_erreur_annotee.mjs "scripts de migration obsoletes" npm run test:scripts-migration-obsoletes
 
       - name: Ressources jetables — inscription (R4), SIGKILL et reprise
         # Chantier C. `reinitialiser_base_jetable` creait une base SANS
         # l'inscrire au manifeste : orpheline definitive. Le test fait tuer un
         # enfant par SIGKILL apres creation, puis reprend par les seules
         # donnees durables, et verifie qu'une ressource vivante est CONSERVEE.
-        run: npm run test:jetables:r4-inscription
+        run: node scripts/executer_avec_erreur_annotee.mjs "ressources jetables R4" npm run test:jetables:r4-inscription
 
       - name: Outils de cycle de vie — harnais, reinitialisation, reprise
         # Les trois outils n'etaient joignables par aucun workflow (audit
@@ -1183,20 +1183,20 @@ jobs:
       # ---------------------------------------------------------------------
 
       - name: P10.5 — chaine de migrations et escalade de role, refuses
-        run: npm run test:p105:roles-et-migrations
+        run: node scripts/executer_avec_erreur_annotee.mjs "P10.5 roles et migrations" npm run test:p105:roles-et-migrations
 
       - name: P10.5 — les jetons d identite sont signes par l application et verifies par la base
         # Chemin reel : provisionnement de la cle par le script operateur,
         # signature par `signerIdentite()`, verification sous `tracefab_app`.
         # Il verifie aussi les echecs fermes (cle trop courte, non hexadecimale).
         # Il lui faut le client Prisma, genere plus haut dans ce job.
-        run: npm run test:p105:jeton
+        run: node scripts/executer_avec_erreur_annotee.mjs "P10.5 jeton signe" npm run test:p105:jeton
 
       - name: P10.5 — HMAC, huit scenarios et un controle negatif
-        run: npm run test:p105:hmac
+        run: node scripts/executer_avec_erreur_annotee.mjs "P10.5 HMAC" npm run test:p105:hmac
 
       - name: P10.5 — ingestion PLM/ERP sous le role applicatif, permissif ET strict
-        run: npm run test:p105:ingestion
+        run: node scripts/executer_avec_erreur_annotee.mjs "P10.5 ingestion" npm run test:p105:ingestion
 
       - name: P10.6 — controle NEGATIF permanent de l identite signee
         # Trente-sept assertions qui ne decrivent que des REFUS : GUC forge
@@ -1209,7 +1209,7 @@ jobs:
         # par l identite signee. Elles tiennent donc pour toute fonction
         # ajoutee plus tard, y compris par une migration qui ignorerait ce
         # fichier. Aucune n est en continue-on-error.
-        run: npm run test:p106:identite-negative
+        run: node scripts/executer_avec_erreur_annotee.mjs "P10.6 identite negative" npm run test:p106:identite-negative
 
       - name: P10.6 — la chaine de migrations est REJOUABLE dans un meme cluster
         # Defaut D5 mesure le 02/11 : 20261028120100 accordait puis revoquait
@@ -1222,7 +1222,7 @@ jobs:
         # verifie l appartenance finale, puis detruit la base. Il rougit si
         # une entree du registre accorde une appartenance sans fournir de
         # bloc « avant ».
-        run: npm run test:p106:rejouabilite-chaine
+        run: node scripts/executer_avec_erreur_annotee.mjs "P10.6 rejouabilite chaine" npm run test:p106:rejouabilite-chaine
 
       - name: P10.8 — le preflight D6 refuse AVANT la premiere ecriture (etat de forme production)
         # Sur une base jetable amenee a l'ETAT DE LA PRODUCTION (tout applique
@@ -1235,7 +1235,7 @@ jobs:
         #   - aucune elevation demandee ni residuelle.
         # Controle POSITIF dans la meme suite : jouee par le proprietaire, la
         # chaine s'applique — le preflight ne refuse pas a tort.
-        run: npm run test:p106:preflight-avant-ecriture
+        run: node scripts/executer_avec_erreur_annotee.mjs "P10.6 preflight avant ecriture" npm run test:p106:preflight-avant-ecriture
 
       - name: P10.7 — le contrat d identite runtime refuse aussi l ESCALADE
         # Onze cas sur une fonction PURE (aucune base) : le role doit etre
@@ -1243,7 +1243,7 @@ jobs:
         # atteignable vers un role privilegie. Ce dernier point est nouveau en
         # P10.7 : un role sans attribut qui peut `SET ROLE` vers un role
         # BYPASSRLS redevient privilegie, donc la RLS n est pas opposable.
-        run: npm run test:p107:contrat-identite
+        run: node scripts/executer_avec_erreur_annotee.mjs "P10.7 contrat identite" npm run test:p107:contrat-identite
 
       - name: P10.7 — la sonde d etat cible est en LECTURE SEULE, et ses arrets se declenchent
         # Controle statique (chaque instruction commence par SELECT ou WITH),
@@ -1252,7 +1252,7 @@ jobs:
         # NEGATIF : un role de connexion qui atteint un role privilegie doit
         # faire sortir la sonde en 1 avec un arret nomme, et le meme role sans
         # l appartenance ne le fait plus.
-        run: npm run test:p107:sonde
+        run: node scripts/executer_avec_erreur_annotee.mjs "P10.7 sonde etat cible" npm run test:p107:sonde
 
       - name: P10.7 — la sonde cote RUNTIME distingue une identite conforme d une identite privilegiee
         # T1 conforme (code 0) ; T2 `postgres` refuse avec chaque attribut
@@ -1260,7 +1260,7 @@ jobs:
         # refuse ; T5 contexte transactionnel (absent apres la transaction,
         # donc sur quel que soit le mode du pooler) ; T6 cible distante
         # refusee sans opt-in. Aucune valeur de cle n est lue.
-        run: npm run test:p107:sonde-runtime
+        run: node scripts/executer_avec_erreur_annotee.mjs "P10.7 sonde runtime" npm run test:p107:sonde-runtime
 
       - name: P10.7 — demonstration du mode STRICT sur cluster jetable
         # D1..D9 : jeton valide, sans jeton, jeton invalide, GUC forge,
@@ -1269,7 +1269,7 @@ jobs:
         # ingestion PLM/ERP refusee sans identite puis acceptee avec), et
         # restauration de l etat. Le mode strict n est pose QUE sur la base
         # jetable, et le script refuse toute cible non locale avant connexion.
-        run: npm run test:p107:demonstration
+        run: node scripts/executer_avec_erreur_annotee.mjs "P10.7 demonstration stricte" npm run test:p107:demonstration
 
       - name: P10.7 — le module de signature systeme, eprouve hors ligne
         # 44 assertions, sans base : jeton valide, MAC modifie, corps modifie
@@ -1279,7 +1279,7 @@ jobs:
         # tiree au hasard a chaque execution : aucune valeur n est en depot.
         # Verifie dans les deux sens : quatre mutations du module (expiration,
         # usage, identite, comparaison) font chacune echouer le cas qui la nomme.
-        run: npm run test:p107:identite-systeme-module
+        run: node scripts/executer_avec_erreur_annotee.mjs "P10.7 module signature" npm run test:p107:identite-systeme-module
 
       - name: P10.7 — l origine des operations systeme est prouvee, pas supposee
         # 54 assertions sous `tracefab_app` sans SUPERUSER ni BYPASSRLS : les
@@ -1295,7 +1295,7 @@ jobs:
         # l outil de provisionnement : la politique de routage des suites
         # destructives l exige, pour qu aucun outil d ecriture d exploitation ne
         # devienne declenchable automatiquement.
-        run: npm run test:p107:identite-systeme
+        run: node scripts/executer_avec_erreur_annotee.mjs "P10.7 identite systeme" npm run test:p107:identite-systeme
 
       - name: P10.7 — l activation du mode strict ferme reellement, et se refuse a tort
         # 23 assertions sur une base jetable creee par la suite. Elle mesure
@@ -1304,7 +1304,7 @@ jobs:
         # cle active, avec une operation non gardee), PUIS le retour arriere.
         # Sans la premiere partie, un environnement ou tout est refuse passerait
         # pour sur.
-        run: npm run test:p107:activation-stricte
+        run: node scripts/executer_avec_erreur_annotee.mjs "P10.7 activation stricte" npm run test:p107:activation-stricte
 
       - name: P10.7 — les droits du runtime sont DERIVES du code, pas d une liste
         # R4 : la sonde d exploitation n est jamais un droit du runtime.
@@ -1331,7 +1331,7 @@ jobs:
         # cle presente mais malformee sort en 1 (erreur d exploitation), une
         # cle absente en 0 (etat de transition documente). La sonde elle-meme
         # tourne ici sur la cle ABSENTE de la CI, ce qui exerce le chemin reel.
-        run: npm run test:p107:sonde-hmac
+        run: node scripts/executer_avec_erreur_annotee.mjs "P10.7 sonde HMAC" npm run test:p107:sonde-hmac
 
       - name: P10.7 — etat de la configuration HMAC de l environnement de CI
         # Sortie informative et EXPURGEE : la CI n a pas de cle d identite, et
@@ -1339,7 +1339,7 @@ jobs:
         # Non bloquant PARCE QUE l absence est l etat documente, pas une panne ;
         # une cle PRESENTE mais invalide sort en 1 et ferait echouer l etape,
         # ce qui est le comportement voulu. Ce n est pas un `continue-on-error`.
-        run: npm run sonde:p107:hmac --silent -- ci
+        run: node scripts/executer_avec_erreur_annotee.mjs "P10.7 etat config HMAC" npm run sonde:p107:hmac --silent -- ci
 
       - name: P10.5 — la hierarchie des roles, mesuree dans les deux sens
         # Douze assertions : attributs, appartenances directes ET transitives,
@@ -1347,15 +1347,15 @@ jobs:
         # puis un CONTROLE POSITIF (GRANT -> SET ROLE -> lecture -> REVOKE) qui
         # prouve que le refus vient bien de l absence d appartenance et pas d un
         # test qui ne mesure rien.
-        run: npm run test:p105:hierarchie
+        run: node scripts/executer_avec_erreur_annotee.mjs "P10.5 hierarchie des roles" npm run test:p105:hierarchie
 
       - name: P10.5 — la sonde de production ne modifie rien (lecture seule prouvee)
         # Verifie, statiquement et par execution, que la sonde destinee a
         # l operateur n execute que des SELECT : une sonde qui ecrit en
         # production est pire qu'aucune sonde.
-        run: npm run test:p105:sonde
+        run: node scripts/executer_avec_erreur_annotee.mjs "P10.5 sonde production" npm run test:p105:sonde
 
       - name: Aucune base jetable residuelle apres le job
         # Controle SEPARE des suites qu'il controle : une suite qui oublie de se
         # ranger ne peut pas se declarer propre. Il ne detruit rien.
-        run: npm run test:jetables:absence-bases
+        run: node scripts/executer_avec_erreur_annotee.mjs "absence de bases residuelles" npm run test:jetables:absence-bases
