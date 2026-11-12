@@ -181,13 +181,31 @@ try {
   // `hmac` au role applicatif serait precisement l'affaiblissement que la
   // procedure interdit.
   await client.query('GRANT EXECUTE ON FUNCTION public.hmac(bytea, bytea, text) TO ' + ident(migratorRole));
+  // L'assertion NE DOIT PAS citer `tracefab_app` inconditionnellement : ce
+  // script tourne AVANT `db:prepare-ci-role`, donc avant que le role applicatif
+  // existe (mesure du 2026-11-12 : le job CI est tombe ici meme, sur
+  // `role "tracefab_app" does not exist`, parce que le banc local avait un
+  // `tracefab_app` residuel et pas la CI neuve). On mesure donc l'invariant
+  // reel — PUBLIC ferme, proprietaire du verificateur autorise — et on ne juge
+  // le role applicatif que s'il existe deja, ou il doit etre refuse.
   const hmac = (await client.query(
     `SELECT pg_catalog.has_function_privilege($1, 'public.hmac(bytea,bytea,text)', 'EXECUTE') AS migrateur,
-            pg_catalog.has_function_privilege('tracefab_app', 'public.hmac(bytea,bytea,text)', 'EXECUTE') AS app`,
+            EXISTS (
+              SELECT 1 FROM pg_catalog.pg_proc p
+                CROSS JOIN LATERAL pg_catalog.aclexplode(
+                  COALESCE(p.proacl, pg_catalog.acldefault('f', p.proowner))) acl
+               WHERE p.oid = 'public.hmac(bytea,bytea,text)'::pg_catalog.regprocedure
+                 AND acl.grantee = 0 AND acl.privilege_type = 'EXECUTE'
+            ) AS public_execute,
+            (SELECT pg_catalog.to_regrole('tracefab_app') IS NULL) AS app_absente,
+            CASE WHEN pg_catalog.to_regrole('tracefab_app') IS NULL THEN NULL
+              ELSE pg_catalog.has_function_privilege('tracefab_app', 'public.hmac(bytea,bytea,text)', 'EXECUTE')
+            END AS app`,
     [migratorRole],
   )).rows[0];
-  if (hmac.migrateur !== true || hmac.app !== false) {
-    throw new Error(`hmac : EXECUTE doit aller au seul ${migratorRole} (migrateur=${hmac.migrateur}, app=${hmac.app})`);
+  if (hmac.migrateur !== true || hmac.public_execute !== false || hmac.app === true) {
+    throw new Error(`hmac : EXECUTE doit aller au seul ${migratorRole}, jamais a PUBLIC ni au runtime`
+      + ` (migrateur=${hmac.migrateur}, public=${hmac.public_execute}, app=${hmac.app_absente ? 'absente' : hmac.app})`);
   }
 
   const roles = (await client.query(
