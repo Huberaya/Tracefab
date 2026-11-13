@@ -200,6 +200,24 @@ jobs:
         env:
           REF_DEPLOYEE: ${{ github.event.inputs.branche_deployee || github.ref_name }}
 
+      - name: Le secret de sonde est-il accessible au workflow ?
+        # Verifie la PRESENCE, jamais la valeur : la longueur seule est
+        # comparee a zero. C'est la reponse a « le workflow peut-il acceder au
+        # secret sans le lire ? », et elle distingue un secret absent d'un
+        # refus d'authentification cote Vercel.
+        env:
+          JETON: ${{ secrets.TRACEFAB_RUNTIME_PROBE_TOKEN }}
+        run: |
+          set -eu
+          if [ -z "${JETON:-}" ]; then
+            echo "SITUATION 1/5 — SECRET ABSENT : le workflow ne recoit rien pour TRACEFAB_RUNTIME_PROBE_TOKEN."
+            echo "  Les preuves C1/C2/C4 ne peuvent pas etre produites."
+            echo "  Action : gh secret set TRACEFAB_RUNTIME_PROBE_TOKEN (meme valeur que la variable Vercel Preview)."
+            echo "::error::TRACEFAB_RUNTIME_PROBE_TOKEN absent du workflow : preuves runtime impossibles."
+            exit 1
+          fi
+          echo "secret PRESENT dans le workflow (valeur non lue, longueur non affichee)"
+
       - name: Preuves C1 a C4 sur le processus deploye
         # Le script ne lit jamais un secret en clair : il recoit les valeurs par
         # l'environnement et n'imprime que des verdicts et des champs derives.
