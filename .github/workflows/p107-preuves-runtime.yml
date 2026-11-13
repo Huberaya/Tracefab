@@ -46,11 +46,11 @@ on:
   workflow_dispatch:
     inputs:
       preview_url:
-        description: "URL de base du deploiement Preview a prouver (doit finir par .vercel.app)"
-        required: true
+        description: "URL Preview a prouver. Vide = resolution automatique par SHA via l'API deployments."
+        required: false
       sha_attendu:
-        description: "SHA du candidat : le deploiement doit l'avoir construit"
-        required: true
+        description: "SHA du candidat. Vide = le SHA du commit pousse."
+        required: false
   push:
     branches:
       - 'release/p107-runtime-production-20261110'
@@ -89,13 +89,55 @@ jobs:
         # branche du candidat — le defaut mesure le 2026-11-13.
         run: npm run test:p107:sonde-runtime-porte
 
+      - name: Resoudre l URL Preview du SHA candidat
+        # Sans entree manuelle, l URL est resolue depuis l API deployments du
+        # depot : on ne devine pas un domaine, et l URL retenue est celle que
+        # GitHub rattache au SHA. Si aucune URL n est resolue, l etape suivante
+        # echoue en la nommant — aucune preuve n est fabriquee.
+        id: preview
+        env:
+          GH_TOKEN_DEPLOIEMENTS: ${{ secrets.GITHUB_TOKEN }}
+          SHA_CANDIDAT: ${{ github.event.inputs.sha_attendu || github.sha }}
+          URL_FOURNIE: ${{ github.event.inputs.preview_url }}
+          DEPOT: ${{ github.repository }}
+        run: |
+          set -eu
+          if [ -n "${URL_FOURNIE:-}" ]; then
+            echo "TF_BASE=$URL_FOURNIE" >> "$GITHUB_ENV"
+            echo "URL source : entree manuelle"
+            exit 0
+          fi
+          echo "SHA candidat : $SHA_CANDIDAT"
+          ids="$(curl -sS -H "Authorization: Bearer $GH_TOKEN_DEPLOIEMENTS" \
+            -H 'Accept: application/vnd.github+json' \
+            "https://api.github.com/repos/$DEPOT/deployments?sha=$SHA_CANDIDAT&per_page=10" \
+            | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{const a=JSON.parse(s);console.log((Array.isArray(a)?a:[]).map(d=>d.id).join(" "))})')"
+          if [ -z "$ids" ]; then
+            echo "::error::Aucun deploiement Preview pour le SHA $SHA_CANDIDAT. Rien a prouver : on n invente pas d URL."
+            exit 1
+          fi
+          url=""
+          for id in $ids; do
+            candidate="$(curl -sS -H "Authorization: Bearer $GH_TOKEN_DEPLOIEMENTS" \
+              -H 'Accept: application/vnd.github+json' \
+              "https://api.github.com/repos/$DEPOT/deployments/$id/statuses" \
+              | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{const a=JSON.parse(s);const ok=(Array.isArray(a)?a:[]).find(x=>x.state==="success"&&x.environment_url);console.log(ok?ok.environment_url:"")})')"
+            if [ -n "$candidate" ]; then url="$candidate"; break; fi
+          done
+          if [ -z "$url" ]; then
+            echo "::error::Le SHA $SHA_CANDIDAT a des deploiements mais aucun statut success avec URL. Preuve impossible."
+            exit 1
+          fi
+          echo "URL Preview rattachee au SHA : $url"
+          echo "TF_BASE=$url" >> "$GITHUB_ENV"
+
       - name: Refuser une URL qui ne vient pas de Vercel
         env:
-          TF_BASE: ${{ github.event.inputs.preview_url }}
+          TF_BASE: ${{ env.TF_BASE }}
         run: |
           set -eu
           if [ -z "${TF_BASE:-}" ]; then
-            echo "::error::Aucune URL de Preview fournie. Renseigner l'entree preview_url."
+            echo "::error::Aucune URL Preview : ni entree preview_url, ni deploiement success rattache au SHA."
             exit 1
           fi
           case "$TF_BASE" in
@@ -109,7 +151,7 @@ jobs:
         # que celui qu'on livre — c'est precisement l'erreur que la mission
         # interdit.
         env:
-          TF_BASE: ${{ github.event.inputs.preview_url }}
+          TF_BASE: ${{ env.TF_BASE }}
           SHA_ATTENDU: ${{ github.event.inputs.sha_attendu || github.sha }}
         run: |
           set -eu
@@ -128,7 +170,8 @@ jobs:
         # Le script ne lit jamais un secret en clair : il recoit les valeurs par
         # l'environnement et n'imprime que des verdicts et des champs derives.
         env:
-          TF_BASE: ${{ github.event.inputs.preview_url }}
+          TF_BASE: ${{ env.TF_BASE }}
+          SHA_ATTENDU: ${{ github.event.inputs.sha_attendu || github.sha }}
           TRACEFAB_RUNTIME_PROBE_TOKEN: ${{ secrets.TRACEFAB_RUNTIME_PROBE_TOKEN }}
         run: node scripts/preuve_runtime_p107.mjs
 
