@@ -218,3 +218,25 @@ jobs:
           path: livrables-finalisation/preuves/p107-runtime-*.json
           if-no-files-found: warn
           retention-days: 30
+
+      - name: Publier les preuves dans le journal du job
+        # L'artefact est la trace durable, mais il n'est pas toujours
+        # telechargeable (proxy, quota, blob store). Le journal du job l'est.
+        # Le fichier est deja expurge par le script ; on le relit ici pour que
+        # la preuve survive meme si l'artefact devient inaccessible.
+        if: always()
+        run: |
+          set -eu
+          f="$(ls livrables-finalisation/preuves/p107-runtime-*.json 2>/dev/null | head -1 || true)"
+          if [ -z "$f" ]; then
+            echo "AUCUN FICHIER DE PREUVE — le script n a rien ecrit."
+            exit 0
+          fi
+          echo "===== DEBUT PREUVES EXPURGEES ($f) ====="
+          cat "$f"
+          echo "===== FIN PREUVES EXPURGEES ====="
+          # Garde-fou : aucune valeur de secret longue ne doit y figurer.
+          if grep -Eq '\b[0-9a-fA-F]{48,}\b' "$f"; then
+            echo "::error::une chaine longue ressemblant a un secret figure dans les preuves"
+            exit 1
+          fi
