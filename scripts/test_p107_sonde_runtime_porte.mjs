@@ -38,15 +38,15 @@ const ok = (cond, libelle, detail = '') => {
   console.log(`  ${cond ? 'ok   ' : 'ECHEC'} ${libelle}${detail ? ` — ${detail}` : ''}`);
 };
 
-// Le module est en TypeScript ; le depot est compile en .js a cote dans
-// `node_modules/.tmp` ou via `tsx`. On tente le .js compile, puis le .ts via tsx.
-const CHEMINS = [
-  '../api/_lib/worker-auth.js',
-  '../api/_lib/worker-auth.ts',
-];
+// Le module est en TypeScript. Le test est lance via `node --import tsx`
+// (voir `test:p107:sonde-runtime-porte` dans package.json) : Node 20 comme
+// Node 22 importent alors le .ts directement. Sans ce chargeur, la CI —
+// `npm ci --ignore-scripts`, Node 20 — sortait en code 2 et faisait echouer
+// le workflow de preuves runtime a tort. On tente quand meme le .js compile
+// d'abord, pour rester utile si un build a eu lieu.
 let module = null;
 let charge = null;
-for (const rel of CHEMINS) {
+for (const rel of ['../api/_lib/worker-auth.js', '../api/_lib/worker-auth.ts']) {
   const url = new URL(rel, import.meta.url);
   if (!existsSync(url)) continue;
   try {
@@ -54,15 +54,12 @@ for (const rel of CHEMINS) {
     charge = rel;
     break;
   } catch (e) {
-    if (rel.endsWith('.ts')) {
-      // tsx n'est pas forcement le chargeur courant : on le signale sans mentir.
-      console.log(`  info  ${rel} non importable par Node seul : ${String(e.message).split('\n')[0]}`);
-    }
+    console.log(`  info  ${rel} non importable : ${String(e.message).split('\n')[0]}`);
   }
 }
 if (!module) {
   console.log('  NON EXECUTE — worker-auth introuvable en .js comme en .ts.');
-  console.log('  (ce test exige une compilation prealable : npm run build)');
+  console.log('  (lancer via `npm run test:p107:sonde-runtime-porte`, qui pose le chargeur tsx)');
   process.exit(2);
 }
 console.log(`  module charge : ${charge}\n`);
