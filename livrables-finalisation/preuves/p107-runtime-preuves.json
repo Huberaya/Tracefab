@@ -1,8 +1,0 @@
-{
-  "schema": "tracefab-p107-preuves-runtime-v1",
-  "horodatage": "2026-11-13T10:29:31.473Z",
-  "sha": null,
-  "cible": "https://tracefab-rdr3vimpv-baya-ibraimmayoanouedu-8164s-projects.vercel.app",
-  "arret": "cible injoignable (https://tracefab-rdr3vimpv-baya-ibraimmayoanouedu-8164s-projects.vercel.app/api/internal/p2/readiness?identity=1) : ECONNRESET. Aucun verdict n est rendu sur une cible qu on n a pas atteinte.",
-  "resultats": []
-}
