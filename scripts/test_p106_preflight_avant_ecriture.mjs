@@ -169,7 +169,21 @@ try {
   // schéma `public` qui lui appartient.
   adminBancs = 'tf_d6_admin';
   mdpAdminBancs = `adm_${baseTravail.slice(-6)}`;
-  const mdpMigrateurBancs = `mig_${baseTravail.slice(-6)}`;
+  // LE MOT DE PASSE DU MIGRATEUR DOIT ETRE POSE DANS LES DEUX CAS.
+  //
+  // Il est utilise plus bas pour OUVRIR la session du migrateur. Quand
+  // `TF_ADMIN_URL` est fourni, le bloc de provisionnement ci-dessous est
+  // entierement saute — donc le mot de passe restait celui, inconnu, du role
+  // deja present, et la chaine echouait en `auth_failed` AVANT la premiere
+  // migration. Mesure du 2026-11-13 : E1 tombait, puis E2 sur « relation
+  // _prisma_migrations does not exist » — le symptome, pas la cause.
+  //
+  // On reprend donc le mot de passe de l'environnement quand il est fourni
+  // (c'est celui que le cluster connait), et on le pose avec l'autorite
+  // administrative dont on dispose. Le role reste le meme : ce n'est pas une
+  // elevation, c'est la session qui doit pouvoir s'ouvrir.
+  const mdpMigrateurBancs = (process.env.TF_MIGRATOR_PASSWORD || '').trim()
+    || `mig_${baseTravail.slice(-6)}`;
   if (!(process.env.TF_ADMIN_URL || '').trim()) {
     await admin.query(`DO $$ BEGIN
         IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = '${adminBancs}') THEN
@@ -191,6 +205,13 @@ try {
     await admin.query(`GRANT tracefab_worker TO ${adminBancs} WITH ADMIN TRUE, SET FALSE, INHERIT FALSE`);
     await admin.query(`GRANT tracefab_migrator TO ${adminBancs} WITH ADMIN TRUE, SET FALSE, INHERIT FALSE`);
     adminBancsCree = true;
+  } else {
+    // `TF_ADMIN_URL` fourni : on ne cree aucun role, mais la session du
+    // migrateur doit pouvoir s'ouvrir avec le mot de passe qu'on va utiliser.
+    // L'administrateur du cluster en est capable (`CREATEROLE`).
+    await admin.query(
+      `ALTER ROLE tracefab_migrator WITH LOGIN CREATEROLE NOCREATEDB BYPASSRLS NOSUPERUSER INHERIT PASSWORD ${admin.escapeLiteral(mdpMigrateurBancs)}`,
+    );
   }
   // Prérequis d'administration que la production installe et que le migrateur
   // ne peut pas poser lui-même.
