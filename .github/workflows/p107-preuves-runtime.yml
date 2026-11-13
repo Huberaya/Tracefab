@@ -219,6 +219,28 @@ jobs:
           if-no-files-found: warn
           retention-days: 30
 
+      - name: Publier les preuves sur la branche
+        # Les artefacts et les journaux passent par un blob store parfois
+        # inaccessible depuis l'environnement de relecture. Un commit sur une
+        # branche dediee rend la preuve lisible par l'API GitHub, donc par
+        # n'importe quel relecteur. Le fichier est deja expurge par le script.
+        if: always() && github.event_name == 'push'
+        env:
+          GH_TOKEN_PREUVES: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -eu
+          f="$(ls livrables-finalisation/preuves/p107-runtime-*.json 2>/dev/null | head -1 || true)"
+          if [ -z "$f" ]; then echo "aucune preuve ecrite"; exit 0; fi
+          if grep -Eq '\b[0-9a-fA-F]{48,}\b' "$f"; then
+            echo "::error::chaine longue ressemblant a un secret"; exit 1
+          fi
+          git config user.name "tracefab-preuves"
+          git config user.email "preuves@tracefab.invalid"
+          git add -f "$f"
+          if git diff --cached --quiet; then echo "preuves identiques"; exit 0; fi
+          git commit -q -m "preuves(p107): resultat runtime ${GITHUB_SHA:0:7}"
+          git push origin "HEAD:preuves/p107-${GITHUB_SHA:0:7}"
+
       - name: Publier les preuves dans le journal du job
         # L'artefact est la trace durable, mais il n'est pas toujours
         # telechargeable (proxy, quota, blob store). Le journal du job l'est.
