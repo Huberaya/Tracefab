@@ -108,10 +108,13 @@ jobs:
             exit 0
           fi
           echo "SHA candidat : $SHA_CANDIDAT"
+          # `?sha=` est IGNORE par cette API (mesure du 2026-11-13 : la reponse
+          # contient tous les deploiements recents). On filtre donc le SHA
+          # NOUS-MEMES, sur la liste paginee.
           ids="$(curl -sS -H "Authorization: Bearer $GH_TOKEN_DEPLOIEMENTS" \
             -H 'Accept: application/vnd.github+json' \
-            "https://api.github.com/repos/$DEPOT/deployments?sha=$SHA_CANDIDAT&per_page=10" \
-            | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{const a=JSON.parse(s);console.log((Array.isArray(a)?a:[]).map(d=>d.id).join(" "))})')"
+            "https://api.github.com/repos/$DEPOT/deployments?per_page=100" \
+            | SHA="$SHA_CANDIDAT" node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{const a=JSON.parse(s);const cible=process.env.SHA;console.log((Array.isArray(a)?a:[]).filter(d=>d.sha===cible).map(d=>d.id).join(" "))})')"
           if [ -z "$ids" ]; then
             echo "::error::Aucun deploiement Preview pour le SHA $SHA_CANDIDAT. Rien a prouver : on n invente pas d URL."
             exit 1
