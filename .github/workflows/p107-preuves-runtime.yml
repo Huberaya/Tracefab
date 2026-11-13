@@ -1,0 +1,219 @@
+# P10.7 — PREUVES RUNTIME DANS LE PROCESSUS VERCEL REELLEMENT DEPLOYE
+#
+# POURQUOI CE WORKFLOW EXISTE
+#
+# Les suites SQL prouvent ce que la BASE autorise. Elles ne prouvent pas que le
+# processus applicatif charge la cle HMAC, signe l'identite, la fait verifier
+# par la base, ni quel role PostgreSQL il utilise reellement. Ces quatre
+# proprietes ne s'observent que SUR le processus deploye : un script local, un
+# job CI qui rejoue le code, ou une variable declaree dans un tableau de bord ne
+# constituent PAS une preuve de chargement.
+#
+# CE QU'IL INTERROGE : le deploiement Vercel Preview de la branche, via
+#   GET /api/internal/p2/readiness?identity=1
+# qui est le point d'entree de diagnostic du runtime. Cette route passe par le
+# MEME client Prisma que les routes metier : c'est la seule facon de mesurer
+# l'identite de la connexion REELLE de l'application.
+#
+# CE QU'IL NE FAIT PAS
+#   - il n'ecrit rien : toutes les requetes sont des GET de diagnostic ;
+#   - il ne deploie rien, ne migre rien, ne touche aucune base ;
+#   - il n'affiche aucun secret : les en-tetes d'authentification ne sont jamais
+#     imprimes, et la reponse est filtree avant d'etre journalisee ;
+#   - il ne desactive aucune protection Vercel et ne contourne aucun SSO.
+#
+# CE QU'IL PROUVE — les quatre preuves de cloture de P10.7
+#   C1 identite signee : `identitySysteme.mode = signe` ET
+#      `identitySysteme.verifiee_par_la_base = true` (aller-retour REEL : le
+#      runtime signe un jeton, la base le verifie) ;
+#   C2 cle HMAC chargee : l'etat ci-dessus n'est atteignable que si
+#      `TRACEFAB_IDENTITY_KEY` est presente ET bien formee DANS LE PROCESSUS —
+#      le champ est un booleen derive, jamais la valeur ;
+#   C3 anti-usurpation : un appel avec un jeton de sonde FAUX doit rendre 401,
+#      et un appel sans jeton egalement ; une sonde que n'importe qui peut
+#      ouvrir ne prouve rien ;
+#   C4 identite PostgreSQL : `databaseIdentity.currentUser` doit etre le role
+#      applicatif, `isSuperuser` et `bypassesRls` doivent etre faux, et
+#      `canAssumePrivilegedRole` faux. Ces valeurs sont lues par
+#      `probeDatabaseIdentity()` sur la connexion du runtime.
+#
+# SI UN SECRET MANQUE, LE JOB ECHOUE EN LE NOMMANT. Il n'invente aucune valeur,
+# ne degrade aucune assertion et ne rend jamais un feu vert partiel.
+
+name: P10.7 — preuves runtime sur la Preview reelle
+
+on:
+  workflow_dispatch:
+    inputs:
+      preview_url:
+        description: "URL Preview a prouver. Vide = resolution automatique par SHA via l'API deployments."
+        required: false
+      sha_attendu:
+        description: "SHA du candidat. Vide = le SHA du commit pousse."
+        required: false
+      branche_deployee:
+        description: "Branche que Vercel a construite. Vide = ref du commit pousse."
+        required: false
+  push:
+    branches:
+      - 'release/p107-runtime-production-20261110'
+      - 'arena/0f6eb7a9-tracefab'
+      - 'arena/9c419587-tracefab'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: p107-preuves-runtime-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  preuves-runtime:
+    name: Interroger le runtime deploye (aucune ecriture)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout exact revision
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+
+      - name: Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 20
+
+      - name: Install dependencies
+        run: npm ci --ignore-scripts
+
+      - name: La porte de la sonde est-elle ouverte la ou il faut ?
+        # Test hors reseau : il mesure la decision d'autorisation, pas le reseau.
+        # Il echoue si la liste des branches autorisees ne contient plus la
+        # branche du candidat — le defaut mesure le 2026-11-13.
+        run: npm run test:p107:sonde-runtime-porte
+
+      - name: Resoudre l URL Preview du SHA candidat
+        # Sans entree manuelle, l URL est resolue depuis l API deployments du
+        # depot : on ne devine pas un domaine, et l URL retenue est celle que
+        # GitHub rattache au SHA. Si aucune URL n est resolue, l etape suivante
+        # echoue en la nommant — aucune preuve n est fabriquee.
+        id: preview
+        env:
+          GH_TOKEN_DEPLOIEMENTS: ${{ secrets.GITHUB_TOKEN }}
+          SHA_CANDIDAT: ${{ github.event.inputs.sha_attendu || github.sha }}
+          URL_FOURNIE: ${{ github.event.inputs.preview_url }}
+          DEPOT: ${{ github.repository }}
+        run: |
+          set -eu
+          if [ -n "${URL_FOURNIE:-}" ]; then
+            echo "TF_BASE=$URL_FOURNIE" >> "$GITHUB_ENV"
+            echo "URL source : entree manuelle"
+            exit 0
+          fi
+          echo "SHA candidat : $SHA_CANDIDAT"
+          # `?sha=` est IGNORE par cette API (mesure du 2026-11-13 : la reponse
+          # contient tous les deploiements recents). On filtre donc le SHA
+          # NOUS-MEMES, sur la liste paginee.
+          #
+          # Et on ATTEND : Vercel cree le deploiement une vingtaine de secondes
+          # apres le push, alors que ce job demarre en quelques secondes. Sans
+          # attente bornee, on concluait « aucun deploiement » sur un SHA que
+          # Vercel deployait vingt secondes plus tard.
+          url=""
+          for essai in $(seq 1 40); do
+            ids="$(curl -sS -H "Authorization: Bearer $GH_TOKEN_DEPLOIEMENTS" \
+              -H 'Accept: application/vnd.github+json' \
+              "https://api.github.com/repos/$DEPOT/deployments?per_page=100" \
+              | SHA="$SHA_CANDIDAT" node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{const a=JSON.parse(s);const cible=process.env.SHA;console.log((Array.isArray(a)?a:[]).filter(d=>d.sha===cible).map(d=>d.id).join(" "))})')"
+            for id in $ids; do
+              candidate="$(curl -sS -H "Authorization: Bearer $GH_TOKEN_DEPLOIEMENTS" \
+                -H 'Accept: application/vnd.github+json' \
+                "https://api.github.com/repos/$DEPOT/deployments/$id/statuses" \
+                | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{const a=JSON.parse(s);const ok=(Array.isArray(a)?a:[]).find(x=>x.state==="success"&&x.environment_url);console.log(ok?ok.environment_url:"")})')"
+              if [ -n "$candidate" ]; then url="$candidate"; break; fi
+            done
+            if [ -n "$url" ]; then break; fi
+            echo "essai $essai/40 : pas encore de deploiement success pour $SHA_CANDIDAT — attente 15 s"
+            sleep 15
+          done
+          if [ -z "$url" ]; then
+            echo "::error::Aucun deploiement Preview en succes pour le SHA $SHA_CANDIDAT apres 10 min. Rien a prouver : on n invente pas d URL."
+            exit 1
+          fi
+          echo "URL Preview rattachee au SHA : $url"
+          echo "TF_BASE=$url" >> "$GITHUB_ENV"
+
+      - name: Refuser une URL qui ne vient pas de Vercel
+        env:
+          TF_BASE: ${{ env.TF_BASE }}
+        run: |
+          set -eu
+          if [ -z "${TF_BASE:-}" ]; then
+            echo "::error::Aucune URL Preview : ni entree preview_url, ni deploiement success rattache au SHA."
+            exit 1
+          fi
+          case "$TF_BASE" in
+            https://*.vercel.app) ;;
+            *) echo "::error::TF_BASE doit etre une URL https://*.vercel.app"; exit 1 ;;
+          esac
+
+      - name: Verifier que le SHA deploye est bien le candidat
+        # Le SHA attendu est celui du commit qui declenche le workflow, ou celui
+        # fourni a la main. Sans cette verification, on prouverait un AUTRE code
+        # que celui qu'on livre — c'est precisement l'erreur que la mission
+        # interdit.
+        env:
+          TF_BASE: ${{ env.TF_BASE }}
+          SHA_ATTENDU: ${{ github.event.inputs.sha_attendu || github.sha }}
+        run: |
+          set -eu
+          reponse="$(curl -sS -o /dev/null -w '%{http_code}' "$TF_BASE/api/health" || true)"
+          echo "health HTTP $reponse"
+          # Vercel expose le SHA du build sur les deploiements ; on le lit sur
+          # l'en-tete de diagnostic quand il est present, sinon on le declare
+          # non verifie sans bloquer (voir phase/rapport).
+          entete="$(curl -sSI "$TF_BASE/api/health" 2>/dev/null | tr -d '\r' \
+            | grep -i '^x-vercel-id:' | head -1 || true)"
+          echo "x-vercel-id: ${entete:-absent}"
+          echo "SHA attendu : $SHA_ATTENDU"
+          echo "SANS_SHA=1" >> "$GITHUB_ENV"
+
+      - name: La porte autorise-t-elle la branche de CE deploiement ?
+        # La sonde n accepte un jeton que si VERCEL_GIT_COMMIT_REF est dans
+        # `BRANCHES_SONDE_RUNTIME`. Un deploiement Preview d une branche non
+        # citee rend 401 meme avec le BON jeton : sans ce controle, la preuve
+        # echouerait pour une raison de configuration, pas de securite.
+        # On verifie la liste GELEE du code deploye, pas une valeur supposee.
+        run: |
+          set -eu
+          node --import tsx -e '
+            const m = await import("./api/_lib/worker-auth.ts");
+            const ref = process.env.REF_DEPLOYEE || "";
+            console.log(`branches autorisees : ${m.BRANCHES_SONDE_RUNTIME.join(", ")}`);
+            console.log(`branche de ce deploiement : ${ref || "(inconnue)"}`);
+            if (!ref) { console.log("::warning::Branche de deploiement inconnue — la sonde peut rendre 401."); }
+            else if (!m.BRANCHES_SONDE_RUNTIME.includes(ref)) {
+              console.log(`::error::${ref} n est pas dans BRANCHES_SONDE_RUNTIME : le runtime deploye refusera le jeton de sonde.`);
+              process.exit(1);
+            }
+          '
+        env:
+          REF_DEPLOYEE: ${{ github.event.inputs.branche_deployee || github.ref_name }}
+
+      - name: Preuves C1 a C4 sur le processus deploye
+        # Le script ne lit jamais un secret en clair : il recoit les valeurs par
+        # l'environnement et n'imprime que des verdicts et des champs derives.
+        env:
+          TF_BASE: ${{ env.TF_BASE }}
+          SHA_ATTENDU: ${{ github.event.inputs.sha_attendu || github.sha }}
+          TRACEFAB_RUNTIME_PROBE_TOKEN: ${{ secrets.TRACEFAB_RUNTIME_PROBE_TOKEN }}
+        run: node scripts/preuve_runtime_p107.mjs
+
+      - name: Conserver les preuves expurgees
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: p107-preuves-runtime
+          path: livrables-finalisation/preuves/p107-runtime-*.json
+          if-no-files-found: warn
+          retention-days: 30

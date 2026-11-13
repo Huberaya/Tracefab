@@ -348,6 +348,18 @@ try {
   const motDePasseMigrateur = randomBytes(32).toString('hex');
   try {
     verrou = await verrouillerCluster({ urlProprietaire: urlAdmin });
+    // `tracefab_app` est un objet de CLUSTER : en CI il est cree AVANT ce job
+    // par `db:prepare-ci-role`, et il porte alors les privileges que la chaine
+    // lui a accordes dans `tracefab_test`. R7 ne doit compter comme « jetable »
+    // que ce que cette suite a elle-meme cree — sinon elle exige de detruire un
+    // role qui ne lui appartient pas, et `DROP ROLE` echoue sur ses dependances
+    // (« role cannot be dropped because some objects depend on it »).
+    //
+    // Mesure du 2026-11-12 : sans cette ligne, l'etape P10.6 de la CI laissait
+    // `tracefab_app` derriere elle et R7 comptait 1 restant sur 2 crees.
+    const appDejaLa = (await admin.query(
+      'SELECT 1 FROM pg_catalog.pg_roles WHERE rolname = $1', ['tracefab_app'])).rows.length > 0;
+    if (appDejaLa) rolesPreexistants.add('tracefab_app');
     bootstrap = spawnSync(process.execPath, ['scripts/bootstrap_app_role.mjs'], {
       env: { ...process.env, DATABASE_URL: urlBase.toString(), TF_APP_PASSWORD: process.env.TF_APP_PASSWORD || 'p106_jetable' },
       encoding: 'utf8',
