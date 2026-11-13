@@ -113,6 +113,20 @@ let roleExecutant = roleReel;
 let urlMigrator = null;
 let roleJetableCree = null;
 
+// L'administrateur de banc doit pointer sur la base JETABLE, jamais sur la base
+// de travail : sinon E1 echoue a mi-chaine (LE REFUS tombe sur la migration 62,
+// que E1 n'a alors jamais appliquee) et E3 croit mesurer un refus de preflight.
+function urlAdminSurBanc() {
+  const fournie = (process.env.TF_ADMIN_URL || '').trim();
+  const u = new URL(fournie || urlAdmin);
+  u.pathname = `/${baseTravail}`;
+  if (!fournie) {
+    u.username = adminBancs;
+    u.password = mdpAdminBancs;
+  }
+  return u.toString();
+}
+
 function urlPour(role, motDePasse) {
   const u = new URL(urlBase.toString());
   u.username = role;
@@ -231,9 +245,7 @@ try {
     ...process.env,
     DATABASE_URL: urlPour('tracefab_migrator', mdpMigrateurBancs).toString(),
     TF_ALLOW_WRITE: 'oui',
-    ...(process.env.TF_ADMIN_URL ? {} : {
-      TF_ADMIN_URL: `postgresql://${adminBancs}:${mdpAdminBancs}@${new URL(urlAdmin).host}/${baseTravail}`,
-    }),
+    TF_ADMIN_URL: urlAdminSurBanc(),
   };
   const jusquA = spawnSync(process.execPath, ['scripts/migrer_fidelement.mjs', '--jusqu-a', DERNIERE_APPLIQUEE], {
     env: envChaine,
