@@ -27,6 +27,7 @@
     "test:p107:sonde": "npm run test:p107:sonde-fail-closed && node scripts/run-db-suite.mjs scripts/test_p107_sonde_lecture_seule.mjs",
     "test:p107:sonde-fail-closed": "node scripts/test_p107_sonde_fail_closed_pglite.mjs",
     "test:p107:sonde-runtime": "node scripts/run-db-suite.mjs scripts/test_p107_sonde_runtime.mjs",
+    "test:p107:sonde-runtime-porte": "node scripts/test_p107_sonde_runtime_porte.mjs",
     "test:p107:demonstration": "node scripts/run-db-suite.mjs scripts/test_p107_demonstration_strict.mjs",
     "test:p107:sonde-hmac": "node scripts/test_p107_sonde_hmac.mjs",
     "test:p107:identite-systeme-module": "node --import tsx scripts/test_p107_identite_systeme_module.mjs",
