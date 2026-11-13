@@ -72,6 +72,11 @@ jobs:
     name: Interroger le runtime deploye (aucune ecriture)
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    # Le secret de sonde peut etre stocke au niveau de l'environnement `Preview`
+    # plutot qu'au niveau du depot : sans cette declaration, le workflow ne le
+    # recoit pas, meme s'il existe. Un secret d'environnement n'est lisible que
+    # par un job qui declare cet environnement.
+    environment: Preview
     steps:
       - name: Checkout exact revision
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
