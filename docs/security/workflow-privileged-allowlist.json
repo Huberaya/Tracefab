@@ -36,6 +36,14 @@
       "lecture_seule": "Le preflight borne endpoint, role, mode strict et migration unique ou deja appliquee. Le resolver ne traite que l unique tentative echouee via Prisma. Le postflight verifie la politique, les roles et l effet d archivage dans une transaction annulee.",
       "rotation": "Secret dedie a Preview P11, jamais reutilise pour Production.",
       "journal": "Les scripts ne journalisent ni URL, ni mot de passe, ni cle HMAC ; la connexion admin n est accessible qu apres approbation de l environnement."
+    },
+    "p107-preuves-runtime.yml": {
+      "secret": "TRACEFAB_RUNTIME_PROBE_TOKEN",
+      "portee": "job \"preuves-runtime\" uniquement ; aucun declencheur planifie ; la sonde n accepte le jeton qu en Preview ET sur une branche de BRANCHES_SONDE_RUNTIME, et le job refuse de continuer si le SHA deploye n est pas exactement celui du commit, ou si la branche n est pas dans la liste gelee ; la Production est fermee par la premiere condition du code (VERCEL_ENV === preview)",
+      "justification": "P10.7 exige des preuves de runtime qui ne peuvent etre obtenues qu en interrogeant le processus Vercel reellement deploye. Un script local, un test CI ou une variable declaree ne prouvent rien : la sonde GET /api/internal/p2/readiness?identity=1 est le seul point d entree qui rende l identite PostgreSQL de la connexion applicative et l aller-retour de signature avec la base.",
+      "lecture_seule": "Le script n emet que des GET de diagnostic. Aucune ecriture, aucune migration, aucun deploiement, aucune modification de donnee : les trois requetes sans jeton prouvent d abord que la route refuse, avant tout appel authentifie.",
+      "rotation": "Jeton opaque dedie a la sonde, identique dans GitHub et dans Vercel Preview. Il ne donne acces a aucune donnee metier et ne peut etre utilise qu en Preview sur une branche autorisee. A revoquer et regenerer apres la campagne P10.7.",
+      "journal": "Le script n affiche jamais le jeton : il ne lit que le FAIT de sa presence. Les en-tetes d authentification ne sont jamais imprimes, et la reponse est filtree avant d etre journalisee. Les artefacts ne contiennent aucun secret ni fragment."
     }
   },
   "//privilegedTriggers": "Declencheurs qui executent du code de branche avec les privileges de la branche de base (`pull_request_target`, `workflow_run`).",
