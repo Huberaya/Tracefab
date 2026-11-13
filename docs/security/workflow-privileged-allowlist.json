@@ -73,6 +73,12 @@
       "job": "migrate-preview-p11",
       "pourquoi": "Le job applique une politique RLS additive a la seule branche Neon Preview P11 ; l approbation du proprietaire et la restriction de branche sont obligatoires.",
       "reglage_attendu": "Settings > Environments > tracefab-p11-preview > Required reviewers : le proprietaire ; Deployment branches : Selected branches, uniquement arena/b8fe1a44-tracefab. Secret TRACEFAB_P11_DATABASE_ADMIN_URL direct non pooler de Neon Preview P11."
+    },
+    "p107-preuves-runtime.yml": {
+      "environnement": "Preview",
+      "job": "preuves-runtime",
+      "pourquoi": "Le secret de sonde TRACEFAB_RUNTIME_PROBE_TOKEN peut etre stocke au niveau de l environnement GitHub Preview plutot qu au niveau du depot : un secret d environnement n est lisible que par un job qui declare cet environnement. Sans cette declaration, le workflow ne recoit rien meme quand le secret existe.",
+      "reglage_attendu": "Settings > Environments > Preview > Required reviewers : le proprietaire. Branches autorisees : restreindre a release/p107-runtime-production-20261110. Le workflow fonctionne sans ; il devient approuve avec."
     }
   },
   "//horsPerimetre": "Le workflow `figer-reference-visuelle.yml` porte `contents: write` mais n'existe pas sur la branche de reference : il vit sur `arena/91844ee9-tracefab` (branche de la PR #34). Ce registre ne couvre que les fichiers presents dans l'arbre analyse. Sa neutralisation est preparee dans docs/security/PHASE-1-PIPELINE-GITHUB.md.",
