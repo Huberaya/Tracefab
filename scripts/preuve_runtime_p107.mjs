@@ -121,11 +121,31 @@ async function mesurerRefusSansJeton() {
 // processus deploye (la route refuse au lieu de servir).
 await mesurerRefusSansJeton();
 
+// --- Diagnostic d'acces ---------------------------------------------------
+// Cinq situations differentes, cinq messages differents. Les confondre ferait
+// conclure « secret absent » sur un simple refus de branche, ou l'inverse.
+// Aucune valeur de secret n'est lue ni affichee : seul le FAIT de la presence
+// est rapporte.
+if (!JETON) {
+  const contexte = `branche autorisee=${process.env.CONTEXTE_BRANCHE_AUTORISEE || '(non transmis)'}`;
+  console.log(`\n  DIAGNOSTIC 1/5 secret         : TRACEFAB_RUNTIME_PROBE_TOKEN ABSENT du processus`);
+  console.log(`  DIAGNOSTIC 2/5 branche        : ${contexte}`);
+} else {
+  console.log('\n  DIAGNOSTIC 1/5 secret         : PRESENT dans le processus (valeur non lue)');
+}
+
 // Au-dela, il faut le jeton. On s'arrete en le nommant — apres avoir ecrit les
 // verdicts reellement observes ci-dessus.
 if (!JETON) {
   refus([
-    'TRACEFAB_RUNTIME_PROBE_TOKEN absente : C1/C2/C4 ne peuvent pas etre prouvees.',
+    'SITUATION 1/5 — secret absent : C1/C2/C4 ne peuvent pas etre prouvees.',
+    '',
+    '  Les cinq situations, volontairement distinguees :',
+    '    1. secret ABSENT du processus  -> ce message (le job ne peut pas authentifier la sonde)',
+    '    2. secret PRESENT              -> la sonde est appelee, un 200 est exige',
+    '    3. erreur d AUTHENTIFICATION   -> 401 malgre un secret present = valeurs differentes',
+    '    4. refus de BRANCHE            -> 401 systematique, leve en amont par le step 9',
+    '    5. deploiement INACCESSIBLE    -> arret nomme, aucun verdict rendu',
     '',
     '  Nom          : TRACEFAB_RUNTIME_PROBE_TOKEN',
     '  Environnement: secret GitHub du depot (et variable Vercel de la Preview)',

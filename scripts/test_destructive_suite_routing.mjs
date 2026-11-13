@@ -194,6 +194,12 @@ const ROLLBACK_ONLY_DB_SUITES = [
   // Postflight P10.7 : cree une organisation sonde, verifie l archivage sous role worker,
   // puis annule toute la transaction (y compris le SET temporaire du role).
   'scripts/verification_p107_worker_rls_migration.mjs',
+  // Preuve C4 : se connecte avec le ROLE APPLICATIF pour mesurer l identite
+  // PostgreSQL de la connexion runtime, puis tente un CREATE TABLE qui DOIT
+  // echouer (42501 ou 25006) — c est la preuve que le role ne peut pas creer
+  // d objet. La transaction est ouverte en READ ONLY et toujours annulee ;
+  // la suite echoue si le CREATE reussit.
+  'scripts/preuve_pg_identite_p107.mjs',
 ];
 
 /**

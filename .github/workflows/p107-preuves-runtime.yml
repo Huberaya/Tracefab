@@ -207,6 +207,7 @@ jobs:
           TF_BASE: ${{ env.TF_BASE }}
           SHA_ATTENDU: ${{ github.event.inputs.sha_attendu || github.sha }}
           TRACEFAB_RUNTIME_PROBE_TOKEN: ${{ secrets.TRACEFAB_RUNTIME_PROBE_TOKEN }}
+          CONTEXTE_BRANCHE_AUTORISEE: ${{ github.event.inputs.branche_deployee || github.ref_name }}
         run: node scripts/preuve_runtime_p107.mjs
 
       - name: Conserver les preuves expurgees
