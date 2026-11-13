@@ -51,6 +51,9 @@ on:
       sha_attendu:
         description: "SHA du candidat. Vide = le SHA du commit pousse."
         required: false
+      branche_deployee:
+        description: "Branche que Vercel a construite. Vide = ref du commit pousse."
+        required: false
   push:
     branches:
       - 'release/p107-runtime-production-20261110'
@@ -174,6 +177,28 @@ jobs:
           echo "x-vercel-id: ${entete:-absent}"
           echo "SHA attendu : $SHA_ATTENDU"
           echo "SANS_SHA=1" >> "$GITHUB_ENV"
+
+      - name: La porte autorise-t-elle la branche de CE deploiement ?
+        # La sonde n accepte un jeton que si VERCEL_GIT_COMMIT_REF est dans
+        # `BRANCHES_SONDE_RUNTIME`. Un deploiement Preview d une branche non
+        # citee rend 401 meme avec le BON jeton : sans ce controle, la preuve
+        # echouerait pour une raison de configuration, pas de securite.
+        # On verifie la liste GELEE du code deploye, pas une valeur supposee.
+        run: |
+          set -eu
+          node --import tsx -e '
+            const m = await import("./api/_lib/worker-auth.ts");
+            const ref = process.env.REF_DEPLOYEE || "";
+            console.log(`branches autorisees : ${m.BRANCHES_SONDE_RUNTIME.join(", ")}`);
+            console.log(`branche de ce deploiement : ${ref || "(inconnue)"}`);
+            if (!ref) { console.log("::warning::Branche de deploiement inconnue — la sonde peut rendre 401."); }
+            else if (!m.BRANCHES_SONDE_RUNTIME.includes(ref)) {
+              console.log(`::error::${ref} n est pas dans BRANCHES_SONDE_RUNTIME : le runtime deploye refusera le jeton de sonde.`);
+              process.exit(1);
+            }
+          '
+        env:
+          REF_DEPLOYEE: ${{ github.event.inputs.branche_deployee || github.ref_name }}
 
       - name: Preuves C1 a C4 sur le processus deploye
         # Le script ne lit jamais un secret en clair : il recoit les valeurs par

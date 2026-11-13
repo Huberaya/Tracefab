@@ -75,9 +75,57 @@ if (!BASE) refus('TF_BASE absente. Ce script ne devine pas de cible.');
 if (!/^https:\/\/[a-z0-9-]+(\.[a-z0-9-]+)*\.vercel\.app$/i.test(BASE)) {
   refus(`TF_BASE n'est pas une URL de deploiement Vercel (${BASE}). Un runtime local n'est pas une preuve de runtime deploye.`);
 }
+
+
+// --- Appels ----------------------------------------------------------------
+async function appel(url, entetes = {}) {
+  const debut = Date.now();
+  let r;
+  try {
+    r = await fetch(url, { headers: entetes, redirect: 'manual' });
+  } catch (e) {
+    // Un reseau injoignable n'est PAS un refus du runtime : on le dit, plutot
+    // que de laisser remonter une exception qui ressemblerait a un plantage.
+    refus(`cible injoignable (${url}) : ${String(e.cause?.code || e.message).split('\n')[0]}. `
+      + 'Aucun verdict n est rendu sur une cible qu on n a pas atteinte.');
+  }
+  const texte = await r.text();
+  let corps = null;
+  try { corps = JSON.parse(texte); } catch { /* corps non JSON : garde le texte brut */ }
+  return { statut: r.status, corps, texte, ms: Date.now() - debut };
+}
+
+const URL_SONDE = `${BASE}/api/internal/p2/readiness?identity=1`;
+console.log(`  cible   : ${BASE}`);
+console.log(`  sha     : ${SHA || '(inconnu)'}`);
+console.log(`  sonde   : ${URL_SONDE}\n`);
+
+// C3 d'abord : une sonde que tout le monde ouvre ne prouve rien.
+async function mesurerRefusSansJeton() {
+  const sansJeton = await appel(URL_SONDE);
+  verdict('C3.1', 'appel SANS jeton de sonde -> refuse', sansJeton.statut === 401,
+    `HTTP ${sansJeton.statut}`);
+
+  // Un faux jeton n'a de sens a comparer que si un vrai existe cote Vercel :
+  // on l'envoie quand meme, le refus attendu est le meme.
+  const mauvaisJeton = await appel(URL_SONDE, { 'x-tracefab-runtime-probe-token': `${JETON || 'jeton'}-faux` });
+  verdict('C3.2', 'appel avec un jeton FAUX -> refuse', mauvaisJeton.statut === 401,
+    `HTTP ${mauvaisJeton.statut}`);
+
+  const prod = await appel(`${BASE}/api/internal/p2/readiness`);
+  verdict('C3.3', 'la route reste fermee sans ?identity=1 ni secret worker -> refuse',
+    prod.statut === 401 || prod.statut === 503, `HTTP ${prod.statut}`);
+}
+
+// C3 sans jeton : mesurable SANS aucun secret, et c'est deja une preuve sur le
+// processus deploye (la route refuse au lieu de servir).
+await mesurerRefusSansJeton();
+
+// Au-dela, il faut le jeton. On s'arrete en le nommant — apres avoir ecrit les
+// verdicts reellement observes ci-dessus.
 if (!JETON) {
   refus([
-    'TRACEFAB_RUNTIME_PROBE_TOKEN absente.',
+    'TRACEFAB_RUNTIME_PROBE_TOKEN absente : C1/C2/C4 ne peuvent pas etre prouvees.',
     '',
     '  Nom          : TRACEFAB_RUNTIME_PROBE_TOKEN',
     '  Environnement: secret GitHub du depot (et variable Vercel de la Preview)',
@@ -91,34 +139,6 @@ if (!JETON) {
     '  et ce n est pas une preuve. Aucune valeur n est inventee ici.',
   ].join('\n'));
 }
-
-// --- Appels ----------------------------------------------------------------
-async function appel(url, entetes = {}) {
-  const debut = Date.now();
-  const r = await fetch(url, { headers: entetes, redirect: 'manual' });
-  const texte = await r.text();
-  let corps = null;
-  try { corps = JSON.parse(texte); } catch { /* corps non JSON : garde le texte brut */ }
-  return { statut: r.status, corps, texte, ms: Date.now() - debut };
-}
-
-const URL_SONDE = `${BASE}/api/internal/p2/readiness?identity=1`;
-console.log(`  cible   : ${BASE}`);
-console.log(`  sha     : ${SHA || '(inconnu)'}`);
-console.log(`  sonde   : ${URL_SONDE}\n`);
-
-// C3 d'abord : une sonde que tout le monde ouvre ne prouve rien.
-const sansJeton = await appel(URL_SONDE);
-verdict('C3.1', 'appel SANS jeton de sonde -> refuse', sansJeton.statut === 401,
-  `HTTP ${sansJeton.statut}`);
-
-const mauvaisJeton = await appel(URL_SONDE, { 'x-tracefab-runtime-probe-token': `${JETON}-faux` });
-verdict('C3.2', 'appel avec un jeton FAUX -> refuse', mauvaisJeton.statut === 401,
-  `HTTP ${mauvaisJeton.statut}`);
-
-const prod = await appel(`${BASE}/api/internal/p2/readiness`);
-verdict('C3.3', 'la route reste fermee sans ?identity=1 ni secret worker -> refuse',
-  prod.statut === 401 || prod.statut === 503, `HTTP ${prod.statut}`);
 
 // La sonde reelle, avec le jeton legitime.
 const sonde = await appel(URL_SONDE, { 'x-tracefab-runtime-probe-token': JETON });
