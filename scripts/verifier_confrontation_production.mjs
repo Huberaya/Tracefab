@@ -39,6 +39,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { executerMigrationPglite } from './lib/pglite-worker-runner.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const MIGRATIONS = path.join(root, 'prisma/migrations');
@@ -153,7 +154,7 @@ await db.exec(`
     applied_steps_count integer NOT NULL DEFAULT 0
   );
 `);
-for (const d of dossiers) await db.exec(lireFichier(d));
+for (const d of dossiers) await executerMigrationPglite(db, d, lireFichier(d));
 console.log(`  ${dossiers.length} migrations appliquees.`);
 
 referentiel = (await db.query(fs.readFileSync(REQUETE, 'utf8'))).rows.map((r) => r.ligne ?? Object.values(r)[0]);

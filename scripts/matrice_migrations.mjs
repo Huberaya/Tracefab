@@ -1,10 +1,10 @@
 #!/usr/bin/env node
 /**
- * Matrice des 65 migrations : le decompte est RECALCULE, jamais recopie.
+ * Matrice des migrations : le decompte est RECALCULE, jamais recopie.
  *
- * Le mandat interdit de reprendre « 54 appliquees + 9 absentes + 2 annulees »
- * comme un acquis. Cette matrice le refait donc depuis l'etat courant du depot,
- * et echoue si l'arithmetique ne ferme plus.
+ * Le décompte est reconstruit depuis les relevés de Production et le dépôt :
+ * les deux tentatives annulées ont une reprise réussie, et une migration
+ * antidatée ajoutée après le relevé doit être explicitement classée absente.
  *
  * CE QUI EST MESURE ICI, ET CE QUI EST REPRIS
  *
@@ -103,7 +103,8 @@ const lignes = migrations.map((nom) => {
   const horsBande = HORS_BANDE[nom];
   const nouvelle = NOUVELLES[nom];
   let historique;
-  if (ecart) historique = ecart.historique;
+  if (ecart?.tentative_annulee_reprise_reussie) historique = 'APPLIQUEE APRES REPRISE';
+  else if (ecart) historique = ecart.historique;
   else if (nouvelle) historique = 'NOUVELLE (jamais deployee)';
   else if (horsBande) historique = 'APPLIQUEE HORS BANDE';
   else historique = 'APPLIQUEE';
@@ -128,20 +129,23 @@ const erreurs = [];
 
 const compter = (h) => lignes.filter((l) => l.historique === h).length;
 const nouvelles = compter('NOUVELLE (jamais deployee)');
-const appliquees = compter('APPLIQUEE');
+const appliquees = compter('APPLIQUEE') + compter('APPLIQUEE APRES REPRISE');
 const horsBande = compter('APPLIQUEE HORS BANDE');
 const annulees = compter('ANNULEE');
 const absentes = compter('ABSENTE');
+const reprises = Object.values(ECARTS).filter((e) => e.tentative_annulee_reprise_reussie).length;
 
 const total = lignes.length;
 // Le TOTAL n'est pas fige : il augmente a chaque migration ajoutee, et le
 // figer transformait une livraison normale en echec. Ce qui doit rester fige,
-// ce sont les FAITS de production : 11 ecarts, 5 hors bande.
+// ce sont les FAITS de production : 11 ecarts historiques (9 absentes + 2 reprises reussies apres annulation), 1 migration antidatee ajoutee apres le releve, 5 hors bande.
 if (appliquees + horsBande + annulees + absentes + nouvelles !== total) {
   erreurs.push(`l arithmetique ne ferme pas : ${appliquees}+${horsBande}+${annulees}+${absentes}+${nouvelles} != ${total}`);
 }
-// Les onze ECARTS de derive restent onze : une migration neuve n'en est pas un.
-if (annulees + absentes !== 11) erreurs.push(`${annulees + absentes} ecarts nommes, 11 attendus`);
+// Les deux tentatives annulees ont une reprise reussie : elles sont classees
+// appliquees. Restent 9 absences historiques + 1 migration antidatee ajoutee
+// au depot apres le releve.
+if (annulees + absentes !== 10) erreurs.push(`${annulees + absentes} migrations encore absentes/annulees, 10 attendues`);
 if (nouvelles === 0) erreurs.push('aucune migration posterieure au releve : la regle de classement ne s applique pas');
 if (total < 65) erreurs.push(`le depot ne contient plus que ${total} migrations : une a disparu`);
 if (horsBande !== 5) erreurs.push(`${horsBande} migrations hors bande, 5 attendues`);
@@ -164,10 +168,14 @@ for (const nom of Object.keys(ECARTS)) {
   if (c && (!c.catalogue || c.catalogue.trim() === '')) erreurs.push(`catalogue vide pour ${nom}`);
 }
 // Le niveau « historique » et le niveau « catalogue » ne doivent pas etre
-// fusionnes : un ecart dont les deux se contredisent doit porter DIVERGENCE.
+// fusionnes : un effet peut etre present avant l'enregistrement de cette
+// migration (reconciliation idempotente). Dans ce cas, CONFORME est permis
+// uniquement si le catalogue prouve explicitement la presence de l'effet.
+// Une absence d'historique sans preuve catalogue reste une incoherence.
 for (const l of lignes) {
-  if (l.statut === 'CONFORME' && (l.historique === 'ABSENTE' || l.catalogue === 'NON LU')) {
-    erreurs.push(`CONFORME incompatible avec un historique absent ou un catalogue non lu : ${l.nom}`);
+  const effetPresentMesure = l.catalogue?.startsWith('PRESENT MESURE');
+  if (l.statut === 'CONFORME' && (l.catalogue === 'NON LU' || (l.historique === 'ABSENTE' && !effetPresentMesure))) {
+    erreurs.push(`CONFORME sans preuve catalogue suffisante : ${l.nom}`);
   }
 }
 
@@ -215,11 +223,13 @@ if (process.argv.includes('--markdown')) {
 } else {
   console.log('Matrice des migrations — etat recalcule depuis le depot\n');
   console.log(`  migrations du depot            : ${total}`);
-  console.log(`  appliquees (attestees)         : ${appliquees}`);
+  console.log(`  appliquees (dont reprises)     : ${appliquees}`);
+  console.log(`    reprises apres tentative annulee : ${reprises}`);
   console.log(`    dont hors bande              : ${horsBande}`);
   console.log(`  annulees (rolled_back_at)      : ${annulees}`);
   console.log(`  absentes de l historique       : ${absentes}`);
-  console.log(`  ecarts nommes                  : ${annulees + absentes}`);
+  console.log(`  migrations encore absentes     : ${annulees + absentes}`);
+  console.log(`  entrees historiques detaillees : ${Object.keys(ECARTS).length}`);
   console.log(`  nouvelles (jamais deployees)   : ${nouvelles}`);
   console.log(`  arithmetique                   : ${appliquees + horsBande} + ${annulees} + ${absentes} + ${nouvelles} = ${total}`);
   console.log(`  prefixes en double (connus)    : ${doubles.length} / ${PREFIXES_DOUBLES_CONNUS.length} declares`);
@@ -228,9 +238,9 @@ if (process.argv.includes('--markdown')) {
   for (const st of ['CONFORME', 'DIVERGENCE', 'NON PROUVE', 'A QUALIFIER', 'NON DEPLOYEE']) {
     console.log(`  statut ${st.padEnd(11)}: ${lignes.filter((l) => l.statut === st).length}`);
   }
-  // Les effets se comptent sur les 65 migrations CONCERNEES par le releve du
-  // 28/10 : une migration ecrite apres n'a pas d'effet « non prouve », elle a
-  // simplement jamais ete deployee.
+  // Les effets se comptent sur les migrations anterieures ou egales a la borne
+  // du releve : une migration ecrite apres n'a pas d'effet « non prouve », elle
+  // a simplement jamais ete deployee.
   const concernes = total - nouvelles;
   console.log(`\n  effets MESURES      : ${mesures}`);
   console.log(`  effets DEDUITS      : ${deduits}`);
@@ -245,6 +255,6 @@ if (erreurs.length > 0) {
   process.exit(1);
 }
 if (!process.argv.includes('--markdown')) {
-  console.log('\nLa matrice ferme : 65 migrations, 11 ecarts, 5 hors bande,');
+  console.log(`\nLa matrice ferme : ${total} migrations, ${annulees + absentes} absentes/annulees, ${reprises} reprises, ${horsBande} hors bande, ${nouvelles} nouvelles.`);
   console.log('aucun nouveau prefixe en double.');
 }

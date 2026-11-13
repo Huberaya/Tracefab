@@ -27,6 +27,7 @@
  *   npm run test:plm-erp-convergence
  */
 import fs from 'node:fs';
+import { executerMigrationPglite } from './lib/pglite-worker-runner.mjs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -174,7 +175,7 @@ await db.exec(`
   CREATE ROLE tracefab_app LOGIN PASSWORD 'runtime' NOSUPERUSER NOBYPASSRLS NOCREATEROLE NOCREATEDB;
   GRANT USAGE ON SCHEMA public TO tracefab_app;
 `);
-for (const d of dossiers) { if (d === CIBLE) break; await db.exec(LIRE(d)); }
+for (const d of dossiers) { if (d === CIBLE) break; await executerMigrationPglite(db, d, LIRE(d)); }
 
 const politiques = async () => (await db.query(`
   SELECT policyname, cmd, coalesce(qual, '') AS qual, coalesce(with_check, '') AS check
@@ -304,7 +305,7 @@ await vierge.exec(`
 `);
 let surVierge = null;
 try {
-  for (const d of dossiers) await vierge.exec(LIRE(d));
+  for (const d of dossiers) await executerMigrationPglite(vierge, d, LIRE(d));
 } catch (e) { surVierge = `${e.code} ${e.message}`; }
 ok(`les ${dossiers.length} migrations s appliquent sur une base vierge, cible comprise`, surVierge === null, surVierge || '');
 const viergePol = (await vierge.query(`

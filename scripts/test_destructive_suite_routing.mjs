@@ -191,6 +191,9 @@ const ROLLBACK_ONLY_DB_SUITES = [
   // applicatif. Il verifie que les donnees ne survivent pas : c est le prix
   // pour prouver que l ecriture legitime fonctionne encore.
   'scripts/test_worker_non_forgeable.mjs',
+  // Postflight P10.7 : cree une organisation sonde, verifie l archivage sous role worker,
+  // puis annule toute la transaction (y compris le SET temporaire du role).
+  'scripts/verification_p107_worker_rls_migration.mjs',
 ];
 
 /**
@@ -233,6 +236,9 @@ const REFUSED_WRITE_PROBE_DB_SUITES = [
  */
 const SELF_GUARDED_DB_TOOLS = [
   'scripts/db-deploy-throwaway.mjs',
+  // Provisionne les rôles uniquement sur le PostgreSQL local jetable de CI ;
+  // la garde commune est exécutée au chargement avant toute connexion.
+  'scripts/prepare_ci_migration_roles.mjs',
 ];
 
 /**
@@ -253,6 +259,19 @@ const OPERATOR_WRITER_SCRIPTS = [
   // garde de cible : ils sont donc hors de toute chaine automatique, et chacun
   // porte un mode sans ecriture (--dry-run ou --etat).
   'scripts/migrer_fidelement.mjs',
+  // P10.7. Meme situation, et elle merite d'etre nommee : c'est l'outil qui
+  // pose et retire le mode strict de l'identite systeme. Il ne bascule JAMAIS
+  // dans une chaine automatique (aucune commande npm, aucun workflow : une
+  // migration qui exige un secret casserait toute base neuve — mesure du
+  // 05/11). Ce qui le borne, et qui le rend sur :
+  //   - `--verifier` est le seul mode atteignable sans ecriture ;
+  //   - une ecriture exige `TF_ALLOW_WRITE=oui` ET une cible classee JETABLE
+  //     par le classifieur commun : il refuse un environnement qui sert ;
+  //   - il relit sa postcondition dans la meme transaction.
+  // Les suites P10.7 l'invoquent comme processus ENFANT sur la base qu'elles
+  // ont creee et qu'elles detruisent. Un operateur, lui, pose le mode avec
+  // l'outil de deploiement de son environnement.
+  'scripts/activer_identite_systeme_stricte.mjs',
   // P10.5. Aucune commande npm ni aucun workflow ne les nomme : ils sont
   // invoques par les suites P10.5 comme processus ENFANT, sur une base que ces
   // suites ont creee et qu'elles detruisent (voir P105_DB_SUITES). Ce qui les
@@ -263,10 +282,8 @@ const OPERATOR_WRITER_SCRIPTS = [
   // de cible jetable refuse par construction.
   'scripts/provisionner_roles_db.mjs',
   'scripts/provisionner_cle_identite.mjs',
-  // Préflight Neon ponctuel : renomme le rôle worker géré par cloud_admin,
-  // transfère les propriétaires/ACL, puis neutralise le rôle legacy. Il ne
-  // s'exécute jamais en CI ; --appliquer exige un GO d'environnement explicite,
-  // l'hôte/base attendus et une liste de cibles Production à protéger.
+  // Remplacement de role worker Neon : mutation operateur explicite, avec
+  // TF_ALLOW_WORKER_ROLE_SWAP, confirmation de la cible directe et garde Production.
   'scripts/provisionner_worker_neon.mjs',
   'scripts/mesure_effet_migrations_dpp.mjs',
   'scripts/valider_branche_dpp.mjs',
@@ -459,13 +476,7 @@ for (const rel of OPERATOR_WRITER_SCRIPTS) {
   // Une invocation qui porte le drapeau sans ecriture ne peut pas ecrire.
   const enEcriture = invocations.filter(([, command]) => !command.includes('--dry-run'));
   const automatiques = enEcriture.filter(([name]) => reached.has(name));
-  // Le workflow de reproduction PR110 ajoute ces outils au commit du banc
-  // (git add) sans les exécuter. Seule une ligne de commande active qui nomme
-  // directement le script constitue une invocation CI.
-  const enCi = workflowText.some((text) => text.split('\n').some((line) =>
-    !/^\s*(?:#|git add\b)/.test(line)
-      && line.includes(rel.replace('scripts/', 'scripts/')),
-  ));
+  const enCi = workflowText.some((text) => text.includes(rel.replace('scripts/', 'scripts/')));
 
   if (automatiques.length > 0) {
     ko(`${rel} est atteignable en ecriture depuis test/build via : ${automatiques.map(([k]) => k).join(', ')}`);
@@ -506,6 +517,36 @@ for (const rel of SELF_GUARDED_DB_TOOLS) {
     : ko(`${rel} — exitOnFailure: false : le script continuerait sur une cible refusee`);
 }
 
+console.log('\n  F3. le bootstrap CI reproduit le contrat Neon du migrateur');
+{
+  const rel = 'scripts/prepare_ci_migration_roles.mjs';
+  const source = readFileSync(join(ROOT, rel), 'utf8');
+  const guardAt = source.indexOf('requireThrowawayDb(');
+  const connectAt = source.indexOf('await client.connect()');
+  ok(guardAt >= 0 && connectAt >= 0 && guardAt < connectAt
+    ? `${rel} — garde locale avant toute connexion`
+    : `${rel} — garde absente ou exécutée après connexion`);
+
+  const beginAt = source.indexOf("await client.query('BEGIN')");
+  const extensionAt = source.indexOf('CREATE EXTENSION IF NOT EXISTS pgcrypto');
+  const adminAt = source.indexOf('NOBYPASSRLS NOSUPERUSER NOINHERIT');
+  ok(beginAt >= 0 && extensionAt > beginAt && extensionAt < adminAt
+    ? 'pgcrypto préinstallée par le bootstrap avant les rôles non-superusers'
+    : 'pgcrypto doit être préinstallée avant la prise de rôle migrateur');
+
+  const adminNoBypass = source.includes('CREATEROLE NOCREATEDB NOBYPASSRLS NOSUPERUSER NOINHERIT');
+  const migratorBypass = source.includes('CREATEROLE NOCREATEDB BYPASSRLS NOSUPERUSER INHERIT');
+  ok(adminNoBypass && migratorBypass
+    ? 'admin NOBYPASSRLS et migrateur BYPASSRLS, tous deux NOSUPERUSER'
+    : 'contrat de privilèges admin/migrateur divergent');
+
+  const dbCreate = source.includes('GRANT CREATE ON DATABASE');
+  const schemaOwner = source.includes('ALTER SCHEMA public OWNER TO');
+  ok(dbCreate && schemaOwner
+    ? 'migrateur CREATE sur la base et propriétaire de public, comme Neon'
+    : 'droits CREATE base / propriété public absents du bootstrap');
+}
+ 
 console.log('\n  E. les suites declarees sans ecriture le sont vraiment');
 for (const rel of READ_ONLY_DB_SUITES) {
   if (!existsSync(join(ROOT, rel))) { ok(`${rel} — absent, rien a verifier`); continue; }

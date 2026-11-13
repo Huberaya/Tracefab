@@ -3,9 +3,23 @@ import { emailDeliveryConfigured } from '../../_lib/email.js';
 import { notificationAlertConfigured } from '../../_lib/notification-observability.js';
 import { storageConfig } from '../../_lib/storage.js';
 import { json, methodNotAllowed } from '../../_lib/http.js';
-import { workerAuthorized, workerSecretConfigured } from '../../_lib/worker-auth.js';
+import { runtimeProbeAuthorized, workerAuthorized, workerSecretConfigured } from '../../_lib/worker-auth.js';
 import { databaseIdentityIsSafe, probeDatabaseIdentity, runLiveProbes } from '../../_lib/readiness-probes.js';
 import { etatCleIdentite } from '../../_lib/identite-jeton.js';
+import { prisma } from '../../_lib/prisma.js';
+import { withTracefabWorkerContext } from '../../_lib/contexte-systeme.js';
+import { etatCleSysteme, signerIdentiteSysteme } from '../../_lib/identite-systeme.js';
+
+type OutboxHealthRow = {
+  pending: number;
+  processing: number;
+  sent: number;
+  failed: number;
+  ready: number;
+  staleProcessing: number;
+  exhausted: number;
+  oldestReadyAt: Date | null;
+};
 
 function configured(name: string) {
   return Boolean(process.env[name]?.trim());
@@ -26,10 +40,18 @@ function privateStorageReadiness() {
   return { configured: missing.length === 0 && configValid, missing, probe: 'configuration_only' };
 }
 
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'GET') return methodNotAllowed(res, ['GET']);
-  if (!workerSecretConfigured()) return json(res, 503, { error: 'worker_not_configured' });
-  if (!workerAuthorized(req)) return json(res, 401, { error: 'worker_unauthorized' });
+  const workerConfigured = workerSecretConfigured();
+  const workerAccess = workerConfigured && workerAuthorized(req);
+  // Le jeton de sonde n'autorise que la lecture de l'identite DB en Preview
+  // sur la branche P11. Il ne peut pas declencher les sondes live externes.
+  const runtimeIdentityProbe = req.query?.identity === '1'
+    && req.query?.probe !== 'live'
+    && runtimeProbeAuthorized(req);
+  if (!workerConfigured && !runtimeIdentityProbe) return json(res, 503, { error: 'worker_not_configured' });
+  if (!workerAccess && !runtimeIdentityProbe) return json(res, 401, { error: 'worker_unauthorized' });
 
   // ?probe=live exerce reellement chaque service au lieu de constater que ses
   // variables existent. Volontairement opt-in : on ne veut pas appeler cinq
@@ -48,7 +70,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     probe: 'configuration_only',
   };
   const services = { privateStorage, email, alerting };
-  const configured_ = Object.values(services).every((service) => service.configured);
+  // Alerting is explicitly optional in docs/operations/production-hardening.md.
+  // It remains visible in the report, but cannot hold core readiness red.
+  const configured_ = privateStorage.configured && email.configured;
 
   // Identite reelle de la connexion applicative — opt-in.
   //
@@ -83,7 +107,84 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   };
 
   const wantIdentity = req.query?.identity === '1';
+
+  // P10.7 — l'application sait-elle signer une identite SYSTEME, et la base
+  // sait-elle la VERIFIER ?
+  //
+  // Ce n'est pas la meme question que `identityTokens` : le jeton utilisateur et
+  // le jeton systeme partagent la cle mais pas l'usage, et le mode strict de
+  // l'un n'est pas celui de l'autre. Un operateur doit pouvoir constater les
+  // deux avant d'activer quoi que ce soit.
+  //
+  // `verifiee_par_la_base` n'est pas un constat de configuration : c'est un
+  // ALLER-RETOUR reel — on signe un jeton, on le fait verifier par la base, et
+  // on rapporte le booleen. Une application qui signe et une base qui refuse
+  // (cle differente, mode strict, table vide) est exactement le mode de panne
+  // que cette sonde doit rendre visible AVANT la bascule.
+  const etatSysteme = etatCleSysteme();
+  let verificationBase: boolean | null = null;
+  let verificationDetail = 'non_sondee';
+  if (etatSysteme === 'valide' && wantIdentity) {
+    const signe = signerIdentiteSysteme({ cle: process.env.TRACEFAB_IDENTITY_KEY });
+    if (signe === null) {
+      verificationDetail = 'signature_impossible';
+    } else {
+      try {
+        const rows = await prisma.$queryRaw<Array<{ v: boolean | null }>>`
+          SELECT public.tracefab_identite_systeme_jeton_valide(${signe.jeton}) AS v
+        `;
+        verificationBase = rows?.[0]?.v === true;
+        verificationDetail = verificationBase ? 'aller_retour_reussi' : 'base_a_refuse';
+      } catch (error) {
+        // Une erreur n'est PAS un « non » : c'est une incapacite de mesurer, et
+        // la distinguer evite de lire un feu vert la ou rien n'a ete verifie.
+        verificationBase = null;
+        verificationDetail = error instanceof Error && /42501|permission denied/.test(error.message)
+          ? 'verification_non_accordee_au_runtime'
+          : 'verification_en_erreur';
+      }
+    }
+  }
+  const jetonsSysteme = {
+    // Meme cle que `identityTokens` : deux variables distinctes pour la meme
+    // valeur seraient deux occasions de les faire diverger.
+    configured: etatSysteme === 'valide',
+    mode: etatSysteme === 'valide' ? 'signe' : etatSysteme === 'invalide' ? 'cle_invalide' : 'non_configure',
+    usage: 'tracefab_system',
+    // `null` = non mesuree (et non « fausse ») : le champ n'est renseigne que
+    // sur demande (`?identity=1`), pour ne pas interroger la base a chaque
+    // passage d'une sonde de supervision.
+    verifiee_par_la_base: verificationBase,
+    verification: verificationDetail,
+  };
+
   const databaseIdentity = wantIdentity ? await probeDatabaseIdentity() : undefined;
+
+  // P10.7 — verification reelle de l'outbox sous contexte systeme signe.
+  // Lecture seule : aucun element n'est reclame, modifie, ni envoye.
+  let notificationOutbox: { verified: boolean; detail: string; health?: OutboxHealthRow } | undefined;
+  if (req.query?.outbox === '1' && wantIdentity) {
+    try {
+      const rows = await withTracefabWorkerContext((tx) => tx.$queryRaw<OutboxHealthRow[]>`
+        SELECT * FROM tracefab_notification_outbox_health()
+      `);
+      notificationOutbox = {
+        verified: true,
+        detail: 'aller_retour_reussi',
+        health: rows[0] ?? {
+          pending: 0, processing: 0, sent: 0, failed: 0, ready: 0,
+          staleProcessing: 0, exhausted: 0, oldestReadyAt: null,
+        },
+      };
+    } catch (error) {
+      notificationOutbox = {
+        verified: false,
+        detail: error instanceof Error && /42501|authentication_required/.test(error.message)
+          ? 'identite_systeme_refusee'
+          : 'sonde_en_erreur',
+      };
+    }
+  }
   // En mode diagnostic, la readiness est rouge tant que l'identité effective
   // ne prouve pas le rôle applicatif sans privilèges de contournement RLS.
   const identitySafe = !wantIdentity || databaseIdentityIsSafe(databaseIdentity);
@@ -95,14 +196,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       configurationOnly: true,
       services,
       identityTokens: jetonsIdentite,
+      identitySysteme: jetonsSysteme,
       ...(databaseIdentity ? { databaseIdentity } : {}),
+      ...(notificationOutbox ? { notificationOutbox } : {}),
     });
   }
 
   const probes = await runLiveProbes();
   // Le collecteur d'erreurs est souhaitable, pas bloquant : son absence degrade
   // l'exploitation, elle n'empeche pas de servir.
-  const blocking = [probes.database, probes.privateStorage, probes.antivirus, probes.email, probes.alerting];
+  // Alerting is optional: a missing or unreachable collector degrades
+  // observability but must not block document, identity, or email workflows.
+  const blocking = [probes.database, probes.privateStorage, probes.antivirus, probes.email];
   const ready = configured_ && blocking.every((probe) => probe.reachable) && identitySafe;
   return json(res, ready ? 200 : 503, {
     schema: 'tracefab-p2-readiness-v1',
@@ -111,6 +216,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     services,
     probes,
     identityTokens: jetonsIdentite,
+    identitySysteme: jetonsSysteme,
     ...(databaseIdentity ? { databaseIdentity } : {}),
+    ...(notificationOutbox ? { notificationOutbox } : {}),
   });
 }

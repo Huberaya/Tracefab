@@ -34,6 +34,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { execFileSync } from 'node:child_process';
 import { exigeAssistance, preparerAppartenance } from './lib/migrations_assistees.mjs';
+import { exigeBailWorker } from './lib/migrations_worker_temporaire.mjs';
 import pg from 'pg';
 import { requireThrowawayDb } from './lib/require-throwaway-db.mjs';
 import { creerBaseEphemere, verrouillerCluster, filetDeNettoyage } from './lib/ephemeral-db.mjs';
@@ -293,10 +294,50 @@ try {
       const { revoques } = await preparerAppartenance(mig, d, ownerName);
       if (revoques.length) console.log(`     préparation ${d} : appartenance retirée de ${revoques.join(', ')}`);
     }
+    // SIX MIGRATIONS EXIGENT LE BAIL `tracefab_worker` DANS LEUR TRANSACTION.
+    //
+    // `scripts/migrer_fidelement.mjs` l'accorde depuis la connexion
+    // administrative (`TF_ADMIN_URL`), le verifie, pose
+    // `tracefab.worker_membership_managed = 'true'`, applique la migration, puis
+    // revoque AVANT COMMIT. Ce banc applique les migrations lui-meme — il doit
+    // intercaler ses mesures d'ACL entre deux fichiers — et doit donc reproduire
+    // ce preambule, sinon il ne mesure pas la chaine que le runner execute : il
+    // mesure un etat que le deploiement ne produit jamais.
+    //
+    // Mesure du 2026-11-12 : sans ce preambule, la suite s'arretait sur
+    // `20261028120100_worker_identity_not_forgeable` (P0001
+    // worker_membership_must_be_managed_by_runner) apres 8 assertions vertes.
+    // La liste des six est CLOSE et partagee avec le runner
+    // (`lib/migrations_worker_temporaire.mjs`) : le banc ne peut ni en oublier
+    // une, ni s'en accorder une de plus.
+    //
+    // TOPOLOGIE DE CE BANC : la chaine est appliquee par le PROPRIETAIRE de la
+    // base (`postgres`, superutilisateur), pas par `tracefab_migrator` — ce banc
+    // mesure les ACL du role applicatif, pas l'identite de migration (c'est
+    // `test:p106:rejouabilite-chaine` qui mesure cela, avec admin et migrateur
+    // non-SUPERUSER). Pour un superutilisateur `pg_has_role(..., 'SET')` est
+    // toujours vrai : la seule chose a reproduire ici est donc la DECLARATION du
+    // runner, `tracefab.worker_membership_managed`, posee dans la transaction et
+    // jamais hors d'elle. Le GRANT/REVOKE du bail est mesure par les bancs qui
+    // ont une identite de migration non privilegiee.
+    //
+    // Mesure du 2026-11-12 : sans cette declaration, la suite s'arretait sur
+    // `20261028120100_worker_identity_not_forgeable` (P0001
+    // worker_membership_must_be_managed_by_runner) apres 8 assertions vertes.
+    // La liste des six est CLOSE et partagee avec le runner
+    // (`lib/migrations_worker_temporaire.mjs`) : le banc ne peut ni en oublier
+    // une, ni s'en accorder une de plus.
+    const bailWorker = exigeBailWorker(d);
     await mig.query('BEGIN');
-    try { await mig.query(sql); await mig.query('COMMIT'); }
+    try {
+      if (bailWorker) {
+        await mig.query("SET LOCAL tracefab.worker_membership_managed = 'true'");
+      }
+      await mig.query(sql);
+      await mig.query('COMMIT');
+    }
     catch (e) {
-      await mig.query('ROLLBACK');
+      await mig.query('ROLLBACK').catch(() => {});
       console.log(`  ECHEC migration ${d} : ${e.code} ${String(e.message).split('\n')[0]}`);
       await mig.end();
       sortie = SORTIE_DEFAUT;

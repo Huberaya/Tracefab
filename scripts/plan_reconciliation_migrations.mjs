@@ -30,7 +30,7 @@ const lireSql = (n) => readFileSync(join(dossier, n, 'migration.sql'), 'utf8');
 const rejouable = (n) => {
   const sql = lireSql(n);
   // Une migration est NON rejouable si elle cree un objet sans garde.
-  const creationsNues = [...sql.matchAll(/CREATE\s+TABLE\s+(?!IF\s+NOT\s+EXISTS)/gi)];
+  const creationsNues = [...sql.matchAll(/CREATE\s+(?:TABLE|ROLE|USER|SCHEMA|TYPE)\s+(?!IF\s+NOT\s+EXISTS)/gi)];
   const policyNues = [...sql.matchAll(/CREATE\s+POLICY\s+(?!IF\s+NOT\s+EXISTS)/gi)];
   const typeNus = [...sql.matchAll(/CREATE\s+TYPE\s+(?!IF\s+NOT\s+EXISTS)/gi)];
   return { rejouable: creationsNues.length + policyNues.length + typeNus.length === 0,
@@ -39,12 +39,13 @@ const rejouable = (n) => {
 
 // --- 1. La liste exacte, par categorie ------------------------------------
 const absentes = Object.keys(ECARTS).filter((n) => ECARTS[n].historique === 'ABSENTE');
-const annulees = Object.keys(ECARTS).filter((n) => ECARTS[n].historique === 'ANNULEE');
+const annulees = Object.keys(ECARTS).filter((n) =>
+  ECARTS[n].historique === 'ANNULEE' && !ECARTS[n].tentative_annulee_reprise_reussie);
 const horsBande = Object.keys(HORS_BANDE);
 // Meme regle derivee que la matrice : posterieure au releve, ni ecart ni hors bande.
 const nouvellesNoms = migrations.filter((n) => !ECARTS[n] && !HORS_BANDE[n] && n > BORNE_RELEVE);
 const NOUVELLES = Object.fromEntries(nouvellesNoms.map((n) => [n, true]));
-const appliquees = migrations.filter((n) => !ECARTS[n] && !HORS_BANDE[n] && !NOUVELLES[n]);
+const appliquees = migrations.filter((n) => (!ECARTS[n] || ECARTS[n].tentative_annulee_reprise_reussie) && !HORS_BANDE[n] && !NOUVELLES[n]);
 
 /**
  * L'action, deduite de DEUX faits seulement : ce que l'historique dit, et ce
@@ -63,9 +64,10 @@ function actionDe(nom) {
   const effets = e.effets[0];      // MESURE | DEDUIT | NON PROUVE
 
   if (nom === '20261028150000_reconcile_plm_erp_sync_job_policies') {
-    return { action: 'APPLIQUER SEULE', preuve: '4 politiques mesurees au lieu de 2',
-      risque: 'faible et borne : additive, idempotente, gardes fail-closed ; si la base ne ressemble pas a l attendu elle REFUSE et arrete la suite (c est voulu)',
-      prerequis: 'aucun (ne depend d aucune autre migration)' };
+    return { action: 'APPLIQUER SEULE (IDEMPOTENTE)',
+      preuve: 'la lecture Production du 11/11 trouve exactement les deux politiques canoniques attendues',
+      risque: 'aucun changement attendu sur les deux politiques canoniques ; la migration refuse tout nom ou nombre inattendu et ne supprime que les deux anciennes politiques surnuméraires si elles existent',
+      prerequis: 'sonde fraîche des deux noms, commandes et prédicats canoniques juste avant l’application' };
   }
   if (nom === '20261028120000_runtime_function_registry') {
     return { action: 'APPLIQUER EN PREMIER', preuve: 'table lue ABSENTE en production',
@@ -73,9 +75,25 @@ function actionDe(nom) {
       prerequis: 'releve du catalogue juste avant, et confirmation que la table est toujours absente' };
   }
   if (effets === 'MESURE' || effets === 'DEDUIT') {
-    return { action: 'RESOLVE --APPLIED SUR PREUVE', preuve: e.effets[1],
-      risque: 'aucun DDL rejoue ; documente un etat deja present sans le modifier',
-      prerequis: 'sonde confirmant les effets au moment de l execution' };
+    const catalogue = c?.catalogue ?? '';
+    if (/^ABSENT MESURE/.test(catalogue)) {
+      return { action: 'APPLIQUER SEULE APRES PREFLIGHT',
+        preuve: e.effets[1],
+        risque: r.rejouable
+          ? 'migration rejouable ; appliquer après confirmation fraîche de l absence de l effet'
+          : 'migration non rejouable ; une seule tentative autorisée après confirmation fraîche que l objet ciblé est absent',
+        prerequis: 'rejouer la sonde Production immédiatement avant application et vérifier la propriété/les privilèges requis' };
+    }
+    if (/^PRESENT MESURE/.test(catalogue)) {
+      if (r.rejouable) {
+        return { action: 'APPLIQUER SEULE (IDEMPOTENTE)', preuve: e.effets[1],
+          risque: 'l effet est déjà conforme ; la migration idempotente ne doit rien modifier et réconcilie le journal par Prisma',
+          prerequis: 'sonde fraîche confirmant l état et contrôle du SQL idempotent' };
+      }
+      return { action: 'STOP — AUCUN RESOLVE AUTORISE', preuve: e.effets[1],
+        risque: 'effet déjà présent et migration non rejouable ; aucune modification de _prisma_migrations autorisée',
+        prerequis: 'corriger le fichier avec une garde vérifiée ou obtenir une décision explicite distincte' };
+    }
   }
   // Effets NON PROUVES : le plan ne peut pas trancher a l avance, il porte donc
   // DEUX branches explicites, choisies par la sonde et par elle seule.
@@ -108,6 +126,7 @@ const INTERDIT = [
   [/UPDATE\s+_prisma_migrations/i, 'UPDATE sur _prisma_migrations'],
   [/DELETE\s+FROM\s+_prisma_migrations/i, 'DELETE sur _prisma_migrations'],
   [/resolve\s+--rolled-back/i, 'resolve --rolled-back (ferait rejouer un fichier non rejouable)'],
+  [/resolve\s+--applied/i, 'resolve --applied (modifie _prisma_migrations, interdit par le mandat)'],
   [/migrate\s+deploy(?!.*seule)/i, 'migrate deploy global'],
 ];
 
@@ -117,11 +136,6 @@ function controler(ls, ms, hb) {
   for (const l of ls) {
     for (const [re, quoi] of INTERDIT) {
       if (re.test(`${l.action} ${l.risque}`)) erreurs.push(`${l.nom} : action interdite — ${quoi}`);
-    }
-    // Un resolve --applied sans sonde ni preuve nommee est une affirmation gratuite.
-    if (/RESOLVE --APPLIED/.test(l.action) && !/SONDE/.test(l.action)
-        && (!l.preuve || /^(aucune mesure|effets NON PROUVES)/.test(l.preuve))) {
-      erreurs.push(`${l.nom} : resolve --applied sans preuve nommee`);
     }
     if (!ms.includes(l.nom)) erreurs.push(`${l.nom} : cite mais absent du depot`);
   }
@@ -165,7 +179,7 @@ if (process.argv.includes('--autotest')) {
       (l) => { l[0] = { ...l[0], action: 'resolve --rolled-back' }; }],
     ['deploy global',
       (l) => { l[0] = { ...l[0], action: 'migrate deploy' }; }],
-    ['resolve --applied sans preuve',
+    ['resolve --applied (même sur preuve)',
       (l) => { l[0] = { ...l[0], action: 'RESOLVE --APPLIED SUR PREUVE', preuve: 'effets NON PROUVES' }; }],
     ['ordre inverse (registre apres 120100)',
       (l) => { const i = l.findIndex((x) => x.nom.startsWith('20261028120000'));
@@ -206,8 +220,8 @@ if (markdown) {
   for (const n of horsBande) console.log(`| \`${n}\` | ${HORS_BANDE[n].join(', ')} |`);
   console.log('\n## 3. Interdits du plan, verifies\n');
   console.log('Le generateur refuse : `UPDATE`/`DELETE` sur `_prisma_migrations`,');
-  console.log('`resolve --rolled-back`, `deploy` global, `resolve --applied` sans preuve nommee.');
-  console.log('`resolve --applied` n ecrit aucune ligne de migration : il documente un etat deja la.\n');
+  console.log('`resolve --rolled-back`, `resolve --applied` (même sur preuve), `deploy` global.');
+  console.log('`resolve --applied` ecrit dans `_prisma_migrations` : il est donc interdit ici, même sur preuve.\n');
   console.log(`Controles : ${erreurs.length === 0 ? 'aucune violation' : erreurs.join(' ; ')}`);
 } else {
   console.log(`migrations du depot : ${migrations.length}`);

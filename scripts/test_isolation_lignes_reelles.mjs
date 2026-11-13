@@ -33,6 +33,7 @@ import pg from 'pg';
 import { sslDepuisUrl } from './lib/pg-ssl.mjs';
 import { requireThrowawayDb } from './lib/require-throwaway-db.mjs';
 import { creerBaseEphemere, verrouillerCluster } from './lib/ephemeral-db.mjs';
+import { appliquerCommeLeRunner } from './lib/appliquer_chaine_comme_le_runner.mjs';
 import { TABLES_ECRITURE_DIRECTE } from './lib/tracefab_app_role.mjs';
 
 const RACINE = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -136,8 +137,13 @@ let appliquees = 0;
 for (const d of dossiers) {
   const sql = fs.readFileSync(path.join(RACINE, 'prisma', 'migrations', d, 'migration.sql'), 'utf8');
   if (!sql.trim() || sql.trim() === '-- This is an empty migration.') continue;
+  // Comme le runner : transaction par migration, et declaration du bail worker
+  // quand la migration l'exige. Sans cela, la chaine s'arrete sur
+  // `worker_membership_must_be_managed_by_runner` et tout ce qui suit tombe en
+  // 25P02 — mesure du 2026-11-12, alors que ce banc mesurait deja l'isolation
+  // sur une base incomplete.
   try {
-    await mig.query(sql);
+    await appliquerCommeLeRunner(mig, d, sql);
     appliquees += 1;
   } catch (e) {
     console.log(`    MIGRATION EN ECHEC ${d} — ${e.code} ${String(e.message).split('\n')[0]}`);
