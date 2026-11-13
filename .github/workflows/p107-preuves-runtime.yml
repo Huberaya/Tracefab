@@ -111,24 +111,30 @@ jobs:
           # `?sha=` est IGNORE par cette API (mesure du 2026-11-13 : la reponse
           # contient tous les deploiements recents). On filtre donc le SHA
           # NOUS-MEMES, sur la liste paginee.
-          ids="$(curl -sS -H "Authorization: Bearer $GH_TOKEN_DEPLOIEMENTS" \
-            -H 'Accept: application/vnd.github+json' \
-            "https://api.github.com/repos/$DEPOT/deployments?per_page=100" \
-            | SHA="$SHA_CANDIDAT" node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{const a=JSON.parse(s);const cible=process.env.SHA;console.log((Array.isArray(a)?a:[]).filter(d=>d.sha===cible).map(d=>d.id).join(" "))})')"
-          if [ -z "$ids" ]; then
-            echo "::error::Aucun deploiement Preview pour le SHA $SHA_CANDIDAT. Rien a prouver : on n invente pas d URL."
-            exit 1
-          fi
+          #
+          # Et on ATTEND : Vercel cree le deploiement une vingtaine de secondes
+          # apres le push, alors que ce job demarre en quelques secondes. Sans
+          # attente bornee, on concluait « aucun deploiement » sur un SHA que
+          # Vercel deployait vingt secondes plus tard.
           url=""
-          for id in $ids; do
-            candidate="$(curl -sS -H "Authorization: Bearer $GH_TOKEN_DEPLOIEMENTS" \
+          for essai in $(seq 1 40); do
+            ids="$(curl -sS -H "Authorization: Bearer $GH_TOKEN_DEPLOIEMENTS" \
               -H 'Accept: application/vnd.github+json' \
-              "https://api.github.com/repos/$DEPOT/deployments/$id/statuses" \
-              | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{const a=JSON.parse(s);const ok=(Array.isArray(a)?a:[]).find(x=>x.state==="success"&&x.environment_url);console.log(ok?ok.environment_url:"")})')"
-            if [ -n "$candidate" ]; then url="$candidate"; break; fi
+              "https://api.github.com/repos/$DEPOT/deployments?per_page=100" \
+              | SHA="$SHA_CANDIDAT" node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{const a=JSON.parse(s);const cible=process.env.SHA;console.log((Array.isArray(a)?a:[]).filter(d=>d.sha===cible).map(d=>d.id).join(" "))})')"
+            for id in $ids; do
+              candidate="$(curl -sS -H "Authorization: Bearer $GH_TOKEN_DEPLOIEMENTS" \
+                -H 'Accept: application/vnd.github+json' \
+                "https://api.github.com/repos/$DEPOT/deployments/$id/statuses" \
+                | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{const a=JSON.parse(s);const ok=(Array.isArray(a)?a:[]).find(x=>x.state==="success"&&x.environment_url);console.log(ok?ok.environment_url:"")})')"
+              if [ -n "$candidate" ]; then url="$candidate"; break; fi
+            done
+            if [ -n "$url" ]; then break; fi
+            echo "essai $essai/40 : pas encore de deploiement success pour $SHA_CANDIDAT — attente 15 s"
+            sleep 15
           done
           if [ -z "$url" ]; then
-            echo "::error::Le SHA $SHA_CANDIDAT a des deploiements mais aucun statut success avec URL. Preuve impossible."
+            echo "::error::Aucun deploiement Preview en succes pour le SHA $SHA_CANDIDAT apres 10 min. Rien a prouver : on n invente pas d URL."
             exit 1
           fi
           echo "URL Preview rattachee au SHA : $url"
