@@ -113,6 +113,20 @@ let roleExecutant = roleReel;
 let urlMigrator = null;
 let roleJetableCree = null;
 
+// L'administrateur de banc doit pointer sur la base JETABLE, jamais sur la base
+// de travail : sinon E1 echoue a mi-chaine (LE REFUS tombe sur la migration 62,
+// que E1 n'a alors jamais appliquee) et E3 croit mesurer un refus de preflight.
+function urlAdminSurBanc() {
+  const fournie = (process.env.TF_ADMIN_URL || '').trim();
+  const u = new URL(fournie || urlAdmin);
+  u.pathname = `/${baseTravail}`;
+  if (!fournie) {
+    u.username = adminBancs;
+    u.password = mdpAdminBancs;
+  }
+  return u.toString();
+}
+
 function urlPour(role, motDePasse) {
   const u = new URL(urlBase.toString());
   u.username = role;
@@ -169,7 +183,21 @@ try {
   // schéma `public` qui lui appartient.
   adminBancs = 'tf_d6_admin';
   mdpAdminBancs = `adm_${baseTravail.slice(-6)}`;
-  const mdpMigrateurBancs = `mig_${baseTravail.slice(-6)}`;
+  // LE MOT DE PASSE DU MIGRATEUR DOIT ETRE POSE DANS LES DEUX CAS.
+  //
+  // Il est utilise plus bas pour OUVRIR la session du migrateur. Quand
+  // `TF_ADMIN_URL` est fourni, le bloc de provisionnement ci-dessous est
+  // entierement saute — donc le mot de passe restait celui, inconnu, du role
+  // deja present, et la chaine echouait en `auth_failed` AVANT la premiere
+  // migration. Mesure du 2026-11-13 : E1 tombait, puis E2 sur « relation
+  // _prisma_migrations does not exist » — le symptome, pas la cause.
+  //
+  // On reprend donc le mot de passe de l'environnement quand il est fourni
+  // (c'est celui que le cluster connait), et on le pose avec l'autorite
+  // administrative dont on dispose. Le role reste le meme : ce n'est pas une
+  // elevation, c'est la session qui doit pouvoir s'ouvrir.
+  const mdpMigrateurBancs = (process.env.TF_MIGRATOR_PASSWORD || '').trim()
+    || `mig_${baseTravail.slice(-6)}`;
   if (!(process.env.TF_ADMIN_URL || '').trim()) {
     await admin.query(`DO $$ BEGIN
         IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = '${adminBancs}') THEN
@@ -191,6 +219,13 @@ try {
     await admin.query(`GRANT tracefab_worker TO ${adminBancs} WITH ADMIN TRUE, SET FALSE, INHERIT FALSE`);
     await admin.query(`GRANT tracefab_migrator TO ${adminBancs} WITH ADMIN TRUE, SET FALSE, INHERIT FALSE`);
     adminBancsCree = true;
+  } else {
+    // `TF_ADMIN_URL` fourni : on ne cree aucun role, mais la session du
+    // migrateur doit pouvoir s'ouvrir avec le mot de passe qu'on va utiliser.
+    // L'administrateur du cluster en est capable (`CREATEROLE`).
+    await admin.query(
+      `ALTER ROLE tracefab_migrator WITH LOGIN CREATEROLE NOCREATEDB BYPASSRLS NOSUPERUSER INHERIT PASSWORD ${admin.escapeLiteral(mdpMigrateurBancs)}`,
+    );
   }
   // Prérequis d'administration que la production installe et que le migrateur
   // ne peut pas poser lui-même.
@@ -210,9 +245,7 @@ try {
     ...process.env,
     DATABASE_URL: urlPour('tracefab_migrator', mdpMigrateurBancs).toString(),
     TF_ALLOW_WRITE: 'oui',
-    ...(process.env.TF_ADMIN_URL ? {} : {
-      TF_ADMIN_URL: `postgresql://${adminBancs}:${mdpAdminBancs}@${new URL(urlAdmin).host}/${baseTravail}`,
-    }),
+    TF_ADMIN_URL: urlAdminSurBanc(),
   };
   const jusquA = spawnSync(process.execPath, ['scripts/migrer_fidelement.mjs', '--jusqu-a', DERNIERE_APPLIQUEE], {
     env: envChaine,

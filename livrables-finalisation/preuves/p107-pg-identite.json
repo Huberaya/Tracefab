@@ -1,0 +1,90 @@
+{
+  "schema": "tracefab-p107-pg-identite-v1",
+  "horodatage": "2026-11-13T00:58:33.242Z",
+  "cible": "postgresql://***@127.0.0.1:5432/tracefab_runtime",
+  "role": "tracefab_app",
+  "mesure": {
+    "current_user": "tracefab_app",
+    "session_user": "tracefab_app",
+    "database": "tracefab_runtime",
+    "bypasses_rls": false,
+    "is_superuser": false,
+    "privileged_memberships": "{}"
+  },
+  "resultats": [
+    {
+      "id": "C4.1",
+      "libelle": "current_user = session_user — aucune prise de role residuelle",
+      "verdict": "PASS",
+      "detail": "tracefab_app / tracefab_app"
+    },
+    {
+      "id": "C4.2",
+      "libelle": "le role effectif n est PAS superutilisateur",
+      "verdict": "PASS",
+      "detail": "false"
+    },
+    {
+      "id": "C4.3",
+      "libelle": "le role effectif ne CONTOURNE pas les RLS",
+      "verdict": "PASS",
+      "detail": "false"
+    },
+    {
+      "id": "C4.4",
+      "libelle": "aucune appartenance transitive a un role privilegie",
+      "verdict": "PASS",
+      "detail": "[]"
+    },
+    {
+      "id": "C4.5",
+      "libelle": "le role effectif est le role applicatif",
+      "verdict": "PASS",
+      "detail": "tracefab_app"
+    },
+    {
+      "id": "C4.6",
+      "libelle": "le role effectif ne peut PAS prendre tracefab_migrator ni tracefab_worker",
+      "verdict": "PASS",
+      "detail": "aucun"
+    },
+    {
+      "id": "C4.7",
+      "libelle": "les tables applicatives portent une RLS active",
+      "verdict": "PASS",
+      "detail": "53/54"
+    },
+    {
+      "id": "C4.8",
+      "libelle": "les tables applicatives portent une RLS FORCEE (proprietaire inclus)",
+      "verdict": "PASS",
+      "detail": "53 forcee(s)"
+    },
+    {
+      "id": "C4.9",
+      "libelle": "contexte tenant A : aucune ligne de B visible",
+      "verdict": "PASS",
+      "detail": "0 ligne(s) de l autre locataire"
+    },
+    {
+      "id": "C4.10",
+      "libelle": "contexte tenant B : aucune ligne de A visible",
+      "verdict": "PASS",
+      "detail": "0 ligne(s)"
+    },
+    {
+      "id": "C4.11",
+      "libelle": "le contexte tenant ne survit PAS a la transaction (portee locale)",
+      "verdict": "PASS",
+      "detail": "valeur residuelle=\"\""
+    },
+    {
+      "id": "C4.12",
+      "libelle": "le role applicatif ne peut pas creer de table",
+      "verdict": "PASS",
+      "detail": "25006 cannot execute CREATE TABLE in a read-only transaction"
+    }
+  ],
+  "echecs": 0,
+  "nature": "complement-local — PAS la preuve runtime C4 (celle-ci exige le processus Vercel deploye)"
+}
