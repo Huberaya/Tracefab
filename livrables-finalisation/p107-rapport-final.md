@@ -1,8 +1,18 @@
 # P10.7 — Rapport final
 
 **Branche imposée** : `release/p107-runtime-production-20261110`
-**SHA livré et testé** : `16f3cf2` — CI **4/4 verte** sur ce SHA exact
-**Preuve publiée** : branche `preuves/p107-16f3cf2`
+**Dernier SHA vérifié** : `f72b880` — CI **4/4 verte** sur ce SHA exact
+**Preuve publiée** : branche `preuves/p107-f72b880`
+**PR** : #129 (ouverte vers `main`, **non fusionnée** — aucune autorisation de fusion)
+
+**Comment lire ce SHA.** Ce rapport est un fichier versionné : chaque
+correction du rapport produit un nouveau commit, donc un nouveau SHA. La
+vérification de CI est donc faite **sur le SHA qui précède la présente
+révision du rapport**. Le SHA réellement livré est celui de la tête de
+`release/p107-runtime-production-20261110` ; le rapport est exact si et
+seulement si la CI y est verte, et cette vérification est refaite après chaque
+correction du rapport. Aucune affirmation de ce document ne repose sur un SHA
+antérieur à une correction de code.
 **Date de la mesure** : 2026-11-16
 
 ## Décision
@@ -108,7 +118,7 @@ Le job écrivain est **séparé** du job de mesure, conformément au contrôle H
 la politique maison : un job qui détient `contents: write` ne doit exécuter
 aucun code du dépôt. Le jeton d'écriture n'existe que dans ce job.
 
-**Preuve** : branche `preuves/p107-16f3cf2` (SHA livré), contenu lisible par
+**Preuve** : branche `preuves/p107-f72b880` (SHA livré), contenu lisible par
 l'API GitHub — plus par un blob store inaccessible. Cinq branches de preuves
 ont été produites au fil des corrections ; toutes sont consultables.
 
