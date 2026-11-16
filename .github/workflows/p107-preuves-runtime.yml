@@ -267,6 +267,7 @@ jobs:
           TF_BASE: ${{ env.TF_BASE }}
           SHA_ATTENDU: ${{ github.event.inputs.sha_attendu || github.sha }}
           TRACEFAB_RUNTIME_PROBE_TOKEN: ${{ secrets.TRACEFAB_RUNTIME_PROBE_TOKEN }}
+          VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
           CONTEXTE_BRANCHE_AUTORISEE: ${{ github.event.inputs.branche_deployee || github.ref_name }}
           TF_ENV_DECLARE: Preview
         run: node scripts/preuve_runtime_p107.mjs
@@ -301,7 +302,12 @@ jobs:
           git add -f "$f"
           if git diff --cached --quiet; then echo "preuves identiques"; exit 0; fi
           git commit -q -m "preuves(p107): resultat runtime ${GITHUB_SHA:0:7}"
-          git push origin "HEAD:preuves/p107-${GITHUB_SHA:0:7}"
+          # `persist-credentials: false` laisse le depot SANS identifiants : un
+          # `git push` nu echoue alors par « could not read Username »
+          # (mesure du 2026-11-16, run 43850436311). On fournit l URL
+          # authentifiee au moment du push UNIQUEMENT, sans l'ecrire sur disque.
+          git push "https://x-access-token:${GH_TOKEN_PREUVES}@github.com/${GITHUB_REPOSITORY}.git" \
+            "HEAD:preuves/p107-${GITHUB_SHA:0:7}"
 
       - name: Publier les preuves dans le journal du job
         # L'artefact est la trace durable, mais il n'est pas toujours

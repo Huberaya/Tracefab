@@ -82,7 +82,11 @@ async function appel(url, entetes = {}) {
   const debut = Date.now();
   let r;
   try {
-    r = await fetch(url, { headers: entetes, redirect: 'manual' });
+    const h = { ...entetes };
+    // En-tete OFFICIEL de Vercel (Protection Bypass for Automation). Jamais
+    // journalise, jamais affiche : il ne sort que vers l'hote sonde.
+    if (BYPASS) h['x-vercel-protection-bypass'] = BYPASS;
+    r = await fetch(url, { headers: h, redirect: 'manual' });
   } catch (e) {
     // Un reseau injoignable n'est PAS un refus du runtime : on le dit, plutot
     // que de laisser remonter une exception qui ressemblerait a un plantage.
@@ -92,10 +96,27 @@ async function appel(url, entetes = {}) {
   const texte = await r.text();
   let corps = null;
   try { corps = JSON.parse(texte); } catch { /* corps non JSON : garde le texte brut */ }
-  return { statut: r.status, corps, texte, ms: Date.now() - debut };
+  return { statut: r.status, corps, texte, ms: Date.now() - debut, entetes: r.headers };
 }
 
 const URL_SONDE = `${BASE}/api/internal/p2/readiness?identity=1`;
+
+/**
+ * Une reponse de Vercel Authentication n'est PAS une reponse de l'application.
+ *
+ * Mesure du 2026-11-16 (run 43850436311) : la Preview repond 302 vers
+ * vercel.com/sso-api. Les trois verdicts C3 tombaient alors en FAIL, ce qui
+ * laissait croire a un defaut du jeton alors que la requete n'atteignait
+ * jamais l'application. Confondre les deux origines est exactement l'erreur
+ * que ce detecteur existe pour empecher.
+ */
+const BYPASS = (process.env.VERCEL_AUTOMATION_BYPASS_SECRET || '').trim();
+
+const estProtectionVercel = (r) =>
+  r.statut === 302 || r.statut === 401 && /vercel_auth_enabled|Protected by Vercel Authentication/i.test(r.texte || '')
+  || /vercel\.com\/sso-api/i.test(r.entetes?.location || '');
+
+let accesBloque = false;
 console.log(`  cible   : ${BASE}`);
 console.log(`  sha     : ${SHA || '(inconnu)'}`);
 console.log(`  sonde   : ${URL_SONDE}\n`);
@@ -103,6 +124,13 @@ console.log(`  sonde   : ${URL_SONDE}\n`);
 // C3 d'abord : une sonde que tout le monde ouvre ne prouve rien.
 async function mesurerRefusSansJeton() {
   const sansJeton = await appel(URL_SONDE);
+  if (estProtectionVercel(sansJeton)) {
+    accesBloque = true;
+    console.log(`  INDETERMINE C3.1-C3.3 — la Preview est derriere Vercel Authentication (HTTP ${sansJeton.statut}).`);
+    console.log('    La requete n atteint PAS l application : ce n est pas un refus applicatif.');
+    console.log('    Voie officielle : Protection Bypass for Automation (x-vercel-protection-bypass).');
+    return;
+  }
   verdict('C3.1', 'appel SANS jeton de sonde -> refuse', sansJeton.statut === 401,
     `HTTP ${sansJeton.statut}`);
 
@@ -132,6 +160,26 @@ if (!JETON) {
   console.log(`  DIAGNOSTIC 2/5 branche        : ${contexte}`);
 } else {
   console.log('\n  DIAGNOSTIC 1/5 secret         : PRESENT dans le processus (valeur non lue)');
+}
+
+// Acces bloque par Vercel Authentication : aucun verdict applicatif n'est
+// possible. On s'arrete en le nommant, sans convertir l'inconnu en echec ni
+// en succes.
+if (accesBloque) {
+  refus([
+    'SITUATION 5/5 — deploiement INACCESSIBLE : Vercel Authentication intercepte la requete.',
+    '',
+    '  La Preview repond 302 vers vercel.com/sso-api. Les requetes n atteignent',
+    '  PAS l application : C1, C2, C3 et C4 ne peuvent pas etre mesurees.',
+    '',
+    '  Ce n est ni un echec de l application, ni une preuve. C est un acces manquant.',
+    '',
+    '  Voie officielle, sans desactiver la protection :',
+    '    Vercel > Settings > Deployment Protection > Protection Bypass > Generate',
+    '    puis exposer la valeur comme secret VERCEL_READONLY_TOKEN ou',
+    '    VERCEL_AUTOMATION_BYPASS_SECRET, et la passer dans l en-tete',
+    '    x-vercel-protection-bypass (deja implemente dans scripts/sonde_preview.mjs).',
+  ].join('\n'));
 }
 
 // Au-dela, il faut le jeton. On s'arrete en le nommant — apres avoir ecrit les
