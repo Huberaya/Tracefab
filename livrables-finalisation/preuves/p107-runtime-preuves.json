@@ -1,0 +1,8 @@
+{
+  "schema": "tracefab-p107-preuves-runtime-v1",
+  "horodatage": "2026-11-16T13:23:38.877Z",
+  "sha": "e1fee4085b1c3a018e5684f4d9ba6d66d3128028",
+  "cible": "https://tracefab-jkbd8hg66-baya-ibraimmayoanouedu-8164s-projects.vercel.app",
+  "arret": "cible injoignable (https://tracefab-jkbd8hg66-baya-ibraimmayoanouedu-8164s-projects.vercel.app/api/internal/p2/readiness?identity=1) : BYPASS is not defined. Aucun verdict n est rendu sur une cible qu on n a pas atteinte.",
+  "resultats": []
+}
