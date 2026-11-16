@@ -86,6 +86,12 @@ jobs:
         # frontiere dans les deux sens, contre-epreuves comprises.
         run: npm run test:detection-vercel
 
+      - name: Script de preuve runtime — bout en bout hors ligne
+        # Le script avait raison de refuser de conclure sur une cible non
+        # atteinte, mais la cause etait une ReferenceError. Ce test exerce le
+        # chemin reel et exige qu aucune exception ne se deguise en diagnostic.
+        run: npm run test:preuve-runtime-bout-en-bout
+
       - name: Sondeur de Preview valide hors ligne
         run: npm run test:sonde-preview
 

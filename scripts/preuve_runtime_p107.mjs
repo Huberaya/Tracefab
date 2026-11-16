@@ -37,6 +37,10 @@ import { dirname } from 'node:path';
 
 const BASE = (process.env.TF_BASE || '').trim().replace(/\/+$/, '');
 const JETON = (process.env.TRACEFAB_RUNTIME_PROBE_TOKEN || '').trim();
+// En-tete OFFICIEL de Vercel (Protection Bypass for Automation). Il ne sert
+// qu'a franchir la protection de la Preview, qui reste ACTIVE : on ne desactive
+// rien. La valeur n'est jamais journalisee.
+const BYPASS = (process.env.VERCEL_AUTOMATION_BYPASS_SECRET || '').trim();
 const SHA = (process.env.GITHUB_SHA || process.env.TF_SHA || '').trim();
 const SORTIE = 'livrables-finalisation/preuves/p107-runtime-preuves.json';
 
