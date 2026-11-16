@@ -316,7 +316,11 @@ jobs:
     if: always() && github.event_name == 'push'
     runs-on: ubuntu-latest
     permissions:
+      # Declarer `contents: write` remet TOUTES les autres portees a `none`.
+      # Sans `actions: read`, `gh run download` echoue par exit 4
+      # (« authentication required ») — mesure du run 43870575863.
       contents: write
+      actions: read
     steps:
       - name: Recuperer le depot
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.2.2
