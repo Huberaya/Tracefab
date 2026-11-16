@@ -7,6 +7,9 @@
 **NO-GO — BLOCAGE EXTERNE**, sur un unique point : le secret de sonde n'existe
 dans aucune portée atteignable.
 
+**État final : `main` = `ec59d27983d49d34d1d0b3a46ceb451e0af57a1a`.**
+PR #121, #127 et #128 fusionnées. CI 4/4 verte **sur `main` après fusion**.
+
 Tout le reste est **corrigé, testé et intégré**. C1–C4 ne sont pas obtenues, et
 ne peuvent pas l'être sans une action qui exige des permissions que la session
 d'analyse n'a pas.
@@ -15,9 +18,11 @@ d'analyse n'a pas.
 
 | Élément | Vérifié |
 | --- | --- |
-| `origin/main` | `af42d723bfb9889a14b58f9eb7cc500e091ae727` ✅ conforme |
+| `origin/main` (départ) | `af42d723bfb9889a14b58f9eb7cc500e091ae727` ✅ conforme |
+| `origin/main` (final) | `ec59d27983d49d34d1d0b3a46ceb451e0af57a1a` ✅ après #128 |
 | PR #127 | `MERGED` le 2026-11-13T11:57:25Z, commit `af42d72` |
 | PR #121 | `MERGED` le 2026-11-13T11:57:27Z, **même commit** `af42d72` |
+| PR #128 | `MERGED`, commit `ec59d27` — rapport final + diagnostic exhaustif |
 | Corrections sur `main` | les 5 fichiers clés **PRÉSENTS** |
 | CI post-fusion | 4/4 verte sur `af42d72` |
 
