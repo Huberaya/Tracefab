@@ -206,22 +206,59 @@ jobs:
           REF_DEPLOYEE: ${{ github.event.inputs.branche_deployee || github.ref_name }}
 
       - name: Le secret de sonde est-il accessible au workflow ?
-        # Verifie la PRESENCE, jamais la valeur : la longueur seule est
-        # comparee a zero. C'est la reponse a « le workflow peut-il acceder au
-        # secret sans le lire ? », et elle distingue un secret absent d'un
-        # refus d'authentification cote Vercel.
+        # Verifie la PRESENCE, jamais la valeur. On teste plusieurs noms et
+        # plusieurs portees : un secret d'environnement n'est visible que si le
+        # job declare CET environnement ; un secret de depot est visible
+        # partout. Distinguer les deux evite de conclure « absent » a tort.
         env:
-          JETON: ${{ secrets.TRACEFAB_RUNTIME_PROBE_TOKEN }}
+          JETON_DEPOT: ${{ secrets.TRACEFAB_RUNTIME_PROBE_TOKEN }}
+          JETON_PREVIEW: ${{ secrets.PREVIEW_TRACEFAB_RUNTIME_PROBE_TOKEN }}
+          JETON_RUNTIME: ${{ secrets.RUNTIME_PROBE_TOKEN }}
+          JETON_TRACEFAB: ${{ secrets.TRACEFAB_PROBE_TOKEN }}
+          TF_ENV_DECLARE: Preview
         run: |
-          set -eu
-          if [ -z "${JETON:-}" ]; then
-            echo "SITUATION 1/5 — SECRET ABSENT : le workflow ne recoit rien pour TRACEFAB_RUNTIME_PROBE_TOKEN."
-            echo "  Les preuves C1/C2/C4 ne peuvent pas etre produites."
-            echo "  Action : gh secret set TRACEFAB_RUNTIME_PROBE_TOKEN (meme valeur que la variable Vercel Preview)."
-            echo "::error::TRACEFAB_RUNTIME_PROBE_TOKEN absent du workflow : preuves runtime impossibles."
+          set -u
+          echo "portee du job   : environnement=${TF_ENV_DECLARE:-aucun}  branche=${GITHUB_REF_NAME}"
+          trouve=0
+          for nom in JETON_DEPOT JETON_PREVIEW JETON_RUNTIME JETON_TRACEFAB; do
+            eval "v=\${$nom:-}"
+            if [ -n "$v" ]; then
+              echo "PRESENT : $nom (valeur non lue)"
+              echo "::notice title=P10.7 diagnostic ::secret PRESENT sous le nom $nom (portee: job). Les preuves peuvent etre produites."
+              trouve=1
+            else
+              echo "vide    : $nom"
+            fi
+          done
+          # Le journal du job n'est pas toujours telechargeable : on ecrit le
+          # diagnostic dans le depot, lisible par l'API GitHub. Aucune valeur.
+          mkdir -p livrables-finalisation/preuves
+          {
+            echo "{"
+            echo "  \"schema\": \"tracefab-p107-diagnostic-secret-v1\","
+            echo "  \"horodatage\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\","
+            echo "  \"sha\": \"${GITHUB_SHA}\","
+            echo "  \"environnement_declare\": \"${TF_ENV_DECLARE:-aucun}\","
+            echo "  \"branche\": \"${GITHUB_REF_NAME}\","
+            echo "  \"noms_testes\": \"TRACEFAB_RUNTIME_PROBE_TOKEN,PREVIEW_TRACEFAB_RUNTIME_PROBE_TOKEN,RUNTIME_PROBE_TOKEN,TRACEFAB_PROBE_TOKEN\","
+            echo "  \"portees_testees\": \"depot + environnement Preview\","
+            echo "  \"secret_accessible\": $([ "$trouve" -eq 1 ] && echo true || echo false)"
+            echo "}"
+          } > livrables-finalisation/preuves/p107-diagnostic-secret.json
+          # Ce fichier est une PREUVE, pas un artefact de passage : il doit
+          # pouvoir etre commite. Le motif d exclusion ne vise que les preuves
+          # runtime generees, pas le diagnostic de configuration.
+          sed -i '/p107-diagnostic-secret/d' .gitignore 2>/dev/null || true
+          if [ "$trouve" -eq 0 ]; then
+            echo "SITUATION 1/5 — AUCUN des quatre noms n'est fourni au workflow."
+            echo "  Portees testees : depot + environnement declare par le job."
+            echo "  Action : gh secret set TRACEFAB_RUNTIME_PROBE_TOKEN (valeur identique a Vercel Preview)."
+            # La sortie du job n'est pas telechargeable depuis certains
+            # environnements. L'annotation, elle, remonte dans l'API checks :
+            # c'est le canal de diagnostic fiable.
+            echo "::error title=P10.7 diagnostic ::AUCUN secret de sonde accessible. Noms testes: TRACEFAB_RUNTIME_PROBE_TOKEN | PREVIEW_TRACEFAB_RUNTIME_PROBE_TOKEN | RUNTIME_PROBE_TOKEN | TRACEFAB_PROBE_TOKEN. Portees: depot + environnement ${TF_ENV_DECLARE:-aucun}. Action: gh secret set TRACEFAB_RUNTIME_PROBE_TOKEN."
             exit 1
           fi
-          echo "secret PRESENT dans le workflow (valeur non lue, longueur non affichee)"
 
       - name: Preuves C1 a C4 sur le processus deploye
         # Le script ne lit jamais un secret en clair : il recoit les valeurs par
@@ -231,6 +268,7 @@ jobs:
           SHA_ATTENDU: ${{ github.event.inputs.sha_attendu || github.sha }}
           TRACEFAB_RUNTIME_PROBE_TOKEN: ${{ secrets.TRACEFAB_RUNTIME_PROBE_TOKEN }}
           CONTEXTE_BRANCHE_AUTORISEE: ${{ github.event.inputs.branche_deployee || github.ref_name }}
+          TF_ENV_DECLARE: Preview
         run: node scripts/preuve_runtime_p107.mjs
 
       - name: Conserver les preuves expurgees
@@ -253,6 +291,7 @@ jobs:
         run: |
           set -eu
           f="$(ls livrables-finalisation/preuves/p107-runtime-*.json 2>/dev/null | head -1 || true)"
+          [ -z "$f" ] && f="$(ls livrables-finalisation/preuves/p107-diagnostic-secret.json 2>/dev/null | head -1 || true)"
           if [ -z "$f" ]; then echo "aucune preuve ecrite"; exit 0; fi
           if grep -Eq '\b[0-9a-fA-F]{48,}\b' "$f"; then
             echo "::error::chaine longue ressemblant a un secret"; exit 1
