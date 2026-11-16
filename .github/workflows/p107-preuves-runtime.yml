@@ -335,7 +335,12 @@ jobs:
         # ne publie rien serait un faux temoin (defaut mesure au run
         # 43869430514, ou la reconstitution par le journal a echoue en silence).
         env:
-          GH_TOKEN_PREUVES: ${{ secrets.GITHUB_TOKEN }}
+          # `gh` ne lit QUE `GH_TOKEN` (ou `GITHUB_TOKEN`). Lui donner
+          # `GH_TOKEN_PREUVES` le laisse non authentifie et produit un exit 4
+          # « authentication required » — mesure du run 43871621158, alors que
+          # l'artefact existait bien (765 octets) et que `actions: read` etait
+          # accorde. C'etait un defaut de nom de variable, pas de permission.
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -eu
           mkdir -p livrables-finalisation/preuves
