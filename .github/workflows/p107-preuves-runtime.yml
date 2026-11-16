@@ -243,6 +243,10 @@ jobs:
             echo "  \"secret_accessible\": $([ "$trouve" -eq 1 ] && echo true || echo false)"
             echo "}"
           } > livrables-finalisation/preuves/p107-diagnostic-secret.json
+          # Ce fichier est une PREUVE, pas un artefact de passage : il doit
+          # pouvoir etre commite. Le motif d exclusion ne vise que les preuves
+          # runtime generees, pas le diagnostic de configuration.
+          sed -i '/p107-diagnostic-secret/d' .gitignore 2>/dev/null || true
           if [ "$trouve" -eq 0 ]; then
             echo "SITUATION 1/5 — AUCUN des quatre noms n'est fourni au workflow."
             echo "  Portees testees : depot + environnement declare par le job."
