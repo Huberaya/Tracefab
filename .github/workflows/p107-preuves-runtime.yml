@@ -260,6 +260,27 @@ jobs:
             exit 1
           fi
 
+      - name: Quel moyen d'acces autorise est disponible ?
+        # Ne lit JAMAIS une valeur : seule sa presence est evaluee, par
+        # comparaison de longueur. Un vide est un fait, pas un jugement.
+        env:
+          SONDE: ${{ secrets.TRACEFAB_RUNTIME_PROBE_TOKEN }}
+          BYPASS: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
+          LECTURE: ${{ secrets.VERCEL_READONLY_TOKEN }}
+        run: |
+          set -eu
+          etat() { if [ -n "${1:-}" ]; then echo "PRESENT"; else echo "ABSENT"; fi; }
+          echo "::notice title=P10.7 acces::sonde=$(etat "$SONDE") bypass=$(etat "$BYPASS") vercel_token=$(etat "$LECTURE")"
+          # Trois issues nommees, aucune supposition.
+          if [ -n "${BYPASS:-}" ]; then
+            echo "acces officiel: x-vercel-protection-bypass utilisable (Vercel Authentication reste active)."
+          elif [ -n "${LECTURE:-}" ]; then
+            echo "un jeton Vercel est present mais le contournement d'automatisation ne l'est pas :"
+            echo "il faut TRACEFAB_AUTOMATION_BYPASS, genere dans Deployment Protection."
+          else
+            echo "aucun contournement disponible : la Preview reste inaccessible par une voie automatisee."
+          fi
+
       - name: Preuves C1 a C4 sur le processus deploye
         # Le script ne lit jamais un secret en clair : il recoit les valeurs par
         # l'environnement et n'imprime que des verdicts et des champs derives.
