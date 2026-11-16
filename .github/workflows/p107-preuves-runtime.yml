@@ -206,22 +206,35 @@ jobs:
           REF_DEPLOYEE: ${{ github.event.inputs.branche_deployee || github.ref_name }}
 
       - name: Le secret de sonde est-il accessible au workflow ?
-        # Verifie la PRESENCE, jamais la valeur : la longueur seule est
-        # comparee a zero. C'est la reponse a « le workflow peut-il acceder au
-        # secret sans le lire ? », et elle distingue un secret absent d'un
-        # refus d'authentification cote Vercel.
+        # Verifie la PRESENCE, jamais la valeur. On teste plusieurs noms et
+        # plusieurs portees : un secret d'environnement n'est visible que si le
+        # job declare CET environnement ; un secret de depot est visible
+        # partout. Distinguer les deux evite de conclure « absent » a tort.
         env:
-          JETON: ${{ secrets.TRACEFAB_RUNTIME_PROBE_TOKEN }}
+          JETON_DEPOT: ${{ secrets.TRACEFAB_RUNTIME_PROBE_TOKEN }}
+          JETON_PREVIEW: ${{ secrets.PREVIEW_TRACEFAB_RUNTIME_PROBE_TOKEN }}
+          JETON_RUNTIME: ${{ secrets.RUNTIME_PROBE_TOKEN }}
+          JETON_TRACEFAB: ${{ secrets.TRACEFAB_PROBE_TOKEN }}
         run: |
-          set -eu
-          if [ -z "${JETON:-}" ]; then
-            echo "SITUATION 1/5 — SECRET ABSENT : le workflow ne recoit rien pour TRACEFAB_RUNTIME_PROBE_TOKEN."
-            echo "  Les preuves C1/C2/C4 ne peuvent pas etre produites."
-            echo "  Action : gh secret set TRACEFAB_RUNTIME_PROBE_TOKEN (meme valeur que la variable Vercel Preview)."
-            echo "::error::TRACEFAB_RUNTIME_PROBE_TOKEN absent du workflow : preuves runtime impossibles."
+          set -u
+          echo "portee du job   : environnement=${TF_ENV_DECLARE:-aucun}  branche=${GITHUB_REF_NAME}"
+          trouve=0
+          for nom in JETON_DEPOT JETON_PREVIEW JETON_RUNTIME JETON_TRACEFAB; do
+            eval "v=\${$nom:-}"
+            if [ -n "$v" ]; then
+              echo "PRESENT : $nom (valeur non lue)"
+              trouve=1
+            else
+              echo "vide    : $nom"
+            fi
+          done
+          if [ "$trouve" -eq 0 ]; then
+            echo "SITUATION 1/5 — AUCUN des quatre noms n'est fourni au workflow."
+            echo "  Portees testees : depot + environnement declare par le job."
+            echo "  Action : gh secret set TRACEFAB_RUNTIME_PROBE_TOKEN (valeur identique a Vercel Preview)."
+            echo "::error::aucun secret de sonde accessible au workflow : preuves runtime impossibles."
             exit 1
           fi
-          echo "secret PRESENT dans le workflow (valeur non lue, longueur non affichee)"
 
       - name: Preuves C1 a C4 sur le processus deploye
         # Le script ne lit jamais un secret en clair : il recoit les valeurs par
@@ -231,6 +244,7 @@ jobs:
           SHA_ATTENDU: ${{ github.event.inputs.sha_attendu || github.sha }}
           TRACEFAB_RUNTIME_PROBE_TOKEN: ${{ secrets.TRACEFAB_RUNTIME_PROBE_TOKEN }}
           CONTEXTE_BRANCHE_AUTORISEE: ${{ github.event.inputs.branche_deployee || github.ref_name }}
+          TF_ENV_DECLARE: Preview
         run: node scripts/preuve_runtime_p107.mjs
 
       - name: Conserver les preuves expurgees
