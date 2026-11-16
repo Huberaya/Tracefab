@@ -1,7 +1,8 @@
 # P10.7 — Rapport final
 
 **Branche imposée** : `release/p107-runtime-production-20261110`
-**SHA testé** : `347c969` (voir §9 pour la vérification finale sur le SHA livré)
+**SHA livré et testé** : `16f3cf2` — CI **4/4 verte** sur ce SHA exact
+**Preuve publiée** : branche `preuves/p107-16f3cf2`
 **Date de la mesure** : 2026-11-16
 
 ## Décision
@@ -47,6 +48,9 @@ blocage n'est pas là : il est dans l'accès à la Preview.
 | 4 | `exit 4` « authentication required » alors que l'artefact existait — `gh` ne lit que `GH_TOKEN` | **CORRIGÉE ET PROUVÉE** |
 | 5 | Job de publication **vert sans rien publier** (reconstitution par le journal échouant en silence) | **CORRIGÉE ET PROUVÉE** |
 | 6 | Accès automatisé à la Preview | **BLOQUÉE** — action humaine requise (§5) |
+| 7 | `BYPASS is not defined` — constante supprimée lors du refactor de la détection ; preuve publiée sur `a7f34aa` | **CORRIGÉE ET PROUVÉE** |
+| 8 | Code de sortie : un accès manquant (3) se confondait avec un échec de mesure (2) | **CORRIGÉE ET PROUVÉE** |
+| 9 | Test « hors ligne » dépendant du DNS — vert en local, rouge en CI | **CORRIGÉE ET PROUVÉE** |
 
 ---
 
@@ -72,7 +76,24 @@ Comportement : un 302, ou un corps/en-tête portant `vercel_auth_enabled` /
 **dont des contre-épreuves** (401 applicatif, 200, 503). Sans elles, une vraie
 régression de sécurité pourrait être masquée par la détection.
 
-### 3.2 Publication des preuves — Phase B
+### 3.2 Défauts trouvés par mes propres tests
+
+Trois défauts supplémentaires ont été révélés **par l'exécution**, pas par
+lecture — ce qui justifie de les nommer :
+
+1. **`BYPASS is not defined`.** La preuve publiée sur `a7f34aa` portait cette
+   ReferenceError à la place du diagnostic. Le script avait raison de refuser
+   de conclure, mais une exception ressemblait à un arrêt légitime. Un test
+   exige désormais qu'aucune ReferenceError ne se déguise en diagnostic.
+2. **Code de sortie ambigu.** `CODE_ACCES_ABSENT = 3` était défini mais jamais
+   utilisé : un accès manquant sortait en 2, comme un échec de mesure. Les deux
+   situations sont maintenant distinctes.
+3. **Un test « hors ligne » dépendait du DNS.** Il joignait `preuve-test.vercel.app` :
+   vert en local, rouge en CI, parce que le runner résout le wildcard Vercel et
+   pas l'environnement d'analyse. Il injecte désormais une doublure, et il est
+   vérifié DNS neutralisé — aucune requête n'est émise.
+
+### 3.3 Publication des preuves — Phase B
 
 Trois défauts successifs, chacun mesuré puis corrigé :
 
@@ -87,8 +108,9 @@ Le job écrivain est **séparé** du job de mesure, conformément au contrôle H
 la politique maison : un job qui détient `contents: write` ne doit exécuter
 aucun code du dépôt. Le jeton d'écriture n'existe que dans ce job.
 
-**Preuve** : branche `preuves/p107-8cfa890`, commit `b6aa204`, contenu lisible
-par l'API GitHub — plus par un blob store inaccessible.
+**Preuve** : branche `preuves/p107-16f3cf2` (SHA livré), contenu lisible par
+l'API GitHub — plus par un blob store inaccessible. Cinq branches de preuves
+ont été produites au fil des corrections ; toutes sont consultables.
 
 La preuve publiée elle-même dit la vérité : `"arret": "SITUATION 5/5 —
 deploiement INACCESSIBLE…"`, `"resultats": []`. Un fichier vide de verdicts
