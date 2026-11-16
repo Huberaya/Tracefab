@@ -228,6 +228,21 @@ jobs:
               echo "vide    : $nom"
             fi
           done
+          # Le journal du job n'est pas toujours telechargeable : on ecrit le
+          # diagnostic dans le depot, lisible par l'API GitHub. Aucune valeur.
+          mkdir -p livrables-finalisation/preuves
+          {
+            echo "{"
+            echo "  \"schema\": \"tracefab-p107-diagnostic-secret-v1\","
+            echo "  \"horodatage\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\","
+            echo "  \"sha\": \"${GITHUB_SHA}\","
+            echo "  \"environnement_declare\": \"${TF_ENV_DECLARE:-aucun}\","
+            echo "  \"branche\": \"${GITHUB_REF_NAME}\","
+            echo "  \"noms_testes\": \"TRACEFAB_RUNTIME_PROBE_TOKEN,PREVIEW_TRACEFAB_RUNTIME_PROBE_TOKEN,RUNTIME_PROBE_TOKEN,TRACEFAB_PROBE_TOKEN\","
+            echo "  \"portees_testees\": \"depot + environnement Preview\","
+            echo "  \"secret_accessible\": $([ "$trouve" -eq 1 ] && echo true || echo false)"
+            echo "}"
+          } > livrables-finalisation/preuves/p107-diagnostic-secret.json
           if [ "$trouve" -eq 0 ]; then
             echo "SITUATION 1/5 — AUCUN des quatre noms n'est fourni au workflow."
             echo "  Portees testees : depot + environnement declare par le job."
@@ -267,6 +282,7 @@ jobs:
         run: |
           set -eu
           f="$(ls livrables-finalisation/preuves/p107-runtime-*.json 2>/dev/null | head -1 || true)"
+          [ -z "$f" ] && f="$(ls livrables-finalisation/preuves/p107-diagnostic-secret.json 2>/dev/null | head -1 || true)"
           if [ -z "$f" ]; then echo "aucune preuve ecrite"; exit 0; fi
           if grep -Eq '\b[0-9a-fA-F]{48,}\b' "$f"; then
             echo "::error::chaine longue ressemblant a un secret"; exit 1
