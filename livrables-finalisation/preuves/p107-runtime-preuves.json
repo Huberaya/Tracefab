@@ -1,0 +1,8 @@
+{
+  "schema": "tracefab-p107-preuves-runtime-v1",
+  "horodatage": "2026-11-16T14:15:32.757Z",
+  "sha": "c339a2c5f06d6a14003bbd179f82680a3bcfbd55",
+  "cible": "https://tracefab-o4d483q2m-baya-ibraimmayoanouedu-8164s-projects.vercel.app",
+  "arret": "SITUATION 5/5 — deploiement INACCESSIBLE : Vercel Authentication intercepte la requete.\n\n  La Preview repond 302 vers vercel.com/sso-api. Les requetes n atteignent\n  PAS l application : C1, C2, C3 et C4 ne peuvent pas etre mesurees.\n\n  Ce n est ni un echec de l application, ni une preuve. C est un acces manquant.\n\n  Voie officielle, sans desactiver la protection :\n    Vercel > Settings > Deployment Protection > Protection Bypass > Generate\n    puis exposer la valeur comme secret VERCEL_READONLY_TOKEN ou\n    VERCEL_AUTOMATION_BYPASS_SECRET, et la passer dans l en-tete\n    x-vercel-protection-bypass (deja implemente dans scripts/sonde_preview.mjs).",
+  "resultats": []
+}
