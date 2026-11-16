@@ -215,6 +215,7 @@ jobs:
           JETON_PREVIEW: ${{ secrets.PREVIEW_TRACEFAB_RUNTIME_PROBE_TOKEN }}
           JETON_RUNTIME: ${{ secrets.RUNTIME_PROBE_TOKEN }}
           JETON_TRACEFAB: ${{ secrets.TRACEFAB_PROBE_TOKEN }}
+          TF_ENV_DECLARE: Preview
         run: |
           set -u
           echo "portee du job   : environnement=${TF_ENV_DECLARE:-aucun}  branche=${GITHUB_REF_NAME}"
