@@ -223,6 +223,7 @@ jobs:
             eval "v=\${$nom:-}"
             if [ -n "$v" ]; then
               echo "PRESENT : $nom (valeur non lue)"
+              echo "::notice title=P10.7 diagnostic ::secret PRESENT sous le nom $nom (portee: job). Les preuves peuvent etre produites."
               trouve=1
             else
               echo "vide    : $nom"
@@ -251,7 +252,10 @@ jobs:
             echo "SITUATION 1/5 — AUCUN des quatre noms n'est fourni au workflow."
             echo "  Portees testees : depot + environnement declare par le job."
             echo "  Action : gh secret set TRACEFAB_RUNTIME_PROBE_TOKEN (valeur identique a Vercel Preview)."
-            echo "::error::aucun secret de sonde accessible au workflow : preuves runtime impossibles."
+            # La sortie du job n'est pas telechargeable depuis certains
+            # environnements. L'annotation, elle, remonte dans l'API checks :
+            # c'est le canal de diagnostic fiable.
+            echo "::error title=P10.7 diagnostic ::AUCUN secret de sonde accessible. Noms testes: TRACEFAB_RUNTIME_PROBE_TOKEN | PREVIEW_TRACEFAB_RUNTIME_PROBE_TOKEN | RUNTIME_PROBE_TOKEN | TRACEFAB_PROBE_TOKEN. Portees: depot + environnement ${TF_ENV_DECLARE:-aucun}. Action: gh secret set TRACEFAB_RUNTIME_PROBE_TOKEN."
             exit 1
           fi
 
