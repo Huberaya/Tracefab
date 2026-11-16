@@ -324,22 +324,22 @@ jobs:
           persist-credentials: false
 
       - name: Recuperer les preuves expurgees
-        # L'artefact est deja expurge par le job de mesure. On le reconstitue
-        # depuis le journal du job de mesure, qui contient le fichier entre les
-        # deux marqueurs, afin de ne dependre d'aucune action hors liste
-        # blanche (controle K).
+        # L'artefact est deja expurge par le job de mesure (qui n'a aucun droit
+        # d'ecriture). On le recupere par l'API GitHub plutot que par
+        # `actions/download-artifact`, hors liste blanche du controle K.
+        # ECHEC BRUYANT si l'artefact manque : un job de publication vert qui
+        # ne publie rien serait un faux temoin (defaut mesure au run
+        # 43869430514, ou la reconstitution par le journal a echoue en silence).
         env:
-          GH_TOKEN_LECTURE: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN_PREUVES: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -eu
           mkdir -p livrables-finalisation/preuves
-          gh run view "${GITHUB_RUN_ID}" --log --job "$(gh run view "${GITHUB_RUN_ID}" --json jobs \
-            --jq '.jobs[]|select(.name|test("Interroger"))|.databaseId')" 2>/dev/null \
-            | sed -n '/DEBUT PREUVES EXPURGEES/,/FIN PREUVES EXPURGEES/p' \
-            | sed '1d;$d' | sed 's/^[^ ]* //' > /tmp/preuves.json || true
-          if [ -s /tmp/preuves.json ]; then
-            cp /tmp/preuves.json "livrables-finalisation/preuves/p107-runtime-${GITHUB_SHA:0:7}.json"
-          fi
+          gh run download "${GITHUB_RUN_ID}" -n p107-preuves-runtime \
+            -D livrables-finalisation/preuves --repo "${GITHUB_REPOSITORY}"
+          ls -l livrables-finalisation/preuves/
+          compgen -G "livrables-finalisation/preuves/p107-runtime-*.json" > /dev/null \
+            || { echo "::error::artefact de preuve absent — rien a publier"; exit 1; }
 
       - name: Committer et pousser les preuves
         env:
@@ -347,7 +347,7 @@ jobs:
         run: |
           set -eu
           f="$(ls livrables-finalisation/preuves/p107-runtime-*.json 2>/dev/null | head -1 || true)"
-          if [ -z "$f" ]; then echo "aucune preuve publiee : le job de mesure n en a pas produit"; exit 0; fi
+          if [ -z "$f" ]; then echo "::error::aucune preuve a publier alors que le job ecrivain a ete lance"; exit 1; fi
           if grep -Eq '\b[0-9a-fA-F]{48,}\b' "$f"; then
             echo "::error::chaine longue ressemblant a un secret"; exit 1
           fi
