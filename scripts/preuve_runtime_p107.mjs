@@ -29,6 +29,10 @@
  * 2 si la cible ou la configuration interdit de conclure.
  */
 import { writeFileSync, mkdirSync } from 'node:fs';
+// Detection partagee avec scripts/sonde_preview.mjs : une seule definition de
+// « la requete a-t-elle atteint l'application ? », pour que les deux outils ne
+// puissent pas diverger sur cette frontiere.
+import { estProtectionVercel } from './detecter_protection_vercel.mjs';
 import { dirname } from 'node:path';
 
 const BASE = (process.env.TF_BASE || '').trim().replace(/\/+$/, '');
@@ -100,21 +104,6 @@ async function appel(url, entetes = {}) {
 }
 
 const URL_SONDE = `${BASE}/api/internal/p2/readiness?identity=1`;
-
-/**
- * Une reponse de Vercel Authentication n'est PAS une reponse de l'application.
- *
- * Mesure du 2026-11-16 (run 43850436311) : la Preview repond 302 vers
- * vercel.com/sso-api. Les trois verdicts C3 tombaient alors en FAIL, ce qui
- * laissait croire a un defaut du jeton alors que la requete n'atteignait
- * jamais l'application. Confondre les deux origines est exactement l'erreur
- * que ce detecteur existe pour empecher.
- */
-const BYPASS = (process.env.VERCEL_AUTOMATION_BYPASS_SECRET || '').trim();
-
-const estProtectionVercel = (r) =>
-  r.statut === 302 || r.statut === 401 && /vercel_auth_enabled|Protected by Vercel Authentication/i.test(r.texte || '')
-  || /vercel\.com\/sso-api/i.test(r.entetes?.location || '');
 
 let accesBloque = false;
 console.log(`  cible   : ${BASE}`);

@@ -79,6 +79,16 @@ jobs:
         # provoquer aucune requete metier.
         run: npm run test:active-tenant
 
+      - name: Frontiere entre Vercel Authentication et un refus de l'application
+        # Une requete interceptee par Vercel n'atteint pas l'application : la
+        # compter comme un refus applicatif produit un faux negatif (mesure du
+        # run 43850436311, ou un 302 est devenu un echec de C3). Ce test fixe la
+        # frontiere dans les deux sens, contre-epreuves comprises.
+        run: npm run test:detection-vercel
+
+      - name: Sondeur de Preview valide hors ligne
+        run: npm run test:sonde-preview
+
       - name: Commentaires de fin de ligne dans les routes compactees
         # Un commentaire `//` dans une route ecrite sur une ligne met en
         # commentaire tout le handler, sans erreur de compilation.
