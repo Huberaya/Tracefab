@@ -32,7 +32,7 @@ import { writeFileSync, mkdirSync } from 'node:fs';
 // Detection partagee avec scripts/sonde_preview.mjs : une seule definition de
 // « la requete a-t-elle atteint l'application ? », pour que les deux outils ne
 // puissent pas diverger sur cette frontiere.
-import { estProtectionVercel } from './detecter_protection_vercel.mjs';
+import { estProtectionVercel, CODE_ACCES_ABSENT } from './detecter_protection_vercel.mjs';
 import { dirname } from 'node:path';
 
 const BASE = (process.env.TF_BASE || '').trim().replace(/\/+$/, '');
@@ -55,6 +55,14 @@ function verdict(id, libelle, condition, detail) {
   return condition;
 }
 
+/**
+ * Arret du script. Le code de sortie distingue deux situations que rien ne doit
+ * confondre :
+ *   2 -> une mesure a echoue (l'application a repondu, mal) ;
+ *   3 -> aucun acces (la requete n'a pas atteint l'application).
+ * Un appelant qui lit le code sait ainsi s'il doit corriger l'application ou
+ * ouvrir un acces.
+ */
 function refus(message, code = 2) {
   console.error(`\n  ARRET — ${message}`);
   ecrire({ arret: message, resultats });
@@ -86,6 +94,20 @@ if (!/^https:\/\/[a-z0-9-]+(\.[a-z0-9-]+)*\.vercel\.app$/i.test(BASE)) {
 
 
 // --- Appels ----------------------------------------------------------------
+/**
+ * Point d'injection RESERVE AUX TESTS HORS LIGNE.
+ *
+ * Sans lui, un test ne peut eprouver le chemin reseau qu'en joignant un vrai
+ * hote — donc en dependant du DNS, et en devenant faux la ou le reseau differe
+ * (c'est exactement ce qui a fait echouer la CI le 2026-11-16 : le faux hote
+ * `.vercel.app` repondait depuis le runner et pas depuis l'analyse).
+ *
+ * La variable n'est lue que si elle est posee. Le script de preuve reel ne la
+ * pose jamais ; la CI non plus. Un test qui l'oublie echoue bruyamment, ce qui
+ * est preferable a un test qui passe pour une mauvaise raison.
+ */
+const FETCH_INJECTE = process.env.TF_PREUVE_FETCH_INJECTE || '';
+
 async function appel(url, entetes = {}) {
   const debut = Date.now();
   let r;
@@ -94,12 +116,14 @@ async function appel(url, entetes = {}) {
     // En-tete OFFICIEL de Vercel (Protection Bypass for Automation). Jamais
     // journalise, jamais affiche : il ne sort que vers l'hote sonde.
     if (BYPASS) h['x-vercel-protection-bypass'] = BYPASS;
-    r = await fetch(url, { headers: h, redirect: 'manual' });
+    r = FETCH_INJECTE
+      ? await (await import(FETCH_INJECTE)).fetchSimule(url, h)
+      : await fetch(url, { headers: h, redirect: 'manual' });
   } catch (e) {
     // Un reseau injoignable n'est PAS un refus du runtime : on le dit, plutot
     // que de laisser remonter une exception qui ressemblerait a un plantage.
     refus(`cible injoignable (${url}) : ${String(e.cause?.code || e.message).split('\n')[0]}. `
-      + 'Aucun verdict n est rendu sur une cible qu on n a pas atteinte.');
+      + 'Aucun verdict n est rendu sur une cible qu on n a pas atteinte.', CODE_ACCES_ABSENT);
   }
   const texte = await r.text();
   let corps = null;
@@ -172,7 +196,7 @@ if (accesBloque) {
     '    puis exposer la valeur comme secret VERCEL_READONLY_TOKEN ou',
     '    VERCEL_AUTOMATION_BYPASS_SECRET, et la passer dans l en-tete',
     '    x-vercel-protection-bypass (deja implemente dans scripts/sonde_preview.mjs).',
-  ].join('\n'));
+  ].join('\n'), CODE_ACCES_ABSENT);
 }
 
 // Au-dela, il faut le jeton. On s'arrete en le nommant — apres avoir ecrit les
