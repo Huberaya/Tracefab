@@ -281,34 +281,6 @@ jobs:
           if-no-files-found: warn
           retention-days: 30
 
-      - name: Publier les preuves sur la branche
-        # Les artefacts et les journaux passent par un blob store parfois
-        # inaccessible depuis l'environnement de relecture. Un commit sur une
-        # branche dediee rend la preuve lisible par l'API GitHub, donc par
-        # n'importe quel relecteur. Le fichier est deja expurge par le script.
-        if: always() && github.event_name == 'push'
-        env:
-          GH_TOKEN_PREUVES: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          set -eu
-          f="$(ls livrables-finalisation/preuves/p107-runtime-*.json 2>/dev/null | head -1 || true)"
-          [ -z "$f" ] && f="$(ls livrables-finalisation/preuves/p107-diagnostic-secret.json 2>/dev/null | head -1 || true)"
-          if [ -z "$f" ]; then echo "aucune preuve ecrite"; exit 0; fi
-          if grep -Eq '\b[0-9a-fA-F]{48,}\b' "$f"; then
-            echo "::error::chaine longue ressemblant a un secret"; exit 1
-          fi
-          git config user.name "tracefab-preuves"
-          git config user.email "preuves@tracefab.invalid"
-          git add -f "$f"
-          if git diff --cached --quiet; then echo "preuves identiques"; exit 0; fi
-          git commit -q -m "preuves(p107): resultat runtime ${GITHUB_SHA:0:7}"
-          # `persist-credentials: false` laisse le depot SANS identifiants : un
-          # `git push` nu echoue alors par « could not read Username »
-          # (mesure du 2026-11-16, run 43850436311). On fournit l URL
-          # authentifiee au moment du push UNIQUEMENT, sans l'ecrire sur disque.
-          git push "https://x-access-token:${GH_TOKEN_PREUVES}@github.com/${GITHUB_REPOSITORY}.git" \
-            "HEAD:preuves/p107-${GITHUB_SHA:0:7}"
-
       - name: Publier les preuves dans le journal du job
         # L'artefact est la trace durable, mais il n'est pas toujours
         # telechargeable (proxy, quota, blob store). Le journal du job l'est.
@@ -330,3 +302,64 @@ jobs:
             echo "::error::une chaine longue ressemblant a un secret figure dans les preuves"
             exit 1
           fi
+
+  publier-preuves:
+    # Job ECRIVAIN, volontairement separe du job de mesure.
+    #
+    # La politique maison (controle H) interdit qu'un job detenant
+    # `contents: write` execute du code du depot. Ce job ne fait donc que
+    # recuperer l'artefact deja produit et expurge, le committer et le pousser :
+    # aucun `npm`, `npx`, `node` n'y est appele. Le jeton d'ecriture n'existe
+    # que dans ce job, jamais dans celui qui interroge la Preview.
+    name: Publier les preuves (job ecrivain, sans execution de code)
+    needs: preuves-runtime
+    if: always() && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Recuperer le depot
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.2.2
+        with:
+          persist-credentials: false
+
+      - name: Recuperer les preuves expurgees
+        # L'artefact est deja expurge par le job de mesure. On le reconstitue
+        # depuis le journal du job de mesure, qui contient le fichier entre les
+        # deux marqueurs, afin de ne dependre d'aucune action hors liste
+        # blanche (controle K).
+        env:
+          GH_TOKEN_LECTURE: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -eu
+          mkdir -p livrables-finalisation/preuves
+          gh run view "${GITHUB_RUN_ID}" --log --job "$(gh run view "${GITHUB_RUN_ID}" --json jobs \
+            --jq '.jobs[]|select(.name|test("Interroger"))|.databaseId')" 2>/dev/null \
+            | sed -n '/DEBUT PREUVES EXPURGEES/,/FIN PREUVES EXPURGEES/p' \
+            | sed '1d;$d' | sed 's/^[^ ]* //' > /tmp/preuves.json || true
+          if [ -s /tmp/preuves.json ]; then
+            cp /tmp/preuves.json "livrables-finalisation/preuves/p107-runtime-${GITHUB_SHA:0:7}.json"
+          fi
+
+      - name: Committer et pousser les preuves
+        env:
+          GH_TOKEN_PREUVES: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -eu
+          f="$(ls livrables-finalisation/preuves/p107-runtime-*.json 2>/dev/null | head -1 || true)"
+          if [ -z "$f" ]; then echo "aucune preuve publiee : le job de mesure n en a pas produit"; exit 0; fi
+          if grep -Eq '\b[0-9a-fA-F]{48,}\b' "$f"; then
+            echo "::error::chaine longue ressemblant a un secret"; exit 1
+          fi
+          git config user.name "tracefab-preuves"
+          git config user.email "preuves@tracefab.invalid"
+          git add -f "$f"
+          if git diff --cached --quiet; then echo "preuves identiques"; exit 0; fi
+          git commit -q -m "preuves(p107): resultat runtime ${GITHUB_SHA:0:7}"
+          # `persist-credentials: false` laisse le depot SANS identifiants : un
+          # `git push` nu echoue par « could not read Username » (mesure du
+          # 2026-11-16, run 43850436311, exit 128). L URL authentifiee n'existe
+          # qu'au moment du push et n'est jamais ecrite sur disque.
+          git push "https://x-access-token:${GH_TOKEN_PREUVES}@github.com/${GITHUB_REPOSITORY}.git" \
+            "HEAD:preuves/p107-${GITHUB_SHA:0:7}"
+
