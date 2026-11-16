@@ -1,0 +1,26 @@
+# Diagnostic d'acces — LECTURE SEULE, aucune valeur affichee.
+# Mesure si le depot dispose d'un jeton Vercel permettant de generer l'en-tete
+# officiel `x-vercel-protection-bypass` (Protection Bypass for Automation).
+# Sans lui, la Preview repond 302 et aucune requete n'atteint l'application.
+name: P10.7 — sonde d'acces Preview
+on:
+  push:
+    branches:
+      - 'release/p107-runtime-production-20261110'
+permissions:
+  contents: read
+jobs:
+  acces:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Jeton Vercel disponible ?
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_READONLY_TOKEN }}
+        run: |
+          set -u
+          if [ -z "${VERCEL_TOKEN:-}" ]; then
+            echo "::error title=P10.7 Phase A ::VERCEL_READONLY_TOKEN ABSENT du depot — impossible de generer x-vercel-protection-bypass. La Preview repond 302 (Vercel Authentication) et C1-C4 restent inatteignables."
+            exit 1
+          fi
+          echo "::notice title=P10.7 Phase A ::VERCEL_READONLY_TOKEN PRESENT (valeur non lue) — la voie officielle Protection Bypass est ouverte."
