@@ -40,14 +40,27 @@ depuis cet état.
 Ce n'était pas un 403 à interpréter : j'ai construit une mesure directe dans le
 workflow, qui teste la **présence** sans jamais lire la valeur.
 
-| Portée testée | Noms testés | Résultat |
-| --- | --- | --- |
-| Dépôt | `TRACEFAB_RUNTIME_PROBE_TOKEN` | vide |
-| Environnement `Preview` (déclaré par le job) | idem | vide |
-| Dépôt + `Preview` | `PREVIEW_TRACEFAB_RUNTIME_PROBE_TOKEN` | vide |
-| Dépôt + `Preview` | `RUNTIME_PROBE_TOKEN` | vide |
-| Dépôt + `Preview` | `TRACEFAB_PROBE_TOKEN` | vide |
-| Organisation | — | inexistante (compte personnel, 404) |
+**Balayage exhaustif de tous les environnements GitHub** (run `43850436593`,
+matrice d'un job par environnement, lecture seule) :
+
+| Environnement | Résultat |
+| --- | --- |
+| *(aucun — portée dépôt)* | **AUCUN** |
+| `Preview` | **AUCUN** |
+| `Production` | **AUCUN** |
+| `tracefab-cleanroom` | **AUCUN** |
+| `tracefab-preproduction` | **AUCUN** |
+| `tracefab-clerk-test` | bloqué — branche non autorisée par la règle de protection |
+| `tracefab-p11-preview` | bloqué — branche non autorisée par la règle de protection |
+| Organisation | inexistante (compte personnel, 404) |
+
+Les deux environnements bloqués le sont **par leurs propres règles de
+protection** : ce workflow ne peut pas y accéder, et le secret n'y serait de
+toute façon pas utilisable pour P10.7.
+
+Noms testés à chaque portée : `TRACEFAB_RUNTIME_PROBE_TOKEN`,
+`PREVIEW_TRACEFAB_RUNTIME_PROBE_TOKEN`, `RUNTIME_PROBE_TOKEN`,
+`TRACEFAB_PROBE_TOKEN`.
 
 Annotation produite par le workflow (run `43848408548`, SHA `efae1a6`) :
 
@@ -63,8 +76,8 @@ confirmé par vous.
 ### Ce qui a été écarté, avec preuve
 
 - ❌ Secret au niveau dépôt — mesuré vide
-- ❌ Secret au niveau environnement `Preview` — mesuré vide, environnement
-  **déclaré** par le job
+- ❌ Secret dans **n'importe lequel** des 5 environnements accessibles — balayage
+  exhaustif, 5/5 vides
 - ❌ Mauvais nom (4 variantes testées)
 - ❌ Secret d'organisation — le compte n'a pas d'organisation
 - ❌ Lecture via l'API GitHub — 403 sur `secrets`, `public-key`,
