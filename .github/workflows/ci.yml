@@ -105,6 +105,13 @@ jobs:
         # execute, et contrat de variables d'environnement a jour.
         run: npm run test:production-readiness
 
+      - name: Ordre et unicite des migrations
+        # `prisma migrate` ordonne par nom de dossier. Deux migrations de meme
+        # horodatage voient leur ordre relatif fixe par l'alphabet, pas par le
+        # temps. Le depot en contient quatre paires, aucune avec dependance
+        # croisee — c'est mesure ici, et une cinquieme paire fera echouer.
+        run: npm run test:ordre-migrations
+
       - name: Historique des migrations — fail-closed
         run: npm run test:migration-history
 
