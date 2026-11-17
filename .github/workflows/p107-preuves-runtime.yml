@@ -276,7 +276,8 @@ jobs:
             echo "acces officiel: x-vercel-protection-bypass utilisable (Vercel Authentication reste active)."
           elif [ -n "${LECTURE:-}" ]; then
             echo "un jeton Vercel est present mais le contournement d'automatisation ne l'est pas :"
-            echo "il faut TRACEFAB_AUTOMATION_BYPASS, genere dans Deployment Protection."
+            echo "il faut VERCEL_AUTOMATION_BYPASS_SECRET, genere dans Deployment Protection"
+            echo "(procedure : docs/security/p107-acces-preview-vercel.md)."
           else
             echo "aucun contournement disponible : la Preview reste inaccessible par une voie automatisee."
           fi

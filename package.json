@@ -280,7 +280,8 @@
     "test:clerk-webhook": "node --import tsx scripts/test_clerk_webhook_runtime.mjs",
     "test:detection-vercel": "node scripts/test_detection_protection_vercel.mjs",
     "test:preuve-runtime-bout-en-bout": "node scripts/test_preuve_runtime_bout_en_bout.mjs",
-    "test:ordre-migrations": "node scripts/test_ordre_migrations_p107.mjs"
+    "test:ordre-migrations": "node scripts/test_ordre_migrations_p107.mjs",
+    "test:p107:oracle-signature": "node scripts/test_p107_oracle_signature_pglite.mjs"
   },
   "devDependencies": {
     "@electric-sql/pglite": "^0.5.12",

@@ -105,6 +105,14 @@ jobs:
         # execute, et contrat de variables d'environnement a jour.
         run: npm run test:production-readiness
 
+      - name: Oracle de signature — la cle HMAC est-elle inatteignable ?
+        # C4.13 a C4.20 executes sur PGlite, avec le schema ET l'ACL reels. Un
+        # role applicatif qui lirait tracefab_identity_cles, ou qui heriterait
+        # d'un role privilegie, se fabriquerait une signature valide et toute
+        # l'identite signee tomberait. La contre-epreuve C4.14bis verifie que la
+        # lecture reste refusee MEME avec SELECT accorde.
+        run: npm run test:p107:oracle-signature
+
       - name: Ordre et unicite des migrations
         # `prisma migrate` ordonne par nom de dossier. Deux migrations de meme
         # horodatage voient leur ordre relatif fixe par l'alphabet, pas par le
