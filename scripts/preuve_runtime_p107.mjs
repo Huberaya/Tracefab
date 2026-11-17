@@ -225,13 +225,57 @@ if (!JETON) {
   ].join('\n'));
 }
 
+/**
+ * Expurge un corps de reponse avant de le conserver.
+ *
+ * Un 503 de cette route est un DIAGNOSTIC, pas une absence de mesure : il dit
+ * que la configuration ou l'identite est rouge. Le jeter rendait la preuve
+ * muette — mesure du run 44074983675, ou `configurationSuffisante` et
+ * `identiteSaine` existaient dans la reponse mais etaient tronques a 120
+ * caracteres, donc inutilisables.
+ *
+ * On garde donc les champs de diagnostic, et on retire tout ce qui pourrait
+ * porter une valeur sensible : cles, jetons, URL, chaines longues. La liste est
+ * fermee (on garde ce qu'on nomme) plutot qu'ouverte (on retire ce qu'on
+ * connait) : un champ ajoute demain ne fuitera pas par oubli.
+ */
+function expurger(corps) {
+  if (!corps || typeof corps !== 'object') return null;
+  const garde = {};
+  // Champs de diagnostic nommes, tous non secrets par construction.
+  for (const cle of ['schema', 'ready', 'configurationOnly', 'configurationSuffisante',
+    'identiteSaine', 'identiteEcarts', 'services', 'identityTokens', 'identitySysteme',
+    'databaseIdentity', 'notificationOutbox', 'error']) {
+    if (cle in corps) garde[cle] = corps[cle];
+  }
+  const texte = JSON.stringify(garde);
+  // Garde-fou : aucune chaine longue, aucun motif de secret, aucune URL.
+  if (/\b[0-9a-fA-F]{48,}\b|postgres(ql)?:\/\/|eyJ[A-Za-z0-9_-]{10,}/.test(texte)) {
+    return { expurge: 'corps retire : motif ressemblant a un secret' };
+  }
+  return garde;
+}
+
 // La sonde reelle, avec le jeton legitime.
 const sonde = await appel(URL_SONDE, { 'x-tracefab-runtime-probe-token': JETON });
 if (sonde.statut !== 200) {
-  const detail = sonde.corps?.error || sonde.texte.slice(0, 120);
-  refus(`la sonde a rendu HTTP ${sonde.statut} (${detail}). `
-    + 'Une sonde non exploitable ne produit aucune preuve : 401 = jeton absent ou different '
-    + 'entre GitHub et Vercel ; 503 = runtime non pret.');
+  // Un 401 signifie que la requete n'a pas passe la porte de la sonde : la
+  // cible existe mais le jeton differe entre GitHub et Vercel. Un 503 signifie
+  // que la porte s'est ouverte et que le runtime se declare non pret — ce
+  // n'est PAS la meme chose, et le second est exploitable.
+  const corpsExpurge = expurger(sonde.corps);
+  ecrire({
+    arret: `sonde authentifiee -> HTTP ${sonde.statut}`,
+    interpretation: sonde.statut === 401
+      ? 'jeton refuse : la valeur de GitHub differe de celle de Vercel, ou la sonde est desactivee sur ce deploiement'
+      : sonde.statut === 503
+        ? 'la sonde est ouverte (le jeton est accepte) mais le runtime se declare NON PRET : voir corpsExpurge'
+        : 'statut inattendu',
+    corpsExpurge,
+    resultats,
+  });
+  console.error(`\n  ARRET — sonde authentifiee HTTP ${sonde.statut}. Corps expurge conserve dans ${SORTIE}.`);
+  process.exit(2);
 }
 
 const corps = sonde.corps || {};

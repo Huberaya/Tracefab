@@ -36,6 +36,20 @@ export async function fetchSimule(url) {
   if (scenario === 'app401') {
     return reponse(401, CORPS_REFUS);
   }
+  if (scenario === 'app503') {
+    // Forme reelle relevee au run 44074983675 (SHA c0f8d6f) : la sonde est
+    // ouverte, mais le runtime se declare non pret. Ce corps contient des
+    // champs de diagnostic UTILES, et aucun secret.
+    return reponse(503, {
+      schema: 'tracefab-p2-readiness-v1',
+      ready: false,
+      configurationOnly: true,
+      configurationSuffisante: false,
+      identiteSaine: true,
+      services: { privateStorage: { configured: false, missing: ['PRIVATE_STORAGE_ENDPOINT'] } },
+      identityTokens: { configured: false, mode: 'non_configure' },
+    });
+  }
   if (scenario === 'app200') {
     return reponse(200, {
       identite: 'tracefab_runtime',

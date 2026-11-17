@@ -5,6 +5,7 @@ import { storageConfig } from '../../_lib/storage.js';
 import { json, methodNotAllowed } from '../../_lib/http.js';
 import { runtimeProbeAuthorized, workerAuthorized, workerSecretConfigured } from '../../_lib/worker-auth.js';
 import { databaseIdentityIsSafe, probeDatabaseIdentity, runLiveProbes } from '../../_lib/readiness-probes.js';
+import { ecartIdentiteRuntime } from '../../_lib/identite-contrat.js';
 import { etatCleIdentite } from '../../_lib/identite-jeton.js';
 import { prisma } from '../../_lib/prisma.js';
 import { withTracefabWorkerContext } from '../../_lib/contexte-systeme.js';
@@ -189,11 +190,27 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   // ne prouve pas le rôle applicatif sans privilèges de contournement RLS.
   const identitySafe = !wantIdentity || databaseIdentityIsSafe(databaseIdentity);
 
+  // POURQUOI UN MOTIF, ET POURQUOI MAINTENANT
+  //
+  // Mesure du run 44074983675 (SHA c0f8d6f) : la sonde authentifiee rendait 503.
+  // Le corps tronque ne permettait pas de savoir si le refus venait de la
+  // CONFIGURATION (`configured_`) ou de l'IDENTITE (`identitySafe`). Deux
+  // causes, deux corrections opposees : on ne peut pas les confondre.
+  //
+  // `ecartIdentiteRuntime` ne rend que des ecarts lisibles — noms de roles,
+  // drapeaux booleens — jamais une cle, un mot de passe ni une URL. Il n'est
+  // expose que derriere l'authentification de sonde deja exigee ci-dessus, et
+  // seulement quand l'identite est ROUGE : un feu vert n'a pas a se justifier.
+  const identiteEcarts = wantIdentity && !identitySafe ? ecartIdentiteRuntime(databaseIdentity) : undefined;
+
   if (!live) {
     return json(res, configured_ && identitySafe ? 200 : 503, {
       schema: 'tracefab-p2-readiness-v1',
       ready: configured_ && identitySafe,
       configurationOnly: true,
+      configurationSuffisante: configured_,
+      identiteSaine: identitySafe,
+      ...(identiteEcarts ? { identiteEcarts } : {}),
       services,
       identityTokens: jetonsIdentite,
       identitySysteme: jetonsSysteme,

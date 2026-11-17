@@ -99,6 +99,21 @@ for (const [nom, r] of [['sso302', sso], ['app401', refus]]) {
     `aucune ReferenceError deguisee en diagnostic (${nom})`);
 }
 
+// --- 3 bis. Un 503 de diagnostic n'est pas une absence de mesure ------------
+// Mesure du run 44074983675 : la sonde etait OUVERTE (jeton accepte) mais
+// rendait 503, et la preuve ne conservait que 120 caracteres — donc rien
+// d'exploitable. Un 503 est un diagnostic : il doit etre conserve, expurge.
+// Le 503 survient APRES l'ouverture de la porte : il faut donc un jeton, comme
+// dans le cas reel du 2026-11-17 ou `bypass=PRESENT` et le jeton etait present.
+const s503 = await executer('app503', { TRACEFAB_RUNTIME_PROBE_TOKEN: 'jeton-de-test-non-secret' });
+verifier(s503.code === 2, 'un 503 de diagnostic donne le code d echec de mesure (2)', `code ${s503.code}`);
+verifier(/"corpsExpurge"/.test(s503.preuve), 'le corps du 503 est conserve dans la preuve');
+verifier(/"configurationSuffisante": false/.test(s503.preuve),
+  'le motif est lisible : configurationSuffisante=false',
+  s503.preuve.slice(0, 200));
+verifier(!/postgres(ql)?:\/\/|\b[0-9a-fA-F]{48,}\b/.test(s503.preuve),
+  'aucune chaine ressemblant a un secret dans la preuve du 503');
+
 // --- 4. Garde de cible : un runtime local n'est pas une preuve --------------
 const locale = await executer('app200', { TF_BASE: 'http://127.0.0.1:3000' });
 verifier(locale.code !== 0, 'une cible locale est refusee', `code ${locale.code}`);
