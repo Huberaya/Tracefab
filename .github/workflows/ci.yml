@@ -105,6 +105,19 @@ jobs:
         # execute, et contrat de variables d'environnement a jour.
         run: npm run test:production-readiness
 
+      - name: Falsification C2 — l identite systeme est-elle falsifiable ?
+        # 14 cas, dont 13 negatifs. Les scenarios vivaient dans
+        # preuve_c1c2c3_p107.mjs, qui exige PostgreSQL et ne tourne donc pas en
+        # CI : une regression de la verification n'aurait ete vue qu'a la
+        # campagne de preuve. Ici, seules les fonctions pures sont exercees.
+        run: npm run test:p107:falsification-c2
+
+      - name: Generateur de cle d identite — format et refus
+        # La procedure de generation vivait dans un message d erreur. Ce test
+        # fige le format attendu par le runtime (64 hex minuscules) et verifie
+        # que la valeur ne part jamais sur stderr.
+        run: npm run test:generer-cle-identite
+
       - name: Oracle de signature — la cle HMAC est-elle inatteignable ?
         # C4.13 a C4.20 executes sur PGlite, avec le schema ET l'ACL reels. Un
         # role applicatif qui lirait tracefab_identity_cles, ou qui heriterait
