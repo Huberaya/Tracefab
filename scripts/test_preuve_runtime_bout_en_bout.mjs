@@ -122,6 +122,10 @@ verifier(/"prisma_migrations_presente":\s*true/.test(s503.preuve),
   'le temoin de la base migree survit : il distingue base vide et base migree');
 verifier(/"fonction_posterieure_presente":\s*true/.test(s503.preuve),
   'le temoin de positionnement temporel survit : il distingue retard et trou');
+verifier(/"hote_empreinte":\s*"0123456789ab"/.test(s503.preuve),
+  'l empreinte d hote survit : elle rattache le deploiement a un hote sans le reveler');
+verifier(!/postgres(ql)?:\/\//.test(s503.preuve),
+  'identite_base ne reconstitue jamais l URL de connexion');
 
 // --- 4. Garde de cible : un runtime local n'est pas une preuve --------------
 const locale = await executer('app200', { TF_BASE: 'http://127.0.0.1:3000' });

@@ -51,7 +51,7 @@ export async function fetchSimule(url) {
       // Mesure du 2026-11-17 : la sonde publie l etat de la BASE meme quand la
       // cle runtime manque, pour que l operateur sache si provisionner est
       // necessaire ou si une version active existe deja.
-      baseIdentite: { table_presente: true, table_vue_par_pg_class: true, prisma_migrations_presente: true, tables_publiques: 87, fonction_posterieure_presente: true, rls_forcee: true, mode_strict: false },
+      baseIdentite: { table_presente: true, table_vue_par_pg_class: true, prisma_migrations_presente: true, tables_publiques: 87, fonction_posterieure_presente: true, identite_base: { base_oid: 16384, base_nom: 'neondb', hote_empreinte: '0123456789ab', hote_conforme: true, hote_attendu_declare: true }, rls_forcee: true, mode_strict: false },
     });
   }
   if (scenario === 'app200') {

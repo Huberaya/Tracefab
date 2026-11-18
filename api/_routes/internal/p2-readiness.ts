@@ -167,6 +167,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     prisma_migrations_presente: boolean;
     tables_publiques: number;
     fonction_posterieure_presente: boolean | null;
+    identite_base: { base_oid: number; base_nom: string; hote_empreinte: string;
+      hote_conforme: boolean | null; hote_attendu_declare: boolean } | null;
     rls_forcee: boolean;
     mode_strict: boolean | null;
   } | null = null;
@@ -223,6 +225,54 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
              JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
             WHERE n.nspname = 'public' AND c.relkind = 'r') AS tables_publiques
       `;
+      // IDENTITE DE LA BASE, SANS JAMAIS LIVRER LA CHAINE DE CONNEXION.
+      //
+      // La question ouverte etait : « le deploiement joint-il reellement la base
+      // attendue ? ». Un nom de branche Neon ne se deduit pas de son libelle, et
+      // une URL de connexion ne doit jamais apparaitre dans une preuve.
+      //
+      // Trois elements suffisent a trancher, et aucun ne reconstitue l'URL :
+      //   - l'identifiant systeme de la base (`pg_database.datdba` non : on lit
+      //     `oid` et `datname`), qui distingue deux bases homonymes ;
+      //   - une EMPREINTE de l'hote (SHA-256 tronque a 12 hex) : deux
+      //     deployements qui joignent le meme hote ont la meme empreinte, et
+      //     l'empreinte ne permet pas de remonter a l'hote ;
+      //   - la concordance avec un prefixe d'endpoint ATTENDU, publie dans la
+      //     configuration de la sonde (jamais un secret : un endpoint Neon est
+      //     un nom d'hote public).
+      const attendu = (process.env.TRACEFAB_PREVIEW_DB_ENDPOINT ?? '').trim();
+      let identiteBase: {
+        base_oid: number; base_nom: string; hote_empreinte: string; hote_conforme: boolean | null;
+        hote_attendu_declare: boolean;
+      } | null = null;
+      try {
+        const b = await prisma.$queryRaw<Array<{ base_oid: number; base_nom: string }>>`
+          SELECT (SELECT d.oid FROM pg_catalog.pg_database d
+                   WHERE d.datname = current_database())::int AS base_oid,
+                 current_database() AS base_nom
+        `;
+        let hote = '';
+        try {
+          const u = new URL(process.env.DATABASE_URL ?? '');
+          hote = u.hostname || '';
+        } catch {
+          hote = '';
+        }
+        const crypto = await import('node:crypto');
+        const empreinte = hote
+          ? crypto.createHash('sha256').update(hote).digest('hex').slice(0, 12)
+          : '';
+        identiteBase = {
+          base_oid: b?.[0]?.base_oid ?? -1,
+          base_nom: b?.[0]?.base_nom ?? '',
+          hote_empreinte: empreinte,
+          hote_attendu_declare: attendu.length > 0,
+          hote_conforme: attendu.length > 0 && hote.length > 0 ? hote.startsWith(attendu) : null,
+        };
+      } catch {
+        identiteBase = null;
+      }
+
       const ligne = cat?.[0];
       let modeStrict: boolean | null = null;
       if (ligne?.politique_presente) {
@@ -271,6 +321,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           prisma_migrations_presente: ligne.prisma_migrations_presente,
           tables_publiques: ligne.tables_publiques,
           fonction_posterieure_presente: fonctionUlterieure,
+          identite_base: identiteBase,
           rls_forcee: ligne.rls_forcee,
           mode_strict: modeStrict,
         };

@@ -250,6 +250,9 @@ function expurger(corps) {
   }
   const texte = JSON.stringify(garde);
   // Garde-fou : aucune chaine longue, aucun motif de secret, aucune URL.
+  // `identite_base` ne porte qu'un oid, un nom de base et une empreinte tronquee
+  // — jamais l'hote en clair, jamais l'URL. La garde ci-dessous reste active :
+  // si une telle chaine apparaissait un jour, tout le corps serait retire.
   if (/\b[0-9a-fA-F]{48,}\b|postgres(ql)?:\/\/|eyJ[A-Za-z0-9_-]{10,}/.test(texte)) {
     return { expurge: 'corps retire : motif ressemblant a un secret' };
   }
