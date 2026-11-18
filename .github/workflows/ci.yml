@@ -79,6 +79,22 @@ jobs:
         # provoquer aucune requete metier.
         run: npm run test:active-tenant
 
+      - name: Frontiere entre Vercel Authentication et un refus de l'application
+        # Une requete interceptee par Vercel n'atteint pas l'application : la
+        # compter comme un refus applicatif produit un faux negatif (mesure du
+        # run 43850436311, ou un 302 est devenu un echec de C3). Ce test fixe la
+        # frontiere dans les deux sens, contre-epreuves comprises.
+        run: npm run test:detection-vercel
+
+      - name: Script de preuve runtime — bout en bout hors ligne
+        # Le script avait raison de refuser de conclure sur une cible non
+        # atteinte, mais la cause etait une ReferenceError. Ce test exerce le
+        # chemin reel et exige qu aucune exception ne se deguise en diagnostic.
+        run: npm run test:preuve-runtime-bout-en-bout
+
+      - name: Sondeur de Preview valide hors ligne
+        run: npm run test:sonde-preview
+
       - name: Commentaires de fin de ligne dans les routes compactees
         # Un commentaire `//` dans une route ecrite sur une ligne met en
         # commentaire tout le handler, sans erreur de compilation.
@@ -88,6 +104,34 @@ jobs:
         # Barriere d'erreur centrale, caviardage des secrets reellement
         # execute, et contrat de variables d'environnement a jour.
         run: npm run test:production-readiness
+
+      - name: Falsification C2 — l identite systeme est-elle falsifiable ?
+        # 14 cas, dont 13 negatifs. Les scenarios vivaient dans
+        # preuve_c1c2c3_p107.mjs, qui exige PostgreSQL et ne tourne donc pas en
+        # CI : une regression de la verification n'aurait ete vue qu'a la
+        # campagne de preuve. Ici, seules les fonctions pures sont exercees.
+        run: npm run test:p107:falsification-c2
+
+      - name: Generateur de cle d identite — format et refus
+        # La procedure de generation vivait dans un message d erreur. Ce test
+        # fige le format attendu par le runtime (64 hex minuscules) et verifie
+        # que la valeur ne part jamais sur stderr.
+        run: npm run test:generer-cle-identite
+
+      - name: Oracle de signature — la cle HMAC est-elle inatteignable ?
+        # C4.13 a C4.20 executes sur PGlite, avec le schema ET l'ACL reels. Un
+        # role applicatif qui lirait tracefab_identity_cles, ou qui heriterait
+        # d'un role privilegie, se fabriquerait une signature valide et toute
+        # l'identite signee tomberait. La contre-epreuve C4.14bis verifie que la
+        # lecture reste refusee MEME avec SELECT accorde.
+        run: npm run test:p107:oracle-signature
+
+      - name: Ordre et unicite des migrations
+        # `prisma migrate` ordonne par nom de dossier. Deux migrations de meme
+        # horodatage voient leur ordre relatif fixe par l'alphabet, pas par le
+        # temps. Le depot en contient quatre paires, aucune avec dependance
+        # croisee — c'est mesure ici, et une cinquieme paire fera echouer.
+        run: npm run test:ordre-migrations
 
       - name: Historique des migrations — fail-closed
         run: npm run test:migration-history

@@ -63,6 +63,26 @@ export const USAGE_IDENTITE_SYSTEME = 'tracefab_system';
  */
 export const DUREE_JETON_SYSTEME_SECONDES = 60;
 
+/**
+ * Plafond de duree de vie ACCEPTEE PAR L'EMETTEUR.
+ *
+ * Le plafond qui fait foi est celui de la BASE (600 s, migration
+ * 20261109170000) : c'est lui qui decide si un jeton est valide. Mais un
+ * emetteur qui produit sans broncher un jeton que la base refusera ne rend
+ * service a personne : il transforme une erreur d'appel en panne silencieuse,
+ * ou l'on voit « identite refusee » sans comprendre que le jeton etait mort
+ * des sa creation.
+ *
+ * MESURE du 2026-11-17 : `signerIdentiteSysteme({ dureeSecondes: 365 jours })`
+ * produisait un jeton dont la verification applicative echouait — mais la
+ * fonction ne le disait pas. Aucun appelant du depot ne passe de duree ;
+ * le parametre existait pour les tests.
+ *
+ * On aligne donc l'emetteur sur la base : au-dela de ce plafond, il rend
+ * `null` — un refus ferme, pas un jeton inutilisable.
+ */
+export const DUREE_JETON_SYSTEME_MAX_SECONDES = 600;
+
 export type JetonSysteme = {
   /** Le jeton complet, a poser dans `tracefab.identity_systeme`. */
   jeton: string;
@@ -139,6 +159,13 @@ export function signerIdentiteSysteme({
   dureeSecondes?: number;
 }): JetonSysteme | null {
   if (etatCleSysteme(cle) !== 'valide') return null;
+  // Refus FERME d'une duree demesuree : voir DUREE_JETON_SYSTEME_MAX_SECONDES.
+  // Un emetteur ne doit pas fabriquer un jeton que le verificateur rejettera :
+  // l'erreur serait alors attribuee a l'identite au lieu de l'appel.
+  if (!Number.isInteger(dureeSecondes) || dureeSecondes <= 0
+      || dureeSecondes > DUREE_JETON_SYSTEME_MAX_SECONDES) {
+    return null;
+  }
   if (!/^[a-z_]{3,32}$/.test(identite)) {
     throw new Error('identite systeme invalide : [a-z_]{3,32} attendu');
   }

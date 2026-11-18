@@ -131,10 +131,26 @@ ok(ouvert({ VERCEL_ENV: 'preview', VERCEL_GIT_COMMIT_REF: 'release/p107-runtime-
   req({ 'x-tracefab-runtime-probe-token': `${JETON}x` })) === false,
   'jeton plus long — refus sans exception de longueur');
 
-// 9. Jeton via la query string
+// 9. Jeton via la query string                    -> FERME (retreci le 2026-11-16)
+//
+// Ce cas affirmait l'INVERSE : « jeton en query string — accepte (chemin
+// alternatif documente) ». La mention « documente » etait fausse : aucun
+// fichier de docs/, aucun script de preuve n'utilisait ce chemin, seule cette
+// assertion le faisait vivre. Un secret place dans une URL fuite par les
+// journaux d'acces, l'en-tete `Referer`, l'historique et les caches ; aucune de
+// ces fuites n'existe pour un en-tete de requete.
+//
+// Le test change donc de SENS, pas seulement de valeur : il verifie maintenant
+// que ce chemin est ferme, pour qu'il ne puisse pas revenir par inadvertance.
 ok(ouvert({ VERCEL_ENV: 'preview', VERCEL_GIT_COMMIT_REF: 'release/p107-runtime-production-20261110' },
-  { headers: {}, query: { runtimeProbeToken: JETON } }) === true,
-  'jeton en query string — accepte (chemin alternatif documente)');
+  { headers: {}, query: { runtimeProbeToken: JETON } }) === false,
+  'jeton en query string — REFUSE (un secret d URL fuite par les journaux)');
+
+// 9 bis. Contre-epreuve : le meme jeton, dans l'EN-TETE, est bien accepte.
+// Sans elle, le cas 9 passerait aussi si la fonction refusait tout.
+ok(ouvert({ VERCEL_ENV: 'preview', VERCEL_GIT_COMMIT_REF: 'release/p107-runtime-production-20261110' },
+  { headers: { 'x-tracefab-runtime-probe-token': JETON } }) === true,
+  'le meme jeton dans l EN-TETE est accepte — le refus du cas 9 vient bien du canal');
 
 // 10. Secret de sonde non configure           -> FERME
 ok(avecEnv({ VERCEL_ENV: 'preview', VERCEL_GIT_COMMIT_REF: 'release/p107-runtime-production-20261110', TRACEFAB_RUNTIME_PROBE_TOKEN: undefined },
