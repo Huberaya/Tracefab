@@ -90,7 +90,21 @@ const empreinte = (v) => createHash('sha256').update(v).digest('hex').slice(0, 1
 // ---------------------------------------------------------------------------
 // LECTURE SEULE — `default_transaction_read_only` avant toute requete.
 // ---------------------------------------------------------------------------
-const client = new pg.Client({ connectionString: url, ssl: { rejectUnauthorized: false } });
+// TLS VERIFIE, JAMAIS DESACTIVE.
+//
+// La premiere version posait `rejectUnauthorized: false` « pour eviter les
+// surprises de certificat ». C'etait une regression de securite silencieuse :
+// elle aurait accepte n'importe quel certificat, donc n'importe quel
+// intercepteur, sur une connexion qui transporte une URL de connexion
+// complete. Le garde-fou `test:tls:validation` l'a refusee, a raison.
+//
+// Les autres scripts du depot font la meme chose (`audit_neon_readonly.mjs`) :
+// TLS si la cible l'exige, et verification du certificat active.
+const exigeTls = /neon\.tech$/i.test(hote);
+const client = new pg.Client({
+  connectionString: url,
+  ssl: exigeTls ? { rejectUnauthorized: true } : undefined,
+});
 
 let sortie = 0;
 const ligne = (etat, libelle, detail = '') =>
