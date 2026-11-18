@@ -335,7 +335,7 @@ jobs:
     # que dans ce job, jamais dans celui qui interroge la Preview.
     name: Publier les preuves (job ecrivain, sans execution de code)
     needs: preuves-runtime
-    if: always() && github.event_name == 'push'
+    if: always()
     runs-on: ubuntu-latest
     permissions:
       # Declarer `contents: write` remet TOUTES les autres portees a `none`.
