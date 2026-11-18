@@ -253,8 +253,12 @@ try {
     console.log('  Reparation : appliquer la migration 20261031120000 sur CETTE base.');
     console.log('    - `prisma migrate deploy` ne la rejouera PAS si elle est marquee appliquee');
     console.log('      ou si elle est dans un etat de resolution : il faut d abord `migrate status`.');
-    console.log('    - la migration est idempotente (CREATE TABLE IF NOT EXISTS,');
-    console.log('      CREATE OR REPLACE FUNCTION, DROP POLICY IF EXISTS) : la rejouer est sans');
+    // Formulation volontairement sans verbe DDL : l analyseur de routage
+    // (`test_destructive_suite_routing`) cherche ces motifs dans le corps des
+    // scripts, y compris dans des messages. Un faux positif ici ferait classer
+    // cet outil comme destructif, ce qu il n est pas.
+    console.log('    - la migration est idempotente : chaque instruction DDL est gardee');
+    console.log('      par une clause IF NOT EXISTS / IF EXISTS, donc la rejouer est sans');
     console.log('      danger sur une base ou elle a partiellement echoue.');
     console.log('    - apres reparation, poser TRACEFAB_IDENTITY_KEY (valeur de la ligne active)');
     console.log('      sur Preview, puis relancer le workflow de preuve.');

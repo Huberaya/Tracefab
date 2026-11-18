@@ -167,6 +167,12 @@ const UNWIRED_DESTRUCTIVE_REGISTER = [
 /** Suites de base en lecture seule : pas de garde necessaire, mais declarees. */
 const READ_ONLY_DB_SUITES = [
   'scripts/audit_neon_readonly.mjs',       // audit de privileges, uniquement des SELECT de catalogue
+  // Diagnostic P10.7 : ouvre une connexion pour IDENTIFIER la base jointe.
+  // Il pose `SET default_transaction_read_only = on` avant toute requete, donc
+  // toute ecriture serait refusee par PostgreSQL, pas seulement omise par
+  // discipline. Il ne lit que des catalogues (pg_class, pg_proc, pg_database)
+  // et des compteurs sur la table des cles — jamais un secret.
+  'scripts/diagnostic_base_preview_p107.mjs',
 ];
 
 /**
