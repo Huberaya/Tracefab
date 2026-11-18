@@ -161,7 +161,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   //
   // Ce bloc ne s'execute que sur demande explicite (`?identity=1`) et derriere
   // l'authentification de sonde deja exigee ci-dessus.
-  let baseIdentite: { table_presente: boolean; rls_forcee: boolean; mode_strict: boolean | null } | null = null;
+  let baseIdentite: {
+    table_presente: boolean;
+    table_vue_par_pg_class: boolean;
+    rls_forcee: boolean;
+    mode_strict: boolean | null;
+  } | null = null;
   if (wantIdentity && etatSysteme !== 'valide') {
     // DEUX REQUETES SEPAREES, ET POURQUOI.
     //
