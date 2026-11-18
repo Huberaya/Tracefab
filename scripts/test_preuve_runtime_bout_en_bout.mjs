@@ -118,6 +118,8 @@ verifier(/"baseIdentite"/.test(s503.preuve),
   s503.preuve.slice(0, 160));
 verifier(/"table_vue_par_pg_class":\s*true/.test(s503.preuve),
   'le temoin independant pg_class survit lui aussi a l expurgation');
+verifier(/"prisma_migrations_presente":\s*true/.test(s503.preuve),
+  'le temoin de la base migree survit : il distingue base vide et base migree');
 
 // --- 4. Garde de cible : un runtime local n'est pas une preuve --------------
 const locale = await executer('app200', { TF_BASE: 'http://127.0.0.1:3000' });

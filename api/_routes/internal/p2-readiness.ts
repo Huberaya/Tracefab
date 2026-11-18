@@ -164,6 +164,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   let baseIdentite: {
     table_presente: boolean;
     table_vue_par_pg_class: boolean;
+    prisma_migrations_presente: boolean;
+    tables_publiques: number;
     rls_forcee: boolean;
     mode_strict: boolean | null;
   } | null = null;
@@ -193,6 +195,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       // base qui n'est pas celle qu'on croit, pas une table absente.
       const cat = await prisma.$queryRaw<Array<{
         vue_to_regclass: boolean; vue_pg_class: boolean; rls_forcee: boolean; politique_presente: boolean;
+        prisma_migrations_presente: boolean; tables_publiques: number;
       }>>`
         SELECT
           to_regclass('public.tracefab_identity_cles') IS NOT NULL AS vue_to_regclass,
@@ -205,7 +208,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                      WHERE n.nspname = 'public' AND c.relname = 'tracefab_identity_cles'), false) AS rls_forcee,
           EXISTS (SELECT 1 FROM pg_catalog.pg_class c
                     JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
-                   WHERE n.nspname = 'public' AND c.relname = 'tracefab_identity_politique') AS politique_presente
+                   WHERE n.nspname = 'public' AND c.relname = 'tracefab_identity_politique') AS politique_presente,
+          -- TROISIEME TEMOIN, ET LE PLUS PARLANT : la base que ce runtime atteint
+          -- a-t-elle SEULEMENT la table de suivi des migrations ? Si faux, ce
+          -- n'est pas « la migration d'identite manque » : c'est que la base
+          -- jointe par ce deploiement n'est pas une base migree par Prisma du
+          -- tout. Cette distinction decide de l'action a mener, donc elle est
+          -- mesuree et non deduite.
+          EXISTS (SELECT 1 FROM pg_catalog.pg_class c
+                    JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
+                   WHERE n.nspname = 'public' AND c.relname = '_prisma_migrations') AS prisma_migrations_presente,
+          (SELECT count(*)::int FROM pg_catalog.pg_class c
+             JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
+            WHERE n.nspname = 'public' AND c.relkind = 'r') AS tables_publiques
       `;
       const ligne = cat?.[0];
       let modeStrict: boolean | null = null;
@@ -223,6 +238,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         baseIdentite = {
           table_presente: ligne.vue_to_regclass,
           table_vue_par_pg_class: ligne.vue_pg_class,
+          prisma_migrations_presente: ligne.prisma_migrations_presente,
+          tables_publiques: ligne.tables_publiques,
           rls_forcee: ligne.rls_forcee,
           mode_strict: modeStrict,
         };
