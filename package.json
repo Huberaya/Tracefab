@@ -279,6 +279,7 @@
     "test:jetables": "npm run test:jetables:verrou-cluster && npm run test:jetables:concurrence && npm run test:jetables:base-ephemere && npm run test:jetables:role-ephemere && npm run test:jetables:role-app && npm run test:jetables:destruction && npm run test:jetables:ressources-fixes && npm run test:jetables:reprise && npm run test:jetables:provisioning && npm run test:jetables:garde-cible && npm run test:jetables:migration-atomicite && npm run test:jetables:r4-inscription && npm run test:jetables:harnais-rls",
     "test:clerk-webhook": "node --import tsx scripts/test_clerk_webhook_runtime.mjs",
     "test:detection-vercel": "node scripts/test_detection_protection_vercel.mjs",
+    "test:diagnostic-base-preview": "node scripts/test_diagnostic_base_preview.mjs",
     "test:preuve-runtime-bout-en-bout": "node scripts/test_preuve_runtime_bout_en_bout.mjs",
     "test:ordre-migrations": "node scripts/test_ordre_migrations_p107.mjs",
     "test:p107:oracle-signature": "node scripts/test_p107_oracle_signature_pglite.mjs",
