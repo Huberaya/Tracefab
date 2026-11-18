@@ -1,16 +1,16 @@
 # P10.7 — Cloture operationnelle et preparation de fusion (PR #129)
 
-SHA final : **`2ac6e37`** — branche `release/p107-runtime-production-20261110` -> `main`.
+SHA final : **`7179a3f`** — branche `release/p107-runtime-production-20261110` -> `main`.
 Aucune fusion effectuee. Aucun deploiement Production. Aucune variable de Production modifiee.
 
 ## Tableau de controle
 
 | Controle | Resultat | Preuve | SHA / environnement |
 |---|---|---|---|
-| **C1** identite systeme signee | **BLOCKED** | `identitySysteme={"configured":false,"mode":"non_configure"}`, `verifiee_par_la_base=null` — la cle runtime est absente du processus, donc rien ne peut etre signe | `2ac6e37` / Vercel Preview + Neon Preview |
-| **C2** cle HMAC chargee dans le processus | **BLOCKED** | `identityTokens={"configured":false,"mode":"non_configure"}`. Cause racine mesuree : `baseIdentite.table_presente=false` — les tables d'identite **n'existent pas** dans la base Preview | `2ac6e37` / Vercel Preview + Neon Preview |
-| **C3** reponse applicative, pas de 302 SSO | **PASS 3/3** | C3.1 sans jeton -> 401 ; C3.2 jeton faux -> 401 ; C3.3 sans `?identity=1` -> 401. Aucun 302 SSO : le contournement atteint bien l'application | `2ac6e37` / Vercel Preview |
-| **C4** identite PG et privileges | **PASS** | `currentUser=tracefab_app`, `bypassesRls=false`, `isSuperuser=false`, `privilegedMemberships=[]`, `canEscalate=false`, `measured=true` | `2ac6e37` / **Neon Preview** (`neondb`, connexion applicative) |
+| **C1** identite systeme signee | **BLOCKED** | `identitySysteme={"configured":false,"mode":"non_configure"}`, `verifiee_par_la_base=null` — la cle runtime est absente du processus, donc rien ne peut etre signe | `7179a3f` / Vercel Preview + Neon Preview |
+| **C2** cle HMAC chargee dans le processus | **BLOCKED** | `identityTokens={"configured":false,"mode":"non_configure"}`. Cause racine mesuree : `baseIdentite.table_presente=false` — les tables d'identite **n'existent pas** dans la base Preview | `7179a3f` / Vercel Preview + Neon Preview |
+| **C3** reponse applicative, pas de 302 SSO | **PASS 3/3** | C3.1 sans jeton -> 401 ; C3.2 jeton faux -> 401 ; C3.3 sans `?identity=1` -> 401. Aucun 302 SSO : le contournement atteint bien l'application | `7179a3f` / Vercel Preview |
+| **C4** identite PG et privileges | **PASS** | `currentUser=tracefab_app`, `bypassesRls=false`, `isSuperuser=false`, `privilegedMemberships=[]`, `canEscalate=false`, `measured=true` | `7179a3f` / **Neon Preview** (`neondb`, connexion applicative) |
 | **C4.13** `tracefab_app` ne lit pas la table des cles | **PASS** | `SELECT` sur `tracefab_identity_cles` -> `false` | PGlite (schema reel rejoue) |
 | **C4.14** refus de lecture directe | **PASS** | `permission denied for table tracefab_identity_cles` | PGlite |
 | **C4.14bis** refus maintenu meme avec `GRANT SELECT` | **PASS** | FORCE RLS masque la ligne malgre le GRANT | PGlite |
@@ -21,10 +21,10 @@ Aucune fusion effectuee. Aucun deploiement Production. Aucune variable de Produc
 | **C4.19** aucun heritage de role | **PASS** | aucun heritage vers un role privilegie | PGlite |
 | **C4.20** pas de superutilisateur ni de bypass RLS | **PASS** | `rolsuper=false`, `rolbypassrls=false` | PGlite |
 | **Rotation du bypass** | **BLOCKED** | Ancienne valeur compromise. Aucun acces en ecriture (GitHub App sans portee `secrets`, connecteur Vercel refuse). Rotation **non effectuee** et **non pretendue** | — / Vercel Preview + GitHub |
-| **CI** | **PASS 4/4** | `Socle`, `Base — isolation RLS`, `Verification — suite de tests`, `Parcours — navigateur reel` tous verts. Run `44265881476` | `2ac6e37` |
-| **Vercel Preview** | **PASS** | Statut `Vercel` = `success` ; `Vercel Preview Comments` = `success` ; le SHA `2ac6e37` est servi | `2ac6e37` / Vercel Preview |
-| **Securite finale** | **PASS** | Aucun motif de secret dans le diff vs `main` ; aucune migration historique modifiee ; aucun fichier `.env`/secret touche ; `UNSTABLE` du a C1/C2 bloques uniquement | `2ac6e37` |
-| **Etat PR** | **PASS (prete a fusionner sous reserve)** | PR #129 `OPEN`, `mergeable=MERGEABLE`, `mergeStateStatus=UNSTABLE`, 31 commits, 25 fichiers vs `main` | `2ac6e37` |
+| **CI** | **PASS 4/4** | `Socle`, `Base — isolation RLS`, `Verification — suite de tests`, `Parcours — navigateur reel` tous verts. Run `44268268523` | `7179a3f` |
+| **Vercel Preview** | **PASS** | Statut `Vercel` = `success` ; `Vercel Preview Comments` = `success` ; le SHA `2ac6e37` est servi | `7179a3f` / Vercel Preview |
+| **Securite finale** | **PASS** | Aucun motif de secret dans le diff vs `main` ; aucune migration historique modifiee ; aucun fichier `.env`/secret touche ; `UNSTABLE` du a C1/C2 bloques uniquement | `7179a3f` |
+| **Etat PR** | **PASS (prete sous reserve)** | PR #129 `OPEN`, `mergeable=MERGEABLE`, `mergeStateStatus=UNSTABLE`, 32 commits, 26 fichiers vs `main` | `7179a3f` |
 
 ### Distinction explicite des environnements
 
@@ -37,17 +37,17 @@ Aucune preuve PGlite ne tient lieu de preuve Neon.
 
 ## Ajouts numerotes
 
-1. **SHA final** : `2ac6e37c3c146df9154691f66d6b9e95b5156163`.
-2. **Nombre de commits correctifs** : 3 de ma part ce tour-ci (`d020eb0`, `2ac6e37` + publication de preuves), 31 commits au total sur la branche.
+1. **SHA final** : `7179a3f450d356c8a8261b23bd0cb6dab1580282`.
+2. **Nombre de commits correctifs** : 3 de ma part ce tour-ci (`d020eb0`, `2ac6e37`, `7179a3f`, plus ce rapport), 31 commits au total sur la branche.
 3. **Corrections effectuees** :
    - `d020eb0` — publier l'etat de la base meme quand la cle runtime manque (le diagnostic etait aveugle sans cela).
    - `2ac6e37` — separer la lecture du catalogue de celle du mode strict. La requete unique placait la sous-requete dans un `CASE` : PostgreSQL la planifie quand meme, donc la requete echouait entierement et `baseIdentite` valait `null`. Deux requetes desormais, chacune degradant vers `null` independamment.
    - **Effet mesure** : `baseIdentite` est passe de `null` (illisible) a `{"table_presente": false, "rls_forcee": false, "mode_strict": null}` — le diagnostic est desormais concluant.
-4. **Resultats de tests** : local 9 suites vertes (`oracle-signature` 9, `falsification-c2` 14, `preuve-runtime-bout-en-bout` 16, `generer-cle-identite` 12, `workflow-policy`, `ordre-migrations`, `detection-vercel`, `routes`, `production-readiness` 47). CI `44265881476` = 4/4. Requete corrigee verifiee isolement sur PGlite sous `tracefab_app` avec RLS FORCEE.
+4. **Resultats de tests** : local 9 suites vertes (`oracle-signature` 9, `falsification-c2` 14, `preuve-runtime-bout-en-bout` 16, `generer-cle-identite` 12, `workflow-policy`, `ordre-migrations`, `detection-vercel`, `routes`, `production-readiness` 47). CI `44268268523` = 4/4. Requete corrigee verifiee isolement sur PGlite sous `tracefab_app` avec RLS FORCEE.
 5. **Liens** :
-   - CI `2ac6e37` : run **44265881476** (4/4 success)
-   - Runtime `2ac6e37` : run **44265872050** (job mesure `failure` = C1/C2 bloques ; job edition `success`)
-   - Preuve : branche `preuves/p107-2ac6e37`, commit `000d9b4`, fichier `livrables-finalisation/preuves/p107-runtime-preuves.json`
+   - CI `2ac6e37` : run **44268268523** (4/4 success)
+   - Runtime `2ac6e37` : run **44268260811** (job mesure `failure` = C1/C2 bloques ; job edition `success`)
+   - Preuve : branche `preuves/p107-7179a3f`, commit `000d9b4`, fichier `livrables-finalisation/preuves/p107-runtime-preuves.json`
    - PR #129 : https://github.com/Huberaya/Tracefab/pull/129
 6. **Actions externes** : voir ci-dessous (2 actions).
 7. **Verdict** : **READY EXCEPT FOR EXPLICIT EXTERNAL ACTION**.
