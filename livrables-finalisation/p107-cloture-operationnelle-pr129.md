@@ -1,6 +1,6 @@
 # P10.7 — Cloture operationnelle et preparation de fusion (PR #129)
 
-SHA final : **`35f5861`** — branche `release/p107-runtime-production-20261110` -> `main`.
+SHA final : **`68068cb`** — branche `release/p107-runtime-production-20261110` -> `main`.
 Aucune fusion effectuee. Aucun deploiement Production. Aucune variable de Production modifiee.
 
 ## Tableau de controle
@@ -37,7 +37,7 @@ Aucune preuve PGlite ne tient lieu de preuve Neon.
 
 ## Ajouts numerotes
 
-1. **SHA final** : `35f5861283fc596819aa52f946b7c5702cd4a463`.
+1. **SHA final** : `68068cb` (tete de branche, ce rapport inclus ; mesures runtime faites sur `35f5861`, code applicatif identique).
 2. **Nombre de commits correctifs** : 3 de ma part ce tour-ci (`d020eb0`, `2ac6e37`, `35f5861`, plus ce rapport), 31 commits au total sur la branche.
 3. **Corrections effectuees** :
    - `d020eb0` — publier l'etat de la base meme quand la cle runtime manque (le diagnostic etait aveugle sans cela).
