@@ -168,6 +168,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     tables_publiques: number;
     fonction_posterieure_presente: boolean | null;
     identite_base: { base_oid: number; base_nom: string; hote_empreinte: string;
+      schemas_empreinte: string; sondes_p107: Record<string, boolean> | null;
       hote_conforme: boolean | null; hote_attendu_declare: boolean } | null;
     rls_forcee: boolean;
     mode_strict: boolean | null;
@@ -242,8 +243,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       //     un nom d'hote public).
       const attendu = (process.env.TRACEFAB_PREVIEW_DB_ENDPOINT ?? '').trim();
       let identiteBase: {
-        base_oid: number; base_nom: string; hote_empreinte: string; hote_conforme: boolean | null;
-        hote_attendu_declare: boolean;
+        base_oid: number; base_nom: string; hote_empreinte: string; schemas_empreinte: string;
+        sondes_p107: Record<string, boolean> | null;
+        hote_conforme: boolean | null; hote_attendu_declare: boolean;
       } | null = null;
       try {
         const b = await prisma.$queryRaw<Array<{ base_oid: number; base_nom: string }>>`
@@ -262,10 +264,53 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const empreinte = hote
           ? crypto.createHash('sha256').update(hote).digest('hex').slice(0, 12)
           : '';
+        // Le catalogue des schemas : deux bases homonymes ne divergent pas
+        // seulement par leur oid, elles divergent par ce qu'elles contiennent.
+        // Empreinte courte et stable : meme schema => meme empreinte, et
+        // l'empreinte ne decrit pas le schema, elle ne fait que le comparer.
+        let schemas = '';
+        try {
+          const sc = await prisma.$queryRaw<Array<{ noms: string }>>`
+            SELECT COALESCE(string_agg(n.nspname, ',' ORDER BY n.nspname), '') AS noms
+              FROM pg_catalog.pg_namespace n
+             WHERE n.nspname NOT LIKE 'pg\_%' AND n.nspname <> 'information_schema'
+          `;
+          schemas = sc?.[0]?.noms ?? '';
+        } catch {
+          schemas = '';
+        }
+        const empreinteSchemas = schemas
+          ? crypto.createHash('sha256').update(schemas).digest('hex').slice(0, 12)
+          : '';
+
+        // Les sondes P10.7, nommees, presentes ou non. Ce sont des NOMS deja
+        // publics dans le depot : aucun secret, et l'operateur voit d'un coup
+        // d'oeil ce qui manque a CETTE base.
+        let sondes: Record<string, boolean> | null = null;
+        try {
+          const sn = await prisma.$queryRaw<Array<{ cles: boolean; migr: boolean; fonc: boolean }>>`
+            SELECT EXISTS (SELECT 1 FROM pg_catalog.pg_class c JOIN pg_catalog.pg_namespace n ON n.oid=c.relnamespace
+                            WHERE n.nspname='public' AND c.relname='tracefab_identity_cles') AS cles,
+                   EXISTS (SELECT 1 FROM pg_catalog.pg_class c JOIN pg_catalog.pg_namespace n ON n.oid=c.relnamespace
+                            WHERE n.nspname='public' AND c.relname='tracefab_identity_politique') AS migr,
+                   EXISTS (SELECT 1 FROM pg_catalog.pg_proc p JOIN pg_catalog.pg_namespace n ON n.oid=p.pronamespace
+                            WHERE n.nspname='public' AND p.proname='tracefab_current_user_email') AS fonc
+          `;
+          sondes = {
+            tracefab_identity_cles: sn?.[0]?.cles ?? false,
+            tracefab_identity_politique: sn?.[0]?.migr ?? false,
+            tracefab_current_user_email: sn?.[0]?.fonc ?? false,
+          };
+        } catch {
+          sondes = null;
+        }
+
         identiteBase = {
           base_oid: b?.[0]?.base_oid ?? -1,
           base_nom: b?.[0]?.base_nom ?? '',
           hote_empreinte: empreinte,
+          schemas_empreinte: empreinteSchemas,
+          sondes_p107: sondes,
           hote_attendu_declare: attendu.length > 0,
           hote_conforme: attendu.length > 0 && hote.length > 0 ? hote.startsWith(attendu) : null,
         };
