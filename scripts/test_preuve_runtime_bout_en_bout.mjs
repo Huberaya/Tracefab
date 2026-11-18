@@ -113,6 +113,9 @@ verifier(/"configurationSuffisante": false/.test(s503.preuve),
   s503.preuve.slice(0, 200));
 verifier(!/postgres(ql)?:\/\/|\b[0-9a-fA-F]{48,}\b/.test(s503.preuve),
   'aucune chaine ressemblant a un secret dans la preuve du 503');
+verifier(/"baseIdentite"/.test(s503.preuve),
+  'l etat de la BASE est conserve — l operateur sait si provisionner est utile',
+  s503.preuve.slice(0, 160));
 
 // --- 4. Garde de cible : un runtime local n'est pas une preuve --------------
 const locale = await executer('app200', { TF_BASE: 'http://127.0.0.1:3000' });

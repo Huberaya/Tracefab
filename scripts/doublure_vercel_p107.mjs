@@ -48,6 +48,10 @@ export async function fetchSimule(url) {
       identiteSaine: true,
       services: { privateStorage: { configured: false, missing: ['PRIVATE_STORAGE_ENDPOINT'] } },
       identityTokens: { configured: false, mode: 'non_configure' },
+      // Mesure du 2026-11-17 : la sonde publie l etat de la BASE meme quand la
+      // cle runtime manque, pour que l operateur sache si provisionner est
+      // necessaire ou si une version active existe deja.
+      baseIdentite: { table_presente: true, rls_forcee: true, mode_strict: false },
     });
   }
   if (scenario === 'app200') {

@@ -146,6 +146,49 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
     }
   }
+  // P10.7 — L'ETAT DE LA BASE, MEME QUAND LA CLE RUNTIME MANQUE.
+  //
+  // Mesure du 2026-11-17 : `mode = non_configure` parce que
+  // `TRACEFAB_IDENTITY_KEY` est absente de Preview. L'operateur lit alors
+  // « non configure » et ne sait pas si la BASE, elle, est prete. Il doit
+  // regenerer une cle sans savoir si une version active existe deja — et sans
+  // ce fait, il ne peut pas decider entre « provisionner » et « reutiliser ».
+  //
+  // On interroge donc le CATALOGUE, pas la table des cles : `pg_class` pour
+  // l'existence, `pg_policy`/`pg_class` pour la RLS. Aucune ligne de
+  // `tracefab_identity_cles` n'est lue, aucun secret n'est approche. Un role
+  // sans privilege sur la table peut lire ces catalogues.
+  //
+  // Ce bloc ne s'execute que sur demande explicite (`?identity=1`) et derriere
+  // l'authentification de sonde deja exigee ci-dessus.
+  let baseIdentite: { table_presente: boolean; rls_forcee: boolean; mode_strict: boolean | null } | null = null;
+  if (wantIdentity && etatSysteme !== 'valide') {
+    try {
+      const rows = await prisma.$queryRaw<Array<{
+        table_presente: boolean;
+        rls_forcee: boolean;
+        mode_strict: boolean | null;
+      }>>`
+        SELECT
+          to_regclass('public.tracefab_identity_cles') IS NOT NULL AS table_presente,
+          COALESCE((SELECT c.relrowsecurity AND c.relforcerowsecurity
+                      FROM pg_catalog.pg_class c
+                     WHERE c.oid = to_regclass('public.tracefab_identity_cles')), false) AS rls_forcee,
+          -- Le mode strict est publie tel quel : c'est un booleen de politique,
+          -- pas un secret. Il est lu APRES le controle d existence de la table,
+          -- sans quoi la requete echouerait sur une base qui n'a pas la
+          -- migration.
+          CASE WHEN to_regclass('public.tracefab_identity_politique') IS NOT NULL
+               THEN (SELECT p.strict FROM public.tracefab_identity_politique p WHERE p.singleton)
+               ELSE NULL END AS mode_strict
+      `;
+      baseIdentite = rows?.[0] ?? null;
+    } catch {
+      // Une incapacite de mesurer n'est pas un « non » : on laisse null.
+      baseIdentite = null;
+    }
+  }
+
   const jetonsSysteme = {
     // Meme cle que `identityTokens` : deux variables distinctes pour la meme
     // valeur seraient deux occasions de les faire diverger.
@@ -214,6 +257,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       services,
       identityTokens: jetonsIdentite,
       identitySysteme: jetonsSysteme,
+      ...(baseIdentite ? { baseIdentite } : {}),
       ...(databaseIdentity ? { databaseIdentity } : {}),
       ...(notificationOutbox ? { notificationOutbox } : {}),
     });
@@ -234,6 +278,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     probes,
     identityTokens: jetonsIdentite,
     identitySysteme: jetonsSysteme,
+    ...(baseIdentite ? { baseIdentite } : {}),
     ...(databaseIdentity ? { databaseIdentity } : {}),
     ...(notificationOutbox ? { notificationOutbox } : {}),
   });

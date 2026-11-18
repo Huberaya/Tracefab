@@ -245,7 +245,7 @@ function expurger(corps) {
   // Champs de diagnostic nommes, tous non secrets par construction.
   for (const cle of ['schema', 'ready', 'configurationOnly', 'configurationSuffisante',
     'identiteSaine', 'identiteEcarts', 'services', 'identityTokens', 'identitySysteme',
-    'databaseIdentity', 'notificationOutbox', 'error']) {
+    'baseIdentite', 'databaseIdentity', 'notificationOutbox', 'error']) {
     if (cle in corps) garde[cle] = corps[cle];
   }
   const texte = JSON.stringify(garde);
