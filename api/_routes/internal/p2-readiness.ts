@@ -166,6 +166,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     table_vue_par_pg_class: boolean;
     prisma_migrations_presente: boolean;
     tables_publiques: number;
+    fonction_posterieure_presente: boolean | null;
     rls_forcee: boolean;
     mode_strict: boolean | null;
   } | null = null;
@@ -234,12 +235,42 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           modeStrict = null;
         }
       }
+      // QUATRIEME TEMOIN : OU EN EST CETTE BASE ?
+      //
+      // « table absente » ne dit pas si la migration d'identite n'a jamais ete
+      // jouee ou si c'est la base entiere qui est en retard. On interroge pour
+      // cela une FONCTION creee par une migration POSTERIEURE a celle de
+      // l'identite (`20261102120000` cree `tracefab_current_user_email`).
+      //
+      // Pourquoi une fonction : `_prisma_migrations` est refuse a `tracefab_app`
+      // (mesure PGlite : 42501 permission denied for table _prisma_migrations).
+      // Le catalogue `pg_proc` est en lecture seule et ne divulgue aucun
+      // secret — seulement des NOMS, qui sont deja dans le depot public.
+      //
+      // Lecture :
+      //   fonction=true  et tables=false -> l'identite a ete SAUTEE : la base a
+      //     avance au-dela sans elle. Ce n'est pas un retard, c'est un trou.
+      //   fonction=false et tables=false -> base anterieure au 31/10.
+      let fonctionUlterieure: boolean | null = null;
+      try {
+        const sonde = await prisma.$queryRaw<Array<{ presente: boolean }>>`
+          SELECT EXISTS (SELECT 1 FROM pg_catalog.pg_proc p
+                           JOIN pg_catalog.pg_namespace n ON n.oid = p.pronamespace
+                          WHERE n.nspname = 'public'
+                            AND p.proname = 'tracefab_current_user_email') AS presente
+        `;
+        fonctionUlterieure = sonde?.[0]?.presente ?? null;
+      } catch {
+        fonctionUlterieure = null;
+      }
+
       if (ligne) {
         baseIdentite = {
           table_presente: ligne.vue_to_regclass,
           table_vue_par_pg_class: ligne.vue_pg_class,
           prisma_migrations_presente: ligne.prisma_migrations_presente,
           tables_publiques: ligne.tables_publiques,
+          fonction_posterieure_presente: fonctionUlterieure,
           rls_forcee: ligne.rls_forcee,
           mode_strict: modeStrict,
         };
