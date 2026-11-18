@@ -176,13 +176,31 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // requis), puis la politique SEULEMENT si sa table existe. Une incapacite de
     // mesurer n'est pas un « non » : chaque etape degrade vers `null`.
     try {
-      const cat = await prisma.$queryRaw<Array<{ table_presente: boolean; rls_forcee: boolean; politique_presente: boolean }>>`
+      // DEUX TEMOINS INDEPENDANTS POUR L'EXISTENCE, ET POURQUOI.
+      //
+      // `to_regclass` resout le nom en passant par le catalogue des schemas :
+      // sans USAGE sur `public`, il ne rend pas NULL mais leve 42501. Il est
+      // donc fiable pour dire « absente » quand il rend NULL — mesure PGlite :
+      // une table PRIVEE (aucun GRANT, mais USAGE sur le schema) reste vue.
+      //
+      // `pg_class` ne consulte aucun privilege d'usage : c'est le temoin
+      // independant. Les deux doivent concorder. Une divergence signale une
+      // base qui n'est pas celle qu'on croit, pas une table absente.
+      const cat = await prisma.$queryRaw<Array<{
+        vue_to_regclass: boolean; vue_pg_class: boolean; rls_forcee: boolean; politique_presente: boolean;
+      }>>`
         SELECT
-          to_regclass('public.tracefab_identity_cles') IS NOT NULL AS table_presente,
+          to_regclass('public.tracefab_identity_cles') IS NOT NULL AS vue_to_regclass,
+          EXISTS (SELECT 1 FROM pg_catalog.pg_class c
+                    JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
+                   WHERE n.nspname = 'public' AND c.relname = 'tracefab_identity_cles') AS vue_pg_class,
           COALESCE((SELECT c.relrowsecurity AND c.relforcerowsecurity
                       FROM pg_catalog.pg_class c
-                     WHERE c.oid = to_regclass('public.tracefab_identity_cles')), false) AS rls_forcee,
-          to_regclass('public.tracefab_identity_politique') IS NOT NULL AS politique_presente
+                      JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
+                     WHERE n.nspname = 'public' AND c.relname = 'tracefab_identity_cles'), false) AS rls_forcee,
+          EXISTS (SELECT 1 FROM pg_catalog.pg_class c
+                    JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
+                   WHERE n.nspname = 'public' AND c.relname = 'tracefab_identity_politique') AS politique_presente
       `;
       const ligne = cat?.[0];
       let modeStrict: boolean | null = null;
@@ -198,7 +216,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
       if (ligne) {
         baseIdentite = {
-          table_presente: ligne.table_presente,
+          table_presente: ligne.vue_to_regclass,
+          table_vue_par_pg_class: ligne.vue_pg_class,
           rls_forcee: ligne.rls_forcee,
           mode_strict: modeStrict,
         };

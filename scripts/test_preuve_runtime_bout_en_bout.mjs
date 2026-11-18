@@ -116,6 +116,8 @@ verifier(!/postgres(ql)?:\/\/|\b[0-9a-fA-F]{48,}\b/.test(s503.preuve),
 verifier(/"baseIdentite"/.test(s503.preuve),
   'l etat de la BASE est conserve — l operateur sait si provisionner est utile',
   s503.preuve.slice(0, 160));
+verifier(/"table_vue_par_pg_class":\s*true/.test(s503.preuve),
+  'le temoin independant pg_class survit lui aussi a l expurgation');
 
 // --- 4. Garde de cible : un runtime local n'est pas une preuve --------------
 const locale = await executer('app200', { TF_BASE: 'http://127.0.0.1:3000' });

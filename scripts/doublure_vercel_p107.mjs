@@ -51,7 +51,7 @@ export async function fetchSimule(url) {
       // Mesure du 2026-11-17 : la sonde publie l etat de la BASE meme quand la
       // cle runtime manque, pour que l operateur sache si provisionner est
       // necessaire ou si une version active existe deja.
-      baseIdentite: { table_presente: true, rls_forcee: true, mode_strict: false },
+      baseIdentite: { table_presente: true, table_vue_par_pg_class: true, rls_forcee: true, mode_strict: false },
     });
   }
   if (scenario === 'app200') {
