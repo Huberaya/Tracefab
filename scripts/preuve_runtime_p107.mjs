@@ -29,10 +29,18 @@
  * 2 si la cible ou la configuration interdit de conclure.
  */
 import { writeFileSync, mkdirSync } from 'node:fs';
+// Detection partagee avec scripts/sonde_preview.mjs : une seule definition de
+// « la requete a-t-elle atteint l'application ? », pour que les deux outils ne
+// puissent pas diverger sur cette frontiere.
+import { estProtectionVercel, CODE_ACCES_ABSENT } from './detecter_protection_vercel.mjs';
 import { dirname } from 'node:path';
 
 const BASE = (process.env.TF_BASE || '').trim().replace(/\/+$/, '');
 const JETON = (process.env.TRACEFAB_RUNTIME_PROBE_TOKEN || '').trim();
+// En-tete OFFICIEL de Vercel (Protection Bypass for Automation). Il ne sert
+// qu'a franchir la protection de la Preview, qui reste ACTIVE : on ne desactive
+// rien. La valeur n'est jamais journalisee.
+const BYPASS = (process.env.VERCEL_AUTOMATION_BYPASS_SECRET || '').trim();
 const SHA = (process.env.GITHUB_SHA || process.env.TF_SHA || '').trim();
 const SORTIE = 'livrables-finalisation/preuves/p107-runtime-preuves.json';
 
@@ -47,6 +55,14 @@ function verdict(id, libelle, condition, detail) {
   return condition;
 }
 
+/**
+ * Arret du script. Le code de sortie distingue deux situations que rien ne doit
+ * confondre :
+ *   2 -> une mesure a echoue (l'application a repondu, mal) ;
+ *   3 -> aucun acces (la requete n'a pas atteint l'application).
+ * Un appelant qui lit le code sait ainsi s'il doit corriger l'application ou
+ * ouvrir un acces.
+ */
 function refus(message, code = 2) {
   console.error(`\n  ARRET — ${message}`);
   ecrire({ arret: message, resultats });
@@ -78,24 +94,46 @@ if (!/^https:\/\/[a-z0-9-]+(\.[a-z0-9-]+)*\.vercel\.app$/i.test(BASE)) {
 
 
 // --- Appels ----------------------------------------------------------------
+/**
+ * Point d'injection RESERVE AUX TESTS HORS LIGNE.
+ *
+ * Sans lui, un test ne peut eprouver le chemin reseau qu'en joignant un vrai
+ * hote — donc en dependant du DNS, et en devenant faux la ou le reseau differe
+ * (c'est exactement ce qui a fait echouer la CI le 2026-11-16 : le faux hote
+ * `.vercel.app` repondait depuis le runner et pas depuis l'analyse).
+ *
+ * La variable n'est lue que si elle est posee. Le script de preuve reel ne la
+ * pose jamais ; la CI non plus. Un test qui l'oublie echoue bruyamment, ce qui
+ * est preferable a un test qui passe pour une mauvaise raison.
+ */
+const FETCH_INJECTE = process.env.TF_PREUVE_FETCH_INJECTE || '';
+
 async function appel(url, entetes = {}) {
   const debut = Date.now();
   let r;
   try {
-    r = await fetch(url, { headers: entetes, redirect: 'manual' });
+    const h = { ...entetes };
+    // En-tete OFFICIEL de Vercel (Protection Bypass for Automation). Jamais
+    // journalise, jamais affiche : il ne sort que vers l'hote sonde.
+    if (BYPASS) h['x-vercel-protection-bypass'] = BYPASS;
+    r = FETCH_INJECTE
+      ? await (await import(FETCH_INJECTE)).fetchSimule(url, h)
+      : await fetch(url, { headers: h, redirect: 'manual' });
   } catch (e) {
     // Un reseau injoignable n'est PAS un refus du runtime : on le dit, plutot
     // que de laisser remonter une exception qui ressemblerait a un plantage.
     refus(`cible injoignable (${url}) : ${String(e.cause?.code || e.message).split('\n')[0]}. `
-      + 'Aucun verdict n est rendu sur une cible qu on n a pas atteinte.');
+      + 'Aucun verdict n est rendu sur une cible qu on n a pas atteinte.', CODE_ACCES_ABSENT);
   }
   const texte = await r.text();
   let corps = null;
   try { corps = JSON.parse(texte); } catch { /* corps non JSON : garde le texte brut */ }
-  return { statut: r.status, corps, texte, ms: Date.now() - debut };
+  return { statut: r.status, corps, texte, ms: Date.now() - debut, entetes: r.headers };
 }
 
 const URL_SONDE = `${BASE}/api/internal/p2/readiness?identity=1`;
+
+let accesBloque = false;
 console.log(`  cible   : ${BASE}`);
 console.log(`  sha     : ${SHA || '(inconnu)'}`);
 console.log(`  sonde   : ${URL_SONDE}\n`);
@@ -103,6 +141,13 @@ console.log(`  sonde   : ${URL_SONDE}\n`);
 // C3 d'abord : une sonde que tout le monde ouvre ne prouve rien.
 async function mesurerRefusSansJeton() {
   const sansJeton = await appel(URL_SONDE);
+  if (estProtectionVercel(sansJeton)) {
+    accesBloque = true;
+    console.log(`  INDETERMINE C3.1-C3.3 — la Preview est derriere Vercel Authentication (HTTP ${sansJeton.statut}).`);
+    console.log('    La requete n atteint PAS l application : ce n est pas un refus applicatif.');
+    console.log('    Voie officielle : Protection Bypass for Automation (x-vercel-protection-bypass).');
+    return;
+  }
   verdict('C3.1', 'appel SANS jeton de sonde -> refuse', sansJeton.statut === 401,
     `HTTP ${sansJeton.statut}`);
 
@@ -134,6 +179,26 @@ if (!JETON) {
   console.log('\n  DIAGNOSTIC 1/5 secret         : PRESENT dans le processus (valeur non lue)');
 }
 
+// Acces bloque par Vercel Authentication : aucun verdict applicatif n'est
+// possible. On s'arrete en le nommant, sans convertir l'inconnu en echec ni
+// en succes.
+if (accesBloque) {
+  refus([
+    'SITUATION 5/5 — deploiement INACCESSIBLE : Vercel Authentication intercepte la requete.',
+    '',
+    '  La Preview repond 302 vers vercel.com/sso-api. Les requetes n atteignent',
+    '  PAS l application : C1, C2, C3 et C4 ne peuvent pas etre mesurees.',
+    '',
+    '  Ce n est ni un echec de l application, ni une preuve. C est un acces manquant.',
+    '',
+    '  Voie officielle, sans desactiver la protection :',
+    '    Vercel > Settings > Deployment Protection > Protection Bypass > Generate',
+    '    puis exposer la valeur comme secret VERCEL_READONLY_TOKEN ou',
+    '    VERCEL_AUTOMATION_BYPASS_SECRET, et la passer dans l en-tete',
+    '    x-vercel-protection-bypass (deja implemente dans scripts/sonde_preview.mjs).',
+  ].join('\n'), CODE_ACCES_ABSENT);
+}
+
 // Au-dela, il faut le jeton. On s'arrete en le nommant — apres avoir ecrit les
 // verdicts reellement observes ci-dessus.
 if (!JETON) {
@@ -160,13 +225,60 @@ if (!JETON) {
   ].join('\n'));
 }
 
+/**
+ * Expurge un corps de reponse avant de le conserver.
+ *
+ * Un 503 de cette route est un DIAGNOSTIC, pas une absence de mesure : il dit
+ * que la configuration ou l'identite est rouge. Le jeter rendait la preuve
+ * muette — mesure du run 44074983675, ou `configurationSuffisante` et
+ * `identiteSaine` existaient dans la reponse mais etaient tronques a 120
+ * caracteres, donc inutilisables.
+ *
+ * On garde donc les champs de diagnostic, et on retire tout ce qui pourrait
+ * porter une valeur sensible : cles, jetons, URL, chaines longues. La liste est
+ * fermee (on garde ce qu'on nomme) plutot qu'ouverte (on retire ce qu'on
+ * connait) : un champ ajoute demain ne fuitera pas par oubli.
+ */
+function expurger(corps) {
+  if (!corps || typeof corps !== 'object') return null;
+  const garde = {};
+  // Champs de diagnostic nommes, tous non secrets par construction.
+  for (const cle of ['schema', 'ready', 'configurationOnly', 'configurationSuffisante',
+    'identiteSaine', 'identiteEcarts', 'services', 'identityTokens', 'identitySysteme',
+    'baseIdentite', 'databaseIdentity', 'notificationOutbox', 'error']) {
+    if (cle in corps) garde[cle] = corps[cle];
+  }
+  const texte = JSON.stringify(garde);
+  // Garde-fou : aucune chaine longue, aucun motif de secret, aucune URL.
+  // `identite_base` ne porte qu'un oid, un nom de base et une empreinte tronquee
+  // — jamais l'hote en clair, jamais l'URL. La garde ci-dessous reste active :
+  // si une telle chaine apparaissait un jour, tout le corps serait retire.
+  if (/\b[0-9a-fA-F]{48,}\b|postgres(ql)?:\/\/|eyJ[A-Za-z0-9_-]{10,}/.test(texte)) {
+    return { expurge: 'corps retire : motif ressemblant a un secret' };
+  }
+  return garde;
+}
+
 // La sonde reelle, avec le jeton legitime.
 const sonde = await appel(URL_SONDE, { 'x-tracefab-runtime-probe-token': JETON });
 if (sonde.statut !== 200) {
-  const detail = sonde.corps?.error || sonde.texte.slice(0, 120);
-  refus(`la sonde a rendu HTTP ${sonde.statut} (${detail}). `
-    + 'Une sonde non exploitable ne produit aucune preuve : 401 = jeton absent ou different '
-    + 'entre GitHub et Vercel ; 503 = runtime non pret.');
+  // Un 401 signifie que la requete n'a pas passe la porte de la sonde : la
+  // cible existe mais le jeton differe entre GitHub et Vercel. Un 503 signifie
+  // que la porte s'est ouverte et que le runtime se declare non pret — ce
+  // n'est PAS la meme chose, et le second est exploitable.
+  const corpsExpurge = expurger(sonde.corps);
+  ecrire({
+    arret: `sonde authentifiee -> HTTP ${sonde.statut}`,
+    interpretation: sonde.statut === 401
+      ? 'jeton refuse : la valeur de GitHub differe de celle de Vercel, ou la sonde est desactivee sur ce deploiement'
+      : sonde.statut === 503
+        ? 'la sonde est ouverte (le jeton est accepte) mais le runtime se declare NON PRET : voir corpsExpurge'
+        : 'statut inattendu',
+    corpsExpurge,
+    resultats,
+  });
+  console.error(`\n  ARRET — sonde authentifiee HTTP ${sonde.statut}. Corps expurge conserve dans ${SORTIE}.`);
+  process.exit(2);
 }
 
 const corps = sonde.corps || {};

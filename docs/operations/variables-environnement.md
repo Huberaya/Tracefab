@@ -114,6 +114,7 @@ La valeur est validée comme URL HTTPS. Le header HTTP `Host` n’est jamais uti
 | Variable | Criticité | Rôle | Conséquence si absente |
 |---|---|---|---|
 | `TRACEFAB_RUNTIME_PROBE_TOKEN` | secret opérateur · Preview uniquement | Autorise uniquement la lecture diagnostique de l'identité PostgreSQL sur la branche Runtime P11. Ne donne aucun accès worker ni aucune capacité d'écriture. | La sonde Runtime P11 répond 401 ; les autres routes ne sont pas affectées. |
+| `TRACEFAB_PREVIEW_DB_ENDPOINT` | **non secret** · Preview uniquement | Préfixe de l'endpoint Neon attendu pour l'environnement Preview (par ex. `ep-xxxx`). Sert à ce que le runtime compare l'hôte qu'il joint réellement et publie `hote_conforme` dans la preuve, sans jamais exposer la chaîne de connexion. Absent : le champ vaut `null`, jamais un faux PASS. | Aucun impact fonctionnel ; seul le verdict de conformité de l'hôte n'est pas calculé. |
 
 Ce jeton doit être sensible, limité à la branche Preview Runtime, à forte entropie et
 roté après chaque campagne de mesure. Ne jamais le placer dans un dépôt, un journal

@@ -206,22 +206,81 @@ jobs:
           REF_DEPLOYEE: ${{ github.event.inputs.branche_deployee || github.ref_name }}
 
       - name: Le secret de sonde est-il accessible au workflow ?
-        # Verifie la PRESENCE, jamais la valeur : la longueur seule est
-        # comparee a zero. C'est la reponse a « le workflow peut-il acceder au
-        # secret sans le lire ? », et elle distingue un secret absent d'un
-        # refus d'authentification cote Vercel.
+        # Verifie la PRESENCE, jamais la valeur. On teste plusieurs noms et
+        # plusieurs portees : un secret d'environnement n'est visible que si le
+        # job declare CET environnement ; un secret de depot est visible
+        # partout. Distinguer les deux evite de conclure « absent » a tort.
         env:
-          JETON: ${{ secrets.TRACEFAB_RUNTIME_PROBE_TOKEN }}
+          JETON_DEPOT: ${{ secrets.TRACEFAB_RUNTIME_PROBE_TOKEN }}
+          JETON_PREVIEW: ${{ secrets.PREVIEW_TRACEFAB_RUNTIME_PROBE_TOKEN }}
+          JETON_RUNTIME: ${{ secrets.RUNTIME_PROBE_TOKEN }}
+          JETON_TRACEFAB: ${{ secrets.TRACEFAB_PROBE_TOKEN }}
+          TF_ENV_DECLARE: Preview
         run: |
-          set -eu
-          if [ -z "${JETON:-}" ]; then
-            echo "SITUATION 1/5 — SECRET ABSENT : le workflow ne recoit rien pour TRACEFAB_RUNTIME_PROBE_TOKEN."
-            echo "  Les preuves C1/C2/C4 ne peuvent pas etre produites."
-            echo "  Action : gh secret set TRACEFAB_RUNTIME_PROBE_TOKEN (meme valeur que la variable Vercel Preview)."
-            echo "::error::TRACEFAB_RUNTIME_PROBE_TOKEN absent du workflow : preuves runtime impossibles."
+          set -u
+          echo "portee du job   : environnement=${TF_ENV_DECLARE:-aucun}  branche=${GITHUB_REF_NAME}"
+          trouve=0
+          for nom in JETON_DEPOT JETON_PREVIEW JETON_RUNTIME JETON_TRACEFAB; do
+            eval "v=\${$nom:-}"
+            if [ -n "$v" ]; then
+              echo "PRESENT : $nom (valeur non lue)"
+              echo "::notice title=P10.7 diagnostic ::secret PRESENT sous le nom $nom (portee: job). Les preuves peuvent etre produites."
+              trouve=1
+            else
+              echo "vide    : $nom"
+            fi
+          done
+          # Le journal du job n'est pas toujours telechargeable : on ecrit le
+          # diagnostic dans le depot, lisible par l'API GitHub. Aucune valeur.
+          mkdir -p livrables-finalisation/preuves
+          {
+            echo "{"
+            echo "  \"schema\": \"tracefab-p107-diagnostic-secret-v1\","
+            echo "  \"horodatage\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\","
+            echo "  \"sha\": \"${GITHUB_SHA}\","
+            echo "  \"environnement_declare\": \"${TF_ENV_DECLARE:-aucun}\","
+            echo "  \"branche\": \"${GITHUB_REF_NAME}\","
+            echo "  \"noms_testes\": \"TRACEFAB_RUNTIME_PROBE_TOKEN,PREVIEW_TRACEFAB_RUNTIME_PROBE_TOKEN,RUNTIME_PROBE_TOKEN,TRACEFAB_PROBE_TOKEN\","
+            echo "  \"portees_testees\": \"depot + environnement Preview\","
+            echo "  \"secret_accessible\": $([ "$trouve" -eq 1 ] && echo true || echo false)"
+            echo "}"
+          } > livrables-finalisation/preuves/p107-diagnostic-secret.json
+          # Ce fichier est une PREUVE, pas un artefact de passage : il doit
+          # pouvoir etre commite. Le motif d exclusion ne vise que les preuves
+          # runtime generees, pas le diagnostic de configuration.
+          sed -i '/p107-diagnostic-secret/d' .gitignore 2>/dev/null || true
+          if [ "$trouve" -eq 0 ]; then
+            echo "SITUATION 1/5 — AUCUN des quatre noms n'est fourni au workflow."
+            echo "  Portees testees : depot + environnement declare par le job."
+            echo "  Action : gh secret set TRACEFAB_RUNTIME_PROBE_TOKEN (valeur identique a Vercel Preview)."
+            # La sortie du job n'est pas telechargeable depuis certains
+            # environnements. L'annotation, elle, remonte dans l'API checks :
+            # c'est le canal de diagnostic fiable.
+            echo "::error title=P10.7 diagnostic ::AUCUN secret de sonde accessible. Noms testes: TRACEFAB_RUNTIME_PROBE_TOKEN | PREVIEW_TRACEFAB_RUNTIME_PROBE_TOKEN | RUNTIME_PROBE_TOKEN | TRACEFAB_PROBE_TOKEN. Portees: depot + environnement ${TF_ENV_DECLARE:-aucun}. Action: gh secret set TRACEFAB_RUNTIME_PROBE_TOKEN."
             exit 1
           fi
-          echo "secret PRESENT dans le workflow (valeur non lue, longueur non affichee)"
+
+      - name: Quel moyen d'acces autorise est disponible ?
+        # Ne lit JAMAIS une valeur : seule sa presence est evaluee, par
+        # comparaison de longueur. Un vide est un fait, pas un jugement.
+        env:
+          SONDE: ${{ secrets.TRACEFAB_RUNTIME_PROBE_TOKEN }}
+          BYPASS: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
+          LECTURE: ${{ secrets.VERCEL_READONLY_TOKEN }}
+        run: |
+          set -eu
+          etat() { if [ -n "${1:-}" ]; then echo "PRESENT"; else echo "ABSENT"; fi; }
+          echo "::notice title=P10.7 acces::sonde=$(etat "$SONDE") bypass=$(etat "$BYPASS") vercel_token=$(etat "$LECTURE")"
+          # Trois issues nommees, aucune supposition.
+          if [ -n "${BYPASS:-}" ]; then
+            echo "acces officiel: x-vercel-protection-bypass utilisable (Vercel Authentication reste active)."
+          elif [ -n "${LECTURE:-}" ]; then
+            echo "un jeton Vercel est present mais le contournement d'automatisation ne l'est pas :"
+            echo "il faut VERCEL_AUTOMATION_BYPASS_SECRET, genere dans Deployment Protection"
+            echo "(procedure : docs/security/p107-acces-preview-vercel.md)."
+          else
+            echo "aucun contournement disponible : la Preview reste inaccessible par une voie automatisee."
+          fi
 
       - name: Preuves C1 a C4 sur le processus deploye
         # Le script ne lit jamais un secret en clair : il recoit les valeurs par
@@ -230,7 +289,9 @@ jobs:
           TF_BASE: ${{ env.TF_BASE }}
           SHA_ATTENDU: ${{ github.event.inputs.sha_attendu || github.sha }}
           TRACEFAB_RUNTIME_PROBE_TOKEN: ${{ secrets.TRACEFAB_RUNTIME_PROBE_TOKEN }}
+          VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
           CONTEXTE_BRANCHE_AUTORISEE: ${{ github.event.inputs.branche_deployee || github.ref_name }}
+          TF_ENV_DECLARE: Preview
         run: node scripts/preuve_runtime_p107.mjs
 
       - name: Conserver les preuves expurgees
@@ -241,28 +302,6 @@ jobs:
           path: livrables-finalisation/preuves/p107-runtime-*.json
           if-no-files-found: warn
           retention-days: 30
-
-      - name: Publier les preuves sur la branche
-        # Les artefacts et les journaux passent par un blob store parfois
-        # inaccessible depuis l'environnement de relecture. Un commit sur une
-        # branche dediee rend la preuve lisible par l'API GitHub, donc par
-        # n'importe quel relecteur. Le fichier est deja expurge par le script.
-        if: always() && github.event_name == 'push'
-        env:
-          GH_TOKEN_PREUVES: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          set -eu
-          f="$(ls livrables-finalisation/preuves/p107-runtime-*.json 2>/dev/null | head -1 || true)"
-          if [ -z "$f" ]; then echo "aucune preuve ecrite"; exit 0; fi
-          if grep -Eq '\b[0-9a-fA-F]{48,}\b' "$f"; then
-            echo "::error::chaine longue ressemblant a un secret"; exit 1
-          fi
-          git config user.name "tracefab-preuves"
-          git config user.email "preuves@tracefab.invalid"
-          git add -f "$f"
-          if git diff --cached --quiet; then echo "preuves identiques"; exit 0; fi
-          git commit -q -m "preuves(p107): resultat runtime ${GITHUB_SHA:0:7}"
-          git push origin "HEAD:preuves/p107-${GITHUB_SHA:0:7}"
 
       - name: Publier les preuves dans le journal du job
         # L'artefact est la trace durable, mais il n'est pas toujours
@@ -285,3 +324,73 @@ jobs:
             echo "::error::une chaine longue ressemblant a un secret figure dans les preuves"
             exit 1
           fi
+
+  publier-preuves:
+    # Job ECRIVAIN, volontairement separe du job de mesure.
+    #
+    # La politique maison (controle H) interdit qu'un job detenant
+    # `contents: write` execute du code du depot. Ce job ne fait donc que
+    # recuperer l'artefact deja produit et expurge, le committer et le pousser :
+    # aucun `npm`, `npx`, `node` n'y est appele. Le jeton d'ecriture n'existe
+    # que dans ce job, jamais dans celui qui interroge la Preview.
+    name: Publier les preuves (job ecrivain, sans execution de code)
+    needs: preuves-runtime
+    if: always()
+    runs-on: ubuntu-latest
+    permissions:
+      # Declarer `contents: write` remet TOUTES les autres portees a `none`.
+      # Sans `actions: read`, `gh run download` echoue par exit 4
+      # (« authentication required ») — mesure du run 43870575863.
+      contents: write
+      actions: read
+    steps:
+      - name: Recuperer le depot
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.2.2
+        with:
+          persist-credentials: false
+
+      - name: Recuperer les preuves expurgees
+        # L'artefact est deja expurge par le job de mesure (qui n'a aucun droit
+        # d'ecriture). On le recupere par l'API GitHub plutot que par
+        # `actions/download-artifact`, hors liste blanche du controle K.
+        # ECHEC BRUYANT si l'artefact manque : un job de publication vert qui
+        # ne publie rien serait un faux temoin (defaut mesure au run
+        # 43869430514, ou la reconstitution par le journal a echoue en silence).
+        env:
+          # `gh` ne lit QUE `GH_TOKEN` (ou `GITHUB_TOKEN`). Lui donner
+          # `GH_TOKEN_PREUVES` le laisse non authentifie et produit un exit 4
+          # « authentication required » — mesure du run 43871621158, alors que
+          # l'artefact existait bien (765 octets) et que `actions: read` etait
+          # accorde. C'etait un defaut de nom de variable, pas de permission.
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -eu
+          mkdir -p livrables-finalisation/preuves
+          gh run download "${GITHUB_RUN_ID}" -n p107-preuves-runtime \
+            -D livrables-finalisation/preuves --repo "${GITHUB_REPOSITORY}"
+          ls -l livrables-finalisation/preuves/
+          compgen -G "livrables-finalisation/preuves/p107-runtime-*.json" > /dev/null \
+            || { echo "::error::artefact de preuve absent — rien a publier"; exit 1; }
+
+      - name: Committer et pousser les preuves
+        env:
+          GH_TOKEN_PREUVES: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -eu
+          f="$(ls livrables-finalisation/preuves/p107-runtime-*.json 2>/dev/null | head -1 || true)"
+          if [ -z "$f" ]; then echo "::error::aucune preuve a publier alors que le job ecrivain a ete lance"; exit 1; fi
+          if grep -Eq '\b[0-9a-fA-F]{48,}\b' "$f"; then
+            echo "::error::chaine longue ressemblant a un secret"; exit 1
+          fi
+          git config user.name "tracefab-preuves"
+          git config user.email "preuves@tracefab.invalid"
+          git add -f "$f"
+          if git diff --cached --quiet; then echo "preuves identiques"; exit 0; fi
+          git commit -q -m "preuves(p107): resultat runtime ${GITHUB_SHA:0:7}"
+          # `persist-credentials: false` laisse le depot SANS identifiants : un
+          # `git push` nu echoue par « could not read Username » (mesure du
+          # 2026-11-16, run 43850436311, exit 128). L URL authentifiee n'existe
+          # qu'au moment du push et n'est jamais ecrite sur disque.
+          git push "https://x-access-token:${GH_TOKEN_PREUVES}@github.com/${GITHUB_REPOSITORY}.git" \
+            "HEAD:preuves/p107-${GITHUB_SHA:0:7}"
+

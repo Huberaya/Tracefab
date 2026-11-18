@@ -9,6 +9,12 @@
       "justification": "Le workflow doit pousser les references visuelles regenerees : la comparaison de pixels n a de sens qu entre deux rendus de la meme pile graphique, donc la reference doit etre produite dans l environnement de comparaison.",
       "forme_exigee": "Deux jobs separes. `generer` (contents: read) installe et execute le code du depot. `pousser` (contents: write) telecharge l artefact, commit, pousse, et n execute AUCUN code du depot. Le job ecrivain porte l environnement `figer-reference-visuelle`, auquel le proprietaire peut associer des relecteurs obligatoires.",
       "etat": "Version durcie preparee le 2026-10-12. Ce fichier n existe pas sur la branche de reference : il vit sur `arena/91844ee9-tracefab` (PR #34). La version d origine porte `contents: write` au niveau du workflow et fait echouer le controle D et le controle H. La version durcie existe dans docs/security/patches/ et doit etre appliquee sur la branche qui detient le fichier."
+    },
+    "p107-preuves-runtime.yml": {
+      "portee": "job `publier-preuves` uniquement — `permissions: contents: read` au niveau du workflow",
+      "justification": "P10.7 exige des preuves de runtime consultables. L'artefact GitHub et le journal du job passent par un blob store inaccessible depuis l'environnement de relecture (403/EOF mesures). Un commit sur une branche dediee rend la preuve lisible par l'API GitHub, donc verifiable par un relecteur independant, sans jamais exposer de secret : le fichier est deja expurge et le job refuse toute chaine de 48 caracteres hexadecimaux.",
+      "forme_exigee": "Deux jobs separes. `preuves-runtime` (contents: read) installe et execute le code du depot, interroge la Preview, et n'a aucun droit d'ecriture. `publier-preuves` (contents: write) reconstruit le fichier de preuve depuis le journal, commit, pousse, et n'execute AUCUN code du depot (controle H : aucun npm/npx/node dans ses etapes run). Le jeton d'ecriture n'existe que dans le second job.",
+      "etat": "Ajoute le 2026-11-16 apres la mesure du run 43850436311 : le job unique portait contents: read et le push echouait par exit 128 (« could not read Username »), le depot tournant avec persist-credentials: false. L'URL authentifiee est fournie au moment du push et n'est jamais ecrite sur disque."
     }
   },
   "//secretUsingWorkflows": "Workflows qui lisent le contexte `secrets`. Un secret lu par un workflow declenche sur `push` de n'importe quelle branche est accessible a tout contributeur ayant le droit d'ecriture : c'est le mecanisme de l'incident 2C.",

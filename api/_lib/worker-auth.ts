@@ -65,10 +65,26 @@ export function runtimeProbeAuthorized(req: VercelRequest) {
   if (process.env.VERCEL_ENV !== 'preview') return false;
   const branche = process.env.VERCEL_GIT_COMMIT_REF;
   if (typeof branche !== 'string' || !BRANCHES_SONDE_RUNTIME.includes(branche)) return false;
+  // EN-TETE UNIQUEMENT, JAMAIS LA QUERY STRING.
+  //
+  // Le jeton etait aussi accepte en `?runtimeProbeToken=...`. Un secret dans une
+  // URL fuite par plusieurs chemins qui echappent tous au controle du code :
+  //   - les journaux d'acces de Vercel et du CDN conservent l'URL complete ;
+  //   - l'en-tete `Referer` d'une ressource chargee ensuite la transmet ;
+  //   - l'historique du navigateur et les caches intermediaires la retiennent ;
+  //   - un `Location` ou un message d'erreur qui recopie l'URL la reproduit.
+  // Aucune de ces fuites n'existe pour un en-tete de requete.
+  //
+  // La query string n'etait documentee NULLE PART : ni dans `docs/`, ni dans un
+  // script de preuve, qui tous utilisent l'en-tete. Seul le test la verrouillait,
+  // en la presentant comme « chemin alternatif documente » — un test qui
+  // protegeait un comportement que rien ne demandait.
+  //
+  // La suppression est un retrecissement : un appelant qui presentait un jeton
+  // valide en query est desormais refuse. Aucun appelant de ce depot n'est dans
+  // ce cas (mesure : `grep` ne trouve que ce test).
   const headerValue = req.headers['x-tracefab-runtime-probe-token'];
-  const queryValue = req.query?.runtimeProbeToken;
-  const value = headerValue ?? queryValue;
-  const actual = (Array.isArray(value) ? value[0] : value)?.trim();
+  const actual = (Array.isArray(headerValue) ? headerValue[0] : headerValue)?.trim();
   return secretMatches(process.env.TRACEFAB_RUNTIME_PROBE_TOKEN?.trim(), actual);
 }
 

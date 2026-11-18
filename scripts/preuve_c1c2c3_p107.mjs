@@ -27,7 +27,7 @@
  * UTILISATION
  *   DATABASE_URL=postgresql://... node --import tsx scripts/preuve_c1c2c3_p107.mjs
  */
-import { randomBytes } from 'node:crypto';
+import { randomBytes, createHmac } from 'node:crypto';
 import { writeFileSync, mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';
 import pg from 'pg';
@@ -158,10 +158,21 @@ try {
     ok('C3.8', 'jeton EXPIRE (signe il y a 1 h) -> REFUSE',
       await baseVerifie(expire.jeton) === false, 'refus');
 
-    // h) jeton a duree de vie demesuree — le plafond est cote VERIFICATEUR
+    // h) duree de vie demesuree — DEUX plafonds, tous deux mesures ici.
+    //
+    // L'emetteur refuse desormais d'en fabriquer un (plafond 600 s cote
+    // application, ajoute le 2026-11-17) ; la base le refuserait de toute
+    // facon (plafond 600 s cote verificateur). Ce cas le verifie sur le seul
+    // chemin encore possible : un jeton FORGE a la main, hors emetteur.
     const perenne = signerIdentiteSysteme({ cle: CLE, dureeSecondes: 60 * 60 * 24 * 365 });
-    ok('C3.9', 'jeton a duree de vie d un AN -> REFUSE (plafond 600 s cote base)',
-      await baseVerifie(perenne.jeton) === false, 'refus');
+    ok('C3.9a', 'une duree d un AN est refusee par l EMETTEUR (aucun jeton produit)',
+      perenne === null, perenne === null ? 'refus ferme' : 'jeton produit');
+    // Forge un jeton d'un an avec une expiration numerique valide : le corps
+    // est bien forme, seul le plafond de la base doit le refuser.
+    const corpsPerenne = `v1|tracefab_system|tracefab_worker|${Math.floor(Date.now() / 1000) + 60 * 60 * 24 * 365}`;
+    const macPerenne = createHmac('sha256', Buffer.from(CLE, 'hex')).update(corpsPerenne).digest('hex');
+    ok('C3.9b', 'jeton FORGE a expiration d un AN -> REFUSE par la base (plafond verificateur)',
+      await baseVerifie(`${corpsPerenne}.${macPerenne}`) === false, 'refus');
 
     // i) USURPATION SYSTEME : un jeton UTILISATEUR ne doit pas ouvrir l'usage systeme
     const jetonUtilisateur = signerIdentite({
