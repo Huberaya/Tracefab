@@ -163,28 +163,47 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   // l'authentification de sonde deja exigee ci-dessus.
   let baseIdentite: { table_presente: boolean; rls_forcee: boolean; mode_strict: boolean | null } | null = null;
   if (wantIdentity && etatSysteme !== 'valide') {
+    // DEUX REQUETES SEPAREES, ET POURQUOI.
+    //
+    // La premiere version combinait les trois champs dans un seul SELECT avec
+    // `CASE WHEN to_regclass('...politique') IS NOT NULL THEN (SELECT ...)`.
+    // Mesure du run 44262660569 : `baseIdentite: null`, alors que le GRANT
+    // SELECT et la politique de lecture existent bien. Un `CASE` n'empeche pas
+    // PostgreSQL de planifier — donc de resoudre — la sous-requete de la branche
+    // non prise : sur une base sans cette table, la requete entiere echouait.
+    //
+    // On separe donc : d'abord le catalogue (toujours lisible, aucun privilege
+    // requis), puis la politique SEULEMENT si sa table existe. Une incapacite de
+    // mesurer n'est pas un « non » : chaque etape degrade vers `null`.
     try {
-      const rows = await prisma.$queryRaw<Array<{
-        table_presente: boolean;
-        rls_forcee: boolean;
-        mode_strict: boolean | null;
-      }>>`
+      const cat = await prisma.$queryRaw<Array<{ table_presente: boolean; rls_forcee: boolean; politique_presente: boolean }>>`
         SELECT
           to_regclass('public.tracefab_identity_cles') IS NOT NULL AS table_presente,
           COALESCE((SELECT c.relrowsecurity AND c.relforcerowsecurity
                       FROM pg_catalog.pg_class c
                      WHERE c.oid = to_regclass('public.tracefab_identity_cles')), false) AS rls_forcee,
-          -- Le mode strict est publie tel quel : c'est un booleen de politique,
-          -- pas un secret. Il est lu APRES le controle d existence de la table,
-          -- sans quoi la requete echouerait sur une base qui n'a pas la
-          -- migration.
-          CASE WHEN to_regclass('public.tracefab_identity_politique') IS NOT NULL
-               THEN (SELECT p.strict FROM public.tracefab_identity_politique p WHERE p.singleton)
-               ELSE NULL END AS mode_strict
+          to_regclass('public.tracefab_identity_politique') IS NOT NULL AS politique_presente
       `;
-      baseIdentite = rows?.[0] ?? null;
+      const ligne = cat?.[0];
+      let modeStrict: boolean | null = null;
+      if (ligne?.politique_presente) {
+        try {
+          const pol = await prisma.$queryRaw<Array<{ strict: boolean | null }>>`
+            SELECT p.strict FROM public.tracefab_identity_politique p WHERE p.singleton
+          `;
+          modeStrict = pol?.[0]?.strict ?? null;
+        } catch {
+          modeStrict = null;
+        }
+      }
+      if (ligne) {
+        baseIdentite = {
+          table_presente: ligne.table_presente,
+          rls_forcee: ligne.rls_forcee,
+          mode_strict: modeStrict,
+        };
+      }
     } catch {
-      // Une incapacite de mesurer n'est pas un « non » : on laisse null.
       baseIdentite = null;
     }
   }
