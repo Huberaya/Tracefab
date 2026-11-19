@@ -64,19 +64,43 @@ verifier(/etat\s*!==\s*'PASS'/.test(blocVerdict),
 verifier(/condition === null/.test(blocVerdict),
   '`null` est traite comme indetermine, pas comme FAIL ni comme PASS');
 
-// --- 4. C4.6 ne peut plus rendre PASS sans mesure ------------------------
+// --- 4. C4.6 ne peut pas rendre PASS sans mesure ------------------------
+//
+// L assertion d origine exigeait un `null` LITTERAL : « C4.6 passe `null` et
+// non une expression toujours vraie ». Elle a fait son travail — elle a tue le
+// `Boolean(...) || true` — puis elle est devenue un obstacle : le `null` en dur
+// declarait la mesure IMPOSSIBLE, alors que le contexte tenant se mesure en
+// lecture seule. Une assertion qui exige un `null` litteral protege desormais
+// le defaut qu elle avait corrige.
+//
+// Ce qui doit rester vrai, et qui est verifie ici, est plus precis : C4.6 doit
+// dependre d une CONDITION LUE, et valoir `null` quand cette condition manque.
 const ligneC46 = source.split('\n').filter((l) => l.includes("'C4.6'"));
 verifier(ligneC46.length > 0, 'le critere C4.6 existe toujours');
-// Le troisieme argument de l appel doit etre `null` : c est lui qui porte l etat.
-const blocC46 = source.slice(source.indexOf("'C4.6'") - 200, source.indexOf("'C4.6'") + 400);
-verifier(/\bnull\s*,/.test(blocC46),
-  'C4.6 passe `null` (indetermine) et non une expression toujours vraie');
+verifier(/ct && ct\.measured === true/.test(source),
+  'C4.6 est conditionne par `measured` : sans mesure, pas de verdict');
+verifier(/contexteTenant/.test(source),
+  'C4.6 lit le champ `contexteTenant` publie par la route');
+verifier(/ct\.organisationEtrangereRefusee === true/.test(source),
+  'C4.6 exige le CONTROLE NEGATIF (organisation etrangere refusee), pas seulement le positif');
+// Une expression toujours vraie resterait un faux temoin, meme bien nommee.
+const blocC46 = source.slice(source.indexOf("'C4.6'"), source.indexOf("'C4.6'") + 900);
+verifier(!/\|\|\s*true/.test(blocC46), 'C4.6 ne contient aucune disjonction toujours vraie');
 
 // --- 5. C4 est evalue AUSSI sur 503 ---------------------------------------
 // Sortir avant d evaluer C4 transformait une mesure disponible en « non
 // mesuree ». Le corps du 503 porte `databaseIdentity` : la preuve y est.
-verifier(/evaluerC4\(sonde\.corps\.databaseIdentity\)/.test(source),
-  'C4 est evalue sur un 503 quand le corps porte databaseIdentity');
+// La forme exacte a change (C4.6 mesure desormais `contexteTenant`, donc
+// l appel passe deux arguments). Ce qui est verifie ici est la PROPRIETE :
+// l appel existe dans la branche 503, precede la sortie en 2, et n est pas
+// conditionne a `databaseIdentity` seul — sans quoi un corps portant
+// uniquement `contexteTenant` rendrait C4 indetermine par contagion.
+const posExit = source.indexOf('process.exit(2)', source.indexOf('sonde.statut === 503'));
+const posAppel = source.indexOf('evaluerC4(sonde.corps.databaseIdentity');
+verifier(posAppel !== -1 && posAppel < posExit,
+  'C4 est evalue sur un 503 avant la sortie en 2', `appel=${posAppel} exit=${posExit}`);
+verifier(/sonde\.corps\?\.databaseIdentity \|\| sonde\.corps\?\.contexteTenant/.test(source),
+  'C4 est evalue des que databaseIdentity OU contexteTenant est present');
 verifier(/function evaluerC4/.test(source), 'la fonction evaluerC4 existe');
 const nbC41 = (source.match(/'C4\.1'/g) || []).length;
 verifier(nbC41 === 1, 'C4.1 n apparait qu une fois (pas de doublon)', `${nbC41} occurrence(s)`);

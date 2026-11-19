@@ -108,6 +108,23 @@ type IdentityRow = {
   privileged_memberships: string[] | null;
 };
 
+// P10.7 — LE DEFAUT CORRIGE ICI.
+//
+// Cette constante portait `privilegedMemberships: []` et `canEscalate: false`.
+// Les deux sont des VALEURS DE MESURE : « aucun role privilegie atteignable ».
+// Les publier quand `measured` vaut false revient a affirmer un resultat qu'on
+// n'a pas obtenu — et dans le sens qui rassure. Un lecteur qui ignore
+// `measured` lit « pas d'escalade possible » sur une sonde qui n'a jamais
+// interroge la base, par exemple quand `DATABASE_URL` manque.
+//
+// C'est la meme classe de defaut que le `Boolean(...) || true` de C4.6 : une
+// valeur favorable produite sans mesure. La difference est qu'ici c'etait un
+// tableau vide, moins visible qu'une constante litterale.
+//
+// `privilegedMemberships` est donc `null` (inconnu) et `canEscalate` aussi. Le
+// contrat `identiteRuntimeSure` refusait deja sur `measured !== true` en
+// premier, donc aucune decision de securite ne change : ce qui change est
+// qu'un consommateur ne peut plus lire un resultat la ou il n'y en a pas.
 const IDENTITY_UNAVAILABLE: DatabaseIdentity = {
   measured: false,
   currentUser: null,
@@ -115,8 +132,8 @@ const IDENTITY_UNAVAILABLE: DatabaseIdentity = {
   database: null,
   bypassesRls: null,
   isSuperuser: null,
-  privilegedMemberships: [],
-  canEscalate: false,
+  privilegedMemberships: null,
+  canEscalate: null,
   detail: 'indisponible',
 };
 
@@ -169,6 +186,145 @@ export async function probeDatabaseIdentity(): Promise<DatabaseIdentity> {
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     return { ...IDENTITY_UNAVAILABLE, detail: redact(message).slice(0, 160) };
+  }
+}
+
+/**
+ * P10.7 — LE CONTEXTE TENANT EST-IL PRESENT ET NON FALSIFIE ?
+ *
+ * CE QUE CE N'EST PAS
+ *
+ * Ce n'est pas « la RLS fonctionne ». L'isolation reelle est prouvee par les
+ * suites dediees (`test:neon:cross-tenant`, `test:neon:active-tenant`,
+ * `test:neon:isolation-lignes`), qui creent deux organisations et tentent de
+ * lire les lignes de l'autre. Une sonde de diagnostic en lecture seule ne peut
+ * pas, et ne doit pas, remplacer cela.
+ *
+ * CE QUE C'EST
+ *
+ * La question laissee ouverte par C4.6 : le runtime pose-t-il, sur la connexion
+ * REELLE, un contexte tenant que la BASE accepte ? C'etait jusqu'ici repondu
+ * « INDETERMINATE — la route de diagnostic n'ouvre pas de transaction metier ».
+ * C'etait exact, et ce n'etait pas une fatalite : le contexte tenant se mesure
+ * avec un aller-retour, sans ecrire une ligne.
+ *
+ * COMMENT, SANS ECRITURE
+ *
+ *   1. on signe une identite UTILISATEUR pour un identifiant de sonde ;
+ *   2. on pose `tracefab.active_organization_id` et `tracefab.identity` dans
+ *      une transaction de diagnostic ;
+ *   3. on demande a la base ce que le POINT DE PASSAGE UNIQUE
+ *      (`tracefab_current_user_id`, utilise par 72 fonctions) en conclut ;
+ *   4. on verifie le REFUS : un jeton signe pour une AUTRE organisation que
+ *      celle posee doit rendre NULL.
+ *
+ * Le point 4 est ce qui distingue une mesure d'une presence. Sans lui, une
+ * fonction qui ignorerait le jeton rendrait le meme resultat des deux cotes et
+ * la sonde serait verte sur un systeme casse.
+ *
+ * L'identifiant de sonde est un UUID NUL. `tracefab_identity_jeton_utilisateur`
+ * ne verifie que la signature, l'expiration et la liaison a l'organisation : il
+ * ne consulte aucune table d'utilisateurs (mesure sur la migration du
+ * 20261031120000). Aucune ligne n'est donc lue, ecrite, ni exigee.
+ */
+export type ContexteTenant = {
+  /** La mesure a-t-elle eu lieu ? `false` = non mesuré, jamais un resultat. */
+  measured: boolean;
+  /** Le jeton utilisateur signe a-t-il ete accepte par la base ? */
+  jetonAccepte: boolean | null;
+  /** Le point de passage unique rend-il bien l'identite signee ? */
+  identiteLue: boolean | null;
+  /** Un jeton d'une AUTRE organisation est-il refuse ? C'est le controle negatif. */
+  organisationEtrangereRefusee: boolean | null;
+  /**
+   * Le GUC a-t-il ete REMIS A ZERO avant la fin de la transaction ?
+   *
+   * Nomme `...RemisAZero` et non `...SurvitApresTransaction` : la relecture a
+   * lieu DANS la transaction, donc elle ne peut pas observer une fuite vers la
+   * connexion suivante. Un nom qui promettait cette mesure aurait ete un faux
+   * temoin par son seul intitule. La non-fuite du pool est prouvee par les
+   * suites Neon dediees, pas ici.
+   */
+  gucRemisAZero: boolean | null;
+  detail: string;
+};
+
+const CONTEXTE_TENANT_INDISPONIBLE: ContexteTenant = {
+  measured: false,
+  jetonAccepte: null,
+  identiteLue: null,
+  organisationEtrangereRefusee: null,
+  gucRemisAZero: null,
+  detail: 'indisponible',
+};
+
+/** UUID nul : une identite de sonde qui ne designe aucun utilisateur reel. */
+const SONDE_USER_ID = '00000000-0000-4000-8000-000000000000';
+/** Organisation de sonde, elle aussi inexistante : on ne mesure que la liaison. */
+const SONDE_ORG_ID = '00000000-0000-4000-8000-0000000000a1';
+const SONDE_ORG_AUTRE = '00000000-0000-4000-8000-0000000000b2';
+
+export async function probeContexteTenant(): Promise<ContexteTenant> {
+  const cle = (process.env.TRACEFAB_IDENTITY_KEY || '').trim();
+  if (!cle) {
+    return { ...CONTEXTE_TENANT_INDISPONIBLE, detail: 'cle d identite absente : contexte non mesurable' };
+  }
+  if (!process.env.DATABASE_URL?.trim()) {
+    return { ...CONTEXTE_TENANT_INDISPONIBLE, detail: 'DATABASE_URL absent' };
+  }
+  try {
+    const { signerIdentite } = await import('./identite-jeton.js');
+    const jeton = signerIdentite({ userId: SONDE_USER_ID, organizationId: SONDE_ORG_ID, cle });
+    const jetonAutre = signerIdentite({ userId: SONDE_USER_ID, organizationId: SONDE_ORG_AUTRE, cle });
+    if (jeton === null || jetonAutre === null) {
+      return { ...CONTEXTE_TENANT_INDISPONIBLE, detail: 'signature impossible' };
+    }
+
+    type Row = { lu: string | null; guc_apres: string | null };
+    // Portee TRANSACTIONNELLE (`true`) sur les deux set_config : le pool ne
+    // conserve rien. Le GUC est relu APRES la remise a zero pour verifier que
+    // la transaction ne fuit pas — c'est la propriete que les suites Neon
+    // verifient, et on la reverifie ici sur la connexion reelle du runtime.
+    const rows = await prisma.$transaction(async (tx) => {
+      await tx.$executeRaw`SELECT set_config('tracefab.active_organization_id', ${SONDE_ORG_ID}, true)`;
+      await tx.$executeRaw`SELECT set_config('tracefab.identity', ${jeton.jeton}, true)`;
+      const lues = await tx.$queryRaw<Array<{ lu: string | null }>>`
+        SELECT public.tracefab_current_user_id()::TEXT AS lu
+      `;
+      // Controle NEGATIF : le meme GUC d'organisation, mais un jeton signe pour
+      // une autre organisation. La base doit refuser et rendre NULL.
+      await tx.$executeRaw`SELECT set_config('tracefab.identity', ${jetonAutre.jeton}, true)`;
+      const refus = await tx.$queryRaw<Array<{ lu: string | null }>>`
+        SELECT public.tracefab_current_user_id()::TEXT AS lu
+      `;
+      await tx.$executeRaw`SELECT set_config('tracefab.identity', '', true)`;
+      await tx.$executeRaw`SELECT set_config('tracefab.active_organization_id', '', true)`;
+      const apres = await tx.$queryRaw<Array<{ v: string | null }>>`
+        SELECT nullif(current_setting('tracefab.identity', true), '') AS v
+      `;
+      return [{
+        lu: lues?.[0]?.lu ?? null,
+        refus: refus?.[0]?.lu ?? null,
+        guc_apres: apres?.[0]?.v ?? null,
+      }];
+    });
+
+    const r = rows?.[0];
+    if (!r) return { ...CONTEXTE_TENANT_INDISPONIBLE, detail: 'transaction honoree, aucune ligne' };
+    // Comparaison insensible a la casse : PostgreSQL rend l'UUID en minuscules.
+    const identiteLue = (r.lu ?? '').toLowerCase() === SONDE_USER_ID;
+    const refusee = r.refus === null || r.refus === '';
+    return {
+      measured: true,
+      jetonAccepte: identiteLue,
+      identiteLue,
+      organisationEtrangereRefusee: refusee,
+      gucRemisAZero: r.guc_apres === null || r.guc_apres === '',
+      detail: 'contexte tenant pose puis relu par le point de passage unique, en lecture seule',
+    };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    return { ...CONTEXTE_TENANT_INDISPONIBLE, detail: redact(message).slice(0, 160) };
   }
 }
 

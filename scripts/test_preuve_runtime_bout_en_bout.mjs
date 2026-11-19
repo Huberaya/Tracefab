@@ -133,5 +133,32 @@ verifier(locale.code !== 0, 'une cible locale est refusee', `code ${locale.code}
 verifier(/n'est pas une URL de deploiement Vercel|runtime local/i.test(locale.sortie),
   'le refus nomme la raison');
 
+// --- 5. C4.6 — le contexte tenant, mesure et CONTREDIT -----------------------
+//
+// Le defaut corrige : C4.6 rendait `null` en dur, au motif que la mesure etait
+// impossible. Elle l'etait devenue fausse : la route publie `contexteTenant`.
+// Reste a prouver que le verdict SUIT la mesure, dans les deux sens.
+const jetonTest = { TRACEFAB_RUNTIME_PROBE_TOKEN: 'jeton-de-test-non-secret' };
+
+const c46ok = await executer('app503-contexte-ok', jetonTest);
+verifier(/"C4\.6"[^}]*"verdict":\s*"PASS"/.test(c46ok.preuve),
+  'C4.6 rend PASS quand la base accepte le jeton ET refuse l organisation etrangere',
+  c46ok.preuve.slice(-400));
+
+const c46faux = await executer('app503-contexte-faux', jetonTest);
+verifier(/"C4\.6"[^}]*"verdict":\s*"FAIL"/.test(c46faux.preuve),
+  'C4.6 rend FAIL quand la base ACCEPTE un jeton d une autre organisation',
+  c46faux.preuve.slice(-400));
+
+const c46nm = await executer('app503-contexte-non-mesure', jetonTest);
+verifier(/"C4\.6"[^}]*"verdict":\s*"INDETERMINATE"/.test(c46nm.preuve),
+  'C4.6 rend INDETERMINATE quand la mesure a echoue — ni PASS ni FAIL',
+  c46nm.preuve.slice(-400));
+
+// Une preuve qui publierait un jeton de contexte en clair serait pire que le
+// defaut qu'elle documente. Le corps est expurge, mais on le verifie ici.
+verifier(!/[0-9a-f]{64}/.test(c46ok.preuve),
+  'aucun jeton signe (64 hex) ne fuit dans la preuve publiee');
+
 console.log(echecs === 0 ? '  Bout en bout : OK.' : `  Bout en bout : ${echecs} echec(s).`);
 process.exit(echecs === 0 ? 0 : 1);

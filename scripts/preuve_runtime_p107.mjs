@@ -276,7 +276,7 @@ function expurger(corps) {
   // Champs de diagnostic nommes, tous non secrets par construction.
   for (const cle of ['schema', 'ready', 'configurationOnly', 'configurationSuffisante',
     'identiteSaine', 'identiteEcarts', 'services', 'identityTokens', 'identitySysteme',
-    'baseIdentite', 'databaseIdentity', 'notificationOutbox', 'error']) {
+    'baseIdentite', 'databaseIdentity', 'contexteTenant', 'notificationOutbox', 'error']) {
     if (cle in corps) garde[cle] = corps[cle];
   }
   const texte = JSON.stringify(garde);
@@ -369,7 +369,7 @@ function evaluerC1C2(corps) {
 // Une preuve manquante par negligence de collecte n'est pas une preuve
 // impossible. C4 est donc evalue des maintenant ; seuls C1 et C2, qui exigent
 // une cle posee, restent hors d atteinte sur 503.
-function evaluerC4(db) {
+function evaluerC4(db, contexteTenant) {
   verdict('C4.1', 'current_user = session_user (aucune prise de role residuelle)',
     typeof db.currentUser === 'string' && db.currentUser === db.sessionUser,
     `current_user=${db.currentUser ?? '?'} session_user=${db.sessionUser ?? '?'}`);
@@ -383,11 +383,29 @@ function evaluerC4(db) {
     `can_escalate=${String(db.canEscalate)} · membres_privilegies=${JSON.stringify(db.privilegedMemberships ?? null)}`);
   verdict('C4.5', 'le role effectif est le role applicatif attendu',
     db.currentUser === 'tracefab_app', `current_user=${db.currentUser ?? '?'}`);
-  // C4.6 — cette route ne pose aucun contexte tenant : INDETERMINATE, pas PASS.
-  verdict('C4.6', 'le contexte tenant est present et non falsifie', null,
-    'INDETERMINATE : la route de diagnostic n ouvre pas de transaction metier, '
-    + 'donc aucun contexte tenant n est pose. Ce n est pas un PASS : la propriete '
-    + 'reste non mesuree ici et doit l etre par les suites RLS dediees.');
+  // C4.6 — le contexte tenant, desormais MESURE sur la connexion reelle.
+  //
+  // Historique, et pourquoi la ligne a change. La version precedente rendait
+  // `null` en dur avec ce motif : « la route de diagnostic n ouvre pas de
+  // transaction metier, donc aucun contexte tenant n est pose ». Le motif etait
+  // exact ; la conclusion — INDETERMINATE definitif — ne l'etait pas. La route
+  // publie maintenant `contexteTenant`, produit par un aller-retour en LECTURE
+  // SEULE : on signe une identite utilisateur, on pose le GUC d'organisation,
+  // on demande au point de passage unique ce que la BASE en conclut, et on
+  // verifie qu'un jeton d'une AUTRE organisation est refuse.
+  //
+  // Le `null` en dur n'est PAS conserve comme repli : si le champ manque, la
+  // condition vaut `undefined` et le verdict est INDETERMINATE par la meme
+  // regle que partout ailleurs. Ce qui change est qu'on ne DECIDE plus a
+  // l'avance que la mesure est impossible.
+  const ct = contexteTenant;
+  verdict('C4.6', 'le contexte tenant est present et non falsifie',
+    ct && ct.measured === true
+      ? (ct.identiteLue === true && ct.organisationEtrangereRefusee === true && ct.gucRemisAZero === true)
+      : null,
+    ct && ct.measured === true
+      ? `jeton_accepte=${String(ct.jetonAccepte)} · organisation_etrangere_refusee=${String(ct.organisationEtrangereRefusee)} · guc_remis_a_zero=${String(ct.gucRemisAZero)}`
+      : `INDETERMINATE : contexte tenant non mesure (${ct ? ct.detail : 'champ contexteTenant ABSENT du corps'})`);
 }
 
 // La sonde reelle, avec le jeton legitime.
@@ -411,7 +429,13 @@ if (sonde.statut !== 200) {
   if (sonde.statut === 503) {
     // Le corps est la : tout ce qu'il PUBLIE est mesurable, meme si le runtime
     // se declare non pret. On evalue donc ce qu'il porte, et rien de plus.
-    if (sonde.corps?.databaseIdentity) evaluerC4(sonde.corps.databaseIdentity);
+    // `databaseIdentity` et `contexteTenant` sont deux mesures INDEPENDANTES :
+    // la premiere peut manquer alors que la seconde existe (roles sans droits
+    // catalogue, par exemple). Les lier par un `&&` rendrait C4.6 indetermine
+    // par contagion, ce qui serait encore une mesure disponible jetee.
+    if (sonde.corps?.databaseIdentity || sonde.corps?.contexteTenant) {
+      evaluerC4(sonde.corps.databaseIdentity ?? {}, sonde.corps.contexteTenant);
+    }
     if (sonde.corps?.identitySysteme || sonde.corps?.identityTokens) {
       evaluerC1C2(sonde.corps);
     }
@@ -445,7 +469,7 @@ evaluerC1C2(corps);
 // La fonction `evaluerC4` est appelee une seule fois, avant le test de statut.
 // La dupliquer ici ferait apparaitre chaque critere deux fois dans la preuve et
 // rendrait le compte de PASS/FAIL trompeur.
-if (sonde.statut === 200) evaluerC4(corps.databaseIdentity ?? {});
+if (sonde.statut === 200) evaluerC4(corps.databaseIdentity ?? {}, corps.contexteTenant);
 
 // --- Verdict ---------------------------------------------------------------
 const echecs = resultats.filter((r) => r.verdict === 'FAIL').length;

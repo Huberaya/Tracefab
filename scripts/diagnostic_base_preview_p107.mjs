@@ -134,7 +134,31 @@ try {
   console.log(`  hote_empreinte   : ${empreinte(hote)}`);
 
   // Concordance avec ce que le runtime a publie.
-  const ATTENDU = { base_oid: 16396, hote_empreinte: 'e4142a5ef80a', schemas_empreinte: '4a145f39b5da' };
+  //
+  // DEFAUT CORRIGE LE 2026-11-19 : ces trois valeurs etaient CODEES EN DUR, et
+  // elles etaient PERIMEES. L'empreinte d'hote `e4142a5ef80a` datait d'une
+  // mesure anterieure au redimensionnement de la base ; la valeur relevee sur
+  // le runtime le 2026-11-19 est `55c809d501c6`. L'outil comparait donc a un
+  // temoin mort et rendait « CETTE URL NE JOINT PAS LA BASE DU RUNTIME » sur la
+  // bonne URL — un faux negatif qui aurait fait chercher une base inexistante.
+  //
+  // Les valeurs par defaut restent pour l'usage courant, mais ELLES SE
+  // SURCHARGENT : le rapport de preuve publie les trois empreintes, et c'est
+  // celles-la qu'il faut passer. Un temoin qu'on ne peut pas mettre a jour est
+  // un temoin qu'on ne peut pas croire.
+  const opt = (nom) => {
+    const i = args.indexOf(nom);
+    return i !== -1 && args[i + 1] ? args[i + 1].trim() : '';
+  };
+  const ATTENDU = {
+    base_oid: Number(opt('--oid') || process.env.TF_OID_ATTENDU || 16396),
+    hote_empreinte: opt('--empreinte-hote') || process.env.TF_EMPREINTE_HOTE || '55c809d501c6',
+    schemas_empreinte: opt('--empreinte-schemas') || process.env.TF_EMPREINTE_SCHEMAS || '4a145f39b5da',
+  };
+  if (!Number.isFinite(ATTENDU.base_oid)) {
+    console.error('  ARRET — --oid doit etre un nombre.');
+    process.exit(2);
+  }
   const memeOid = id.base_oid === ATTENDU.base_oid;
   const memeHote = empreinte(hote) === ATTENDU.hote_empreinte;
 

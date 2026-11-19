@@ -4,7 +4,7 @@ import { notificationAlertConfigured } from '../../_lib/notification-observabili
 import { storageConfig } from '../../_lib/storage.js';
 import { json, methodNotAllowed } from '../../_lib/http.js';
 import { runtimeProbeAuthorized, workerAuthorized, workerSecretConfigured } from '../../_lib/worker-auth.js';
-import { databaseIdentityIsSafe, probeDatabaseIdentity, runLiveProbes } from '../../_lib/readiness-probes.js';
+import { databaseIdentityIsSafe, probeContexteTenant, probeDatabaseIdentity, runLiveProbes } from '../../_lib/readiness-probes.js';
 import { ecartIdentiteRuntime } from '../../_lib/identite-contrat.js';
 import { etatCleIdentite } from '../../_lib/identite-jeton.js';
 import { prisma } from '../../_lib/prisma.js';
@@ -391,6 +391,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   const databaseIdentity = wantIdentity ? await probeDatabaseIdentity() : undefined;
 
+  // P10.7 — C4.6 : le contexte tenant est-il pose et VERIFIE par la base ?
+  //
+  // Jusqu'ici ce point etait declare INDETERMINATE au motif que « la route de
+  // diagnostic n ouvre pas de transaction metier ». Le motif etait exact, la
+  // conclusion ne l'etait pas : le contexte se mesure en LECTURE SEULE, par un
+  // aller-retour signe + controle negatif. Voir `probeContexteTenant`.
+  //
+  // L'echec de cette sonde ne rend PAS la route indisponible : `measured:false`
+  // est un resultat publie, pas une exception. Un diagnostic qui tombe ne doit
+  // pas emporter le diagnostic entier.
+  const contexteTenant = wantIdentity ? await probeContexteTenant() : undefined;
+
   // P10.7 — verification reelle de l'outbox sous contexte systeme signe.
   // Lecture seule : aucun element n'est reclame, modifie, ni envoye.
   let notificationOutbox: { verified: boolean; detail: string; health?: OutboxHealthRow } | undefined;
@@ -446,6 +458,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       identitySysteme: jetonsSysteme,
       ...(baseIdentite ? { baseIdentite } : {}),
       ...(databaseIdentity ? { databaseIdentity } : {}),
+      ...(contexteTenant ? { contexteTenant } : {}),
       ...(notificationOutbox ? { notificationOutbox } : {}),
     });
   }
@@ -467,6 +480,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     identitySysteme: jetonsSysteme,
     ...(baseIdentite ? { baseIdentite } : {}),
     ...(databaseIdentity ? { databaseIdentity } : {}),
+    ...(contexteTenant ? { contexteTenant } : {}),
     ...(notificationOutbox ? { notificationOutbox } : {}),
   });
 }
