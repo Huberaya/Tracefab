@@ -72,6 +72,15 @@ const blocC46 = source.slice(source.indexOf("'C4.6'") - 200, source.indexOf("'C4
 verifier(/\bnull\s*,/.test(blocC46),
   'C4.6 passe `null` (indetermine) et non une expression toujours vraie');
 
+// --- 5. C4 est evalue AUSSI sur 503 ---------------------------------------
+// Sortir avant d evaluer C4 transformait une mesure disponible en « non
+// mesuree ». Le corps du 503 porte `databaseIdentity` : la preuve y est.
+verifier(/evaluerC4\(sonde\.corps\.databaseIdentity\)/.test(source),
+  'C4 est evalue sur un 503 quand le corps porte databaseIdentity');
+verifier(/function evaluerC4/.test(source), 'la fonction evaluerC4 existe');
+const nbC41 = (source.match(/'C4\.1'/g) || []).length;
+verifier(nbC41 === 1, 'C4.1 n apparait qu une fois (pas de doublon)', `${nbC41} occurrence(s)`);
+
 if (echecs === 0) {
   console.log('  Preuve runtime P10.7 : garde-fous anti-faux-temoin OK.');
   process.exit(0);
