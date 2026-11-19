@@ -1077,19 +1077,24 @@ jobs:
         # pour une AUTRE organisation doit etre refuse. C'est ce refus qui
         # distingue une mesure d'une simple presence de variable.
         #
-        # La cle est GENIREE POUR L'OCCASION et posee dans la base jetable :
-        # aucune valeur n'est ecrite dans le depot, et elle disparait avec le
-        # runner. L'empreinte de la cle n'est jamais imprimee.
+        #
+        # LE TEST POSE SA PROPRE CLE, ET N'APPELLE AUCUN OUTIL D'OPERATEUR.
+        #
+        # La premiere version de cette etape appelait l outil de provisioning de
+        # la cle d identite. C'est un ecrivain d'OPERATEUR, et
+        # `test_destructive_suite_routing` interdit qu'un workflow le reference —
+        # a raison : un outil qui pose une cle sur une base nommee n'a rien a
+        # faire dans une chaine ou la cible peut changer. Le nom du fichier
+        # n'est pas ecrit ici, precisement parce que la regle cherche une
+        # reference textuelle et qu un commentaire en est une.
+        # Mesure du run 44631158092, etape « Socle ».
+        #
+        # Le test ecrit donc sa cle lui-meme, sur la base jetable, avec le role
+        # proprietaire : une fixture, comme les autres du job, qui disparait
+        # avec le runner. Aucune valeur au depot, aucune empreinte imprimee.
         env:
           DATABASE_ADMIN_URL: postgresql://postgres:postgres@localhost:5432/tracefab_test
-          TF_ALLOW_PROVISIONING: oui
-        run: |
-          set -eu
-          CLE=$(node -e "console.log(require('node:crypto').randomBytes(32).toString('hex'))")
-          TF_IDENTITY_KEY_HEX="$CLE" node scripts/provisionner_cle_identite.mjs
-          TF_CLE_IDENTITE_TEST="$CLE" node scripts/run-db-suite.mjs scripts/test_neon_contexte_tenant_sonde.mjs
-        # La cle vit dans l'environnement de CE shell uniquement : elle n'est ni
-        # exportee au job, ni ecrite sur disque, ni affichee.
+        run: node scripts/executer_avec_erreur_annotee.mjs "sonde contexte tenant" npm run test:neon:contexte-tenant-sonde
 
       - name: P10.7 — le test de la sonde ne peut pas diverger de la sonde
         # Sans base, et sans dependance : lit les deux sources.

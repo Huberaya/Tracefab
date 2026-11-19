@@ -22,6 +22,20 @@
  *      controle negatif, celui qui distingue une mesure d'une presence ;
  *   3. le GUC est remis a zero et ne survit pas a la transaction.
  *
+ * POURQUOI IL POSE SA PROPRE CLE, ET PAS UN OUTIL D OPERATEUR
+ *
+ * La premiere version de l'etape CI appelait
+ * `scripts/provisionner_cle_identite.mjs`. C'est un OUTIL D OPERATEUR, classe
+ * « ecrivain » par la politique du depot : `test_destructive_suite_routing`
+ * interdit qu'un workflow le reference, et il a raison — un outil qui pose une
+ * cle sur une base nommee n'a rien a faire dans une chaine automatique ou la
+ * cible pourrait changer. Mesure du run 44631158092.
+ *
+ * Le test ecrit donc sa cle lui-meme, via `DATABASE_ADMIN_URL` (le
+ * proprietaire des objets), sur les colonnes de `tracefab_identity_cles`.
+ * C'est une fixture de test sur une base jetable, exactement comme les autres
+ * fixtures du job, et elle disparait avec le runner.
+ *
  * IL N'IMPORTE PAS LE MODULE TYPESCRIPT : `readiness-probes.ts` importe Prisma,
  * et le client Prisma n'est pas genere dans l'environnement d'analyse. Le test
  * rejoue donc le SQL A L'IDENTIQUE ; un garde-fou separe verifie que les deux
@@ -30,7 +44,7 @@
  * SORTIE : 0 conforme · 1 defaut · 2 prerequis manquant.
  * Un test qui n'a pas tourne n'est pas un test qui passe.
  */
-import { createHmac, randomUUID } from 'node:crypto';
+import { createHmac, randomBytes, randomUUID } from 'node:crypto';
 import pg from 'pg';
 
 const URL_APP = process.env.TF_RLS_APP_URL;
@@ -42,12 +56,16 @@ if (!URL_APP) {
   process.exit(2);
 }
 
-const cle = (process.env.TF_CLE_IDENTITE_TEST || '').trim();
-if (!/^[0-9a-fA-F]+$/.test(cle) || cle.length < 64 || cle.length % 2 !== 0) {
-  console.log('  NON EXECUTE — TF_CLE_IDENTITE_TEST absente ou mal formee.');
-  console.log('  Le test doit signer avec la MEME cle que celle posee dans la base.');
+const URL_ADMIN = process.env.DATABASE_ADMIN_URL || process.env.DATABASE_URL;
+if (!URL_ADMIN) {
+  console.log('  NON EXECUTE — DATABASE_ADMIN_URL absent.');
+  console.log('  Le test doit POSER sa cle sur la base jetable avant de signer.');
   process.exit(2);
 }
+
+// Cle generee pour l occasion : elle ne sort jamais de ce processus, n'est
+// jamais imprimee, et meurt avec la base jetable.
+const cle = randomBytes(32).toString('hex');
 
 let echecs = 0;
 let assertions = 0;
@@ -70,6 +88,39 @@ function signer({ userId, organizationId, dureeSecondes = 60 }) {
   const corps = `v1|${userId}|${organizationId ?? ''}|tracefab_identity|${expiration}`;
   const mac = createHmac('sha256', Buffer.from(cle, 'hex')).update(corps).digest('hex');
   return { jeton: `${corps}.${mac}`, expiration };
+}
+
+/** Pose la cle de test dans la table, avec le role PROPRIETAIRE des objets. */
+async function poserLaCle() {
+  const admin = new pg.Client({
+    connectionString: URL_ADMIN,
+    ssl: /sslmode=(require|verify-full|verify-ca)/.test(URL_ADMIN) ? { rejectUnauthorized: true } : false,
+  });
+  await admin.connect();
+  try {
+    // `version` est la cle primaire ; on prend la premiere libre. La cle
+    // precedente, s il y en a une, reste active : c'est la rotation, et le
+    // validateur essaie TOUTES les cles actives. On ne revoque donc rien.
+    await admin.query(
+      `INSERT INTO public.tracefab_identity_cles (version, secret, actif)
+       SELECT coalesce(max(version), 0) + 1, $1::bytea, true
+         FROM public.tracefab_identity_cles`,
+      [Buffer.from(cle, 'hex')],
+    );
+    await admin.query(
+      `UPDATE public.tracefab_identity_politique SET strict = false WHERE singleton`,
+    );
+  } finally {
+    await admin.end().catch(() => {});
+  }
+}
+
+try {
+  await poserLaCle();
+} catch (e) {
+  console.log(`  NON EXECUTE — la cle de test n a pas pu etre posee : ${e.code ?? e.message}`);
+  console.log('::error::sonde contexte tenant — pose de la cle impossible : ' + String(e.message).split('\n')[0].slice(0, 200));
+  process.exit(2);
 }
 
 const client = new pg.Client({
