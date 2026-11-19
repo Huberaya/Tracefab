@@ -388,9 +388,17 @@ jobs:
           if git diff --cached --quiet; then echo "preuves identiques"; exit 0; fi
           git commit -q -m "preuves(p107): resultat runtime ${GITHUB_SHA:0:7}"
           # `persist-credentials: false` laisse le depot SANS identifiants : un
+          # Le nom porte le RUN ID, pas seulement le SHA du workflow.
+          #
+          # Sans lui, deux executions sur le meme SHA visent la MEME branche
+          # `preuves/p107-<sha>` : la seconde est refusee en non-fast-forward et
+          # la preuve fraiche reste prisonniere de l artefact. Mesure du run
+          # 44483502417 : artefact de 1420 octets (nouvelle URL, nouvelle
+          # mesure) et push en echec, donc preuve inatteignable.
+          #
           # `git push` nu echoue par « could not read Username » (mesure du
           # 2026-11-16, run 43850436311, exit 128). L URL authentifiee n'existe
           # qu'au moment du push et n'est jamais ecrite sur disque.
           git push "https://x-access-token:${GH_TOKEN_PREUVES}@github.com/${GITHUB_REPOSITORY}.git" \
-            "HEAD:preuves/p107-${GITHUB_SHA:0:7}"
+            "HEAD:preuves/p107-${GITHUB_SHA:0:7}-r${GITHUB_RUN_ID}"
 

@@ -81,6 +81,14 @@ verifier(/function evaluerC4/.test(source), 'la fonction evaluerC4 existe');
 const nbC41 = (source.match(/'C4\.1'/g) || []).length;
 verifier(nbC41 === 1, 'C4.1 n apparait qu une fois (pas de doublon)', `${nbC41} occurrence(s)`);
 
+// --- 6. Tracabilite : la ref du workflow n'est pas le SHA du deploiement ----
+verifier(/workflow_sha:/.test(source), 'la preuve enregistre workflow_sha');
+verifier(/deployment_sha:/.test(source), 'la preuve enregistre deployment_sha');
+verifier(/process\.env\.SHA_ATTENDU/.test(source),
+  'deployment_sha est lu depuis SHA_ATTENDU (l input du workflow)');
+verifier(/sha_traceabilite/.test(source),
+  'la preuve explique ce que `sha` designe');
+
 if (echecs === 0) {
   console.log('  Preuve runtime P10.7 : garde-fous anti-faux-temoin OK.');
   process.exit(0);

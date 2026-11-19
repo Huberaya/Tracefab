@@ -41,7 +41,20 @@ const JETON = (process.env.TRACEFAB_RUNTIME_PROBE_TOKEN || '').trim();
 // qu'a franchir la protection de la Preview, qui reste ACTIVE : on ne desactive
 // rien. La valeur n'est jamais journalisee.
 const BYPASS = (process.env.VERCEL_AUTOMATION_BYPASS_SECRET || '').trim();
-const SHA = (process.env.GITHUB_SHA || process.env.TF_SHA || '').trim();
+// DEUX SHA, ET ILS NE SONT PAS INTERCHANGEABLES.
+//
+// `GITHUB_SHA` est la revision du WORKFLOW qui execute la mesure. Ce n'est PAS
+// la revision du code deploye sur la Preview interrogee : le workflow peut etre
+// lance depuis n'importe quelle branche, et `workflow_dispatch` execute le
+// fichier de la ref choisie, pas celui du deploiement cible.
+//
+// Les confondre est un defaut de tracabilite : la preuve affirmait « sha = X »
+// alors que X n'etait que la ref du YAML, et un lecteur en concluait que le code
+// teste etait X. Les deux champs sont donc enregistres SEPAREMENT.
+const WORKFLOW_SHA = (process.env.GITHUB_SHA || process.env.TF_SHA || '').trim();
+const DEPLOYMENT_SHA = (process.env.SHA_ATTENDU || '').trim();
+// `SHA` reste le nom historique et designe la ref du WORKFLOW.
+const SHA = WORKFLOW_SHA;
 const SORTIE = 'livrables-finalisation/preuves/p107-runtime-preuves.json';
 
 const horodatage = new Date().toISOString();
@@ -86,7 +99,14 @@ function ecrire(payload) {
     writeFileSync(SORTIE, `${JSON.stringify({
       schema: 'tracefab-p107-preuves-runtime-v1',
       horodatage,
+      // `sha` conserve pour les lecteurs existants, mais il est desormais
+      // explicite : c'est celui du WORKFLOW, pas du deploiement.
       sha: SHA || null,
+      workflow_sha: WORKFLOW_SHA || null,
+      deployment_sha: DEPLOYMENT_SHA || null,
+      sha_traceabilite: DEPLOYMENT_SHA
+        ? 'deployment_sha fourni : la preuve porte sur ce code deploye'
+        : 'deployment_sha ABSENT : la preuve ne peut pas affirmer quel code a ete teste',
       cible: BASE || null,
       // Aucun secret, aucun fragment : la cible et le SHA ne sont pas secrets.
       ...payload,
@@ -370,7 +390,7 @@ ecrire({ resultats, echecs });
 console.log('');
 if (echecs === 0) {
   console.log(`  P10.7 — 4 preuves runtime OBTENUES sur ${BASE}`);
-  console.log(`  (${resultats.length} controles, 0 echec) — SHA ${SHA || 'non declare'}`);
+  console.log(`  (${resultats.length} controles, 0 echec) — workflow_sha ${WORKFLOW_SHA || 'non declare'} · deployment_sha ${DEPLOYMENT_SHA || 'NON DECLARE'}`);
   process.exit(0);
 }
 console.log(`  P10.7 — ${echecs} preuve(s) MANQUANTE(S) sur ${resultats.length} controles.`);
