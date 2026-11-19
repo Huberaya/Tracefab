@@ -37,6 +37,19 @@ export const API_RUNTIME_FUNCTION_NAMES = Object.freeze([
   'tracefab_create_product',
   'tracefab_create_quality_cap',
   'tracefab_create_supply_chain_node',
+  // P10.7 (2026-11-19) — appelee DIRECTEMENT par `api/_lib/readiness-probes.ts`
+  // (sonde C4.6 : le contexte tenant est-il pose et ACCEPTE par la base ?).
+  //
+  // Elle figurait deja dans RLS_POLICY_FUNCTION_NAMES — les politiques l utili-
+  // sent — mais pas ici, parce qu aucun code de `api/` ne l appelait. Depuis que
+  // la sonde le fait, la derivation « appels SQL dans api/ » et cette liste ont
+  // diverge : mesure du run 44542923117, « l allowlist API est exactement
+  // derivee des appels SQL dans api/ » au rouge.
+  //
+  // Oublier cette ligne ne casse pas seulement un test : la fonction entrerait
+  // dans RUNTIME_FUNCTION_NAMES sans que le registre ne lui accorde EXECUTE,
+  // et la sonde echouerait en 42501.
+  'tracefab_current_user_id',
   'tracefab_delete_supply_chain_link',
   'tracefab_delete_supply_chain_node',
   'tracefab_enqueue_due_data_request_reminders',
