@@ -226,14 +226,28 @@ try {
   // EST encore une identite (comportement historique assume par la migration).
   // Le verifier evite de lire « NULL » comme une preuve de durcissement alors
   // qu il ne fait que constater une variable vide.
+  //
+  // DANS UNE TRANSACTION, et c est le defaut que la CI a trouve.
+  //
+  // Premiere version : le set_config etait execute HORS transaction. Avec un
+  // troisieme argument `true`, PostgreSQL attache la valeur a la transaction
+  // courante — or il n y en a pas — donc la lecture suivante rendait NULL et
+  // l assertion echouait (run 44632505714 : « lu=null »). Les suites du depot
+  // qui eprouvent ce GUC (`test_neon_active_tenant`) ouvrent toutes un `begin`
+  // avant de le poser : la transaction n est pas un detail de style, c est la
+  // portee meme de la valeur.
   if (strict === false) {
     const u = randomUUID();
-    await client.query(`SELECT set_config('tracefab.user_id', $1, true)`, [u]);
-    const viaGuc = await client.query(`SELECT public.tracefab_current_user_id()::TEXT AS lu`);
-    verifier('en mode permissif, le GUC utilisateur porte encore l identite (comportement documente)',
-      String(viaGuc.rows[0]?.lu ?? '').toLowerCase() === u,
-      `lu=${viaGuc.rows[0]?.lu}`);
-    await client.query(`SELECT set_config('tracefab.user_id', '', true)`);
+    await client.query('BEGIN');
+    try {
+      await client.query(`SELECT set_config('tracefab.user_id', $1, true)`, [u]);
+      const viaGuc = await client.query(`SELECT public.tracefab_current_user_id()::TEXT AS lu`);
+      verifier('en mode permissif, le GUC utilisateur porte encore l identite (comportement documente)',
+        String(viaGuc.rows[0]?.lu ?? '').toLowerCase() === u,
+        `lu=${viaGuc.rows[0]?.lu}`);
+    } finally {
+      await client.query('ROLLBACK').catch(() => {});
+    }
   }
 } catch (e) {
   echecs += 1;
