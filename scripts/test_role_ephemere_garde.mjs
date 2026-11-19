@@ -251,6 +251,19 @@ console.log('\n  G. la SONDE reelle laisse intact un role homonyme de son ancien
   // detail, parce que l annotation GitHub tronque et que le journal complet est
   // heberge hors de l API. On relaie donc la sortie de la sous-suite entre des
   // marqueurs, pour qu'elle soit dans le log de CE script.
+  // La meme information en UNE ligne `::error::` : GitHub conserve toujours le
+  // TITRE de l annotation, meme quand il tronque le corps. C est le seul canal
+  // qui remonte a coup sur depuis l environnement d analyse.
+  if (r.status !== 0) {
+    const brute = `${r.stdout || ''}\n${r.stderr || ''}`;
+    const marquantes = brute.split('\n')
+      .map((l) => l.trim())
+      .filter((l) => l && !/^\s*$/.test(l))
+      .filter((l) => /ECHEC|erreur|error|refus|prerequis|introuvable|manquant|ERREUR|fatal/i.test(l))
+      .slice(0, 3)
+      .join(' / ') || brute.trim().split('\n').filter(Boolean).slice(-3).join(' / ');
+    console.log(`::error::sous-suite test_sonde_identite_runtime exit=${r.status} — ${marquantes.slice(0, 400)}`);
+  }
   if (r.status !== 0) {
     console.log('    --- sortie de la sous-suite (stdout) ---');
     console.log((r.stdout || '(vide)').split('\n').slice(-40).join('\n'));
