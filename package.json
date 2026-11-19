@@ -174,6 +174,8 @@
     "test:objets-sql:comparaison": "node scripts/test_comparaison_objets_sql.mjs",
     "test:migrations:controle": "node scripts/test_controle_migrations.mjs",
     "test:neon:isolation-lignes": "node scripts/run-db-suite.mjs scripts/test_isolation_lignes_reelles.mjs",
+    "test:neon:contexte-tenant-sonde": "node scripts/run-db-suite.mjs scripts/test_neon_contexte_tenant_sonde.mjs",
+    "test:sonde-contexte-tenant-contrat": "node scripts/test_sonde_contexte_tenant_contrat.mjs",
     "test:tls:validation": "node scripts/test_tls_validation_active.mjs",
     "test:migrations:horodatages": "node scripts/verifier-horodatages-migrations.mjs",
     "test:migrations:restauration-role": "node scripts/test_role_restauration_migrations.mjs",

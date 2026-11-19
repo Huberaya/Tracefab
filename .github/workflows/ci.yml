@@ -1063,6 +1063,45 @@ jobs:
         # passent au rouge. C'est ce qui prouve qu'elles mesurent la RLS.
         run: node scripts/executer_avec_erreur_annotee.mjs "isolation RLS sur lignes reelles" npm run test:neon:isolation-lignes
 
+      - name: P10.7 — la sonde de contexte tenant est EXERCEE sur la vraie base
+        # CE QUE CETTE ETAPE REPARE
+        #
+        # `probeContexteTenant` (C4.6) etait verifiee par trois scenarios hors
+        # ligne qui testent le SCRIPT DE PREUVE, pas le code qui produit la
+        # mesure. Si le SQL de la sonde etait faux, ou si `tracefab_app` n'avait
+        # pas EXECUTE sur `tracefab_current_user_id()`, ces scenarios resteraient
+        # verts et C4.6 serait PASS sur une mesure jamais faite.
+        #
+        # Cette etape execute le SQL de la sonde sur la base migree, avec le
+        # role applicatif REEL, et exige le controle NEGATIF : un jeton signe
+        # pour une AUTRE organisation doit etre refuse. C'est ce refus qui
+        # distingue une mesure d'une simple presence de variable.
+        #
+        # La cle est GENIREE POUR L'OCCASION et posee dans la base jetable :
+        # aucune valeur n'est ecrite dans le depot, et elle disparait avec le
+        # runner. L'empreinte de la cle n'est jamais imprimee.
+        env:
+          DATABASE_ADMIN_URL: postgresql://postgres:postgres@localhost:5432/tracefab_test
+          TF_ALLOW_PROVISIONING: oui
+        run: |
+          set -eu
+          CLE=$(node -e "console.log(require('node:crypto').randomBytes(32).toString('hex'))")
+          TF_IDENTITY_KEY_HEX="$CLE" node scripts/provisionner_cle_identite.mjs
+          TF_CLE_IDENTITE_TEST="$CLE" node scripts/run-db-suite.mjs scripts/test_neon_contexte_tenant_sonde.mjs
+        # La cle vit dans l'environnement de CE shell uniquement : elle n'est ni
+        # exportee au job, ni ecrite sur disque, ni affichee.
+
+      - name: P10.7 — le test de la sonde ne peut pas diverger de la sonde
+        # Sans base, et sans dependance : lit les deux sources.
+        #
+        # `test_neon_contexte_tenant_sonde` rejoue le SQL de la sonde au lieu
+        # d'importer la fonction (le client Prisma n'est pas genere ici). Un test
+        # qui RECOPIE ce qu'il verifie peut mentir le jour ou la sonde change :
+        # il continue de passer en verifiant l'ancien contrat. Ce garde-fou
+        # exige que les deux citent le meme GUC, la meme fonction, la meme
+        # portee transactionnelle et le meme format de jeton.
+        run: node scripts/executer_avec_erreur_annotee.mjs "contrat sonde contexte tenant" node scripts/test_sonde_contexte_tenant_contrat.mjs
+
       - name: Limitation de débit — opérations légitimes et abus refusés
         # La politique rate_limit_counters_global était FOR ALL USING (true)
         # WITH CHECK (true). Le USING (true) est justifié et conservé pour la
