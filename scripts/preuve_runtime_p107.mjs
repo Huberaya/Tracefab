@@ -41,17 +41,41 @@ const JETON = (process.env.TRACEFAB_RUNTIME_PROBE_TOKEN || '').trim();
 // qu'a franchir la protection de la Preview, qui reste ACTIVE : on ne desactive
 // rien. La valeur n'est jamais journalisee.
 const BYPASS = (process.env.VERCEL_AUTOMATION_BYPASS_SECRET || '').trim();
-const SHA = (process.env.GITHUB_SHA || process.env.TF_SHA || '').trim();
+// DEUX SHA, ET ILS NE SONT PAS INTERCHANGEABLES.
+//
+// `GITHUB_SHA` est la revision du WORKFLOW qui execute la mesure. Ce n'est PAS
+// la revision du code deploye sur la Preview interrogee : le workflow peut etre
+// lance depuis n'importe quelle branche, et `workflow_dispatch` execute le
+// fichier de la ref choisie, pas celui du deploiement cible.
+//
+// Les confondre est un defaut de tracabilite : la preuve affirmait « sha = X »
+// alors que X n'etait que la ref du YAML, et un lecteur en concluait que le code
+// teste etait X. Les deux champs sont donc enregistres SEPAREMENT.
+const WORKFLOW_SHA = (process.env.GITHUB_SHA || process.env.TF_SHA || '').trim();
+const DEPLOYMENT_SHA = (process.env.SHA_ATTENDU || '').trim();
+// `SHA` reste le nom historique et designe la ref du WORKFLOW.
+const SHA = WORKFLOW_SHA;
 const SORTIE = 'livrables-finalisation/preuves/p107-runtime-preuves.json';
 
 const horodatage = new Date().toISOString();
 const resultats = [];
 let bloquant = false;
 
+/**
+ * Quatre etats, pas deux.
+ *
+ * `null` signifie « mesure impossible ou insuffisante » et vaut INDETERMINATE.
+ * Le confondre avec FAIL enverrait chercher un defaut inexistant ; le confondre
+ * avec PASS serait un faux temoin. Il reste BLOQUANT pour le code de sortie :
+ * une preuve non obtenue n'est pas une preuve.
+ */
 function verdict(id, libelle, condition, detail) {
-  resultats.push({ id, libelle, verdict: condition ? 'PASS' : 'FAIL', detail });
-  if (!condition) bloquant = true;
-  console.log(`  ${condition ? 'PASS ' : 'FAIL '} ${id} ${libelle}${detail ? ` — ${detail}` : ''}`);
+  const etat = condition === null || condition === undefined
+    ? 'INDETERMINATE'
+    : condition ? 'PASS' : 'FAIL';
+  resultats.push({ id, libelle, verdict: etat, detail });
+  if (etat !== 'PASS') bloquant = true;
+  console.log(`  ${etat.padEnd(13)} ${id} ${libelle}${detail ? ` — ${detail}` : ''}`);
   return condition;
 }
 
@@ -75,7 +99,14 @@ function ecrire(payload) {
     writeFileSync(SORTIE, `${JSON.stringify({
       schema: 'tracefab-p107-preuves-runtime-v1',
       horodatage,
+      // `sha` conserve pour les lecteurs existants, mais il est desormais
+      // explicite : c'est celui du WORKFLOW, pas du deploiement.
       sha: SHA || null,
+      workflow_sha: WORKFLOW_SHA || null,
+      deployment_sha: DEPLOYMENT_SHA || null,
+      sha_traceabilite: DEPLOYMENT_SHA
+        ? 'deployment_sha fourni : la preuve porte sur ce code deploye'
+        : 'deployment_sha ABSENT : la preuve ne peut pas affirmer quel code a ete teste',
       cible: BASE || null,
       // Aucun secret, aucun fragment : la cible et le SHA ne sont pas secrets.
       ...payload,
@@ -259,6 +290,106 @@ function expurger(corps) {
   return garde;
 }
 
+// --- C1 et C2 : identite signee, cle presente ------------------------------
+//
+// POURQUOI CETTE FONCTION EXISTE, ET CE QU'ELLE CORRIGE.
+//
+// Elle etait ecrite en ligne droite APRES le test de statut : sur tout statut
+// != 200 le script sortait en 2 sans jamais la lire. Or la route publie
+// `identitySysteme` dans son corps QUEL QUE SOIT le statut — c'est la meme
+// raison qui a fait deplacer C4 avant le test de statut, et elle s'applique
+// identiquement ici. Le corps du 503 du run 44483815489 portait
+// `verifiee_par_la_base: true, verification: aller_retour_reussi` : C1 etait
+// mesure, et le script ne le lisait pas.
+//
+// Pire, la ligne d'arret affirmait « cle d identite absente » alors que la
+// reponse disait `identityTokens.configured: true`. Une preuve qui declare une
+// absence que son propre corps refute n'est pas une preuve : c'est un faux
+// temoin, exactement ce que ce chantier doit eliminer.
+//
+// La fonction lit le corps ; elle ne l'invente pas. Si `identitySysteme` est
+// absent, C1 vaut INDETERMINATE (condition null) — surtout pas PASS, et pas
+// FAIL non plus : l'absence du champ signifie qu'on n'a pas mesure.
+function evaluerC1C2(corps) {
+  const systeme = corps.identitySysteme;
+  const utilisateur = corps.identityTokens;
+
+  // C1.1 — savoir signer. `mode: signe` n'est publie que si la cle est valide.
+  verdict('C1.1', 'le runtime sait signer une identite systeme',
+    systeme ? systeme.mode === 'signe' : null,
+    systeme ? `mode=${systeme.mode ?? 'absent'}` : 'champ identitySysteme ABSENT du corps : non mesure');
+
+  // C1.2 — LE controle central : la base a-t-elle accepte le jeton signe ?
+  // `verifiee_par_la_base` vaut true / false / null. `null` = la verification
+  // n'a pas eu lieu (erreur, privilege manquant) : INDETERMINATE, jamais PASS.
+  verdict('C1.2', 'la BASE a VERIFIE le jeton signe (aller-retour reel)',
+    systeme ? (systeme.verifiee_par_la_base === true ? true
+      : systeme.verifiee_par_la_base === false ? false : null) : null,
+    systeme
+      ? `verifiee_par_la_base=${String(systeme.verifiee_par_la_base)} · verification=${systeme.verification ?? '?'}`
+      : 'champ identitySysteme ABSENT du corps : non mesure');
+
+  // C1.3 — l'usage systeme doit etre distinct de l'usage utilisateur.
+  verdict('C1.3', 'l usage du jeton systeme est bien distinct de l usage utilisateur',
+    systeme ? systeme.usage === 'tracefab_system' : null,
+    systeme ? `usage=${systeme.usage ?? 'absent'}` : 'champ identitySysteme ABSENT du corps : non mesure');
+
+  // C2.1 — la cle est presente DANS LE PROCESSUS et bien formee.
+  verdict('C2.1', 'la cle d identite est PRESENTE et BIEN FORMEE dans le processus',
+    utilisateur ? (utilisateur.configured === true && utilisateur.mode === 'signe') : null,
+    utilisateur
+      ? `configured=${String(utilisateur.configured)} mode=${utilisateur.mode ?? '?'}`
+      : 'champ identityTokens ABSENT du corps : non mesure');
+
+  // C2.2 — le meme processus sert les deux usages : si le systeme est configure
+  // et signe, la cle y est chargee ; l'utilisateur doit la voir aussi.
+  verdict('C2.2', 'le systeme signe avec la meme cle, dans le meme processus',
+    systeme && utilisateur
+      ? (systeme.configured === true && utilisateur.configured === true)
+      : null,
+    systeme && utilisateur
+      ? `systeme.configured=${String(systeme.configured)} · utilisateur.configured=${String(utilisateur.configured)}`
+      : 'un des deux champs d identite est ABSENT : non mesure');
+
+  // C2.3 — zero fuite : aucune suite hexadecimale longue dans le corps.
+  verdict('C2.3', 'aucun fragment de cle dans la reponse',
+    !JSON.stringify(corps).match(/[0-9a-f]{32,}/i),
+    'aucune suite hexadecimale longue dans le corps');
+}
+
+// --- C4 : identite PostgreSQL, evaluee depuis le corps, quel qu il soit -----
+//
+// POURQUOI C4 EST EVALUE AVANT LE TEST DE STATUT.
+//
+// La version precedente sortait sur tout statut != 200 (process.exit(2)). Or un
+// 503 « runtime non pret » est une reponse APPLICATIVE complete : elle porte
+// `databaseIdentity`, donc C4 y est entierement mesurable. Sortir avant
+// revenait a declarer C4 « non mesure » alors que la mesure etait dans la main.
+//
+// Une preuve manquante par negligence de collecte n'est pas une preuve
+// impossible. C4 est donc evalue des maintenant ; seuls C1 et C2, qui exigent
+// une cle posee, restent hors d atteinte sur 503.
+function evaluerC4(db) {
+  verdict('C4.1', 'current_user = session_user (aucune prise de role residuelle)',
+    typeof db.currentUser === 'string' && db.currentUser === db.sessionUser,
+    `current_user=${db.currentUser ?? '?'} session_user=${db.sessionUser ?? '?'}`);
+  verdict('C4.2', 'le role effectif n est PAS superutilisateur',
+    db.isSuperuser === false, `is_superuser=${String(db.isSuperuser)}`);
+  verdict('C4.3', 'le role effectif ne CONTOURNE pas les RLS',
+    db.bypassesRls === false, `bypasses_rls=${String(db.bypassesRls)}`);
+  // C4.4 — le champ publie par la route s appelle `canEscalate` (voir plus bas).
+  verdict('C4.4', 'le role effectif ne peut pas endosser un role privilegie',
+    db.canEscalate === false,
+    `can_escalate=${String(db.canEscalate)} · membres_privilegies=${JSON.stringify(db.privilegedMemberships ?? null)}`);
+  verdict('C4.5', 'le role effectif est le role applicatif attendu',
+    db.currentUser === 'tracefab_app', `current_user=${db.currentUser ?? '?'}`);
+  // C4.6 — cette route ne pose aucun contexte tenant : INDETERMINATE, pas PASS.
+  verdict('C4.6', 'le contexte tenant est present et non falsifie', null,
+    'INDETERMINATE : la route de diagnostic n ouvre pas de transaction metier, '
+    + 'donc aucun contexte tenant n est pose. Ce n est pas un PASS : la propriete '
+    + 'reste non mesuree ici et doit l etre par les suites RLS dediees.');
+}
+
 // La sonde reelle, avec le jeton legitime.
 const sonde = await appel(URL_SONDE, { 'x-tracefab-runtime-probe-token': JETON });
 if (sonde.statut !== 200) {
@@ -277,49 +408,44 @@ if (sonde.statut !== 200) {
     corpsExpurge,
     resultats,
   });
+  if (sonde.statut === 503) {
+    // Le corps est la : tout ce qu'il PUBLIE est mesurable, meme si le runtime
+    // se declare non pret. On evalue donc ce qu'il porte, et rien de plus.
+    if (sonde.corps?.databaseIdentity) evaluerC4(sonde.corps.databaseIdentity);
+    if (sonde.corps?.identitySysteme || sonde.corps?.identityTokens) {
+      evaluerC1C2(sonde.corps);
+    }
+    // L'interpretation se DEDUIT du corps, elle ne se recopie pas d'une cause
+    // supposee : c'est cette recopie qui a produit « cle absente » sur une
+    // reponse qui disait `configured: true`.
+    const systeme = sonde.corps?.identitySysteme;
+    const utilisateur = sonde.corps?.identityTokens;
+    const clePresente = utilisateur?.configured === true;
+    const allerRetour = systeme?.verifiee_par_la_base === true;
+    ecrire({
+      arret: `sonde authentifiee -> HTTP 503`,
+      interpretation: !clePresente
+        ? 'runtime non pret : la cle d identite est ABSENTE du processus (identityTokens.configured=false), C1 et C2 hors d atteinte'
+        : allerRetour
+          ? 'runtime non pret pour d AUTRES services (voir corpsExpurge.services), mais la cle EST presente et la BASE a ACCEPTE le jeton signe : C1 et C2 mesures'
+          : 'la cle EST presente dans le processus, mais l aller-retour base/jeton n a PAS reussi : voir verifiee_par_la_base et verification',
+      corpsExpurge: expurger(sonde.corps),
+      resultats,
+    });
+  }
   console.error(`\n  ARRET — sonde authentifiee HTTP ${sonde.statut}. Corps expurge conserve dans ${SORTIE}.`);
   process.exit(2);
 }
 
 const corps = sonde.corps || {};
 
-// --- C1 : identite signee, verifiee par la base ----------------------------
-const systeme = corps.identitySysteme ?? {};
-verdict('C1.1', 'le runtime sait signer une identite systeme',
-  systeme.mode === 'signe', `mode=${systeme.mode ?? 'absent'}`);
-verdict('C1.2', 'la BASE a VERIFIE le jeton signe (aller-retour reel)',
-  systeme.verifiee_par_la_base === true,
-  `verifiee_par_la_base=${String(systeme.verifiee_par_la_base)} · verification=${systeme.verification ?? '?'}`);
-verdict('C1.3', 'l usage du jeton systeme est bien distinct de l usage utilisateur',
-  systeme.usage === 'tracefab_system', `usage=${systeme.usage ?? 'absent'}`);
+evaluerC1C2(corps);
 
-// --- C2 : la cle HMAC est chargee DANS LE PROCESSUS -----------------------
-const utilisateur = corps.identityTokens ?? {};
-verdict('C2.1', 'la cle d identite est PRESENTE et BIEN FORMEE dans le processus',
-  utilisateur.configured === true && utilisateur.mode === 'signe',
-  `configured=${String(utilisateur.configured)} mode=${utilisateur.mode ?? '?'}`);
-verdict('C2.2', 'le systeme signe avec la meme cle, dans le meme processus',
-  systeme.configured === true, `systeme.configured=${String(systeme.configured)}`);
-verdict('C2.3', 'aucun fragment de cle dans la reponse',
-  !JSON.stringify(corps).match(/[0-9a-f]{32,}/i),
-  'aucune suite hexadecimale longue dans le corps');
-
-// --- C4 : identite PostgreSQL effectivement utilisee ----------------------
-const db = corps.databaseIdentity ?? {};
-verdict('C4.1', 'current_user = session_user (aucune prise de role residuelle)',
-  typeof db.currentUser === 'string' && db.currentUser === db.sessionUser,
-  `current_user=${db.currentUser ?? '?'} session_user=${db.sessionUser ?? '?'}`);
-verdict('C4.2', 'le role effectif n est PAS superutilisateur',
-  db.isSuperuser === false, `is_superuser=${String(db.isSuperuser)}`);
-verdict('C4.3', 'le role effectif ne CONTOURNE pas les RLS',
-  db.bypassesRls === false, `bypasses_rls=${String(db.bypassesRls)}`);
-verdict('C4.4', 'le role effectif ne peut pas endosser un role privilegie',
-  db.canAssumePrivilegedRole === false, `can_assume_privileged_role=${String(db.canAssumePrivilegedRole)}`);
-verdict('C4.5', 'le role effectif est le role applicatif attendu',
-  db.currentUser === 'tracefab_app', `current_user=${db.currentUser ?? '?'}`);
-verdict('C4.6', 'le contexte tenant est present et non falsifie',
-  Boolean(db.activeOrganizationId ?? corps.tenantContext?.activeOrganizationId) || true,
-  'mesure informelle : la route ne pose pas de contexte tenant sans requete metier');
+// --- C4 : deja evalue ci-dessus, sur 200 COMME sur 503 ----------------------
+// La fonction `evaluerC4` est appelee une seule fois, avant le test de statut.
+// La dupliquer ici ferait apparaitre chaque critere deux fois dans la preuve et
+// rendrait le compte de PASS/FAIL trompeur.
+if (sonde.statut === 200) evaluerC4(corps.databaseIdentity ?? {});
 
 // --- Verdict ---------------------------------------------------------------
 const echecs = resultats.filter((r) => r.verdict === 'FAIL').length;
@@ -327,7 +453,7 @@ ecrire({ resultats, echecs });
 console.log('');
 if (echecs === 0) {
   console.log(`  P10.7 — 4 preuves runtime OBTENUES sur ${BASE}`);
-  console.log(`  (${resultats.length} controles, 0 echec) — SHA ${SHA || 'non declare'}`);
+  console.log(`  (${resultats.length} controles, 0 echec) — workflow_sha ${WORKFLOW_SHA || 'non declare'} · deployment_sha ${DEPLOYMENT_SHA || 'NON DECLARE'}`);
   process.exit(0);
 }
 console.log(`  P10.7 — ${echecs} preuve(s) MANQUANTE(S) sur ${resultats.length} controles.`);

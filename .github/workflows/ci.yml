@@ -89,6 +89,9 @@ jobs:
       - name: Garde-fous du diagnostic de base Preview
         run: npm run test:diagnostic-base-preview
 
+      - name: Garde-fous anti-faux-temoin de la preuve runtime
+        run: npm run test:preuve-runtime-garde-fous
+
       - name: Script de preuve runtime — bout en bout hors ligne
         # Le script avait raison de refuser de conclure sur une cible non
         # atteinte, mais la cause etait une ReferenceError. Ce test exerce le
