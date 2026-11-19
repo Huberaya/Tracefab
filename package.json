@@ -281,6 +281,7 @@
     "test:detection-vercel": "node scripts/test_detection_protection_vercel.mjs",
     "test:diagnostic-base-preview": "node scripts/test_diagnostic_base_preview.mjs",
     "test:preuve-runtime-bout-en-bout": "node scripts/test_preuve_runtime_bout_en_bout.mjs",
+    "test:preuve-runtime-garde-fous": "node scripts/test_preuve_runtime_garde_fous.mjs",
     "test:ordre-migrations": "node scripts/test_ordre_migrations_p107.mjs",
     "test:p107:oracle-signature": "node scripts/test_p107_oracle_signature_pglite.mjs",
     "test:generer-cle-identite": "node scripts/test_generer_cle_identite.mjs",

@@ -48,10 +48,21 @@ const horodatage = new Date().toISOString();
 const resultats = [];
 let bloquant = false;
 
+/**
+ * Quatre etats, pas deux.
+ *
+ * `null` signifie « mesure impossible ou insuffisante » et vaut INDETERMINATE.
+ * Le confondre avec FAIL enverrait chercher un defaut inexistant ; le confondre
+ * avec PASS serait un faux temoin. Il reste BLOQUANT pour le code de sortie :
+ * une preuve non obtenue n'est pas une preuve.
+ */
 function verdict(id, libelle, condition, detail) {
-  resultats.push({ id, libelle, verdict: condition ? 'PASS' : 'FAIL', detail });
-  if (!condition) bloquant = true;
-  console.log(`  ${condition ? 'PASS ' : 'FAIL '} ${id} ${libelle}${detail ? ` — ${detail}` : ''}`);
+  const etat = condition === null || condition === undefined
+    ? 'INDETERMINATE'
+    : condition ? 'PASS' : 'FAIL';
+  resultats.push({ id, libelle, verdict: etat, detail });
+  if (etat !== 'PASS') bloquant = true;
+  console.log(`  ${etat.padEnd(13)} ${id} ${libelle}${detail ? ` — ${detail}` : ''}`);
   return condition;
 }
 
@@ -313,13 +324,32 @@ verdict('C4.2', 'le role effectif n est PAS superutilisateur',
   db.isSuperuser === false, `is_superuser=${String(db.isSuperuser)}`);
 verdict('C4.3', 'le role effectif ne CONTOURNE pas les RLS',
   db.bypassesRls === false, `bypasses_rls=${String(db.bypassesRls)}`);
+// C4.4 — le champ publie par la route s appelle `canEscalate`. La version
+// precedente testait `canAssumePrivilegedRole`, qui n a jamais existe dans la
+// reponse : le critere echouait donc toujours, pour un motif FAUX (« champ
+// absent ») et non pour la raison qu il pretendoit mesurer. Un critere qui
+// echoue pour la mauvaise raison est aussi nuisible qu un critere qui passe a
+// tort : il envoie chercher un defaut la ou il n y en a pas.
 verdict('C4.4', 'le role effectif ne peut pas endosser un role privilegie',
-  db.canAssumePrivilegedRole === false, `can_assume_privileged_role=${String(db.canAssumePrivilegedRole)}`);
+  db.canEscalate === false, `can_escalate=${String(db.canEscalate)} · membres_privilegies=${JSON.stringify(db.privilegedMemberships ?? null)}`);
 verdict('C4.5', 'le role effectif est le role applicatif attendu',
   db.currentUser === 'tracefab_app', `current_user=${db.currentUser ?? '?'}`);
+// C4.6 — CETTE LIGNE ETAIT UN FAUX TEMOIN.
+//
+// Elle s ecrivait `Boolean(...) || true` : la condition etait vraie quoi qu il
+// arrive, donc le critere rendait PASS sans rien mesurer. Un tel `|| true` est
+// exactement ce que la consigne interdit (« ne pas valider un controle dont la
+// condition est artificiellement toujours vraie »), et il etait invisible
+// parce qu il produisait un vert.
+//
+// La verite mesuree est celle-ci : cette route ne pose AUCUN contexte tenant —
+// elle n ouvre pas de requete metier. Il n y a donc rien a valider ici, et la
+// seule formulation honnete est INDETERMINATE, avec le motif.
 verdict('C4.6', 'le contexte tenant est present et non falsifie',
-  Boolean(db.activeOrganizationId ?? corps.tenantContext?.activeOrganizationId) || true,
-  'mesure informelle : la route ne pose pas de contexte tenant sans requete metier');
+  null,
+  'INDETERMINATE : la route de diagnostic n ouvre pas de transaction metier, '
+  + 'donc aucun contexte tenant n est pose. Ce n est pas un PASS : la propriete '
+  + 'reste non mesuree ici et doit l etre par les suites RLS dediees.');
 
 // --- Verdict ---------------------------------------------------------------
 const echecs = resultats.filter((r) => r.verdict === 'FAIL').length;
