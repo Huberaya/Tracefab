@@ -160,5 +160,42 @@ verifier(/"C4\.6"[^}]*"verdict":\s*"INDETERMINATE"/.test(c46nm.preuve),
 verifier(!/[0-9a-f]{64}/.test(c46ok.preuve),
   'aucun jeton signe (64 hex) ne fuit dans la preuve publiee');
 
+// --- 6. L endpoint publie ne peut pas devenir une chaine de connexion -------
+//
+// P10.8 publie `identite_base.hote` pour rendre le rattachement DECIDABLE :
+// une empreinte permet de comparer, jamais de nommer. Ce champ est le seul du
+// corps qui vient d'une URL. Une extraction ratee y verserait l utilisateur ou
+// le mot de passe, et la preuve expurgee les publierait.
+const fuiteUrl = await executer('app503-hote-avec-mot-de-passe', jetonTest);
+verifier(/"expurge"/.test(fuiteUrl.preuve),
+  'un corps dont l hote contient « user:pass@ » est RETIRE, pas publie',
+  fuiteUrl.preuve.slice(-260));
+verifier(!/MOTDEPASSE_FACTICE/.test(fuiteUrl.preuve),
+  'aucune trace du mot de passe factice dans la preuve');
+
+const hotePropre = await executer('app503-hote-propre', jetonTest);
+verifier(/ep-exemple-123\.eu-central-1\.aws\.neon\.tech/.test(hotePropre.preuve),
+  'un nom d hote propre est publie tel quel (il est necessaire au rattachement)');
+
+// --- 7. C5 — le rattachement de la base rend un VERDICT ---------------------
+//
+// Pendant toute la session du 2026-11-19 ce point est reste INDETERMINATE
+// faute de pouvoir NOMMER l endpoint. Il est desormais publie et compare. On
+// verifie les trois etats, dont le FAIL : un controle qui ne saurait rendre que
+// des verts ne rattacherait rien.
+const c5ok = await executer('app503-rattachement-ok', jetonTest);
+verifier(/"C5\.3"[^}]*"verdict":\s*"PASS"/.test(c5ok.preuve),
+  'C5.3 rend PASS quand l endpoint joint est celui declare', c5ok.preuve.slice(-300));
+
+const c5faux = await executer('app503-rattachement-faux', jetonTest);
+verifier(/"C5\.3"[^}]*"verdict":\s*"FAIL"/.test(c5faux.preuve),
+  'C5.3 rend FAIL quand le deploiement joint un AUTRE hote', c5faux.preuve.slice(-300));
+
+const c5nd = await executer('app503-rattachement-non-declare', jetonTest);
+verifier(/"C5\.2"[^}]*"verdict":\s*"INDETERMINATE"/.test(c5nd.preuve),
+  'C5.2 rend INDETERMINATE quand aucun endpoint n est declare', c5nd.preuve.slice(-300));
+verifier(/"C5\.3"[^}]*"verdict":\s*"INDETERMINATE"/.test(c5nd.preuve),
+  'C5.3 rend INDETERMINATE — pas PASS — quand la comparaison n a pas eu lieu');
+
 console.log(echecs === 0 ? '  Bout en bout : OK.' : `  Bout en bout : ${echecs} echec(s).`);
 process.exit(echecs === 0 ? 0 : 1);

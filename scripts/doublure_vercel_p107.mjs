@@ -103,6 +103,94 @@ export async function fetchSimule(url) {
         organisationEtrangereRefusee: null, gucRemisAZero: null, detail: 'transaction en erreur' },
     });
   }
+  if (scenario === 'app503-rattachement-ok' || scenario === 'app503-rattachement-faux') {
+    // C5 — le rattachement. `...-faux` simule un deploiement qui joint un AUTRE
+    // hote que celui declare : c'est le seul cas ou l'operateur doit refuser de
+    // considerer la base comme la bonne.
+    const correct = scenario === 'app503-rattachement-ok';
+    return reponse(503, {
+      schema: 'tracefab-p2-readiness-v1',
+      ready: false,
+      configurationOnly: true,
+      configurationSuffisante: false,
+      services: {},
+      identityTokens: { configured: true, mode: 'signe' },
+      identitySysteme: { configured: true, mode: 'signe', usage: 'tracefab_system',
+        verifiee_par_la_base: true, verification: 'aller_retour_reussi' },
+      baseIdentite: {
+        table_presente: true, table_vue_par_pg_class: true, prisma_migrations_presente: true,
+        tables_publiques: 87, fonction_posterieure_presente: true,
+        identite_base: {
+          base_oid: 16396, base_nom: 'neondb', hote_empreinte: '55c809d501c6',
+          schemas_empreinte: '4a145f39b5da', sondes_p107: { tracefab_identity_cles: true },
+          hote_conforme: correct, hote_attendu_declare: true,
+          hote: correct
+            ? 'ep-bonne-branche-123.eu-central-1.aws.neon.tech'
+            : 'ep-autre-branche-999.eu-central-1.aws.neon.tech',
+          hote_est_pooler: false,
+        },
+        rls_forcee: true, mode_strict: false,
+      },
+      contexteTenant: { measured: true, jetonAccepte: true, identiteLue: true,
+        organisationEtrangereRefusee: true, gucRemisAZero: true, detail: 'ok' },
+    });
+  }
+  if (scenario === 'app503-rattachement-non-declare') {
+    // Aucun endpoint declare : C5.2 et C5.3 doivent etre INDETERMINATE, et
+    // surtout pas PASS — ne pas mesurer n'est pas mesurer juste.
+    return reponse(503, {
+      schema: 'tracefab-p2-readiness-v1', ready: false, configurationOnly: true,
+      configurationSuffisante: false, services: {},
+      identityTokens: { configured: true, mode: 'signe' },
+      identitySysteme: { configured: true, mode: 'signe', usage: 'tracefab_system',
+        verifiee_par_la_base: true, verification: 'aller_retour_reussi' },
+      baseIdentite: {
+        table_presente: true, table_vue_par_pg_class: true, prisma_migrations_presente: true,
+        tables_publiques: 87, fonction_posterieure_presente: true,
+        identite_base: {
+          base_oid: 16396, base_nom: 'neondb', hote_empreinte: '55c809d501c6',
+          schemas_empreinte: '4a145f39b5da', sondes_p107: { tracefab_identity_cles: true },
+          hote_conforme: null, hote_attendu_declare: false,
+          hote: 'ep-inconnue-456.eu-central-1.aws.neon.tech', hote_est_pooler: false,
+        },
+        rls_forcee: true, mode_strict: false,
+      },
+      contexteTenant: { measured: true, jetonAccepte: true, identiteLue: true,
+        organisationEtrangereRefusee: true, gucRemisAZero: true, detail: 'ok' },
+    });
+  }
+  if (scenario === 'app503-hote-avec-mot-de-passe' || scenario === 'app503-hote-propre') {
+    // P10.8 — l'hote est publie pour rendre le rattachement decidable. Le
+    // premier scenario simule une extraction RATEE qui verserait la chaine de
+    // connexion ; la preuve doit alors etre RETIREE, jamais publiee.
+    const hote = scenario === 'app503-hote-propre'
+      ? 'ep-exemple-123.eu-central-1.aws.neon.tech'
+      : 'tracefab_app:MOTDEPASSE_FACTICE@ep-exemple-123.eu-central-1.aws.neon.tech';
+    return reponse(503, {
+      schema: 'tracefab-p2-readiness-v1',
+      ready: false,
+      configurationOnly: true,
+      configurationSuffisante: false,
+      services: {},
+      identityTokens: { configured: true, mode: 'signe' },
+      identitySysteme: { configured: true, mode: 'signe', usage: 'tracefab_system',
+        verifiee_par_la_base: true, verification: 'aller_retour_reussi' },
+      identityEcarts: [],
+      baseIdentite: {
+        table_presente: true, table_vue_par_pg_class: true, prisma_migrations_presente: true,
+        tables_publiques: 87, fonction_posterieure_presente: true,
+        identite_base: {
+          base_oid: 16396, base_nom: 'neondb', hote_empreinte: '55c809d501c6',
+          schemas_empreinte: '4a145f39b5da', sondes_p107: { tracefab_identity_cles: true },
+          hote_conforme: null, hote_attendu_declare: false,
+          hote, hote_est_pooler: false,
+        },
+        rls_forcee: true, mode_strict: false,
+      },
+      contexteTenant: { measured: true, jetonAccepte: true, identiteLue: true,
+        organisationEtrangereRefusee: true, gucRemisAZero: true, detail: 'ok' },
+    });
+  }
   if (scenario === 'app200') {
     return reponse(200, {
       identite: 'tracefab_runtime',

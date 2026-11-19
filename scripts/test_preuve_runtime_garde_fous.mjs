@@ -147,6 +147,41 @@ verifier(!/cle d identite absente\)/.test(source)
 verifier(/const clePresente = utilisateur\?\.configured === true/.test(source),
   'l interpretation du 503 se deduit de `identityTokens.configured`');
 
+// --- 10. Aucune mesure n'est evaluee sur un corps NON EXPURGE --------------
+// Defaut trouve deux fois dans la meme session : C1/C2 lus APRES le exit(2),
+// puis C5 nourri du corps BRUT — le corps etait retire de la preuve, mais son
+// hote ressortait par le detail du verdict.
+//
+// Regle : toute fonction `evaluer*` recoit un corps EXPURGE, et tout appel
+// place dans la branche 503 precede la sortie.
+for (const fn of ['evaluerC1C2', 'evaluerC4', 'evaluerC5']) {
+  const position = source.indexOf(`${fn}(`);
+  verifier(position !== -1, `${fn} est appelee`);
+}
+verifier(/evaluerC5\(corpsPourC5\)/.test(source),
+  'C5 est evalue sur un corps EXPURGE (corpsPourC5), pas sur le corps brut');
+verifier(!/evaluerC5\(sonde\.corps\)/.test(source),
+  'C5 ne recoit plus le corps brut de la reponse');
+verifier(/evaluerC5\(expurger\(corps\)/.test(source),
+  'C5 est egalement evalue sur un corps expurge dans la branche 200');
+
+// Et la position : tout appel dans la branche 503 doit preceder la sortie.
+const posSortie = source.indexOf('process.exit(2)', source.indexOf('sonde.statut === 503'));
+for (const appel of ['evaluerC4(', 'evaluerC5(', 'evaluerC1C2(']) {
+  // Les appels dans la branche 503 sont les seuls qui precedent la sortie.
+  const avant = source.slice(0, posSortie);
+  verifier(avant.includes(appel),
+    `${appel}) est evalue AVANT la sortie en 2 du chemin 503`,
+    `appel absent avant exit=${posSortie}`);
+}
+
+// --- 11. L endpoint publie ne peut pas etre une chaine de connexion --------
+// P10.8 publie `identite_base.hote` : c'est le seul champ qui vient d'une URL.
+verifier(/user:pass@|:\[\^\/\\s@\]\+@|@\/\.test\(texte\)/.test(source) || /\[\^\/\\s:@\]\+:/.test(source),
+  'expurger() refuse une chaine utilisateur:mot de passe@');
+verifier(/hotesPublies/.test(source),
+  'expurger() inspecte les hotes publies et exige un nom d hote seul');
+
 if (echecs === 0) {
   console.log('  Preuve runtime P10.7 : garde-fous anti-faux-temoin OK.');
   process.exit(0);

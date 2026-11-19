@@ -42,6 +42,23 @@ function privateStorageReadiness() {
 }
 
 
+/**
+ * Normalise un nom d'hote pour comparaison.
+ *
+ * Trois differences qui ne designent PAS deux hotes distincts :
+ *   - la casse (DNS insensible a la casse) ;
+ *   - un point final (`ep-x.neon.tech.` = `ep-x.neon.tech`) ;
+ *   - les espaces de saisie.
+ *
+ * On ne retire PAS le suffixe `-pooler` : c'est un hote different, et le
+ * confondre avec l'endpoint direct ferait passer un test de rattachement sur
+ * une base jointe par un autre chemin. Le cas est signale a part
+ * (`hote_est_pooler`) et la comparaison reste stricte.
+ */
+function normaliserHote(valeur: string): string {
+  return valeur.trim().toLowerCase().replace(/\.$/, '');
+}
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'GET') return methodNotAllowed(res, ['GET']);
   const workerConfigured = workerSecretConfigured();
@@ -246,6 +263,23 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         base_oid: number; base_nom: string; hote_empreinte: string; schemas_empreinte: string;
         sondes_p107: Record<string, boolean> | null;
         hote_conforme: boolean | null; hote_attendu_declare: boolean;
+        // P10.8 — L'ENDPOINT LUI-MEME, PAS SEULEMENT SON EMPREINTE.
+        //
+        // Le 2026-11-19, « rattacher la base a br-square-bread-b1gu7jk7 » etait
+        // BLOQUE faute de pouvoir nommer l'hote : une empreinte SHA-256 permet
+        // de COMPARER deux hotes, jamais d'en NOMMER un. La valeur etait donc
+        // indevinable, et l'operateur n'avait aucun moyen de la fournir.
+        //
+        // Un endpoint Neon (`ep-…`) est un NOM D'HOTE PUBLIC : il figure dans
+        // une chaine de connexion, pas un mot de passe. Le publier derriere
+        // l'authentification de sonde ne divulgue aucun secret, et c'est la
+        // seule facon de rendre le rattachement DECIDABLE.
+        //
+        // CE QUI N'EST TOUJOURS PAS PUBLIE : utilisateur, mot de passe, port,
+        // parametres de requete, base de donnees du chemin. Seul `hostname`
+        // est extrait, et `new URL` ne peut pas en restituer le reste.
+        hote: string;
+        hote_est_pooler: boolean;
       } | null = null;
       try {
         const b = await prisma.$queryRaw<Array<{ base_oid: number; base_nom: string }>>`
@@ -312,7 +346,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           schemas_empreinte: empreinteSchemas,
           sondes_p107: sondes,
           hote_attendu_declare: attendu.length > 0,
-          hote_conforme: attendu.length > 0 && hote.length > 0 ? hote.startsWith(attendu) : null,
+          // Comparaison NORMALISEE. `startsWith` comparait une chaine brute a un
+          // prefixe : un endpoint saisi avec un suffixe de pooler, une casse
+          // differente ou un point final aurait echoue sans que personne ne
+          // comprenne pourquoi, et l'echec aurait ressemble a « mauvaise base ».
+          // On compare donc le nom d'hote complet, sans casse ni point final.
+          hote_conforme: attendu.length > 0 && hote.length > 0
+            ? normaliserHote(hote) === normaliserHote(attendu)
+            : null,
+          hote,
+          hote_est_pooler: /-pooler\./.test(hote),
         };
       } catch {
         identiteBase = null;
