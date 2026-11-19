@@ -70,11 +70,12 @@ let echecs = 0;
 // exception levee entre deux assertions donne « ECHEC — sans code » et il faut
 // relire tout le fichier pour deviner ou. Mesure du run 44533774940.
 let derniereAssertion = '(aucune)';
+const echecsNoms = [];
 const verifier = (nom, cond, obs) => {
   assertions += 1;
   derniereAssertion = nom;
   if (cond) console.log(`  ok    ${nom}`);
-  else { echecs += 1; console.log(`  ECHEC ${nom} — observé : ${obs}`); }
+  else { echecs += 1; echecsNoms.push(nom); console.log(`  ECHEC ${nom} — observé : ${obs}`); }
 };
 
 /* --- 0. Régression dans le code de provisioning ---------------------------- */
@@ -688,5 +689,16 @@ try {
   console.log(`  base éphémère détruite : ${baseEphemere.nom}`);
 }
 
+// POURQUOI CE RECAPITULATIF (2026-11-19).
+//
+// L annotation GitHub ne conserve que les ~30 dernieres lignes du log, et le
+// stockage des logs est inaccessible depuis l environnement d analyse. Un
+// « 41/42 » sans le nom de l assertion fautive est donc indebogable a distance.
+// Ce bloc rejoue les echecs EN FIN de sortie : ils survivent a la troncature,
+// alors qu un echec survenu au milieu du fichier n y survit pas.
+if (echecs > 0) {
+  console.log(`  ECHECS (${echecs}) :`);
+  for (const nom of echecsNoms) console.log(`    - ${nom}`);
+}
 console.log(`\n  ${assertions - echecs}/${assertions} assertions vertes\n`);
 process.exit(echecs > 0 ? SORTIE_DEFAUT : sortie);
