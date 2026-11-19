@@ -66,8 +66,13 @@ const MOT_DE_PASSE = process.env.TF_APP_PASSWORD || 'epreuve_locale_jetable';
 
 let assertions = 0;
 let echecs = 0;
+// Nom de la derniere assertion EVALUEE. Sert au `catch` global : sans lui, une
+// exception levee entre deux assertions donne « ECHEC — sans code » et il faut
+// relire tout le fichier pour deviner ou. Mesure du run 44533774940.
+let derniereAssertion = '(aucune)';
 const verifier = (nom, cond, obs) => {
   assertions += 1;
+  derniereAssertion = nom;
   if (cond) console.log(`  ok    ${nom}`);
   else { echecs += 1; console.log(`  ECHEC ${nom} — observé : ${obs}`); }
 };
@@ -658,8 +663,20 @@ try {
   app = null;
 } catch (e) {
   if (e.message !== 'migration') {
+    // POURQUOI CE MESSAGE EST PLUS LONG QU AVANT (2026-11-19).
+    //
+    // Il n affichait que le code ou la premiere ligne du message. Mesure du run
+    // 44533774940 : « 41/42 assertions vertes » avec, pour tout detail,
+    // « ECHEC — (aucune ligne d erreur explicite) ». Le nom de l assertion
+    // fautive etait donc invisible, et le log tronque par l annotation ne le
+    // rendait pas non plus. Un echec qui ne se nomme pas coute un aller-retour
+    // de diagnostic a chaque fois.
     echecs += 1;
-    console.log(`  ECHEC — ${e.code ?? String(e.message).split('\n')[0]}`);
+    console.log(`  ECHEC — ${e.code ?? 'sans code'} : ${String(e.message).split('\n')[0]}`);
+    console.log(`  derniere assertion evaluee : ${derniereAssertion}`);
+    if (e.detail) console.log(`  detail : ${e.detail}`);
+    if (e.hint) console.log(`  hint   : ${e.hint}`);
+    if (e.where) console.log(`  where  : ${e.where}`);
   }
   sortie = SORTIE_DEFAUT;
 } finally {
