@@ -241,6 +241,22 @@ console.log('\n  G. la SONDE reelle laisse intact un role homonyme de son ancien
 
   const r = spawnSync(process.execPath, [join(RACINE, 'scripts', 'run-db-suite.mjs'),
     'scripts/test_sonde_identite_runtime.mjs'], { encoding: 'utf8', env: process.env });
+  // POURQUOI LA SORTIE EST RELAYEE EN ENTIER (2026-11-19).
+  //
+  // Le diagnostic ci-dessous ne gardait que les deux premieres lignes ECHEC de
+  // la sous-suite. Or cette sous-suite peut echouer SANS ecrire ECHEC — un
+  // refus de prerequis, une exception, ou un arret de run-db-suite — et le
+  // message devenait alors `exit=1 ` (vide). Mesure des runs 44546082545 et
+  // 44548675941 : « suites en echec : test_role_ephemere_garde », sans autre
+  // detail, parce que l annotation GitHub tronque et que le journal complet est
+  // heberge hors de l API. On relaie donc la sortie de la sous-suite entre des
+  // marqueurs, pour qu'elle soit dans le log de CE script.
+  if (r.status !== 0) {
+    console.log('    --- sortie de la sous-suite (stdout) ---');
+    console.log((r.stdout || '(vide)').split('\n').slice(-40).join('\n'));
+    console.log('    --- sortie de la sous-suite (stderr) ---');
+    console.log((r.stderr || '(vide)').split('\n').slice(-20).join('\n'));
+  }
   verifier('la sonde aboutit malgre le role homonyme preexistant', r.status === 0,
     `exit=${r.status} ${(r.stdout || '').split('\n').filter((l) => /ECHEC/.test(l)).slice(0, 2).join(' ')}`);
 
