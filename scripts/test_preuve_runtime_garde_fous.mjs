@@ -89,6 +89,40 @@ verifier(/process\.env\.SHA_ATTENDU/.test(source),
 verifier(/sha_traceabilite/.test(source),
   'la preuve explique ce que `sha` designe');
 
+// --- 7. C1 et C2 sont evalues AUSSI sur un statut != 200 -------------------
+// Defaut trouve sur le run 44483815489 : le corps du 503 portait
+// `identitySysteme.verifiee_par_la_base: true` / `aller_retour_reussi`, et le
+// script sortait avant de lire. Six verdicts declares inatteignables alors que
+// la mesure etait dans la main — meme classe que le defaut C4 corrige plus haut.
+verifier(/function evaluerC1C2/.test(source), 'la fonction evaluerC1C2 existe');
+const nbC12 = (source.match(/'C1\.2'/g) || []).length;
+verifier(nbC12 === 1, 'C1.2 n apparait qu une fois (pas de doublon)', `${nbC12} occurrence(s)`);
+verifier(/evaluerC1C2\(sonde\.corps\)/.test(source),
+  'C1/C2 sont evalues sur un 503 quand le corps porte les champs d identite');
+
+// L appel doit etre DANS la branche 503, pas apres le `process.exit(2)`.
+const posExit503 = source.indexOf('process.exit(2)', source.indexOf('sonde.statut === 503'));
+const posAppelC1C2 = source.indexOf('evaluerC1C2(sonde.corps)');
+verifier(posAppelC1C2 !== -1 && posExit503 !== -1 && posAppelC1C2 < posExit503,
+  'l evaluation C1/C2 precede la sortie en 2 (sinon elle ne s execute jamais)',
+  `appel=${posAppelC1C2} exit=${posExit503}`);
+
+// --- 8. Un `null` de verification ne peut pas devenir un PASS -------------
+// `verifiee_par_la_base` vaut true / false / null. Seul `true` est un PASS.
+verifier(/verifiee_par_la_base === true \? true/.test(source)
+  || /verifiee_par_la_base === true/.test(source),
+  'C1.2 exige strictement `verifiee_par_la_base === true`');
+verifier(!/'C1\.2'[^;]*verifiee_par_la_base !== false/.test(source),
+  'C1.2 ne se contente pas de « non faux » (un null n est pas une preuve)');
+
+// --- 9. Aucune cause recopiee en dur dans l interpretation du 503 ---------
+// L ancienne ligne affirmait « cle d identite absente » sans lire le corps.
+verifier(!/cle d identite absente\)/.test(source)
+  && !/'runtime non pret \(cle d identite absente\)/.test(source),
+  'l interpretation du 503 n affirme plus une cause non lue');
+verifier(/const clePresente = utilisateur\?\.configured === true/.test(source),
+  'l interpretation du 503 se deduit de `identityTokens.configured`');
+
 if (echecs === 0) {
   console.log('  Preuve runtime P10.7 : garde-fous anti-faux-temoin OK.');
   process.exit(0);

@@ -290,6 +290,73 @@ function expurger(corps) {
   return garde;
 }
 
+// --- C1 et C2 : identite signee, cle presente ------------------------------
+//
+// POURQUOI CETTE FONCTION EXISTE, ET CE QU'ELLE CORRIGE.
+//
+// Elle etait ecrite en ligne droite APRES le test de statut : sur tout statut
+// != 200 le script sortait en 2 sans jamais la lire. Or la route publie
+// `identitySysteme` dans son corps QUEL QUE SOIT le statut — c'est la meme
+// raison qui a fait deplacer C4 avant le test de statut, et elle s'applique
+// identiquement ici. Le corps du 503 du run 44483815489 portait
+// `verifiee_par_la_base: true, verification: aller_retour_reussi` : C1 etait
+// mesure, et le script ne le lisait pas.
+//
+// Pire, la ligne d'arret affirmait « cle d identite absente » alors que la
+// reponse disait `identityTokens.configured: true`. Une preuve qui declare une
+// absence que son propre corps refute n'est pas une preuve : c'est un faux
+// temoin, exactement ce que ce chantier doit eliminer.
+//
+// La fonction lit le corps ; elle ne l'invente pas. Si `identitySysteme` est
+// absent, C1 vaut INDETERMINATE (condition null) — surtout pas PASS, et pas
+// FAIL non plus : l'absence du champ signifie qu'on n'a pas mesure.
+function evaluerC1C2(corps) {
+  const systeme = corps.identitySysteme;
+  const utilisateur = corps.identityTokens;
+
+  // C1.1 — savoir signer. `mode: signe` n'est publie que si la cle est valide.
+  verdict('C1.1', 'le runtime sait signer une identite systeme',
+    systeme ? systeme.mode === 'signe' : null,
+    systeme ? `mode=${systeme.mode ?? 'absent'}` : 'champ identitySysteme ABSENT du corps : non mesure');
+
+  // C1.2 — LE controle central : la base a-t-elle accepte le jeton signe ?
+  // `verifiee_par_la_base` vaut true / false / null. `null` = la verification
+  // n'a pas eu lieu (erreur, privilege manquant) : INDETERMINATE, jamais PASS.
+  verdict('C1.2', 'la BASE a VERIFIE le jeton signe (aller-retour reel)',
+    systeme ? (systeme.verifiee_par_la_base === true ? true
+      : systeme.verifiee_par_la_base === false ? false : null) : null,
+    systeme
+      ? `verifiee_par_la_base=${String(systeme.verifiee_par_la_base)} · verification=${systeme.verification ?? '?'}`
+      : 'champ identitySysteme ABSENT du corps : non mesure');
+
+  // C1.3 — l'usage systeme doit etre distinct de l'usage utilisateur.
+  verdict('C1.3', 'l usage du jeton systeme est bien distinct de l usage utilisateur',
+    systeme ? systeme.usage === 'tracefab_system' : null,
+    systeme ? `usage=${systeme.usage ?? 'absent'}` : 'champ identitySysteme ABSENT du corps : non mesure');
+
+  // C2.1 — la cle est presente DANS LE PROCESSUS et bien formee.
+  verdict('C2.1', 'la cle d identite est PRESENTE et BIEN FORMEE dans le processus',
+    utilisateur ? (utilisateur.configured === true && utilisateur.mode === 'signe') : null,
+    utilisateur
+      ? `configured=${String(utilisateur.configured)} mode=${utilisateur.mode ?? '?'}`
+      : 'champ identityTokens ABSENT du corps : non mesure');
+
+  // C2.2 — le meme processus sert les deux usages : si le systeme est configure
+  // et signe, la cle y est chargee ; l'utilisateur doit la voir aussi.
+  verdict('C2.2', 'le systeme signe avec la meme cle, dans le meme processus',
+    systeme && utilisateur
+      ? (systeme.configured === true && utilisateur.configured === true)
+      : null,
+    systeme && utilisateur
+      ? `systeme.configured=${String(systeme.configured)} · utilisateur.configured=${String(utilisateur.configured)}`
+      : 'un des deux champs d identite est ABSENT : non mesure');
+
+  // C2.3 — zero fuite : aucune suite hexadecimale longue dans le corps.
+  verdict('C2.3', 'aucun fragment de cle dans la reponse',
+    !JSON.stringify(corps).match(/[0-9a-f]{32,}/i),
+    'aucune suite hexadecimale longue dans le corps');
+}
+
 // --- C4 : identite PostgreSQL, evaluee depuis le corps, quel qu il soit -----
 //
 // POURQUOI C4 EST EVALUE AVANT LE TEST DE STATUT.
@@ -341,12 +408,27 @@ if (sonde.statut !== 200) {
     corpsExpurge,
     resultats,
   });
-  if (sonde.statut === 503 && sonde.corps?.databaseIdentity) {
-    // Le corps est la : C4 est mesurable meme si le runtime se declare non pret.
-    evaluerC4(sonde.corps.databaseIdentity);
+  if (sonde.statut === 503) {
+    // Le corps est la : tout ce qu'il PUBLIE est mesurable, meme si le runtime
+    // se declare non pret. On evalue donc ce qu'il porte, et rien de plus.
+    if (sonde.corps?.databaseIdentity) evaluerC4(sonde.corps.databaseIdentity);
+    if (sonde.corps?.identitySysteme || sonde.corps?.identityTokens) {
+      evaluerC1C2(sonde.corps);
+    }
+    // L'interpretation se DEDUIT du corps, elle ne se recopie pas d'une cause
+    // supposee : c'est cette recopie qui a produit « cle absente » sur une
+    // reponse qui disait `configured: true`.
+    const systeme = sonde.corps?.identitySysteme;
+    const utilisateur = sonde.corps?.identityTokens;
+    const clePresente = utilisateur?.configured === true;
+    const allerRetour = systeme?.verifiee_par_la_base === true;
     ecrire({
       arret: `sonde authentifiee -> HTTP 503`,
-      interpretation: 'runtime non pret (cle d identite absente) : C1 et C2 hors d atteinte, C4 evalue ci-dessous',
+      interpretation: !clePresente
+        ? 'runtime non pret : la cle d identite est ABSENTE du processus (identityTokens.configured=false), C1 et C2 hors d atteinte'
+        : allerRetour
+          ? 'runtime non pret pour d AUTRES services (voir corpsExpurge.services), mais la cle EST presente et la BASE a ACCEPTE le jeton signe : C1 et C2 mesures'
+          : 'la cle EST presente dans le processus, mais l aller-retour base/jeton n a PAS reussi : voir verifiee_par_la_base et verification',
       corpsExpurge: expurger(sonde.corps),
       resultats,
     });
@@ -357,26 +439,7 @@ if (sonde.statut !== 200) {
 
 const corps = sonde.corps || {};
 
-// --- C1 : identite signee, verifiee par la base ----------------------------
-const systeme = corps.identitySysteme ?? {};
-verdict('C1.1', 'le runtime sait signer une identite systeme',
-  systeme.mode === 'signe', `mode=${systeme.mode ?? 'absent'}`);
-verdict('C1.2', 'la BASE a VERIFIE le jeton signe (aller-retour reel)',
-  systeme.verifiee_par_la_base === true,
-  `verifiee_par_la_base=${String(systeme.verifiee_par_la_base)} · verification=${systeme.verification ?? '?'}`);
-verdict('C1.3', 'l usage du jeton systeme est bien distinct de l usage utilisateur',
-  systeme.usage === 'tracefab_system', `usage=${systeme.usage ?? 'absent'}`);
-
-// --- C2 : la cle HMAC est chargee DANS LE PROCESSUS -----------------------
-const utilisateur = corps.identityTokens ?? {};
-verdict('C2.1', 'la cle d identite est PRESENTE et BIEN FORMEE dans le processus',
-  utilisateur.configured === true && utilisateur.mode === 'signe',
-  `configured=${String(utilisateur.configured)} mode=${utilisateur.mode ?? '?'}`);
-verdict('C2.2', 'le systeme signe avec la meme cle, dans le meme processus',
-  systeme.configured === true, `systeme.configured=${String(systeme.configured)}`);
-verdict('C2.3', 'aucun fragment de cle dans la reponse',
-  !JSON.stringify(corps).match(/[0-9a-f]{32,}/i),
-  'aucune suite hexadecimale longue dans le corps');
+evaluerC1C2(corps);
 
 // --- C4 : deja evalue ci-dessus, sur 200 COMME sur 503 ----------------------
 // La fonction `evaluerC4` est appelee une seule fois, avant le test de statut.
