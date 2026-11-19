@@ -210,7 +210,24 @@ verifier(
 
 console.log('\n  C. périmètre de ce que la sonde expose');
 
-const corpsSonde = source.slice(source.indexOf('export async function probeDatabaseIdentity'));
+// Les COMMENTAIRES sont retires avant l analyse, et c est un correctif.
+//
+// Sans ce retrait, la regle « return ... process.env.DATABASE_URL » se
+// declenchait sur le TEXTE qui l explique : documenter un piege en le citant
+// faisait echouer le garde-fou. Mesure du 2026-11-19 — deux commentaires
+// ajoutes dans `readiness-probes.ts` ont produit un faux positif, et le meme
+// motif etait deja present sur main sans que personne ne le voie.
+//
+// Un garde-fou qui interdit de documenter le defaut qu il protege finit par
+// etre supprime — et le defaut revient avec lui. On retire donc les
+// commentaires, jamais les instructions.
+const sourceSansCommentaires = source
+  .replace(/\/\*[\s\S]*?\*\//g, '')
+  .split('\n')
+  .map((l) => l.replace(/(^|[^:])\/\/.*$/, '$1'))
+  .join('\n');
+const corpsSonde = sourceSansCommentaires.slice(
+  sourceSansCommentaires.indexOf('export async function probeDatabaseIdentity'));
 const blocRetour = corpsSonde.match(/return \{\s*measured: true,([\s\S]*?)\n {4}\};/);
 
 verifier(

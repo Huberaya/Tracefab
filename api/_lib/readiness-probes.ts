@@ -62,8 +62,9 @@ async function reachableByHttp(url: string, method: 'HEAD' | 'GET', headers: Rec
 /** Base de donnees : la sonde qui compte le plus. Une requete triviale prouve
  *  la resolution DNS, le TLS, l'authentification et le pooler. */
 export function probeDatabase(): Promise<ProbeResult> {
+  const aUneBase = Boolean(process.env.DATABASE_URL?.trim());
   return timed(async () => {
-    if (!process.env.DATABASE_URL?.trim()) return { reachable: false, detail: 'DATABASE_URL absent' };
+    if (!aUneBase) return { reachable: false, detail: 'DATABASE_URL absent' };
     await prisma.$queryRaw`SELECT 1`;
     return { reachable: true, detail: 'requete SELECT 1 honoree' };
   });
@@ -265,11 +266,20 @@ const SONDE_ORG_ID = '00000000-0000-4000-8000-0000000000a1';
 const SONDE_ORG_AUTRE = '00000000-0000-4000-8000-0000000000b2';
 
 export async function probeContexteTenant(): Promise<ContexteTenant> {
+  // Les deux presences sont lues AVANT tout `return`.
+  //
+  // Le garde-fou `test_sonde_identite_runtime` refuse la sequence « return puis
+  // process.env.DATABASE_URL » a moins de 200 caracteres, parce qu un
+  // `return { url: ... }` publierait l hote, l utilisateur et le mot de passe.
+  // La regle ne distingue pas une garde d une fuite, et elle a raison de rester
+  // grossiere : un faux positif coute une minute, un faux negatif publie un
+  // secret. C est donc le code qui s adapte, pas le garde-fou.
+  const aUneBase = Boolean(process.env.DATABASE_URL?.trim());
   const cle = (process.env.TRACEFAB_IDENTITY_KEY || '').trim();
   if (!cle) {
     return { ...CONTEXTE_TENANT_INDISPONIBLE, detail: 'cle d identite absente : contexte non mesurable' };
   }
-  if (!process.env.DATABASE_URL?.trim()) {
+  if (!aUneBase) {
     return { ...CONTEXTE_TENANT_INDISPONIBLE, detail: 'DATABASE_URL absent' };
   }
   try {
