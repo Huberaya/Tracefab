@@ -1,3 +1,17 @@
+> **AVIS DE MISE À JOUR — 2026-11-20, après les mesures runtime C5**
+>
+> Ce document est un **constat historique daté du run 44704187929 (08:38:55Z)**. Il décrit correctement le blocage observé à cette heure-là, mais ses conclusions « aucun C5 exécuté » et « unique action nécessaire » ne décrivent plus l'état actuel.
+>
+> Depuis cette mesure, la branche release a été réalignée sur `main`, l'endpoint Preview a été configuré puis restauré, et les quatre contrôles C5 ont été exécutés sur le runtime réel :
+>
+> - Mesure nominale : [run 44750641214](https://github.com/Huberaya/Tracefab/actions/runs/44750641214), C5.1–C5.4 PASS.
+> - Scénario hostile : [run 44751212084](https://github.com/Huberaya/Tracefab/actions/runs/44751212084), C5.3 FAIL attendu (endpoint déclaré volontairement discordant), C5.4 PASS.
+> - Rapport de référence à jour : [P107_FINAL_RUNTIME_C5_2026-11-20.md](../preuves/p107/P107_FINAL_RUNTIME_C5_2026-11-20.md).
+>
+> **Ne pas utiliser les conclusions des sections historiques ci-dessous comme verdict actuel.** Elles sont conservées pour la traçabilité de la découverte initiale et remplacées par les mesures ci-dessus.
+>
+> ---
+>
 # P10.7 — Preuve C5 runtime après fusion de la PR #133
 
 **Résultat : CAS 2 — BLOCAGE DÉMONTRÉ.**
