@@ -194,7 +194,7 @@ Le verdict ne peut donc pas republier une chaîne de connexion en la dérivant.
 | 1 | Valeur exacte attendue, sans secret | **FAIT** | § 1 |
 | 2 | Preuve qu'elle identifie `br-square-bread-b1gu7jk7` | **FAIT**, portée de § 2 | § 2 |
 | 3 | Contrôle automatisé endpoint réel vs attendu | **FAIT** | C5.1–C5.4 + règle testée + anti-fuite |
-| 4 | CI complète après correction | **FAIT** | run `44646685467` sur `55354c5e` — 4/4 vert |
+| 4 | CI complète après correction | **FAIT** | run `44649331464` sur `902d4a0e` (HEAD) — 4/4 vert |
 
 **Ce qui reste hors de ma main :** poser la valeur dans l'environnement Preview de Vercel.
 Le connecteur Vercel disponible refuse la lecture et l'écriture de variables
@@ -209,7 +209,7 @@ l'API GitHub refuse la lecture des variables du dépôt (403). La valeur est don
 | Opération | État |
 |---|---|
 | Pousser les commits sur `arena/ecba1849-tracefab` | **FAIT** |
-| Lancer la CI complète | **FAIT** — run `44646685467` sur `55354c5e`, **4/4 vert** |
+| Lancer la CI complète | **FAIT** — run `44649331464` sur `902d4a0e` (HEAD), **4/4 vert** |
 | Lancer la sonde runtime `p107-preuves-runtime` | **FAIT** — run `44643730922` : **refusé par la protection de branche** (voir ci-dessous) |
 | Poser `TRACEFAB_PREVIEW_DB_ENDPOINT` dans Vercel | **NON FAIT** — aucun accès en écriture |
 | Modifier la Production | **NON FAIT** — hors périmètre, explicitement interdit |
