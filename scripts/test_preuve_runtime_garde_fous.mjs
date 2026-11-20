@@ -64,19 +64,43 @@ verifier(/etat\s*!==\s*'PASS'/.test(blocVerdict),
 verifier(/condition === null/.test(blocVerdict),
   '`null` est traite comme indetermine, pas comme FAIL ni comme PASS');
 
-// --- 4. C4.6 ne peut plus rendre PASS sans mesure ------------------------
+// --- 4. C4.6 ne peut pas rendre PASS sans mesure ------------------------
+//
+// L assertion d origine exigeait un `null` LITTERAL : « C4.6 passe `null` et
+// non une expression toujours vraie ». Elle a fait son travail — elle a tue le
+// `Boolean(...) || true` — puis elle est devenue un obstacle : le `null` en dur
+// declarait la mesure IMPOSSIBLE, alors que le contexte tenant se mesure en
+// lecture seule. Une assertion qui exige un `null` litteral protege desormais
+// le defaut qu elle avait corrige.
+//
+// Ce qui doit rester vrai, et qui est verifie ici, est plus precis : C4.6 doit
+// dependre d une CONDITION LUE, et valoir `null` quand cette condition manque.
 const ligneC46 = source.split('\n').filter((l) => l.includes("'C4.6'"));
 verifier(ligneC46.length > 0, 'le critere C4.6 existe toujours');
-// Le troisieme argument de l appel doit etre `null` : c est lui qui porte l etat.
-const blocC46 = source.slice(source.indexOf("'C4.6'") - 200, source.indexOf("'C4.6'") + 400);
-verifier(/\bnull\s*,/.test(blocC46),
-  'C4.6 passe `null` (indetermine) et non une expression toujours vraie');
+verifier(/ct && ct\.measured === true/.test(source),
+  'C4.6 est conditionne par `measured` : sans mesure, pas de verdict');
+verifier(/contexteTenant/.test(source),
+  'C4.6 lit le champ `contexteTenant` publie par la route');
+verifier(/ct\.organisationEtrangereRefusee === true/.test(source),
+  'C4.6 exige le CONTROLE NEGATIF (organisation etrangere refusee), pas seulement le positif');
+// Une expression toujours vraie resterait un faux temoin, meme bien nommee.
+const blocC46 = source.slice(source.indexOf("'C4.6'"), source.indexOf("'C4.6'") + 900);
+verifier(!/\|\|\s*true/.test(blocC46), 'C4.6 ne contient aucune disjonction toujours vraie');
 
 // --- 5. C4 est evalue AUSSI sur 503 ---------------------------------------
 // Sortir avant d evaluer C4 transformait une mesure disponible en « non
 // mesuree ». Le corps du 503 porte `databaseIdentity` : la preuve y est.
-verifier(/evaluerC4\(sonde\.corps\.databaseIdentity\)/.test(source),
-  'C4 est evalue sur un 503 quand le corps porte databaseIdentity');
+// La forme exacte a change (C4.6 mesure desormais `contexteTenant`, donc
+// l appel passe deux arguments). Ce qui est verifie ici est la PROPRIETE :
+// l appel existe dans la branche 503, precede la sortie en 2, et n est pas
+// conditionne a `databaseIdentity` seul — sans quoi un corps portant
+// uniquement `contexteTenant` rendrait C4 indetermine par contagion.
+const posExit = source.indexOf('process.exit(2)', source.indexOf('sonde.statut === 503'));
+const posAppel = source.indexOf('evaluerC4(sonde.corps.databaseIdentity');
+verifier(posAppel !== -1 && posAppel < posExit,
+  'C4 est evalue sur un 503 avant la sortie en 2', `appel=${posAppel} exit=${posExit}`);
+verifier(/sonde\.corps\?\.databaseIdentity \|\| sonde\.corps\?\.contexteTenant/.test(source),
+  'C4 est evalue des que databaseIdentity OU contexteTenant est present');
 verifier(/function evaluerC4/.test(source), 'la fonction evaluerC4 existe');
 const nbC41 = (source.match(/'C4\.1'/g) || []).length;
 verifier(nbC41 === 1, 'C4.1 n apparait qu une fois (pas de doublon)', `${nbC41} occurrence(s)`);
@@ -122,6 +146,56 @@ verifier(!/cle d identite absente\)/.test(source)
   'l interpretation du 503 n affirme plus une cause non lue');
 verifier(/const clePresente = utilisateur\?\.configured === true/.test(source),
   'l interpretation du 503 se deduit de `identityTokens.configured`');
+
+// --- 10. Aucune mesure n'est evaluee sur un corps NON EXPURGE --------------
+// Defaut trouve deux fois dans la meme session : C1/C2 lus APRES le exit(2),
+// puis C5 nourri du corps BRUT — le corps etait retire de la preuve, mais son
+// hote ressortait par le detail du verdict.
+//
+// Regle : toute fonction `evaluer*` recoit un corps EXPURGE, et tout appel
+// place dans la branche 503 precede la sortie.
+for (const fn of ['evaluerC1C2', 'evaluerC4', 'evaluerC5']) {
+  const position = source.indexOf(`${fn}(`);
+  verifier(position !== -1, `${fn} est appelee`);
+}
+verifier(/evaluerC5\(corpsPourC5\)/.test(source),
+  'C5 est evalue sur un corps EXPURGE (corpsPourC5), pas sur le corps brut');
+verifier(!/evaluerC5\(sonde\.corps\)/.test(source),
+  'C5 ne recoit plus le corps brut de la reponse');
+verifier(/evaluerC5\(expurger\(corps\)/.test(source),
+  'C5 est egalement evalue sur un corps expurge dans la branche 200');
+
+// Et la position : tout appel dans la branche 503 doit preceder la sortie.
+const posSortie = source.indexOf('process.exit(2)', source.indexOf('sonde.statut === 503'));
+for (const appel of ['evaluerC4(', 'evaluerC5(', 'evaluerC1C2(']) {
+  // Les appels dans la branche 503 sont les seuls qui precedent la sortie.
+  const avant = source.slice(0, posSortie);
+  verifier(avant.includes(appel),
+    `${appel}) est evalue AVANT la sortie en 2 du chemin 503`,
+    `appel absent avant exit=${posSortie}`);
+}
+
+// --- 11. L endpoint publie ne peut pas etre une chaine de connexion --------
+// P10.8 publie `identite_base.hote` : c'est le seul champ qui vient d'une URL.
+verifier(/user:pass@|:\[\^\/\\s@\]\+@|@\/\.test\(texte\)/.test(source) || /\[\^\/\\s:@\]\+:/.test(source),
+  'expurger() refuse une chaine utilisateur:mot de passe@');
+verifier(/hotesPublies/.test(source),
+  'expurger() inspecte les hotes publies et exige un nom d hote seul');
+
+// --- 12. C5.4 ne peut pas etre neutralise sans que ca se voie ---------------
+// C5.3 compare l'hote joint a l'hote declare ; deux valeurs egales le rendent
+// PASS meme si les deux designent la PRODUCTION. C5.4 est le seul controle qui
+// repond « la Preview joint-elle la Production ? ». Un C5.4 supprime, ou dont
+// le FAIL serait adouci en INDETERMINATE, rendrait C5 structurellement
+// incapable de voir le cas le plus grave.
+verifier(/verdict\('C5\.4'/.test(source),
+  'C5.4 existe et rend un verdict');
+verifier(/hote_est_production/.test(source),
+  'C5.4 s appuie sur hote_est_production publie par la route');
+verifier(/estProduction === false/.test(source),
+  'C5.4 ne rend PASS que si hote_est_production vaut strictement false');
+verifier(!/verdict\('C5\.4'[\s\S]{0,400}?estProduction\s*\?\s*null/.test(source),
+  'un hote de Production n est jamais converti en INDETERMINATE');
 
 if (echecs === 0) {
   console.log('  Preuve runtime P10.7 : garde-fous anti-faux-temoin OK.');

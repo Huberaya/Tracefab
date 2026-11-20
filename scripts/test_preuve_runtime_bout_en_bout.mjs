@@ -133,5 +133,91 @@ verifier(locale.code !== 0, 'une cible locale est refusee', `code ${locale.code}
 verifier(/n'est pas une URL de deploiement Vercel|runtime local/i.test(locale.sortie),
   'le refus nomme la raison');
 
+// --- 5. C4.6 — le contexte tenant, mesure et CONTREDIT -----------------------
+//
+// Le defaut corrige : C4.6 rendait `null` en dur, au motif que la mesure etait
+// impossible. Elle l'etait devenue fausse : la route publie `contexteTenant`.
+// Reste a prouver que le verdict SUIT la mesure, dans les deux sens.
+const jetonTest = { TRACEFAB_RUNTIME_PROBE_TOKEN: 'jeton-de-test-non-secret' };
+
+const c46ok = await executer('app503-contexte-ok', jetonTest);
+verifier(/"C4\.6"[^}]*"verdict":\s*"PASS"/.test(c46ok.preuve),
+  'C4.6 rend PASS quand la base accepte le jeton ET refuse l organisation etrangere',
+  c46ok.preuve.slice(-400));
+
+const c46faux = await executer('app503-contexte-faux', jetonTest);
+verifier(/"C4\.6"[^}]*"verdict":\s*"FAIL"/.test(c46faux.preuve),
+  'C4.6 rend FAIL quand la base ACCEPTE un jeton d une autre organisation',
+  c46faux.preuve.slice(-400));
+
+const c46nm = await executer('app503-contexte-non-mesure', jetonTest);
+verifier(/"C4\.6"[^}]*"verdict":\s*"INDETERMINATE"/.test(c46nm.preuve),
+  'C4.6 rend INDETERMINATE quand la mesure a echoue — ni PASS ni FAIL',
+  c46nm.preuve.slice(-400));
+
+// Une preuve qui publierait un jeton de contexte en clair serait pire que le
+// defaut qu'elle documente. Le corps est expurge, mais on le verifie ici.
+verifier(!/[0-9a-f]{64}/.test(c46ok.preuve),
+  'aucun jeton signe (64 hex) ne fuit dans la preuve publiee');
+
+// --- 6. L endpoint publie ne peut pas devenir une chaine de connexion -------
+//
+// P10.8 publie `identite_base.hote` pour rendre le rattachement DECIDABLE :
+// une empreinte permet de comparer, jamais de nommer. Ce champ est le seul du
+// corps qui vient d'une URL. Une extraction ratee y verserait l utilisateur ou
+// le mot de passe, et la preuve expurgee les publierait.
+const fuiteUrl = await executer('app503-hote-avec-mot-de-passe', jetonTest);
+verifier(/"expurge"/.test(fuiteUrl.preuve),
+  'un corps dont l hote contient « user:pass@ » est RETIRE, pas publie',
+  fuiteUrl.preuve.slice(-260));
+verifier(!/MOTDEPASSE_FACTICE/.test(fuiteUrl.preuve),
+  'aucune trace du mot de passe factice dans la preuve');
+
+const hotePropre = await executer('app503-hote-propre', jetonTest);
+verifier(/ep-exemple-123\.eu-central-1\.aws\.neon\.tech/.test(hotePropre.preuve),
+  'un nom d hote propre est publie tel quel (il est necessaire au rattachement)');
+
+// --- 7. C5 — le rattachement de la base rend un VERDICT ---------------------
+//
+// Pendant toute la session du 2026-11-19 ce point est reste INDETERMINATE
+// faute de pouvoir NOMMER l endpoint. Il est desormais publie et compare. On
+// verifie les trois etats, dont le FAIL : un controle qui ne saurait rendre que
+// des verts ne rattacherait rien.
+const c5ok = await executer('app503-rattachement-ok', jetonTest);
+verifier(/"C5\.3"[^}]*"verdict":\s*"PASS"/.test(c5ok.preuve),
+  'C5.3 rend PASS quand l endpoint joint est celui declare', c5ok.preuve.slice(-300));
+
+const c5faux = await executer('app503-rattachement-faux', jetonTest);
+verifier(/"C5\.3"[^}]*"verdict":\s*"FAIL"/.test(c5faux.preuve),
+  'C5.3 rend FAIL quand le deploiement joint un AUTRE hote', c5faux.preuve.slice(-300));
+
+const c5nd = await executer('app503-rattachement-non-declare', jetonTest);
+verifier(/"C5\.2"[^}]*"verdict":\s*"INDETERMINATE"/.test(c5nd.preuve),
+  'C5.2 rend INDETERMINATE quand aucun endpoint n est declare', c5nd.preuve.slice(-300));
+verifier(/"C5\.3"[^}]*"verdict":\s*"INDETERMINATE"/.test(c5nd.preuve),
+  'C5.3 rend INDETERMINATE — pas PASS — quand la comparaison n a pas eu lieu');
+
+// --- 7 bis. C5.4 — le seul controle que C5.3 ne peut PAS faire -------------
+//
+// Si l'operateur declare l'hote de PRODUCTION comme endpoint attendu, la
+// Preview joint la Production et C5.3 vaut PASS : les deux cotes designent le
+// meme hote, et une egalite ne peut pas savoir que la valeur est la mauvaise.
+// C'est un PASS parfait sur la configuration la plus grave possible. C5.4 doit
+// rendre FAIL la ou C5.3 rend PASS — sans quoi il n'ajoute rien.
+const c5prod = await executer('app503-rattachement-production', jetonTest);
+verifier(/"C5\.3"[^}]*"verdict":\s*"PASS"/.test(c5prod.preuve),
+  'dans le scenario Production, C5.3 rend PASS — c est precisement le piege',
+  c5prod.preuve.slice(-400));
+verifier(/"C5\.4"[^}]*"verdict":\s*"FAIL"/.test(c5prod.preuve),
+  'C5.4 rend FAIL quand la Preview joint un hote de PRODUCTION',
+  c5prod.preuve.slice(-400));
+
+const c5avant = await executer('app503-rattachement-avant-c54', jetonTest);
+verifier(/"C5\.4"[^}]*"verdict":\s*"INDETERMINATE"/.test(c5avant.preuve),
+  'C5.4 rend INDETERMINATE quand le deploiement ne publie pas hote_est_production',
+  c5avant.preuve.slice(-400));
+verifier(!/"C5\.4"[^}]*"verdict":\s*"PASS"/.test(c5avant.preuve),
+  'l absence du champ ne devient jamais un PASS : non mesure n est pas mesure juste');
+
 console.log(echecs === 0 ? '  Bout en bout : OK.' : `  Bout en bout : ${echecs} echec(s).`);
 process.exit(echecs === 0 ? 0 : 1);

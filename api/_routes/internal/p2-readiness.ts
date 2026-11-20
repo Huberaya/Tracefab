@@ -4,7 +4,8 @@ import { notificationAlertConfigured } from '../../_lib/notification-observabili
 import { storageConfig } from '../../_lib/storage.js';
 import { json, methodNotAllowed } from '../../_lib/http.js';
 import { runtimeProbeAuthorized, workerAuthorized, workerSecretConfigured } from '../../_lib/worker-auth.js';
-import { databaseIdentityIsSafe, probeDatabaseIdentity, runLiveProbes } from '../../_lib/readiness-probes.js';
+import { normaliserHote, estHoteProduction } from '../../_lib/hote-production.js';
+import { databaseIdentityIsSafe, probeContexteTenant, probeDatabaseIdentity, runLiveProbes } from '../../_lib/readiness-probes.js';
 import { ecartIdentiteRuntime } from '../../_lib/identite-contrat.js';
 import { etatCleIdentite } from '../../_lib/identite-jeton.js';
 import { prisma } from '../../_lib/prisma.js';
@@ -40,6 +41,8 @@ function privateStorageReadiness() {
   }
   return { configured: missing.length === 0 && configValid, missing, probe: 'configuration_only' };
 }
+
+
 
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -169,7 +172,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     fonction_posterieure_presente: boolean | null;
     identite_base: { base_oid: number; base_nom: string; hote_empreinte: string;
       schemas_empreinte: string; sondes_p107: Record<string, boolean> | null;
-      hote_conforme: boolean | null; hote_attendu_declare: boolean } | null;
+      hote_conforme: boolean | null; hote_attendu_declare: boolean;
+      hote?: string; hote_est_pooler?: boolean; hote_est_production?: boolean } | null;
     rls_forcee: boolean;
     mode_strict: boolean | null;
   } | null = null;
@@ -246,6 +250,24 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         base_oid: number; base_nom: string; hote_empreinte: string; schemas_empreinte: string;
         sondes_p107: Record<string, boolean> | null;
         hote_conforme: boolean | null; hote_attendu_declare: boolean;
+        // P10.8 — L'ENDPOINT LUI-MEME, PAS SEULEMENT SON EMPREINTE.
+        //
+        // Le 2026-11-19, « rattacher la base a br-square-bread-b1gu7jk7 » etait
+        // BLOQUE faute de pouvoir nommer l'hote : une empreinte SHA-256 permet
+        // de COMPARER deux hotes, jamais d'en NOMMER un. La valeur etait donc
+        // indevinable, et l'operateur n'avait aucun moyen de la fournir.
+        //
+        // Un endpoint Neon (`ep-…`) est un NOM D'HOTE PUBLIC : il figure dans
+        // une chaine de connexion, pas un mot de passe. Le publier derriere
+        // l'authentification de sonde ne divulgue aucun secret, et c'est la
+        // seule facon de rendre le rattachement DECIDABLE.
+        //
+        // CE QUI N'EST TOUJOURS PAS PUBLIE : utilisateur, mot de passe, port,
+        // parametres de requete, base de donnees du chemin. Seul `hostname`
+        // est extrait, et `new URL` ne peut pas en restituer le reste.
+        hote: string;
+        hote_est_pooler: boolean;
+        hote_est_production: boolean;
       } | null = null;
       try {
         const b = await prisma.$queryRaw<Array<{ base_oid: number; base_nom: string }>>`
@@ -312,7 +334,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           schemas_empreinte: empreinteSchemas,
           sondes_p107: sondes,
           hote_attendu_declare: attendu.length > 0,
-          hote_conforme: attendu.length > 0 && hote.length > 0 ? hote.startsWith(attendu) : null,
+          // Comparaison NORMALISEE. `startsWith` comparait une chaine brute a un
+          // prefixe : un endpoint saisi avec un suffixe de pooler, une casse
+          // differente ou un point final aurait echoue sans que personne ne
+          // comprenne pourquoi, et l'echec aurait ressemble a « mauvaise base ».
+          // On compare donc le nom d'hote complet, sans casse ni point final.
+          hote_conforme: attendu.length > 0 && hote.length > 0
+            ? normaliserHote(hote) === normaliserHote(attendu)
+            : null,
+          hote,
+          hote_est_pooler: /-pooler\./.test(hote),
+          // Un PASS de `hote_conforme` ne suffit pas : les deux cotes peuvent
+          // designer la Production. Ce booleen est le seul controle qui repond
+          // a « la Preview joint-elle la Production ? ».
+          hote_est_production: estHoteProduction(hote),
         };
       } catch {
         identiteBase = null;
@@ -391,6 +426,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   const databaseIdentity = wantIdentity ? await probeDatabaseIdentity() : undefined;
 
+  // P10.7 — C4.6 : le contexte tenant est-il pose et VERIFIE par la base ?
+  //
+  // Jusqu'ici ce point etait declare INDETERMINATE au motif que « la route de
+  // diagnostic n ouvre pas de transaction metier ». Le motif etait exact, la
+  // conclusion ne l'etait pas : le contexte se mesure en LECTURE SEULE, par un
+  // aller-retour signe + controle negatif. Voir `probeContexteTenant`.
+  //
+  // L'echec de cette sonde ne rend PAS la route indisponible : `measured:false`
+  // est un resultat publie, pas une exception. Un diagnostic qui tombe ne doit
+  // pas emporter le diagnostic entier.
+  const contexteTenant = wantIdentity ? await probeContexteTenant() : undefined;
+
   // P10.7 — verification reelle de l'outbox sous contexte systeme signe.
   // Lecture seule : aucun element n'est reclame, modifie, ni envoye.
   let notificationOutbox: { verified: boolean; detail: string; health?: OutboxHealthRow } | undefined;
@@ -446,6 +493,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       identitySysteme: jetonsSysteme,
       ...(baseIdentite ? { baseIdentite } : {}),
       ...(databaseIdentity ? { databaseIdentity } : {}),
+      ...(contexteTenant ? { contexteTenant } : {}),
       ...(notificationOutbox ? { notificationOutbox } : {}),
     });
   }
@@ -467,6 +515,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     identitySysteme: jetonsSysteme,
     ...(baseIdentite ? { baseIdentite } : {}),
     ...(databaseIdentity ? { databaseIdentity } : {}),
+    ...(contexteTenant ? { contexteTenant } : {}),
     ...(notificationOutbox ? { notificationOutbox } : {}),
   });
 }

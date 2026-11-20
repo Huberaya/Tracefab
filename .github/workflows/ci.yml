@@ -1063,6 +1063,63 @@ jobs:
         # passent au rouge. C'est ce qui prouve qu'elles mesurent la RLS.
         run: node scripts/executer_avec_erreur_annotee.mjs "isolation RLS sur lignes reelles" npm run test:neon:isolation-lignes
 
+      - name: P10.7 — la sonde de contexte tenant est EXERCEE sur la vraie base
+        # CE QUE CETTE ETAPE REPARE
+        #
+        # `probeContexteTenant` (C4.6) etait verifiee par trois scenarios hors
+        # ligne qui testent le SCRIPT DE PREUVE, pas le code qui produit la
+        # mesure. Si le SQL de la sonde etait faux, ou si `tracefab_app` n'avait
+        # pas EXECUTE sur `tracefab_current_user_id()`, ces scenarios resteraient
+        # verts et C4.6 serait PASS sur une mesure jamais faite.
+        #
+        # Cette etape execute le SQL de la sonde sur la base migree, avec le
+        # role applicatif REEL, et exige le controle NEGATIF : un jeton signe
+        # pour une AUTRE organisation doit etre refuse. C'est ce refus qui
+        # distingue une mesure d'une simple presence de variable.
+        #
+        #
+        # LE TEST POSE SA PROPRE CLE, ET N'APPELLE AUCUN OUTIL D'OPERATEUR.
+        #
+        # La premiere version de cette etape appelait l outil de provisioning de
+        # la cle d identite. C'est un ecrivain d'OPERATEUR, et
+        # `test_destructive_suite_routing` interdit qu'un workflow le reference —
+        # a raison : un outil qui pose une cle sur une base nommee n'a rien a
+        # faire dans une chaine ou la cible peut changer. Le nom du fichier
+        # n'est pas ecrit ici, precisement parce que la regle cherche une
+        # reference textuelle et qu un commentaire en est une.
+        # Mesure du run 44631158092, etape « Socle ».
+        #
+        # Le test ecrit donc sa cle lui-meme, sur la base jetable, avec le role
+        # proprietaire : une fixture, comme les autres du job, qui disparait
+        # avec le runner. Aucune valeur au depot, aucune empreinte imprimee.
+        env:
+          DATABASE_ADMIN_URL: postgresql://postgres:postgres@localhost:5432/tracefab_test
+        run: node scripts/executer_avec_erreur_annotee.mjs "sonde contexte tenant" npm run test:neon:contexte-tenant-sonde
+
+      - name: P10.7 — la regle « cet hote est-il la Production ? » discrimine
+        # C5.4 rend FAIL sur `hote_est_production === true`. Ce controle ne vaut
+        # que ce que vaut le calcul qui l alimente : une regle qui repondrait
+        # toujours `false` rendrait C5.4 vert toujours, et personne ne le
+        # verrait. Cette etape eprouve le CALCUL, sans base et sans reseau.
+        #
+        # Elle verifie les DEUX sens, car le danger est symetrique : une regle
+        # qui refuserait « tout hote *.neon.tech » rendrait C5.4 rouge sur une
+        # Preview parfaitement rattachee. Mesure : la mutation « jamais la
+        # Production » fait tomber 4 assertions, la mutation « tout Neon » en
+        # fait tomber 2. Aucune des deux ne passe.
+        run: node scripts/executer_avec_erreur_annotee.mjs "hote de production" npm run test:p107:hote-production
+
+      - name: P10.7 — le test de la sonde ne peut pas diverger de la sonde
+        # Sans base, et sans dependance : lit les deux sources.
+        #
+        # `test_neon_contexte_tenant_sonde` rejoue le SQL de la sonde au lieu
+        # d'importer la fonction (le client Prisma n'est pas genere ici). Un test
+        # qui RECOPIE ce qu'il verifie peut mentir le jour ou la sonde change :
+        # il continue de passer en verifiant l'ancien contrat. Ce garde-fou
+        # exige que les deux citent le meme GUC, la meme fonction, la meme
+        # portee transactionnelle et le meme format de jeton.
+        run: node scripts/executer_avec_erreur_annotee.mjs "contrat sonde contexte tenant" node scripts/test_sonde_contexte_tenant_contrat.mjs
+
       - name: Limitation de débit — opérations légitimes et abus refusés
         # La politique rate_limit_counters_global était FOR ALL USING (true)
         # WITH CHECK (true). Le USING (true) est justifié et conservé pour la

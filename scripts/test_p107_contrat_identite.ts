@@ -102,5 +102,25 @@ cas('C10 l écart est lisible sans révéler d identité sensible', () => {
   assert.equal(JSON.stringify(ecarts).includes('tracefab_app'), false);
 });
 
+cas('C11 `null` sur canEscalate / privilegedMemberships : refus, jamais un vert par défaut', () => {
+  // Défaut corrigé le 2026-11-19 : `IDENTITY_UNAVAILABLE` publiait
+  // `canEscalate: false` et `privilegedMemberships: []` quand la sonde n'avait
+  // RIEN mesuré. Ces deux valeurs sont des résultats de mesure ; les publier
+  // sans mesure affirme un fait qu'on n'a pas établi, et dans le sens qui
+  // rassure. Le type admet désormais `null` = inconnu, et le contrat refuse.
+  assert.equal(identiteRuntimeSure({ ...saine, canEscalate: null }), false);
+  assert.equal(identiteRuntimeSure({ ...saine, privilegedMemberships: null }), false);
+  assert.equal(identiteRuntimeSure({ ...saine, canEscalate: null, privilegedMemberships: null }), false);
+  // Le contrôle positif reste indispensable : sans lui, un contrat qui refuse
+  // TOUT passerait ce test et ne prouverait rien.
+  assert.equal(identiteRuntimeSure(saine), true);
+});
+
+cas('C12 un inconnu ne se déguise pas en « pas d escalade » dans l écart lisible', () => {
+  const ecarts = ecartIdentiteRuntime({ ...saine, canEscalate: null, privilegedMemberships: null });
+  assert.equal(ecarts.length > 0, true);
+  assert.match(ecarts.join(' | '), /non mesur/i);
+});
+
 console.log(`\n  Contrat d'identité runtime : ${tests} cas — le refus n'est jamais déduit d'un champ absent.`);
 process.exit(0);

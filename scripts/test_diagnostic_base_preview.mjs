@@ -12,6 +12,7 @@
  */
 
 import { execFileSync } from 'node:child_process';
+import { readFileSync } from 'node:fs';
 import path from 'node:path';
 
 const racine = path.resolve(import.meta.dirname, '..');
@@ -65,6 +66,24 @@ verifier(!/postgresql:\/\//.test(fuite.sortie), 'aucune URL de connexion dans la
 // --- 6. Le pooler est signale, pas silencieusement accepte ----------------
 const pooler = lancer(['--url', 'postgresql://u:p@ep-x-pooler.eu-central-1.aws.neon.tech/neondb']);
 verifier(/pooler/.test(pooler.sortie), 'un hote pooler est signale');
+
+// --- 7. Le temoin de rattachement est SURCHARGEABLE ------------------------
+//
+// Defaut corrige le 2026-11-19 : les trois empreintes attendues etaient codees
+// en dur ET perimees. L'outil comparait a un temoin mort et rendait « ne joint
+// pas la base du runtime » sur la bonne URL. Un temoin qu'on ne peut pas mettre
+// a jour est un temoin qu'on ne peut pas croire.
+//
+// On verifie ici que les valeurs sont bien LUES depuis les options, et non
+// ignorees. Le test lit la SOURCE : il doit echouer si un litteral nu revient.
+const sourceOutil = readFileSync(
+  new URL('./diagnostic_base_preview_p107.mjs', import.meta.url), 'utf8');
+verifier(/--empreinte-hote/.test(sourceOutil), 'l empreinte d hote attendue est surchargeable (--empreinte-hote)');
+verifier(/--empreinte-schemas/.test(sourceOutil), 'l empreinte de schemas attendue est surchargeable');
+verifier(/--oid/.test(sourceOutil), 'l oid attendu est surchargeable');
+verifier(!/hote_empreinte:\s*'e4142a5ef80a'/.test(sourceOutil),
+  'l ancienne empreinte perimee e4142a5ef80a ne sert plus de temoin par defaut');
+verifier(/TF_EMPREINTE_HOTE/.test(sourceOutil), 'une variable d environnement peut aussi fournir le temoin');
 
 if (echecs === 0) {
   console.log('  Diagnostic base Preview : garde-fous OK.');

@@ -276,10 +276,34 @@ function expurger(corps) {
   // Champs de diagnostic nommes, tous non secrets par construction.
   for (const cle of ['schema', 'ready', 'configurationOnly', 'configurationSuffisante',
     'identiteSaine', 'identiteEcarts', 'services', 'identityTokens', 'identitySysteme',
-    'baseIdentite', 'databaseIdentity', 'notificationOutbox', 'error']) {
+    'baseIdentite', 'databaseIdentity', 'contexteTenant', 'notificationOutbox', 'error']) {
     if (cle in corps) garde[cle] = corps[cle];
   }
   const texte = JSON.stringify(garde);
+  // P10.8 — `identite_base.hote` est desormais publie, et c'est le seul champ
+  // du corps qui vient d'une URL de connexion. Une erreur d'extraction y
+  // verserait l'utilisateur, le mot de passe ou la base du chemin. On refuse
+  // donc tout ce qui ressemble a une chaine de connexion, et on exige que
+  // l'hote, s'il est present, soit un NOM D'HOTE seul.
+  //
+  // Le motif « user:pass@ » est le discriminant : un endpoint Neon n'en
+  // contient jamais, un fragment d'URL en contient toujours.
+  if (/[^/\s:@]+:[^/\s@]+@/.test(texte)) {
+    return { expurge: 'corps retire : une chaine de connexion (utilisateur:mot de passe@) est presente' };
+  }
+  const hotesPublies = [];
+  for (const e of Object.values(garde)) {
+    if (e && typeof e === 'object' && typeof e.hote === 'string' && e.hote) hotesPublies.push(e.hote);
+    if (e && typeof e === 'object' && e.identite_base && typeof e.identite_base.hote === 'string') {
+      hotesPublies.push(e.identite_base.hote);
+    }
+  }
+  for (const h of hotesPublies) {
+    // Un nom d'hote ne porte ni `@`, ni `/`, ni `:`, ni espace.
+    if (/[@/\s]/.test(h) || h.includes(':')) {
+      return { expurge: `corps retire : l hote publie n est pas un nom d hote (${h.slice(0, 40)})` };
+    }
+  }
   // Garde-fou : aucune chaine longue, aucun motif de secret, aucune URL.
   // `identite_base` ne porte qu'un oid, un nom de base et une empreinte tronquee
   // — jamais l'hote en clair, jamais l'URL. La garde ci-dessous reste active :
@@ -357,6 +381,92 @@ function evaluerC1C2(corps) {
     'aucune suite hexadecimale longue dans le corps');
 }
 
+function evaluerC5(corps) {
+//
+// POURQUOI CE CONTROLE EXISTE
+//
+// Le rattachement de la base a sa branche Neon est reste INDETERMINATE pendant
+// toute la session du 2026-11-19, faute de pouvoir NOMMER l'endpoint joint : une
+// empreinte SHA-256 permet de comparer deux hotes, jamais d'en designer un. La
+// route publie desormais `identite_base.hote`, et ce controle en tire un
+// verdict au lieu de laisser l'operateur comparer a la main.
+//
+// CE QU'IL NE FAIT PAS
+//
+// Il ne joint PAS Neon et ne demande rien a son API : il compare ce que le
+// runtime PUBLIE a ce que l'operateur DECLARE (`TRACEFAB_PREVIEW_DB_ENDPOINT`).
+// Une valeur declaree fausse rendrait donc le controle faux : c'est pourquoi le
+// detail publie l'hote observe en clair, pour qu'un desaccord soit arbitrable
+// sans relancer quoi que ce soit.
+const identiteBase = corps?.baseIdentite?.identite_base;
+const hoteObserve = identiteBase?.hote;
+const attenduDeclare = identiteBase?.hote_attendu_declare === true;
+const normaliser = (v) => String(v ?? '').trim().toLowerCase().replace(/\.$/, '');
+
+verdict('C5.1', 'l endpoint joint par le runtime est NOMME (pas seulement hache)',
+  typeof hoteObserve === 'string' && hoteObserve.length > 0 ? true
+    : identiteBase === undefined || identiteBase === null ? null : false,
+  typeof hoteObserve === 'string' && hoteObserve.length > 0
+    ? `hote=${hoteObserve}${identiteBase?.hote_est_pooler ? ' (POOLER)' : ''}`
+    : 'champ identite_base.hote absent : la route ne le publie pas sur ce deploiement');
+
+// C5.2 — l'ABSENCE de declaration n'est pas un FAIL de l'application.
+//
+// `hote_attendu_declare` est un booleen : `false` dit « l'operateur n'a pas
+// renseigne TRACEFAB_PREVIEW_DB_ENDPOINT », ce qui est un etat de
+// CONFIGURATION, pas un defaut du runtime. Le compter FAIL accuserait
+// l'application d'un manque qui est dans le tableau de bord. C'est
+// INDETERMINATE : la propriete n'est pas mesurable sans la declaration.
+//
+// Ce n'est pas une indulgence : C5.3 reste INDETERMINATE lui aussi, donc aucun
+// rattachement n'est jamais declare conforme sans declaration. Le verdict
+// global ne peut pas devenir vert par cette porte.
+verdict('C5.2', 'l endpoint attendu est DECLARE dans la configuration de la sonde',
+  identiteBase === undefined || identiteBase === null ? null
+    : attenduDeclare === true ? true : null,
+  identiteBase === undefined || identiteBase === null
+    ? 'baseIdentite absent : non mesure'
+    : attenduDeclare
+      ? 'TRACEFAB_PREVIEW_DB_ENDPOINT est declare'
+      : 'TRACEFAB_PREVIEW_DB_ENDPOINT est ABSENT : sans lui, aucun rattachement n est decidable');
+
+verdict('C5.3', 'l endpoint joint est EXACTEMENT celui declare',
+  identiteBase === undefined || identiteBase === null ? null
+    : attenduDeclare && typeof hoteObserve === 'string' && hoteObserve.length > 0
+      ? identiteBase.hote_conforme === true
+      : null,
+  identiteBase === undefined || identiteBase === null ? 'baseIdentite absent : non mesure'
+    : attenduDeclare
+      ? `hote_conforme=${String(identiteBase.hote_conforme)} · observe=${hoteObserve ?? '?'}`
+      : 'aucun endpoint declare : la comparaison n a pas eu lieu');
+
+// C5.4 — LE CONTROLE QUE C5.3 NE PEUT PAS FAIRE.
+//
+// C5.3 compare l'hote joint a l'hote DECLARE. Si l'operateur declare l'hote de
+// PRODUCTION dans TRACEFAB_PREVIEW_DB_ENDPOINT, la Preview joint la Production
+// et C5.3 vaut PASS : deux valeurs identiques, et la comparaison ne peut pas
+// savoir que la valeur est la mauvaise. Un PASS parfait sur la configuration la
+// plus grave possible.
+//
+// C5.4 repond a la seule question qui compte : la Preview joint-elle l'hote de
+// Production ? `hote_est_production` est calcule par la route a partir du fait
+// public qu'est le prefixe d'endpoint de Production. Un champ ABSENT n'est pas
+// un « non » : c'est une mesure qui n'a pas eu lieu (INDETERMINATE), et sur un
+// deploiement anterieur a ce champ la question reste ouverte.
+const estProduction = identiteBase?.hote_est_production;
+verdict('C5.4', 'la Preview ne joint PAS la base de PRODUCTION',
+  identiteBase === undefined || identiteBase === null ? null
+    : typeof estProduction === 'boolean' ? estProduction === false
+      : null,
+  identiteBase === undefined || identiteBase === null ? 'baseIdentite absent : non mesure'
+    : typeof estProduction === 'boolean'
+      ? estProduction
+        ? `hote=${hoteObserve ?? '?'} est un hote de PRODUCTION — la Preview ne doit jamais le joindre`
+        : `hote=${hoteObserve ?? '?'} n est pas un hote de production`
+      : 'champ hote_est_production absent : deploye avant ce controle, question ouverte');
+
+}
+
 // --- C4 : identite PostgreSQL, evaluee depuis le corps, quel qu il soit -----
 //
 // POURQUOI C4 EST EVALUE AVANT LE TEST DE STATUT.
@@ -369,7 +479,7 @@ function evaluerC1C2(corps) {
 // Une preuve manquante par negligence de collecte n'est pas une preuve
 // impossible. C4 est donc evalue des maintenant ; seuls C1 et C2, qui exigent
 // une cle posee, restent hors d atteinte sur 503.
-function evaluerC4(db) {
+function evaluerC4(db, contexteTenant) {
   verdict('C4.1', 'current_user = session_user (aucune prise de role residuelle)',
     typeof db.currentUser === 'string' && db.currentUser === db.sessionUser,
     `current_user=${db.currentUser ?? '?'} session_user=${db.sessionUser ?? '?'}`);
@@ -383,11 +493,29 @@ function evaluerC4(db) {
     `can_escalate=${String(db.canEscalate)} · membres_privilegies=${JSON.stringify(db.privilegedMemberships ?? null)}`);
   verdict('C4.5', 'le role effectif est le role applicatif attendu',
     db.currentUser === 'tracefab_app', `current_user=${db.currentUser ?? '?'}`);
-  // C4.6 — cette route ne pose aucun contexte tenant : INDETERMINATE, pas PASS.
-  verdict('C4.6', 'le contexte tenant est present et non falsifie', null,
-    'INDETERMINATE : la route de diagnostic n ouvre pas de transaction metier, '
-    + 'donc aucun contexte tenant n est pose. Ce n est pas un PASS : la propriete '
-    + 'reste non mesuree ici et doit l etre par les suites RLS dediees.');
+  // C4.6 — le contexte tenant, desormais MESURE sur la connexion reelle.
+  //
+  // Historique, et pourquoi la ligne a change. La version precedente rendait
+  // `null` en dur avec ce motif : « la route de diagnostic n ouvre pas de
+  // transaction metier, donc aucun contexte tenant n est pose ». Le motif etait
+  // exact ; la conclusion — INDETERMINATE definitif — ne l'etait pas. La route
+  // publie maintenant `contexteTenant`, produit par un aller-retour en LECTURE
+  // SEULE : on signe une identite utilisateur, on pose le GUC d'organisation,
+  // on demande au point de passage unique ce que la BASE en conclut, et on
+  // verifie qu'un jeton d'une AUTRE organisation est refuse.
+  //
+  // Le `null` en dur n'est PAS conserve comme repli : si le champ manque, la
+  // condition vaut `undefined` et le verdict est INDETERMINATE par la meme
+  // regle que partout ailleurs. Ce qui change est qu'on ne DECIDE plus a
+  // l'avance que la mesure est impossible.
+  const ct = contexteTenant;
+  verdict('C4.6', 'le contexte tenant est present et non falsifie',
+    ct && ct.measured === true
+      ? (ct.identiteLue === true && ct.organisationEtrangereRefusee === true && ct.gucRemisAZero === true)
+      : null,
+    ct && ct.measured === true
+      ? `jeton_accepte=${String(ct.jetonAccepte)} · organisation_etrangere_refusee=${String(ct.organisationEtrangereRefusee)} · guc_remis_a_zero=${String(ct.gucRemisAZero)}`
+      : `INDETERMINATE : contexte tenant non mesure (${ct ? ct.detail : 'champ contexteTenant ABSENT du corps'})`);
 }
 
 // La sonde reelle, avec le jeton legitime.
@@ -411,7 +539,27 @@ if (sonde.statut !== 200) {
   if (sonde.statut === 503) {
     // Le corps est la : tout ce qu'il PUBLIE est mesurable, meme si le runtime
     // se declare non pret. On evalue donc ce qu'il porte, et rien de plus.
-    if (sonde.corps?.databaseIdentity) evaluerC4(sonde.corps.databaseIdentity);
+    // `databaseIdentity` et `contexteTenant` sont deux mesures INDEPENDANTES :
+    // la premiere peut manquer alors que la seconde existe (roles sans droits
+    // catalogue, par exemple). Les lier par un `&&` rendrait C4.6 indetermine
+    // par contagion, ce qui serait encore une mesure disponible jetee.
+    if (sonde.corps?.databaseIdentity || sonde.corps?.contexteTenant) {
+      evaluerC4(sonde.corps.databaseIdentity ?? {}, sonde.corps.contexteTenant);
+    }
+    // C5 est evalue ICI, avant le `process.exit(2)`, pour la meme raison que C4
+    // et C1/C2 : le corps du 503 porte `baseIdentite`, donc le rattachement y
+    // est entierement mesurable. Place apres la sortie, il ne s executait
+    // JAMAIS sur 503 — mesure du run ou les quatre assertions C5 sont restees
+    // au rouge alors que les scenarios fournissaient les donnees.
+    // `expurger` FILTRE : si le corps contient une chaine de connexion, il
+    // rend `{ expurge: ... }` et le detail C5.1 ne doit alors RIEN reprendre.
+    //
+    // Defaut mesure : la premiere version passait `sonde.corps` — le corps
+    // BRUT — a `evaluerC5`, qui publiait `hote=...` dans son detail. Le corps
+    // etait bien retire de la preuve, mais son hote ressortait par le verdict.
+    // Un expurge qui ne couvre pas ce qu on en derive n'expurge rien.
+    const corpsPourC5 = expurger(sonde.corps) ?? {};
+    if (corpsPourC5.baseIdentite?.identite_base) evaluerC5(corpsPourC5);
     if (sonde.corps?.identitySysteme || sonde.corps?.identityTokens) {
       evaluerC1C2(sonde.corps);
     }
@@ -445,7 +593,8 @@ evaluerC1C2(corps);
 // La fonction `evaluerC4` est appelee une seule fois, avant le test de statut.
 // La dupliquer ici ferait apparaitre chaque critere deux fois dans la preuve et
 // rendrait le compte de PASS/FAIL trompeur.
-if (sonde.statut === 200) evaluerC4(corps.databaseIdentity ?? {});
+if (sonde.statut === 200) evaluerC4(corps.databaseIdentity ?? {}, corps.contexteTenant);
+if (sonde.statut === 200) evaluerC5(expurger(corps) ?? {});
 
 // --- Verdict ---------------------------------------------------------------
 const echecs = resultats.filter((r) => r.verdict === 'FAIL').length;
