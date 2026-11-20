@@ -39,6 +39,12 @@ documentait un état antérieur où `C5.2`/`C5.3` étaient bloqués. Cet état e
 celui de `arena/93ced544-tracefab` (`a24d043`), tandis que le code mesuré est celui déployé depuis
 `release/` (`a4e0904e`). Les deux sont consignés séparément ; aucun n'est présenté comme l'autre.
 
+> **Note de traçabilité.** Le run `44766397796` a été déclenché depuis `a24d043` — le SHA qui
+> contient les correctifs de code **et** la version de `preuve_runtime_p107.mjs` qui publie les
+> verdicts en annotation. Ce document de preuve a ensuite été ajouté par le commit `1d17ea1`, qui
+> **ne modifie aucun fichier de code** : le run n'a donc pas été rejoué pour un changement de
+> documentation seule. Les fichiers de code sont, comme montré au § 6, identiques à ceux validés.
+
 **Pourquoi cette cible :** `TRACEFAB_PREVIEW_DB_ENDPOINT` est restreinte à la branche
 `release/p107-runtime-production-20261110` (voir `preuves/p107/CONFIG_PREVIEW_ENDPOINT_C5_2026-11-20.md`).
 Une Preview construite depuis une autre référence ne reçoit **pas** la variable et ne peut donc pas
