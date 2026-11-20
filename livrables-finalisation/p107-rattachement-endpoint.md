@@ -194,10 +194,43 @@ Le verdict ne peut donc pas republier une chaîne de connexion en la dérivant.
 | 1 | Valeur exacte attendue, sans secret | **FAIT** | § 1 |
 | 2 | Preuve qu'elle identifie `br-square-bread-b1gu7jk7` | **FAIT**, portée de § 2 | § 2 |
 | 3 | Contrôle automatisé endpoint réel vs attendu | **FAIT** | C5.1–C5.4 + règle testée + anti-fuite |
-| 4 | CI complète après correction | **À EXÉCUTER** sur ce commit | run de CI |
+| 4 | CI complète après correction | **FAIT** | run `44646685467` sur `55354c5e` — 4/4 vert |
 
 **Ce qui reste hors de ma main :** poser la valeur dans l'environnement Preview de Vercel.
 Le connecteur Vercel disponible refuse la lecture et l'écriture de variables
 (`list_projects` ⇒ *Access denied* sur les deux portées, `create_env_var` inaccessible), et
 l'API GitHub refuse la lecture des variables du dépôt (403). La valeur est donc livrée
 **documentée et vérifiée**, pas posée.
+
+---
+
+## 5. Opérations distantes — ce qui a été fait, ce qui ne l'a pas été
+
+| Opération | État |
+|---|---|
+| Pousser les commits sur `arena/ecba1849-tracefab` | **FAIT** |
+| Lancer la CI complète | **FAIT** — run `44646685467` sur `55354c5e`, **4/4 vert** |
+| Lancer la sonde runtime `p107-preuves-runtime` | **FAIT** — run `44643730922` : **refusé par la protection de branche** (voir ci-dessous) |
+| Poser `TRACEFAB_PREVIEW_DB_ENDPOINT` dans Vercel | **NON FAIT** — aucun accès en écriture |
+| Modifier la Production | **NON FAIT** — hors périmètre, explicitement interdit |
+| Modifier une protection (liste de branches de la sonde) | **NON FAIT** — explicitement interdit |
+| Supprimer quoi que ce soit sur le distant | **NON FAIT** |
+
+### Pourquoi la sonde runtime n'a pas pu tourner sur ce commit
+
+`runtimeProbeAuthorized` n'accepte le jeton de sonde que si `VERCEL_GIT_COMMIT_REF` figure dans
+`BRANCHES_SONDE_RUNTIME`, une liste **gelée** (`api/_lib/worker-auth.ts`) qui ne contient que
+`release/p107-runtime-production-20261110` et `fix/tracefab-p11-identity-runtime-20261109`. La
+branche `arena/ecba1849-tracefab` n'y est pas, donc le déploiement refuse le jeton — même valide.
+C'est la protection qui fonctionne comme prévu, et l'élargir est précisément ce que la mission
+interdit. `C4.6` et `C1`–`C4` restent donc mesurés sur le déploiement `599cbd87…` (les preuves
+runtime du 2026-11-19), et `C5` n'a **jamais** été exécuté contre la vraie base.
+
+### Ce qui reste ouvert, dit franchement
+
+- **`C5` n'a jamais tourné sur une vraie base.** Ses quatre verdicts sont vérifiés hors ligne
+  (doublures + mutations), pas sur un déploiement. Le jour où la Preview servira un build contenant
+  `hote_est_production` avec la variable déclarée, il rendra un verdict réel — mais ce jour n'est
+  pas arrivé, et je ne le compte pas comme acquis.
+- **Le lien endpoint → branche repose sur un registre du dépôt** (§ 2 maillon C), pas sur une
+  re-mesure de l'API Neon, qui est hors du réseau autorisé.
