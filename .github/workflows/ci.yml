@@ -1096,6 +1096,19 @@ jobs:
           DATABASE_ADMIN_URL: postgresql://postgres:postgres@localhost:5432/tracefab_test
         run: node scripts/executer_avec_erreur_annotee.mjs "sonde contexte tenant" npm run test:neon:contexte-tenant-sonde
 
+      - name: P10.7 — la regle « cet hote est-il la Production ? » discrimine
+        # C5.4 rend FAIL sur `hote_est_production === true`. Ce controle ne vaut
+        # que ce que vaut le calcul qui l alimente : une regle qui repondrait
+        # toujours `false` rendrait C5.4 vert toujours, et personne ne le
+        # verrait. Cette etape eprouve le CALCUL, sans base et sans reseau.
+        #
+        # Elle verifie les DEUX sens, car le danger est symetrique : une regle
+        # qui refuserait « tout hote *.neon.tech » rendrait C5.4 rouge sur une
+        # Preview parfaitement rattachee. Mesure : la mutation « jamais la
+        # Production » fait tomber 4 assertions, la mutation « tout Neon » en
+        # fait tomber 2. Aucune des deux ne passe.
+        run: node scripts/executer_avec_erreur_annotee.mjs "hote de production" npm run test:p107:hote-production
+
       - name: P10.7 — le test de la sonde ne peut pas diverger de la sonde
         # Sans base, et sans dependance : lit les deux sources.
         #

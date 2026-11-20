@@ -156,6 +156,27 @@ vert. Les assertions correspondantes sont dans `test_preuve_runtime_bout_en_bout
 `test_preuve_runtime_garde_fous.mjs` (§ 12) ; les deux étages ont été vérifiés **mordants** par
 mutation — adoucir le FAIL de C5.4 en INDETERMINATE fait tomber 2 garde-fous et 1 assertion.
 
+### Mais un verdict ne vaut que ce que vaut son calcul
+
+C5.4 lit `hote_est_production`. Si la règle qui produit ce booléen répondait toujours `false`,
+C5.4 serait vert **toujours**, et personne ne le verrait : un contrôle qui ne peut pas échouer n'est
+pas un contrôle. La règle vit donc dans `api/_lib/hote-production.ts`, **hors de la route** — une
+règle de sécurité qu'aucun test ne peut atteindre sans base de données est une règle qu'on ne
+vérifie pas. Sortie de la route, elle est éprouvable sans Prisma ni Postgres, donc vérifiée à
+chaque passage.
+
+`scripts/test_p107_hote_production.mjs` — 15 assertions, deux mutations mesurées :
+
+| Mutation | Assertions qui tombent |
+|---|---|
+| la règle répond toujours `false` | 4 |
+| la règle refuse « tout hôte `*.neon.tech` » | 2 |
+
+Le second cas compte autant que le premier : un refus trop large rendrait C5.4 rouge sur une
+Preview parfaitement rattachée, et pousserait à désactiver le contrôle. La règle doit distinguer
+deux hôtes **du même fournisseur et de la même forme** — c'est précisément ce qui est vérifié,
+dans les deux sens.
+
 **Aucun chemin ne rend C5 vert sans déclaration explicite.** Une fois la valeur ci-dessus posée
 dans l'environnement Preview de Vercel, C5.1/C5.2/C5.3 passent : hôte joint et hôte attendu sont
 la même chaîne, octet pour octet, après normalisation.
@@ -172,7 +193,7 @@ Le verdict ne peut donc pas republier une chaîne de connexion en la dérivant.
 |---|---|---|---|
 | 1 | Valeur exacte attendue, sans secret | **FAIT** | § 1 |
 | 2 | Preuve qu'elle identifie `br-square-bread-b1gu7jk7` | **FAIT**, portée de § 2 | § 2 |
-| 3 | Contrôle automatisé endpoint réel vs attendu | **FAIT** | C5.1–C5.4 + anti-fuite |
+| 3 | Contrôle automatisé endpoint réel vs attendu | **FAIT** | C5.1–C5.4 + règle testée + anti-fuite |
 | 4 | CI complète après correction | **À EXÉCUTER** sur ce commit | run de CI |
 
 **Ce qui reste hors de ma main :** poser la valeur dans l'environnement Preview de Vercel.

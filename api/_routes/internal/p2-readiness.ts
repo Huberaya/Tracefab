@@ -4,6 +4,7 @@ import { notificationAlertConfigured } from '../../_lib/notification-observabili
 import { storageConfig } from '../../_lib/storage.js';
 import { json, methodNotAllowed } from '../../_lib/http.js';
 import { runtimeProbeAuthorized, workerAuthorized, workerSecretConfigured } from '../../_lib/worker-auth.js';
+import { normaliserHote, estHoteProduction } from '../../_lib/hote-production.js';
 import { databaseIdentityIsSafe, probeContexteTenant, probeDatabaseIdentity, runLiveProbes } from '../../_lib/readiness-probes.js';
 import { ecartIdentiteRuntime } from '../../_lib/identite-contrat.js';
 import { etatCleIdentite } from '../../_lib/identite-jeton.js';
@@ -42,56 +43,7 @@ function privateStorageReadiness() {
 }
 
 
-/**
- * Normalise un nom d'hote pour comparaison.
- *
- * Trois differences qui ne designent PAS deux hotes distincts :
- *   - la casse (DNS insensible a la casse) ;
- *   - un point final (`ep-x.neon.tech.` = `ep-x.neon.tech`) ;
- *   - les espaces de saisie.
- *
- * On ne retire PAS le suffixe `-pooler` : c'est un hote different, et le
- * confondre avec l'endpoint direct ferait passer un test de rattachement sur
- * une base jointe par un autre chemin. Le cas est signale a part
- * (`hote_est_pooler`) et la comparaison reste stricte.
- */
-function normaliserHote(valeur: string): string {
-  return valeur.trim().toLowerCase().replace(/\.$/, '');
-}
 
-/**
- * L'hote que la PRODUCTION est censee joindre.
- *
- * POURQUOI CETTE FONCTION EXISTE — un defaut de C5 pris a la racine.
- *
- * `hote_conforme` compare l'hote joint a l'hote DECLARE. C'est un bon controle
- * de configuration, et il ne dit rien de la seule propriete qui compte : que
- * l'hote joint ne soit pas celui de la Production. Si `TRACEFAB_PREVIEW_DB_ENDPOINT`
- * etait renseigne avec l'hote de Production, la Preview joindrait la Production
- * et `hote_conforme` vaudrait `true` — un PASS parfait sur une configuration
- * catastrophique. La comparaison « reel = declare » ne peut pas detecter que
- * les deux sont le meme mauvais hote.
- *
- * Le garde `managed_host` de `scripts/lib/require-throwaway-db.mjs` refuse tout
- * hote Neon : il protege les scripts de migration, il ne s'execute jamais dans
- * le runtime. Cette fonction comble ce trou-la, au seul endroit ou la question
- * se pose vraiment.
- *
- * Le prefixe d'endpoint de Production est un fait PUBLIC de ce depot : il est
- * ecrit dans docs/, dans le rapport de securisation et dans l'historique des
- * deploiements. Le comparer n'apprend rien a un attaquant, et ne publie aucun
- * secret — on ne publie que le BOOLEEN de conformite, jamais la valeur.
- */
-function hotesProduction(): string[] {
-  const declares = (process.env.TRACEFAB_PRODUCTION_DB_HOSTS ?? '')
-    .split(',')
-    .map((h) => normaliserHote(h))
-    .filter((h) => h.length > 0);
-  // Fait public, verifie dans RAPPORT-SECURISATION-RUNTIME.md § plan de
-  // production : la base de Production n'a jamais ete contactee en ecriture.
-  const connus = ['ep-polished-night-b1jc5941.c-5.eu-central-1.aws.neon.tech'];
-  return [...new Set([...declares, ...connus])];
-}
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'GET') return methodNotAllowed(res, ['GET']);
@@ -395,7 +347,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           // Un PASS de `hote_conforme` ne suffit pas : les deux cotes peuvent
           // designer la Production. Ce booleen est le seul controle qui repond
           // a « la Preview joint-elle la Production ? ».
-          hote_est_production: hotesProduction().includes(normaliserHote(hote)),
+          hote_est_production: estHoteProduction(hote),
         };
       } catch {
         identiteBase = null;
