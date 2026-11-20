@@ -175,3 +175,53 @@ observé** ; la garantie contre le cas adverse vient du code et des tests, pas d
 | Protections GitHub / Vercel Authentication | **intactes** |
 | `BRANCHES_SONDE_RUNTIME` | **inchangée** — `release/…` et `fix/…`, aucune branche ajoutée |
 | Déploiement Production | **aucun** |
+
+
+---
+
+## 9. Intégration — fusion et vérification post-fusion
+
+| Élément | Valeur |
+|---|---|
+| PR | [#134](https://github.com/Huberaya/Tracefab/pull/134) — **MERGED** par squash |
+| Fusionnée le | `2026-11-20T16:03:05Z` |
+| SHA de fusion (`main`) | `17483e2af43ca41296174719e5dd5115266aa4c1` |
+| `main` avant fusion | `3dd164993a377960c741f3720935cb226559e641` |
+| CI sur le head de PR (`942e4a4c`) | [run 44766783883](https://github.com/Huberaya/Tracefab/actions/runs/44766783883) — **4/4 SUCCESS** |
+| CI post-fusion sur `main` (`17483e2a`) | [run 44769421435](https://github.com/Huberaya/Tracefab/actions/runs/44769421435) — **4/4 SUCCESS** |
+
+### Le contenu fusionné est bien celui qui a été validé
+
+Comparaison par empreinte SHA-256, fichier par fichier, entre le head de PR (`942e4a4c`) et le
+commit de fusion (`17483e2`) :
+
+```
+IDENTIQUE  api/_routes/internal/p2-readiness.ts
+IDENTIQUE  scripts/preuve_runtime_p107.mjs
+IDENTIQUE  scripts/test_preuve_runtime_garde_fous.mjs
+IDENTIQUE  api/_lib/worker-auth.ts
+IDENTIQUE  api/_lib/hote-production.ts
+```
+
+Les deux corrections structurantes sont présentes dans `main` : `if (wantIdentity)` (publication de
+`baseIdentite` indépendante de l'état de la clé système) et `evaluerC5(corpsPourC5);`
+(inconditionnel).
+
+### Aucune opération de données
+
+`git diff --name-only 3dd1649 17483e2` ne contient **aucun** fichier `prisma/`, `migrations/` ou
+`*.sql`. Aucune migration exécutée, aucun schéma modifié.
+
+### Aucun déploiement Production
+
+Interrogation de l'API deployments : **0** déploiement en environnement `Production`. Les
+déploiements post-fusion sont des Preview, rattachés à des SHA de branches de travail, pas à `main`.
+
+### Branches
+
+| Branche | SHA | Rôle |
+|---|---|---|
+| `main` | `17483e2a` | contient les corrections |
+| `release/p107-runtime-production-20261110` | `a4e0904e` | cible de la sonde ; code P10.7 identique à `main` |
+| `backup/p107-release-before-fix-20261120` | `3dd16499` | sauvegarde avant alignement |
+| `backup/p107-release-before-main-alignment-20261120` | `599cbd87` | sauvegarde préexistante, non touchée |
