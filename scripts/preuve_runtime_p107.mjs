@@ -596,7 +596,18 @@ if (sonde.statut !== 200) {
     // etait bien retire de la preuve, mais son hote ressortait par le verdict.
     // Un expurge qui ne couvre pas ce qu on en derive n'expurge rien.
     const corpsPourC5 = expurger(sonde.corps) ?? {};
-    if (corpsPourC5.baseIdentite?.identite_base) evaluerC5(corpsPourC5);
+    // ON APPELLE TOUJOURS, MEME QUAND LE CHAMP MANQUE.
+    //
+    // La version precedente conditionnait l appel a
+    // `corpsPourC5.baseIdentite?.identite_base` : `evaluerC5` ne s executait
+    // que si la donnee qu il doit juger etait DEJA la. Un controle qui ne peut
+    // pas constater une absence ne peut jamais signaler un champ manquant — il
+    // disparait silencieusement. Mesure du run 44732047701 : C5.1 a C5.4 etaient
+    // totalement absents des verdicts, et rien ne le signalait.
+    //
+    // `evaluerC5` sait deja rendre INDETERMINATE quand `baseIdentite` manque :
+    // c est ecrit dans chacune de ses branches. Encore faut-il l appeler.
+    evaluerC5(corpsPourC5);
     if (sonde.corps?.identitySysteme || sonde.corps?.identityTokens) {
       evaluerC1C2(sonde.corps);
     }
@@ -636,7 +647,7 @@ evaluerC1C2(corps);
 // La dupliquer ici ferait apparaitre chaque critere deux fois dans la preuve et
 // rendrait le compte de PASS/FAIL trompeur.
 if (sonde.statut === 200) evaluerC4(corps.databaseIdentity ?? {}, corps.contexteTenant);
-if (sonde.statut === 200) evaluerC5(expurger(corps) ?? {});
+if (sonde.statut === 200) evaluerC5(expurger(corps) ?? {});   // sans condition : meme raison
 
 // --- Verdict ---------------------------------------------------------------
 const echecs = resultats.filter((r) => r.verdict === 'FAIL').length;

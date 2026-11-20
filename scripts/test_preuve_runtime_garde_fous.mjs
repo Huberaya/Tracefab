@@ -218,6 +218,20 @@ const corpsPub = source.slice(source.indexOf('function publierVerdicts()'),
 verifier(!/process\.env\.|DATABASE_URL|TOKEN|SECRET/.test(corpsPub),
   'la publication ne lit aucune variable d environnement sensible');
 
+// --- 14. C5 s execute MEME quand la donnee manque ---------------------------
+// Defaut mesure au run 44732047701 : les quatre contrôles C5 etaient
+// TOTALEMENT ABSENTS des verdicts, parce que l appel etait conditionne a
+// l existence de `baseIdentite.identite_base` — la donnee qu ils doivent
+// juger. Un controle qui ne peut pas constater une absence ne signale jamais
+// un champ manquant : il disparait en silence, et le rapport parait complet.
+verifier(!/if \(\s*corpsPourC5\.baseIdentite\?\.identite_base\s*\)\s*evaluerC5/.test(source),
+  'evaluerC5 n est plus conditionne a l existence de la donnee qu il juge');
+verifier(/evaluerC5\(corpsPourC5\);/.test(source),
+  'evaluerC5 est appele inconditionnellement sur le chemin 503');
+const blocC5 = source.slice(source.indexOf('const corpsPourC5'), source.indexOf('const corpsPourC5') + 1800);
+verifier(/evaluerC5\(corpsPourC5\);/.test(blocC5) && blocC5.includes('corpsPourC5'),
+  'l appel porte bien sur le corps EXPURGE, meme inconditionnel');
+
 if (echecs === 0) {
   console.log('  Preuve runtime P10.7 : garde-fous anti-faux-temoin OK.');
   process.exit(0);
