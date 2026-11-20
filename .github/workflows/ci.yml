@@ -411,6 +411,18 @@ jobs:
         # gardes fail-closed, et les privileges EFFECTIFS du role applicatif.
         run: npm run test:plm-rls-isolation
 
+      - name: Isolation du tenant actif — 18 scenarios, sur la chaine reelle
+        # Mission n°8 : cette suite ne verifie pas la PRESENCE d un helper, elle
+        # EXERCE les gardes. Elle rejoue les 100 migrations du depot sur une base
+        # jetable, puis mesure sous `tracefab_app` (NOBYPASSRLS) avec les GUC
+        # poses en transaction comme `api/_lib/context.ts` : fail-closed sans
+        # tenant, positif avec tenant, negatif croise (l union des adhesions ne
+        # suffit plus), WITH CHECK dans les deux sens, et controle negatif.
+        # Sa sensibilite est prouvee par mutation : RLS retiree => 7 echecs.
+        # Elle est independante de Neon : elle ne remplace pas les suites
+        # `test:neon:*`, qui restent exigeantes sur un vrai PostgreSQL.
+        run: npm run test:preuve-isolation:main
+
       - name: PLM — les 4 politiques de production confrontees aux 2 canoniques
         # Chaine reelle sur base jetable : etat a 4 politiques reproduit, puis
         # migration corrective. Puis 6 scenarios de garde (table absente,
