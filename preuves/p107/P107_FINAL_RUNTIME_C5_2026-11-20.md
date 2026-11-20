@@ -1,3 +1,10 @@
+> **DOCUMENT DÉPASSÉ — ne fait pas foi.**
+>
+> Il documentait l'état du 2026-11-20 à 12:46 UTC, où `C5.2` et `C5.3` étaient bloqués faute de
+> variable déclarée. **La preuve qui fait foi est `P107_FINAL_RUNTIME_C5_CLOTURE_2026-11-20.md`**,
+> qui établit les quatre contrôles PASS sur le runtime réel (run 44766397796). Ce document est
+> conservé pour l'historique du diagnostic, non comme état courant.
+
 # P10.7 — Preuve runtime finale C5
 
 **État : C5.1 à C5.4 PASS sur le runtime réel en configuration nominale.**
