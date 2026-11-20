@@ -10,6 +10,9 @@
 >
 > **Ne pas utiliser les conclusions des sections historiques ci-dessous comme verdict actuel.** Elles sont conservées pour la traçabilité de la découverte initiale et remplacées par les mesures ci-dessus.
 >
+>
+> **Correction factuelle sur la comparaison de branches :** la phrase historique du § 3 affirmant une divergence de « 1224 commits » était erronée. La comparaison GitHub effectuée lors du réalignement a établi 12 commits d'avance pour `main` et un commit propre à `release/`, puis les deux références ont été réalignées à `3dd164993a377960c741f3720935cb226559e641`. Ne pas réutiliser le chiffre 1224.
+>
 > ---
 >
 # P10.7 — Preuve C5 runtime après fusion de la PR #133
