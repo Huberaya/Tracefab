@@ -1,0 +1,32 @@
+{
+  "schema": "tracefab-p107-preuves-runtime-v1",
+  "horodatage": "2026-11-20T08:38:55.162Z",
+  "sha": "3dd164993a377960c741f3720935cb226559e641",
+  "workflow_sha": "3dd164993a377960c741f3720935cb226559e641",
+  "deployment_sha": "599cbd879421bd3ab2b8ea0a99b540b355656bde",
+  "sha_traceabilite": "deployment_sha fourni : la preuve porte sur ce code deploye",
+  "cible": "https://tracefab-7iqt5t6gf-baya-ibraimmayoanouedu-8164s-projects.vercel.app",
+  "arret": "sonde authentifiee -> HTTP 410",
+  "interpretation": "statut inattendu",
+  "corpsExpurge": null,
+  "resultats": [
+    {
+      "id": "C3.1",
+      "libelle": "appel SANS jeton de sonde -> refuse",
+      "verdict": "FAIL",
+      "detail": "HTTP 410"
+    },
+    {
+      "id": "C3.2",
+      "libelle": "appel avec un jeton FAUX -> refuse",
+      "verdict": "FAIL",
+      "detail": "HTTP 410"
+    },
+    {
+      "id": "C3.3",
+      "libelle": "la route reste fermee sans ?identity=1 ni secret worker -> refuse",
+      "verdict": "FAIL",
+      "detail": "HTTP 410"
+    }
+  ]
+}
