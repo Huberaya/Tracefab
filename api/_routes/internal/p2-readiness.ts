@@ -59,6 +59,40 @@ function normaliserHote(valeur: string): string {
   return valeur.trim().toLowerCase().replace(/\.$/, '');
 }
 
+/**
+ * L'hote que la PRODUCTION est censee joindre.
+ *
+ * POURQUOI CETTE FONCTION EXISTE — un defaut de C5 pris a la racine.
+ *
+ * `hote_conforme` compare l'hote joint a l'hote DECLARE. C'est un bon controle
+ * de configuration, et il ne dit rien de la seule propriete qui compte : que
+ * l'hote joint ne soit pas celui de la Production. Si `TRACEFAB_PREVIEW_DB_ENDPOINT`
+ * etait renseigne avec l'hote de Production, la Preview joindrait la Production
+ * et `hote_conforme` vaudrait `true` — un PASS parfait sur une configuration
+ * catastrophique. La comparaison « reel = declare » ne peut pas detecter que
+ * les deux sont le meme mauvais hote.
+ *
+ * Le garde `managed_host` de `scripts/lib/require-throwaway-db.mjs` refuse tout
+ * hote Neon : il protege les scripts de migration, il ne s'execute jamais dans
+ * le runtime. Cette fonction comble ce trou-la, au seul endroit ou la question
+ * se pose vraiment.
+ *
+ * Le prefixe d'endpoint de Production est un fait PUBLIC de ce depot : il est
+ * ecrit dans docs/, dans le rapport de securisation et dans l'historique des
+ * deploiements. Le comparer n'apprend rien a un attaquant, et ne publie aucun
+ * secret — on ne publie que le BOOLEEN de conformite, jamais la valeur.
+ */
+function hotesProduction(): string[] {
+  const declares = (process.env.TRACEFAB_PRODUCTION_DB_HOSTS ?? '')
+    .split(',')
+    .map((h) => normaliserHote(h))
+    .filter((h) => h.length > 0);
+  // Fait public, verifie dans RAPPORT-SECURISATION-RUNTIME.md § plan de
+  // production : la base de Production n'a jamais ete contactee en ecriture.
+  const connus = ['ep-polished-night-b1jc5941.c-5.eu-central-1.aws.neon.tech'];
+  return [...new Set([...declares, ...connus])];
+}
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'GET') return methodNotAllowed(res, ['GET']);
   const workerConfigured = workerSecretConfigured();
@@ -186,7 +220,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     fonction_posterieure_presente: boolean | null;
     identite_base: { base_oid: number; base_nom: string; hote_empreinte: string;
       schemas_empreinte: string; sondes_p107: Record<string, boolean> | null;
-      hote_conforme: boolean | null; hote_attendu_declare: boolean } | null;
+      hote_conforme: boolean | null; hote_attendu_declare: boolean;
+      hote?: string; hote_est_pooler?: boolean; hote_est_production?: boolean } | null;
     rls_forcee: boolean;
     mode_strict: boolean | null;
   } | null = null;
@@ -263,6 +298,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         base_oid: number; base_nom: string; hote_empreinte: string; schemas_empreinte: string;
         sondes_p107: Record<string, boolean> | null;
         hote_conforme: boolean | null; hote_attendu_declare: boolean;
+      hote?: string; hote_est_pooler?: boolean; hote_est_production?: boolean;
         // P10.8 — L'ENDPOINT LUI-MEME, PAS SEULEMENT SON EMPREINTE.
         //
         // Le 2026-11-19, « rattacher la base a br-square-bread-b1gu7jk7 » etait
@@ -356,6 +392,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             : null,
           hote,
           hote_est_pooler: /-pooler\./.test(hote),
+          // Un PASS de `hote_conforme` ne suffit pas : les deux cotes peuvent
+          // designer la Production. Ce booleen est le seul controle qui repond
+          // a « la Preview joint-elle la Production ? ».
+          hote_est_production: hotesProduction().includes(normaliserHote(hote)),
         };
       } catch {
         identiteBase = null;

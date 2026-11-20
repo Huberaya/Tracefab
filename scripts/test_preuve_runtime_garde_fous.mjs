@@ -182,6 +182,21 @@ verifier(/user:pass@|:\[\^\/\\s@\]\+@|@\/\.test\(texte\)/.test(source) || /\[\^\
 verifier(/hotesPublies/.test(source),
   'expurger() inspecte les hotes publies et exige un nom d hote seul');
 
+// --- 12. C5.4 ne peut pas etre neutralise sans que ca se voie ---------------
+// C5.3 compare l'hote joint a l'hote declare ; deux valeurs egales le rendent
+// PASS meme si les deux designent la PRODUCTION. C5.4 est le seul controle qui
+// repond « la Preview joint-elle la Production ? ». Un C5.4 supprime, ou dont
+// le FAIL serait adouci en INDETERMINATE, rendrait C5 structurellement
+// incapable de voir le cas le plus grave.
+verifier(/verdict\('C5\.4'/.test(source),
+  'C5.4 existe et rend un verdict');
+verifier(/hote_est_production/.test(source),
+  'C5.4 s appuie sur hote_est_production publie par la route');
+verifier(/estProduction === false/.test(source),
+  'C5.4 ne rend PASS que si hote_est_production vaut strictement false');
+verifier(!/verdict\('C5\.4'[\s\S]{0,400}?estProduction\s*\?\s*null/.test(source),
+  'un hote de Production n est jamais converti en INDETERMINATE');
+
 if (echecs === 0) {
   console.log('  Preuve runtime P10.7 : garde-fous anti-faux-temoin OK.');
   process.exit(0);

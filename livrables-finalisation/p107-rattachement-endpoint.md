@@ -128,6 +128,33 @@ Verdicts `C5` de la preuve runtime :
 - **C5.2** valeur attendue déclarée ⇒ PASS ; non déclarée ⇒ **INDETERMINATE** (état de
   configuration, pas défaut du runtime)
 - **C5.3** `hote_conforme === true` ⇒ PASS ; `false` ⇒ **FAIL** ; non déclarée ⇒ INDETERMINATE
+- **C5.4** `hote_est_production === false` ⇒ PASS ; `true` ⇒ **FAIL** ; champ absent ⇒ INDETERMINATE
+
+### Pourquoi C5.4 existe — le trou que C5.3 ne peut pas voir
+
+C5.3 compare l'hôte joint à l'hôte **déclaré**. Cette comparaison est nécessaire et elle ne suffit
+pas. Si `TRACEFAB_PREVIEW_DB_ENDPOINT` était renseigné avec l'hôte de **Production**, la Preview
+joindrait la Production et `hote_conforme` vaudrait `true` : les deux côtés désignent le même hôte,
+et une égalité ne peut pas savoir que la valeur est la mauvaise. Ce serait un **PASS parfait sur la
+configuration la plus grave possible**.
+
+Le garde `managed_host` de `scripts/lib/require-throwaway-db.mjs` refuse bien tout hôte Neon — mais
+il protège les scripts de migration, il ne s'exécute **jamais** dans le runtime. C5.4 comble ce trou
+au seul endroit où la question se pose vraiment.
+
+Discrimination mesurée, sur la même réponse de doublure :
+
+| Scénario | C5.3 | C5.4 |
+|---|---|---|
+| Preview joint sa branche | PASS | PASS |
+| Preview joint une autre branche | FAIL | PASS |
+| **Preview joint la Production** | **PASS** | **FAIL** |
+| Déploiement antérieur au champ | INDETERMINATE | INDETERMINATE |
+
+La ligne en gras est la raison d'être de C5.4 : elle montre un cas où C5.3 seul donnerait un feu
+vert. Les assertions correspondantes sont dans `test_preuve_runtime_bout_en_bout.mjs` (7 bis) et
+`test_preuve_runtime_garde_fous.mjs` (§ 12) ; les deux étages ont été vérifiés **mordants** par
+mutation — adoucir le FAIL de C5.4 en INDETERMINATE fait tomber 2 garde-fous et 1 assertion.
 
 **Aucun chemin ne rend C5 vert sans déclaration explicite.** Une fois la valeur ci-dessus posée
 dans l'environnement Preview de Vercel, C5.1/C5.2/C5.3 passent : hôte joint et hôte attendu sont
@@ -145,7 +172,7 @@ Le verdict ne peut donc pas republier une chaîne de connexion en la dérivant.
 |---|---|---|---|
 | 1 | Valeur exacte attendue, sans secret | **FAIT** | § 1 |
 | 2 | Preuve qu'elle identifie `br-square-bread-b1gu7jk7` | **FAIT**, portée de § 2 | § 2 |
-| 3 | Contrôle automatisé endpoint réel vs attendu | **FAIT** | C5.1–C5.3 + anti-fuite |
+| 3 | Contrôle automatisé endpoint réel vs attendu | **FAIT** | C5.1–C5.4 + anti-fuite |
 | 4 | CI complète après correction | **À EXÉCUTER** sur ce commit | run de CI |
 
 **Ce qui reste hors de ma main :** poser la valeur dans l'environnement Preview de Vercel.

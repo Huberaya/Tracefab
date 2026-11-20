@@ -128,6 +128,7 @@ export async function fetchSimule(url) {
             ? 'ep-bonne-branche-123.eu-central-1.aws.neon.tech'
             : 'ep-autre-branche-999.eu-central-1.aws.neon.tech',
           hote_est_pooler: false,
+          hote_est_production: false,
         },
         rls_forcee: true, mode_strict: false,
       },
@@ -152,6 +153,7 @@ export async function fetchSimule(url) {
           schemas_empreinte: '4a145f39b5da', sondes_p107: { tracefab_identity_cles: true },
           hote_conforme: null, hote_attendu_declare: false,
           hote: 'ep-inconnue-456.eu-central-1.aws.neon.tech', hote_est_pooler: false,
+          hote_est_production: false,
         },
         rls_forcee: true, mode_strict: false,
       },
@@ -184,6 +186,61 @@ export async function fetchSimule(url) {
           schemas_empreinte: '4a145f39b5da', sondes_p107: { tracefab_identity_cles: true },
           hote_conforme: null, hote_attendu_declare: false,
           hote, hote_est_pooler: false,
+          hote_est_production: false,
+        },
+        rls_forcee: true, mode_strict: false,
+      },
+      contexteTenant: { measured: true, jetonAccepte: true, identiteLue: true,
+        organisationEtrangereRefusee: true, gucRemisAZero: true, detail: 'ok' },
+    });
+  }
+  if (scenario === 'app503-rattachement-production') {
+    // LE CAS PERNICIEUX : l'operateur a declare l'hote de PRODUCTION comme
+    // endpoint attendu. `hote_conforme` vaut alors `true` — les deux cotes
+    // designent le meme hote — et C5.3 rendrait PASS sur la configuration la
+    // plus grave possible. Seul C5.4 attrape ce cas : la Preview joint la
+    // Production, et cela doit etre un FAIL, pas un PASS.
+    return reponse(503, {
+      schema: 'tracefab-p2-readiness-v1', ready: false, configurationOnly: true,
+      configurationSuffisante: false, services: {},
+      identityTokens: { configured: true, mode: 'signe' },
+      identitySysteme: { configured: true, mode: 'signe', usage: 'tracefab_system',
+        verifiee_par_la_base: true, verification: 'aller_retour_reussi' },
+      baseIdentite: {
+        table_presente: true, table_vue_par_pg_class: true, prisma_migrations_presente: true,
+        tables_publiques: 87, fonction_posterieure_presente: true,
+        identite_base: {
+          base_oid: 1, base_nom: 'neondb', hote_empreinte: '66e7f0a7fb77',
+          schemas_empreinte: '4a145f39b5da', sondes_p107: { tracefab_identity_cles: true },
+          hote_conforme: true, hote_attendu_declare: true,
+          hote: 'ep-polished-night-b1jc5941.c-5.eu-central-1.aws.neon.tech',
+          hote_est_pooler: false,
+          hote_est_production: false, hote_est_production: true,
+        },
+        rls_forcee: true, mode_strict: false,
+      },
+      contexteTenant: { measured: true, jetonAccepte: true, identiteLue: true,
+        organisationEtrangereRefusee: true, gucRemisAZero: true, detail: 'ok' },
+    });
+  }
+  if (scenario === 'app503-rattachement-avant-c54') {
+    // Deploiement ANTERIEUR au champ `hote_est_production` : la question n'a pas
+    // ete posee. C5.4 doit etre INDETERMINATE, jamais PASS par absence de preuve.
+    return reponse(503, {
+      schema: 'tracefab-p2-readiness-v1', ready: false, configurationOnly: true,
+      configurationSuffisante: false, services: {},
+      identityTokens: { configured: true, mode: 'signe' },
+      identitySysteme: { configured: true, mode: 'signe', usage: 'tracefab_system',
+        verifiee_par_la_base: true, verification: 'aller_retour_reussi' },
+      baseIdentite: {
+        table_presente: true, table_vue_par_pg_class: true, prisma_migrations_presente: true,
+        tables_publiques: 87, fonction_posterieure_presente: true,
+        identite_base: {
+          base_oid: 16396, base_nom: 'neondb', hote_empreinte: '55c809d501c6',
+          schemas_empreinte: '4a145f39b5da', sondes_p107: { tracefab_identity_cles: true },
+          hote_conforme: true, hote_attendu_declare: true,
+          hote: 'ep-lively-field-b1wicg4v-pooler.c-5.eu-central-1.aws.neon.tech',
+          hote_est_pooler: true,
         },
         rls_forcee: true, mode_strict: false,
       },

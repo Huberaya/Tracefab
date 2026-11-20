@@ -440,6 +440,31 @@ verdict('C5.3', 'l endpoint joint est EXACTEMENT celui declare',
       ? `hote_conforme=${String(identiteBase.hote_conforme)} · observe=${hoteObserve ?? '?'}`
       : 'aucun endpoint declare : la comparaison n a pas eu lieu');
 
+// C5.4 — LE CONTROLE QUE C5.3 NE PEUT PAS FAIRE.
+//
+// C5.3 compare l'hote joint a l'hote DECLARE. Si l'operateur declare l'hote de
+// PRODUCTION dans TRACEFAB_PREVIEW_DB_ENDPOINT, la Preview joint la Production
+// et C5.3 vaut PASS : deux valeurs identiques, et la comparaison ne peut pas
+// savoir que la valeur est la mauvaise. Un PASS parfait sur la configuration la
+// plus grave possible.
+//
+// C5.4 repond a la seule question qui compte : la Preview joint-elle l'hote de
+// Production ? `hote_est_production` est calcule par la route a partir du fait
+// public qu'est le prefixe d'endpoint de Production. Un champ ABSENT n'est pas
+// un « non » : c'est une mesure qui n'a pas eu lieu (INDETERMINATE), et sur un
+// deploiement anterieur a ce champ la question reste ouverte.
+const estProduction = identiteBase?.hote_est_production;
+verdict('C5.4', 'la Preview ne joint PAS la base de PRODUCTION',
+  identiteBase === undefined || identiteBase === null ? null
+    : typeof estProduction === 'boolean' ? estProduction === false
+      : null,
+  identiteBase === undefined || identiteBase === null ? 'baseIdentite absent : non mesure'
+    : typeof estProduction === 'boolean'
+      ? estProduction
+        ? `hote=${hoteObserve ?? '?'} est un hote de PRODUCTION — la Preview ne doit jamais le joindre`
+        : `hote=${hoteObserve ?? '?'} n est pas un hote de production`
+      : 'champ hote_est_production absent : deploye avant ce controle, question ouverte');
+
 }
 
 // --- C4 : identite PostgreSQL, evaluee depuis le corps, quel qu il soit -----

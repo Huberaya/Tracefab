@@ -197,5 +197,27 @@ verifier(/"C5\.2"[^}]*"verdict":\s*"INDETERMINATE"/.test(c5nd.preuve),
 verifier(/"C5\.3"[^}]*"verdict":\s*"INDETERMINATE"/.test(c5nd.preuve),
   'C5.3 rend INDETERMINATE — pas PASS — quand la comparaison n a pas eu lieu');
 
+// --- 7 bis. C5.4 — le seul controle que C5.3 ne peut PAS faire -------------
+//
+// Si l'operateur declare l'hote de PRODUCTION comme endpoint attendu, la
+// Preview joint la Production et C5.3 vaut PASS : les deux cotes designent le
+// meme hote, et une egalite ne peut pas savoir que la valeur est la mauvaise.
+// C'est un PASS parfait sur la configuration la plus grave possible. C5.4 doit
+// rendre FAIL la ou C5.3 rend PASS — sans quoi il n'ajoute rien.
+const c5prod = await executer('app503-rattachement-production', jetonTest);
+verifier(/"C5\.3"[^}]*"verdict":\s*"PASS"/.test(c5prod.preuve),
+  'dans le scenario Production, C5.3 rend PASS — c est precisement le piege',
+  c5prod.preuve.slice(-400));
+verifier(/"C5\.4"[^}]*"verdict":\s*"FAIL"/.test(c5prod.preuve),
+  'C5.4 rend FAIL quand la Preview joint un hote de PRODUCTION',
+  c5prod.preuve.slice(-400));
+
+const c5avant = await executer('app503-rattachement-avant-c54', jetonTest);
+verifier(/"C5\.4"[^}]*"verdict":\s*"INDETERMINATE"/.test(c5avant.preuve),
+  'C5.4 rend INDETERMINATE quand le deploiement ne publie pas hote_est_production',
+  c5avant.preuve.slice(-400));
+verifier(!/"C5\.4"[^}]*"verdict":\s*"PASS"/.test(c5avant.preuve),
+  'l absence du champ ne devient jamais un PASS : non mesure n est pas mesure juste');
+
 console.log(echecs === 0 ? '  Bout en bout : OK.' : `  Bout en bout : ${echecs} echec(s).`);
 process.exit(echecs === 0 ? 0 : 1);
