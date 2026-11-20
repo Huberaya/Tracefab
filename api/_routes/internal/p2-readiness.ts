@@ -177,7 +177,25 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     rls_forcee: boolean;
     mode_strict: boolean | null;
   } | null = null;
-  if (wantIdentity && etatSysteme !== 'valide') {
+  // POURQUOI PLUS DE CONDITION SUR `etatSysteme`.
+  //
+  // La condition etait `wantIdentity && etatSysteme !== 'valide'` : la route ne
+  // publiait `baseIdentite` que lorsque la cle SYSTEME n'etait PAS valide.
+  // Mesure du 2026-11-20, run 44732047701 : le runtime deploye publiait
+  // `C1.1 mode=signe` — donc `etatSysteme === 'valide'` — et le corps ne
+  // contenait AUCUN `baseIdentite`. C5.1 a donc rendu INDETERMINATE, et C5.2 a
+  // C5.4 n'ont jamais ete evalues : le rattachement de la base etait
+  // IMMESURABLE precisement sur un runtime SAIN.
+  //
+  // La condition inversait la logique : plus le runtime etait en bonne sante,
+  // moins il publiait sur sa base. Et `etatCleSysteme()` (cle systeme) n'a
+  // aucun rapport logique avec l'identite de la base jointe — deux proprietes
+  // independantes que rien ne justifiait de lier.
+  //
+  // `?identity=1` reste la garde : on n'interroge la base que sur demande.
+  // Raison d'echec de la mesure, publiee SEULEMENT si elle a eu lieu.
+  let echecIdentiteBase: string | null = null;
+  if (wantIdentity) {
     // DEUX REQUETES SEPAREES, ET POURQUOI.
     //
     // La premiere version combinait les trois champs dans un seul SELECT avec
@@ -406,8 +424,22 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           mode_strict: modeStrict,
         };
       }
-    } catch {
+    } catch (erreur) {
+      // NE PAS AVALER LA CAUSE.
+      //
+      // `catch { baseIdentite = null; }` rendait `baseIdentite` absent du corps,
+      // ce qui est indistinguable de « la route ne publie pas ce champ » — et
+      // c'est exactement ce qui a fait rendre INDETERMINATE a C5.1 sans qu'on
+      // puisse dire POURQUOI. Un echec de mesure doit etre nomme.
+      //
+      // On ne publie que le CODE d'erreur PostgreSQL quand il existe (ex.
+      // `42501` = permission refusee) : c'est un fait de catalogue, pas une
+      // donnee. Jamais le message brut, qui peut citer la requete, ni l'URL.
+      const code = (erreur as { code?: unknown })?.code;
       baseIdentite = null;
+      echecIdentiteBase = typeof code === 'string' && /^[0-9A-Z]{5}$/.test(code)
+        ? `erreur_pg_${code}`
+        : 'mesure_impossible';
     }
   }
 
@@ -492,6 +524,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       identityTokens: jetonsIdentite,
       identitySysteme: jetonsSysteme,
       ...(baseIdentite ? { baseIdentite } : {}),
+      ...(echecIdentiteBase ? { echecIdentiteBase } : {}),
       ...(databaseIdentity ? { databaseIdentity } : {}),
       ...(contexteTenant ? { contexteTenant } : {}),
       ...(notificationOutbox ? { notificationOutbox } : {}),
@@ -514,6 +547,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     identityTokens: jetonsIdentite,
     identitySysteme: jetonsSysteme,
     ...(baseIdentite ? { baseIdentite } : {}),
+    ...(echecIdentiteBase ? { echecIdentiteBase } : {}),
     ...(databaseIdentity ? { databaseIdentity } : {}),
     ...(contexteTenant ? { contexteTenant } : {}),
     ...(notificationOutbox ? { notificationOutbox } : {}),

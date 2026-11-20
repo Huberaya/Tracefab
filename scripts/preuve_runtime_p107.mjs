@@ -79,6 +79,43 @@ function verdict(id, libelle, condition, detail) {
   return condition;
 }
 
+// --- Publication des verdicts dans l API checks ----------------------------
+//
+// POURQUOI CE BLOC EXISTE.
+//
+// Le corps expurge est ecrit dans un fichier, publie en artefact et pousse sur
+// une branche `preuves/`. Ces trois canaux sont INATTEIGNABLES depuis certains
+// environnements d'analyse : l'artefact est servi par un blob store hors du
+// reseau autorise (mesure : 0 octet recu) et le journal du job rend EOF.
+// Consequence mesuree le 2026-11-20 : des runs entiers ont produit une preuve
+// que personne ne pouvait LIRE, donc une preuve qui ne valait pas mieux qu'une
+// absence de preuve.
+//
+// L'annotation, elle, remonte dans l API checks et se lit partout. Ce bloc y
+// publie donc le VERDICT de chaque controle, en une ligne synthetique.
+//
+// CE QU'IL NE PUBLIE JAMAIS : aucune chaine de connexion, aucun jeton, aucune
+// cle, aucune valeur d'environnement. Uniquement des identifiants de controle,
+// leur verdict, et les hotes deja publies par la route — qui sont des noms
+// d'hote nus, verifies comme tels par `expurger`.
+function publierVerdicts() {
+  const resume = resultats.map((r) => `${r.id}=${r.verdict}`).join(' ');
+  // Un seul `detail` par controle, tronque : une annotation a une taille utile
+  // limitee et un message coupe au milieu ne vaut pas mieux que rien.
+  const lignes = resultats
+    .filter((r) => r.verdict !== undefined)
+    .map((r) => `${r.id} ${r.verdict}${r.detail ? ` :: ${String(r.detail).slice(0, 160)}` : ''}`)
+    .join(' | ');
+  const ech = resultats.filter((r) => r.verdict === 'FAIL').length;
+  const niv = ech === 0 ? 'notice' : 'error';
+  const titre = ech === 0 ? 'P10.7 verdicts runtime' : 'P10.7 verdicts runtime (echec)';
+  // `::` et `%` sont les deux caracteres que GitHub interprete dans une
+  // commande de workflow : les echapper evite un message tronque ou deforme.
+  const sur = (t) => String(t).replace(/%/g, '%25').replace(/\r?\n/g, '%0A').replace(/:/g, '%3A');
+  console.log(`::${niv} title=${sur(titre)}::${sur(`${resume} || ${lignes}`)}`);
+}
+
+
 /**
  * Arret du script. Le code de sortie distingue deux situations que rien ne doit
  * confondre :
@@ -559,7 +596,18 @@ if (sonde.statut !== 200) {
     // etait bien retire de la preuve, mais son hote ressortait par le verdict.
     // Un expurge qui ne couvre pas ce qu on en derive n'expurge rien.
     const corpsPourC5 = expurger(sonde.corps) ?? {};
-    if (corpsPourC5.baseIdentite?.identite_base) evaluerC5(corpsPourC5);
+    // ON APPELLE TOUJOURS, MEME QUAND LE CHAMP MANQUE.
+    //
+    // La version precedente conditionnait l appel a
+    // `corpsPourC5.baseIdentite?.identite_base` : `evaluerC5` ne s executait
+    // que si la donnee qu il doit juger etait DEJA la. Un controle qui ne peut
+    // pas constater une absence ne peut jamais signaler un champ manquant — il
+    // disparait silencieusement. Mesure du run 44732047701 : C5.1 a C5.4 etaient
+    // totalement absents des verdicts, et rien ne le signalait.
+    //
+    // `evaluerC5` sait deja rendre INDETERMINATE quand `baseIdentite` manque :
+    // c est ecrit dans chacune de ses branches. Encore faut-il l appeler.
+    evaluerC5(corpsPourC5);
     if (sonde.corps?.identitySysteme || sonde.corps?.identityTokens) {
       evaluerC1C2(sonde.corps);
     }
@@ -582,6 +630,11 @@ if (sonde.statut !== 200) {
     });
   }
   console.error(`\n  ARRET — sonde authentifiee HTTP ${sonde.statut}. Corps expurge conserve dans ${SORTIE}.`);
+  // PUBLIE AVANT DE SORTIR. Quatrieme occurrence du meme defaut dans ce
+  // fichier : un controle place apres `process.exit` ne s execute jamais. Ici
+  // l enjeu est la LISIBILITE de la preuve — une preuve que personne ne peut
+  // lire ne vaut pas mieux qu une absence de preuve.
+  publierVerdicts();
   process.exit(2);
 }
 
@@ -594,7 +647,7 @@ evaluerC1C2(corps);
 // La dupliquer ici ferait apparaitre chaque critere deux fois dans la preuve et
 // rendrait le compte de PASS/FAIL trompeur.
 if (sonde.statut === 200) evaluerC4(corps.databaseIdentity ?? {}, corps.contexteTenant);
-if (sonde.statut === 200) evaluerC5(expurger(corps) ?? {});
+if (sonde.statut === 200) evaluerC5(expurger(corps) ?? {});   // sans condition : meme raison
 
 // --- Verdict ---------------------------------------------------------------
 const echecs = resultats.filter((r) => r.verdict === 'FAIL').length;
