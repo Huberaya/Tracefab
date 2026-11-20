@@ -298,7 +298,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         base_oid: number; base_nom: string; hote_empreinte: string; schemas_empreinte: string;
         sondes_p107: Record<string, boolean> | null;
         hote_conforme: boolean | null; hote_attendu_declare: boolean;
-      hote?: string; hote_est_pooler?: boolean; hote_est_production?: boolean;
         // P10.8 — L'ENDPOINT LUI-MEME, PAS SEULEMENT SON EMPREINTE.
         //
         // Le 2026-11-19, « rattacher la base a br-square-bread-b1gu7jk7 » etait
@@ -316,6 +315,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         // est extrait, et `new URL` ne peut pas en restituer le reste.
         hote: string;
         hote_est_pooler: boolean;
+        hote_est_production: boolean;
       } | null = null;
       try {
         const b = await prisma.$queryRaw<Array<{ base_oid: number; base_nom: string }>>`
