@@ -1,0 +1,171 @@
+{
+  "schema": "tracefab-p107-preuves-runtime-v1",
+  "horodatage": "2026-11-20T11:59:51.731Z",
+  "sha": "ffcd8f56d42af94cb9e5e2d1ebde95297548fa13",
+  "workflow_sha": "ffcd8f56d42af94cb9e5e2d1ebde95297548fa13",
+  "deployment_sha": "3dd164993a377960c741f3720935cb226559e641",
+  "sha_traceabilite": "deployment_sha fourni : la preuve porte sur ce code deploye",
+  "cible": "https://tracefab-1axao06aq-baya-ibraimmayoanouedu-8164s-projects.vercel.app",
+  "arret": "sonde authentifiee -> HTTP 503",
+  "interpretation": "runtime non pret pour d AUTRES services (voir corpsExpurge.services), mais la cle EST presente et la BASE a ACCEPTE le jeton signe : C1 et C2 mesures",
+  "corpsExpurge": {
+    "schema": "tracefab-p2-readiness-v1",
+    "ready": false,
+    "configurationOnly": true,
+    "configurationSuffisante": false,
+    "identiteSaine": true,
+    "services": {
+      "privateStorage": {
+        "configured": false,
+        "missing": [
+          "PRIVATE_STORAGE_ENDPOINT",
+          "PRIVATE_STORAGE_BUCKET",
+          "PRIVATE_STORAGE_REGION",
+          "PRIVATE_STORAGE_ACCESS_KEY_ID",
+          "PRIVATE_STORAGE_SECRET_ACCESS_KEY",
+          "PRIVATE_STORAGE_ANTIVIRUS_URL",
+          "PRIVATE_STORAGE_ANTIVIRUS_TOKEN"
+        ],
+        "probe": "configuration_only"
+      },
+      "email": {
+        "configured": false,
+        "missing": [
+          "RESEND_API_KEY",
+          "EMAIL_FROM"
+        ],
+        "probe": "configuration_only"
+      },
+      "alerting": {
+        "configured": false,
+        "missing": [
+          "TRACEFAB_NOTIFICATION_ALERT_URL",
+          "TRACEFAB_NOTIFICATION_ALERT_TOKEN"
+        ],
+        "probe": "configuration_only"
+      }
+    },
+    "identityTokens": {
+      "configured": true,
+      "mode": "signe"
+    },
+    "identitySysteme": {
+      "configured": true,
+      "mode": "signe",
+      "usage": "tracefab_system",
+      "verifiee_par_la_base": true,
+      "verification": "aller_retour_reussi"
+    },
+    "databaseIdentity": {
+      "measured": true,
+      "currentUser": "tracefab_app",
+      "sessionUser": "tracefab_app",
+      "database": "neondb",
+      "bypassesRls": false,
+      "isSuperuser": false,
+      "privilegedMemberships": [],
+      "canEscalate": false,
+      "detail": "identite lue sur la connexion applicative"
+    },
+    "contexteTenant": {
+      "measured": true,
+      "jetonAccepte": true,
+      "identiteLue": true,
+      "organisationEtrangereRefusee": true,
+      "gucRemisAZero": true,
+      "detail": "contexte tenant pose puis relu par le point de passage unique, en lecture seule"
+    }
+  },
+  "resultats": [
+    {
+      "id": "C3.1",
+      "libelle": "appel SANS jeton de sonde -> refuse",
+      "verdict": "PASS",
+      "detail": "HTTP 401"
+    },
+    {
+      "id": "C3.2",
+      "libelle": "appel avec un jeton FAUX -> refuse",
+      "verdict": "PASS",
+      "detail": "HTTP 401"
+    },
+    {
+      "id": "C3.3",
+      "libelle": "la route reste fermee sans ?identity=1 ni secret worker -> refuse",
+      "verdict": "PASS",
+      "detail": "HTTP 401"
+    },
+    {
+      "id": "C4.1",
+      "libelle": "current_user = session_user (aucune prise de role residuelle)",
+      "verdict": "PASS",
+      "detail": "current_user=tracefab_app session_user=tracefab_app"
+    },
+    {
+      "id": "C4.2",
+      "libelle": "le role effectif n est PAS superutilisateur",
+      "verdict": "PASS",
+      "detail": "is_superuser=false"
+    },
+    {
+      "id": "C4.3",
+      "libelle": "le role effectif ne CONTOURNE pas les RLS",
+      "verdict": "PASS",
+      "detail": "bypasses_rls=false"
+    },
+    {
+      "id": "C4.4",
+      "libelle": "le role effectif ne peut pas endosser un role privilegie",
+      "verdict": "PASS",
+      "detail": "can_escalate=false · membres_privilegies=[]"
+    },
+    {
+      "id": "C4.5",
+      "libelle": "le role effectif est le role applicatif attendu",
+      "verdict": "PASS",
+      "detail": "current_user=tracefab_app"
+    },
+    {
+      "id": "C4.6",
+      "libelle": "le contexte tenant est present et non falsifie",
+      "verdict": "PASS",
+      "detail": "jeton_accepte=true · organisation_etrangere_refusee=true · guc_remis_a_zero=true"
+    },
+    {
+      "id": "C1.1",
+      "libelle": "le runtime sait signer une identite systeme",
+      "verdict": "PASS",
+      "detail": "mode=signe"
+    },
+    {
+      "id": "C1.2",
+      "libelle": "la BASE a VERIFIE le jeton signe (aller-retour reel)",
+      "verdict": "PASS",
+      "detail": "verifiee_par_la_base=true · verification=aller_retour_reussi"
+    },
+    {
+      "id": "C1.3",
+      "libelle": "l usage du jeton systeme est bien distinct de l usage utilisateur",
+      "verdict": "PASS",
+      "detail": "usage=tracefab_system"
+    },
+    {
+      "id": "C2.1",
+      "libelle": "la cle d identite est PRESENTE et BIEN FORMEE dans le processus",
+      "verdict": "PASS",
+      "detail": "configured=true mode=signe"
+    },
+    {
+      "id": "C2.2",
+      "libelle": "le systeme signe avec la meme cle, dans le meme processus",
+      "verdict": "PASS",
+      "detail": "systeme.configured=true · utilisateur.configured=true"
+    },
+    {
+      "id": "C2.3",
+      "libelle": "aucun fragment de cle dans la reponse",
+      "verdict": "PASS",
+      "detail": "aucune suite hexadecimale longue dans le corps"
+    }
+  ]
+}
