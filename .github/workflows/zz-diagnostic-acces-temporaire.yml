@@ -1,0 +1,26 @@
+name: Diagnostic d acces Preview (aucun secret)
+on:
+  workflow_dispatch:
+    inputs:
+      url:
+        description: URL de la Preview a joindre
+        required: true
+permissions: {}
+jobs:
+  sondage:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Joindre la Preview et rapporter le code HTTP
+        env:
+          U: ${{ github.event.inputs.url }}
+        run: |
+          set -u
+          case "$U" in https://*.vercel.app) ;; *) echo "::error::URL refusee"; exit 1 ;; esac
+          for chemin in /api/health "/api/internal/p2-readiness?identity=1"; do
+            code="$(curl -sS -o /tmp/c -w '%{http_code}' --max-time 25 "$U$chemin" || echo 000)"
+            echo "$chemin -> HTTP $code"
+            if [ "$code" != "000" ] && [ -s /tmp/c ]; then
+              head -c 300 /tmp/c | tr -d '\n'; echo
+            fi
+          done
