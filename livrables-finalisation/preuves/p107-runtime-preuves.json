@@ -1,0 +1,34 @@
+{
+  "schema": "tracefab-p107-preuves-runtime-v1",
+  "horodatage": "2026-11-20T12:46:06.813Z",
+  "sha": "4203a0398cee5fae4c40eea41aae8f09c0cd03a3",
+  "workflow_sha": "4203a0398cee5fae4c40eea41aae8f09c0cd03a3",
+  "deployment_sha": "4203a0398cee5fae4c40eea41aae8f09c0cd03a3",
+  "sha_traceabilite": "deployment_sha fourni : la preuve porte sur ce code deploye",
+  "cible": "https://tracefab-ckwzunivx-baya-ibraimmayoanouedu-8164s-projects.vercel.app",
+  "arret": "sonde authentifiee -> HTTP 401",
+  "interpretation": "jeton refuse : la valeur de GitHub differe de celle de Vercel, ou la sonde est desactivee sur ce deploiement",
+  "corpsExpurge": {
+    "error": "worker_unauthorized"
+  },
+  "resultats": [
+    {
+      "id": "C3.1",
+      "libelle": "appel SANS jeton de sonde -> refuse",
+      "verdict": "PASS",
+      "detail": "HTTP 401"
+    },
+    {
+      "id": "C3.2",
+      "libelle": "appel avec un jeton FAUX -> refuse",
+      "verdict": "PASS",
+      "detail": "HTTP 401"
+    },
+    {
+      "id": "C3.3",
+      "libelle": "la route reste fermee sans ?identity=1 ni secret worker -> refuse",
+      "verdict": "PASS",
+      "detail": "HTTP 401"
+    }
+  ]
+}
