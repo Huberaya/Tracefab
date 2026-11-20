@@ -10,7 +10,7 @@ Branche de travail : `consolidation/tenant-isolation-migrations-20261120`, cré�
 | | SHA | Commentaire |
 |---|---|---|
 | `main` — SHA initial | `17483e2af43ca41296174719e5dd5115266aa4c1` | état mesuré au départ de la mission |
-| `main` — SHA final | `17483e2af43ca41296174719e5dd5115266aa4c1` | **inchangé** : aucune fusion effectuée (voir §4) |
+| `main` — SHA final | `066b40ffb822a579355c5abf225ecacb2d861353` | après fusion de **#135** (squash) — la seule PR fusionnée par cette mission |
 | Branche de consolidation — base | `17483e2af43ca41296174719e5dd5115266aa4c1` | arbre propre au départ |
 
 `main` compte 1236 commits et **100 migrations** à ce SHA. Le clone était
@@ -30,6 +30,7 @@ exécuté avant toute analyse.
 | **#109** | OPEN, CONFLICTING | `751004e0` | MB `788df220` | 114 / 463 | 80 | **0** | **Fermer** : entièrement absorbé par la série `active_tenant_*` de `main`. Sur ses 71 fichiers `api/`, `main` en est à **+613 / −832** : `main` contient plus et mieux. |
 | **#110** | OPEN, CONFLICTING | `f132c3ab` | MB `788df220` | 517 / 463 | 135 | 24 — **24/24 dans `main`** | **Fermer** : la réconciliation qu'il opère est déjà dans `main`. |
 | **#114** | OPEN, CONFLICTING | `06455e9c` | MB `d108e6a8` | 56 / 301 | 28 | 2 — **2/2 dans `main`, identiques au bit près** | **Fermer** : intégralement absorbé. Ses `api/_lib/auth.ts`, `api/_lib/notification-outbox.ts`, `api/_routes/webhooks/clerk.ts` sont **identiques** dans `main`. |
+| **#135** | **MERGED** (squash) | `1d941a397` | `main` `17483e2a` | — | 4 | 0 | **Fusionnée par cette mission.** Purement additive : la preuve de §5 devient permanente et tourne en CI. `main` : `17483e2a` → `066b40ffb`. |
 
 ### Réconciliation par branche
 
@@ -135,9 +136,14 @@ couvert** par `main`, et prouvé par exécution en §5.
 
 ### 4.2 Ce qui n'a délibérément pas été fait
 
-- **Aucune fusion de PR.** Aucune des six PR n'apporte, en l'état, une
-  garantie que `main` ne possède déjà. Fusionner aurait ajouté du risque sans
-  valeur. Les fermetures restent à prononcer (voir §9).
+- **Aucune des six PR de la mission n'a été fusionnée.** Aucune n'apporte, en
+  l'état, une garantie que `main` ne possède déjà ; les fusionner aurait ajouté
+  du risque sans valeur. Les fermetures restent à prononcer (voir §9).
+- **Une PR a été créée et fusionnée : #135.** Elle est purement additive
+  (1 test, 1 entrée `package.json`, 1 étape de CI, 1 document) et n'existait
+  que pour rendre la preuve **permanente** : elle fait passer `main` de
+  `17483e2a` à `066b40ffb`. Sans elle, la preuve de §5 ne vivrait que dans un
+  rapport. Aucun code produit, aucune politique RLS, aucune migration touchés.
 - **Aucun `prisma migrate deploy`**, aucun `migrate resolve`, aucune écriture
   dans `_prisma_migrations`, aucune modification de schéma ou de données Neon.
 - **Aucune migration supprimée, renommée ou réécrite.**
@@ -408,6 +414,10 @@ travers le dépôt Git et les résultats de CI.
   redondant ou inférieur, #120 dépend de #113 et ses correctifs propres sont
   déjà dans `main`.
 - La Production et Neon n'ont **pas** été modifiées.
+- La preuve est **permanente** : fusionnée dans `main` via #135, exécutée par le
+  job CI `Socle` (run `44780947502`, 4/4 jobs verts sur `1d941a397`), et
+  re-vérifiée après fusion **sur `066b40ffb`** : preuve 18/18, chaîne 100/100,
+  `test:ci-no-production-access` 11/11.
 
 **Ce qui reste ouvert et justifie la réserve**
 
@@ -426,6 +436,13 @@ cassée, aucune régression — donc pas `BLOQUÉ`. Mais trois décisions
 irréversibles restent à autoriser, donc pas `CLOS`.
 
 ---
+
+## Annexe — état des six PR de la mission
+
+**Aucune des six n'a été fermée ni fusionnée.** Leur décision technique est
+arrêtée (§2) ; la fermeture est une action irréversible sur le dépôt distant,
+que la consigne réserve à un accord explicite. Elles restent donc **ouvertes**,
+avec leur motif documenté ici.
 
 ## Annexe — artefact produit par cette mission
 
