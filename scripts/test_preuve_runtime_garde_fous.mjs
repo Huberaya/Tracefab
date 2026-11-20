@@ -197,6 +197,27 @@ verifier(/estProduction === false/.test(source),
 verifier(!/verdict\('C5\.4'[\s\S]{0,400}?estProduction\s*\?\s*null/.test(source),
   'un hote de Production n est jamais converti en INDETERMINATE');
 
+// --- 13. Les verdicts sont LISIBLES, et publies avant toute sortie ----------
+// Une preuve que personne ne peut lire ne vaut pas mieux qu'une absence de
+// preuve. Quatrieme occurrence du meme defaut dans ce fichier : un appel place
+// apres `process.exit` ne s execute jamais. Ici il s agit de la publication des
+// verdicts dans l API checks, seul canal lisible quand l artefact et le journal
+// sont inatteignables.
+verifier(/function publierVerdicts\(\)/.test(source),
+  'une fonction publie les verdicts hors du fichier (canal lisible)');
+verifier(/const titre = .*P10\.7 verdicts runtime/.test(source),
+  'le titre de l annotation nomme le chantier et son enjeu');
+const posExitPublie = source.indexOf('process.exit(2)', source.indexOf('sonde.statut === 503'));
+const posPub = source.indexOf('publierVerdicts();', source.indexOf('sonde.statut === 503'));
+verifier(posPub !== -1 && posExitPublie !== -1 && posPub < posExitPublie,
+  'les verdicts sont publies AVANT la sortie en 2 du chemin 503',
+  `publication=${posPub} exit=${posExitPublie}`);
+// Aucune donnee sensible : la fonction ne doit lire ni jeton ni URL de connexion.
+const corpsPub = source.slice(source.indexOf('function publierVerdicts()'),
+  source.indexOf('function publierVerdicts()') + 1600);
+verifier(!/process\.env\.|DATABASE_URL|TOKEN|SECRET/.test(corpsPub),
+  'la publication ne lit aucune variable d environnement sensible');
+
 if (echecs === 0) {
   console.log('  Preuve runtime P10.7 : garde-fous anti-faux-temoin OK.');
   process.exit(0);
