@@ -25,6 +25,7 @@
     "test:p106:preflight-avant-ecriture": "node scripts/run-db-suite.mjs scripts/test_p106_preflight_avant_ecriture.mjs",
     "test:provisioning:preflight": "node scripts/test_provisionner_roles_preflight.mjs",
     "test:provisioning:pgcrypto-policy": "node scripts/test_pgcrypto_provisioning_policy.mjs",
+    "test:provisioning:pgcrypto-catalog": "node scripts/run-db-suite.mjs scripts/test_provisionner_roles_pgcrypto_catalog.mjs",
     "test:p107:contrat-identite": "npx tsx scripts/test_p107_contrat_identite.ts",
     "test:p107:sonde": "npm run test:p107:sonde-fail-closed && node scripts/run-db-suite.mjs scripts/test_p107_sonde_lecture_seule.mjs",
     "test:p107:sonde-fail-closed": "node scripts/test_p107_sonde_fail_closed_pglite.mjs",
