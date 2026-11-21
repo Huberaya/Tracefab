@@ -267,6 +267,10 @@ try {
     `SELECT pg_catalog.has_function_privilege($1, 'public.hmac(bytea,bytea,text)', 'EXECUTE') AS migrator,
             pg_catalog.has_function_privilege($2, 'public.hmac(bytea,bytea,text)', 'EXECUTE') AS app`,
     ['tracefab_migrator', testAppRole])).rows[0];
+  const dbPrivileges = (await executionApres.query(
+    `SELECT pg_catalog.has_database_privilege($1, current_database(), 'CREATE') AS migrator_create,
+            pg_catalog.has_database_privilege($2, current_database(), 'CREATE') AS app_create`,
+    ['tracefab_migrator', testAppRole])).rows[0];
   await executionApres.end();
 
   assert.equal(provisionnement.status, 0,
@@ -278,6 +282,8 @@ try {
     'EXECUTE PUBLIC doit être retiré des fonctions pgcrypto lorsque le propriétaire est accessible');
   assert.equal(hmac.migrator, true, 'le migrateur doit pouvoir exécuter hmac');
   assert.equal(hmac.app, false, 'le rôle applicatif ne doit pas pouvoir exécuter hmac');
+  assert.equal(dbPrivileges.migrator_create, true, 'le migrateur doit recevoir CREATE sur la base pour être propriétaire du schéma');
+  assert.equal(dbPrivileges.app_create, false, 'le rôle applicatif ne doit jamais recevoir CREATE sur la base');
   assert.ok(etatApresProvisionnement.totalRoles === etatAvantProvisionnement.totalRoles + 1,
     'une seule identité applicative de sonde doit avoir été créée');
 
