@@ -308,6 +308,73 @@ await avecBase({}, async (db) => {
   await verifierAbsenceEcriture(db, 'S8 l écriture acceptée ne persiste pas après ROLLBACK');
 });
 
+/* S9 — garde P10.7/P12 : schéma sans systeme_strict restitue ABSENTE sans 42703,
+ * puis l'ajout de systeme_strict, d'une opération système non gardée, d'un
+ * EXECUTE direct du prédicat ou d'un grant cloud_admin Neon déclenchent leurs ARRÊTS. */
+await avecBase({}, async (db) => {
+  const avantP107 = await executer(db);
+  ok(avantP107.codeSortie === 0
+      && avantP107.rapport.b7_identite?.mode_identite === 'permissif'
+      && avantP107.rapport.b7_identite?.mode_identite_systeme === 'ABSENTE',
+    'S9 base antérieure à 20261106130000 (sans colonne systeme_strict) : mode_identite_systeme=ABSENTE sans 42703');
+
+  await db.query('ALTER TABLE public.tracefab_identity_politique ADD COLUMN systeme_strict boolean NOT NULL DEFAULT false');
+  await db.query(`CREATE FUNCTION public.tracefab_identite_systeme() RETURNS boolean
+    LANGUAGE sql STABLE SECURITY INVOKER AS $f$ SELECT true $f$`);
+  await db.query('REVOKE EXECUTE ON FUNCTION public.tracefab_identite_systeme() FROM PUBLIC');
+
+  const apresColonne = await executer(db);
+  ok(apresColonne.codeSortie === 0 && apresColonne.rapport.b7_identite?.mode_identite_systeme === 'permissif',
+    'S9 colonne systeme_strict présente à false : mode_identite_systeme=permissif');
+
+  // Opération système SECURITY DEFINER sans la garde tracefab_identite_systeme()
+  await db.query(`CREATE FUNCTION public.tracefab_sync_clerk_membership() RETURNS integer
+    LANGUAGE sql SECURITY DEFINER SET search_path = pg_catalog, public
+    AS $f$ SELECT 1 $f$`);
+  await db.query('REVOKE EXECUTE ON FUNCTION public.tracefab_sync_clerk_membership() FROM PUBLIC');
+  const opNonGardee = await executer(db);
+  ok(opNonGardee.codeSortie === 1
+      && opNonGardee.rapport.b8_portee_de_la_cle?.operations_systeme_non_gardees === 1
+      && opNonGardee.rapport.arrets.some((a) => a.startsWith('B8') && a.includes('opération(s) système')),
+    'S9 opération système non gardée déclenche un ARRÊT B8');
+
+  // Pose de la garde d'origine : l'arrêt disparaît
+  await db.query(`CREATE OR REPLACE FUNCTION public.tracefab_sync_clerk_membership() RETURNS integer
+    LANGUAGE sql SECURITY DEFINER SET search_path = pg_catalog, public
+    AS $f$ SELECT CASE WHEN public.tracefab_identite_systeme() THEN 1 ELSE 0 END $f$`);
+  const opGardee = await executer(db);
+  ok(opGardee.codeSortie === 0 && opGardee.rapport.b8_portee_de_la_cle?.operations_systeme_gardees === 1,
+    'S9 opération système gardée : retour à code 0');
+
+  // EXECUTE direct du prédicat accordé au runtime -> ARRÊT B8
+  await db.query('GRANT EXECUTE ON FUNCTION public.tracefab_identite_systeme() TO tracefab_app');
+  const predicatOuvert = await executer(db);
+  ok(predicatOuvert.codeSortie === 1
+      && predicatOuvert.rapport.arrets.some((a) => a.startsWith('B8') && a.includes('tracefab_identite_systeme()')),
+    'S9 EXECUTE sur tracefab_identite_systeme() accordé à tracefab_app déclenche un ARRÊT B8');
+  await db.query('REVOKE EXECUTE ON FUNCTION public.tracefab_identite_systeme() FROM tracefab_app');
+
+  // Appartenance résiduelle de tracefab_migrator à tracefab_worker -> ARRÊT B6
+  await db.query('GRANT tracefab_worker TO tracefab_migrator WITH INHERIT TRUE, SET TRUE, ADMIN FALSE');
+  const membreWorker = await executer(db);
+  ok(membreWorker.codeSortie === 1
+      && membreWorker.rapport.arrets.some((a) => a.startsWith('B6') && a.includes('appartenance résiduelle')),
+    'S9 appartenance résiduelle tracefab_migrator -> tracefab_worker déclenche un ARRÊT B6');
+  await db.query('REVOKE tracefab_worker FROM tracefab_migrator');
+
+  // Grant cloud_admin Neon (ADMIN TRUE, INHERIT FALSE, SET FALSE, sans tracefab_worker_legacy) -> ARRÊT B6
+  await db.query('CREATE ROLE cloud_admin SUPERUSER NOLOGIN');
+  await db.query('GRANT tracefab_worker TO cloud_admin WITH ADMIN TRUE');
+  await db.query('GRANT tracefab_worker TO tracefab_migrator WITH ADMIN TRUE, INHERIT FALSE, SET FALSE GRANTED BY cloud_admin');
+  const swapNeonRequis = await executer(db);
+  ok(swapNeonRequis.codeSortie === 1
+      && swapNeonRequis.rapport.b6_droits_migration?.neon_worker_swap_requis === true
+      && swapNeonRequis.rapport.arrets.some((a) => a.startsWith('B6') && a.includes('provisionner_worker_neon.mjs')),
+    'S9 grant cloud_admin non isolé sur tracefab_worker déclenche un ARRÊT B6 explicite');
+
+  await verifierAbsenceEcriture(db, 'S9 aucune écriture persistée par la sonde');
+});
+
 console.log('');
 if (echecs === 0) {
   console.log(`  Sonde P10.7 fail-closed : ${assertions} assertions PostgreSQL — toutes conformes.`);

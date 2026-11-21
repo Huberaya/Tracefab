@@ -29,7 +29,7 @@ import { sslDepuisUrl } from './lib/pg-ssl.mjs';
 const { Client } = pg;
 const urlMigrateur = process.env.DATABASE_URL;
 const urlAdmin = process.env.TF_ADMIN_URL;
-const etatSeulement = process.argv.includes('--etat');
+const etatSeulement = process.argv.includes('--etat') || process.argv.includes('--dry-run');
 const appliquer = process.argv.includes('--appliquer');
 const hotesProduction = (process.env.TF_PRODUCTION_HOSTS || '').split(',').map(x => x.trim()).filter(Boolean);
 
@@ -53,8 +53,12 @@ if (!urlMigrateur || !urlAdmin) {
   process.exit(2);
 }
 if (!etatSeulement && !appliquer) {
-  console.error('Usage : --etat ou --appliquer.');
+  console.error('Usage : --etat (ou --dry-run) ou --appliquer.');
   process.exit(2);
+}
+if (etatSeulement && appliquer) {
+  console.error('REFUS — --etat/--dry-run et --appliquer sont exclusifs.');
+  process.exit(3);
 }
 if (appliquer && process.env.TF_ALLOW_WORKER_ROLE_SWAP !== 'oui') {
   console.error('REFUS — définir TF_ALLOW_WORKER_ROLE_SWAP=oui pour autoriser cette opération de rôles.');

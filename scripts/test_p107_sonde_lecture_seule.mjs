@@ -86,9 +86,15 @@ ok(rapport?.rollback_mesures_effectue === true
   'S2 les mesures et le test d écriture sont annulés dans deux transactions distinctes');
 ok(rapport?.b1_historique?.en_echec === 0,
   'S2 l historique des migrations est lisible et sans échec', JSON.stringify(rapport?.b1_historique));
-ok(Array.isArray(rapport?.b2_migrations_p105_p106) && rapport.b2_migrations_p105_p106.length === 2,
-  'S2 les deux migrations P10.5/P10.6 sont suivies nommément',
+ok(Array.isArray(rapport?.b2_migrations_p105_p106) && rapport.b2_migrations_p105_p106.length === 9,
+  'S2 les neuf migrations jalons P10.5→P12 sont suivies nommément',
   (rapport?.b2_migrations_p105_p106 || []).map((m) => `${m.nom.slice(0, 14)}…=${m.appliquee ? 'appliquée' : 'en attente'}`).join(' '));
+ok(rapport?.b7_identite?.mode_identite_systeme === 'permissif'
+    && rapport?.b8_portee_de_la_cle?.operations_systeme_gardees === 13
+    && rapport?.b8_portee_de_la_cle?.operations_systeme_non_gardees === 0
+    && rapport?.b8_portee_de_la_cle?.app_appelle_predicat_systeme === false,
+  'S2 l état P10.7/P12 (mode système, 13 gardes, prédicat fermé au runtime) est mesuré',
+  JSON.stringify({ modeSysteme: rapport?.b7_identite?.mode_identite_systeme, portee: rapport?.b8_portee_de_la_cle }));
 ok(rapport?.b4_proprietaires?.length === 6,
   'S2 les six fonctions visées par 20261102120000 sont nommées avec leur propriétaire',
   `${rapport?.b4_proprietaires?.length ?? 0}/6`);

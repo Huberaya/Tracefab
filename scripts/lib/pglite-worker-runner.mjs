@@ -6,15 +6,10 @@
  * lui-même le rôle worker. Le rôle est préprovisionné avant 201 ; le bail
  * SET/INHERIT est borné à chaque migration déclarée et ne porte jamais ADMIN.
  */
+import { exigeBailWorker, MIGRATIONS_AVEC_WORKER_TEMPORAIRE as LISTE_MIGRATIONS_WORKER } from './migrations_worker_temporaire.mjs';
+
 const BOOTSTRAP = '20261028120100_worker_identity_not_forgeable';
-export const MIGRATIONS_AVEC_WORKER_TEMPORAIRE = new Set([
-  BOOTSTRAP,
-  '20261028120200_document_reserved_fields_internal_only',
-  '20261031120000_identite_hmac_liee_au_contexte',
-  '20261105235900_active_tenant_policy_and_worker_closure',
-  '20261108120100_worker_fonctions_systeme_completes',
-  '20261108120200_corrections_p106_ownership_et_appartenance',
-]);
+export const MIGRATIONS_AVEC_WORKER_TEMPORAIRE = new Set(LISTE_MIGRATIONS_WORKER);
 
 const identifiant = (valeur) => '"' + String(valeur).replace(/"/g, '""') + '"';
 
@@ -23,7 +18,7 @@ const identifiant = (valeur) => '"' + String(valeur).replace(/"/g, '""') + '"';
  * Retourne un nettoyage idempotent à appeler après COMMIT ou après ROLLBACK.
  */
 export async function preparerWorkerPglite(db, migration) {
-  if (!MIGRATIONS_AVEC_WORKER_TEMPORAIRE.has(migration)) return async () => {};
+  if (!exigeBailWorker(migration)) return async () => {};
 
   const role = (await db.query('SELECT current_user AS nom')).rows[0]?.nom;
   if (!role) throw new Error('PGlite : current_user absent');
