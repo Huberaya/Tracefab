@@ -53,6 +53,9 @@ async function snapshot(client) {
   const schemaOwner = (await client.query(`
     SELECT pg_catalog.pg_get_userbyid(nspowner) AS owner
       FROM pg_catalog.pg_namespace WHERE nspname = 'public'`)).rows[0]?.owner;
+  const extensionOwner = (await client.query(`
+    SELECT pg_catalog.pg_get_userbyid(extowner) AS owner
+      FROM pg_catalog.pg_extension WHERE extname = 'pgcrypto'`)).rows[0]?.owner;
   const pgcrypto = (await client.query(`
     SELECT count(*)::int AS functions,
            count(*) FILTER (WHERE EXISTS (
@@ -68,7 +71,7 @@ async function snapshot(client) {
      WHERE d.refclassid = 'pg_catalog.pg_extension'::pg_catalog.regclass
        AND d.classid = 'pg_catalog.pg_proc'::pg_catalog.regclass
        AND d.deptype = 'e' AND e.extname = 'pgcrypto'`)).rows[0];
-  return { roles, totalRoles, schemaOwner, pgcrypto };
+  return { roles, totalRoles, schemaOwner, extensionOwner, pgcrypto };
 }
 
 try {
@@ -87,10 +90,23 @@ try {
 
   const dbUrl = new URL(urlCluster);
   dbUrl.pathname = `/${database}`;
+  const ownerUrl = new URL(dbUrl.toString());
+  ownerUrl.username = ownerRole;
+  ownerUrl.password = ownerPassword;
+
+  // Reproduire exactement la dissociation Neon : l'extension appartient au
+  // propriétaire non-superuser de la base, mais ses fonctions à cloud_admin.
+  const ownerDb = new pg.Client({ connectionString: ownerUrl.toString() });
+  await ownerDb.connect();
+  try {
+    await ownerDb.query('CREATE EXTENSION pgcrypto');
+  } finally {
+    await ownerDb.end();
+  }
+
   const rootDb = new pg.Client({ connectionString: dbUrl.toString() });
   await rootDb.connect();
   try {
-    await rootDb.query('CREATE EXTENSION pgcrypto');
     const members = (await rootDb.query(`
       SELECT p.oid::pg_catalog.regprocedure::text AS signature
         FROM pg_catalog.pg_depend d
@@ -112,15 +128,13 @@ try {
   const avant = await snapshot(avantClient);
   await avantClient.end();
 
+  assert.equal(avant.extensionOwner, ownerRole, 'l’extension doit appartenir au propriétaire non-superuser de la base');
   assert.ok(avant.pgcrypto.functions > 0, 'fonctions pgcrypto présentes');
   assert.equal(avant.pgcrypto.public_execute, avant.pgcrypto.functions,
     'le fixture reproduit EXECUTE PUBLIC sur les fonctions pgcrypto');
   assert.equal(avant.pgcrypto.superuser_owned, avant.pgcrypto.functions,
     'toutes les fonctions membres sont détenues par le superutilisateur plateforme');
 
-  const ownerUrl = new URL(dbUrl.toString());
-  ownerUrl.username = ownerRole;
-  ownerUrl.password = ownerPassword;
   const execution = spawnSync(process.execPath, ['scripts/provisionner_roles_db.mjs', '--verifier'], {
     cwd: process.cwd(),
     encoding: 'utf8',
