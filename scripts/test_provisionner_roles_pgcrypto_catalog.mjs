@@ -45,6 +45,7 @@ let databaseCreated = false;
 let ownerCreated = false;
 let platformCreated = false;
 let unknownCreated = false;
+let appRoleCreated = false;
 
 async function snapshot(client) {
   const roles = (await client.query(`
@@ -221,11 +222,76 @@ try {
   assert.deepEqual(apresRefus, avantRefus,
     'le refus doit laisser les rôles, le schéma et les ACL inchangés');
 
-  console.log('PASS — PostgreSQL réel : Neon-managed accepté sans écriture ; propriétaire externe inconnu refusé avant CREATE ROLE.');
+  // Chemin positif : propriétaire de l'extension = exécutant non-superuser,
+  // donc les ACL sont modifiables. Le provisionneur réel doit soit valider
+  // toutes les opérations, soit échouer en annulant intégralement la transaction.
+  const rootFinal = new pg.Client({ connectionString: dbUrl.toString() });
+  await rootFinal.connect();
+  try {
+    const members = (await rootFinal.query(`
+      SELECT p.oid::pg_catalog.regprocedure::text AS signature
+        FROM pg_catalog.pg_depend d
+        JOIN pg_catalog.pg_proc p ON p.oid = d.objid
+        JOIN pg_catalog.pg_extension e ON e.oid = d.refobjid
+       WHERE d.refclassid = 'pg_catalog.pg_extension'::pg_catalog.regclass
+         AND d.classid = 'pg_catalog.pg_proc'::pg_catalog.regclass
+         AND d.deptype = 'e' AND e.extname = 'pgcrypto'`)).rows;
+    for (const { signature } of members) {
+      await rootFinal.query(`ALTER FUNCTION ${signature} OWNER TO ${qid(ownerRole)}`);
+    }
+  } finally {
+    await rootFinal.end();
+  }
+
+  const executionAvant = new pg.Client({ connectionString: dbUrl.toString() });
+  await executionAvant.connect();
+  const etatAvantProvisionnement = await snapshot(executionAvant);
+  await executionAvant.end();
+  const provisionnement = spawnSync(process.execPath, ['scripts/provisionner_roles_db.mjs'], {
+    cwd: process.cwd(),
+    encoding: 'utf8',
+    env: {
+      ...process.env,
+      DATABASE_URL: ownerUrl.toString(),
+      DATABASE_ADMIN_URL: '',
+      TF_APP_ROLE_NAME: testAppRole,
+      TF_ALLOW_PROVISIONING: 'oui',
+    },
+  });
+
+  const executionApres = new pg.Client({ connectionString: dbUrl.toString() });
+  await executionApres.connect();
+  const etatApresProvisionnement = await snapshot(executionApres);
+  const appRole = await executionApres.query(
+    'SELECT 1 FROM pg_catalog.pg_roles WHERE rolname = $1', [testAppRole]);
+  const hmac = (await executionApres.query(
+    `SELECT pg_catalog.has_function_privilege($1, 'public.hmac(bytea,bytea,text)', 'EXECUTE') AS migrator,
+            pg_catalog.has_function_privilege($2, 'public.hmac(bytea,bytea,text)', 'EXECUTE') AS app`,
+    ['tracefab_migrator', testAppRole])).rows[0];
+  await executionApres.end();
+
+  assert.equal(provisionnement.status, 0,
+    `le provisionneur doit réussir avec un propriétaire pgcrypto accessible :\n${provisionnement.stdout}\n${provisionnement.stderr}`);
+  appRoleCreated = appRole.rowCount === 1;
+  assert.equal(appRoleCreated, true, 'le rôle applicatif de sonde doit être créé');
+  assert.equal(etatApresProvisionnement.schemaOwner, 'tracefab_migrator',
+    'le schéma public doit appartenir au rôle de migration');
+  assert.equal(etatApresProvisionnement.pgcrypto.public_execute, 0,
+    'EXECUTE PUBLIC doit être retiré des fonctions pgcrypto lorsque le propriétaire est accessible');
+  assert.equal(hmac.migrator, true, 'le migrateur doit pouvoir exécuter hmac');
+  assert.equal(hmac.app, false, 'le rôle applicatif ne doit pas pouvoir exécuter hmac');
+  assert.ok(etatApresProvisionnement.totalRoles === etatAvantProvisionnement.totalRoles + 1,
+    'une seule identité applicative de sonde doit avoir été créée');
+
+  console.log('PASS — PostgreSQL réel : ACL Neon-managed, refus avant écriture et provisionnement positif non-superuser validés.');
 } finally {
   if (databaseCreated) await admin.query(`DROP DATABASE IF EXISTS ${qid(database)} WITH (FORCE)`).catch(() => {});
   if (platformCreated) await admin.query(`DROP ROLE IF EXISTS ${qid(platformRole)}`).catch(() => {});
   if (unknownCreated) await admin.query(`DROP ROLE IF EXISTS ${qid(unknownRole)}`).catch(() => {});
+  if (appRoleCreated) {
+    await admin.query(`DROP OWNED BY ${qid(testAppRole)}`).catch(() => {});
+    await admin.query(`DROP ROLE IF EXISTS ${qid(testAppRole)}`).catch(() => {});
+  }
   if (ownerCreated) await admin.query(`DROP ROLE IF EXISTS ${qid(ownerRole)}`).catch(() => {});
   if (verrou) await verrou.relacher().catch(() => {});
   await admin.end();
