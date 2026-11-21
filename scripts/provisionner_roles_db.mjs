@@ -293,7 +293,9 @@ async function verifierPublicPgcrypto(modePgcrypto = 'modifiable') {
                COALESCE(p.proacl, pg_catalog.acldefault('f', p.proowner))
              ) acl WHERE acl.grantee = 0 AND acl.privilege_type = 'EXECUTE'
            ) AS public_execute,
-           pg_catalog.has_function_privilege($1, p.oid, 'EXECUTE') AS app_execute
+           CASE WHEN pg_catalog.to_regrole($1) IS NULL THEN NULL
+             ELSE pg_catalog.has_function_privilege(pg_catalog.to_regrole($1), p.oid, 'EXECUTE')
+           END AS app_execute
       FROM pg_catalog.pg_depend d
       JOIN pg_catalog.pg_proc p ON p.oid = d.objid
       JOIN pg_catalog.pg_roles r ON r.oid = p.proowner
@@ -316,14 +318,18 @@ async function verifierPublicPgcrypto(modePgcrypto = 'modifiable') {
     // par CREATE EXTENSION ne sont pas retirables sans détruire l'extension.
     // On ne prétend donc PAS les avoir fermées et on ne bloque pas les rôles.
     const tousExternesPlateforme = ouverts.length > 0 && ouverts.every((r) => r.proprietaire_superuser === true && r.autorite_revoke !== true);
+    const droitsAppHorsPublic = rows.filter((r) => r.public_execute !== true && r.app_execute === true);
     ok(tousExternesPlateforme,
       'ACL pgcrypto de plateforme classées explicitement (résiduel documenté)',
       tousExternesPlateforme
         ? `${ouverts.length}/${rows.length} fonctions EXECUTE PUBLIC ; aucun REVOKE prétendu`
-        : 'au moins une fonction publique n’appartient pas à un superutilisateur de plateforme');
+        : 'au moins une fonction publique n’appartient pas à un superutilisateur externe non endossable');
+    ok(droitsAppHorsPublic.length === 0,
+      `${ROLE_APP_SURCHARGE} sans octroi EXECUTE direct hors ACL PUBLIC documentées`,
+      droitsAppHorsPublic.map((r) => r.signature).slice(0, 5).join(', ') || 'aucun');
     const hmac = rows.find((r) => r.signature.replace(/\s/g, '') === 'hmac(bytea,bytea,text)' || r.signature.replace(/\s/g, '') === 'public.hmac(bytea,bytea,text)');
     ok(Boolean(hmac), 'fonction hmac présente');
-    return tousExternesPlateforme && Boolean(hmac);
+    return tousExternesPlateforme && droitsAppHorsPublic.length === 0 && Boolean(hmac);
   }
 
   const appOuvertes = rows.filter((r) => r.app_execute !== false);
