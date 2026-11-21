@@ -65,7 +65,7 @@ assert.ok(brancheManaged >= 0 && brancheRevoke > brancheManaged,
   'la branche Neon-managed est évaluée avant toute tentative de REVOKE');
 assert.match(assurance.slice(brancheManaged, brancheRevoke), /continue;/,
   'les ACL plateforme sont conservées explicitement, sans tentative de REVOKE');
-assert.match(assurance, /if \(modePgcrypto === 'managed-external'\) return;/,
+assert.match(assurance, /if \(modePgcrypto === 'managed-external'\) \{[\s\S]*verifierPublicPgcrypto\('managed-external'\)[\s\S]*return;/,
   'aucun GRANT superflu n’est tenté dans le cas où PUBLIC donne déjà EXECUTE');
 
 const blocProvisionnement = source.slice(source.indexOf('if (!verifierSeulement) {'));
