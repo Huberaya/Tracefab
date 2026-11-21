@@ -68,11 +68,21 @@ async function snapshot(client) {
     SELECT datacl::text AS acl FROM pg_catalog.pg_database WHERE datname = current_database()`)).rows[0]?.acl ?? null;
   const schemaAcl = (await client.query(`
     SELECT nspacl::text AS acl FROM pg_catalog.pg_namespace WHERE nspname = 'public'`)).rows[0]?.acl ?? null;
-  const temporaryMemberships = Number((await client.query(`
-    SELECT count(*)::int AS n
+  const membershipState = (await client.query(`
+    SELECT count(*)::int AS memberships,
+           count(*) FILTER (WHERE set_option OR inherit_option)::int AS temporary_memberships,
+           bool_and(admin_option) AS admin_only,
+           bool_and(NOT inherit_option) AS no_inherit,
+           bool_and(NOT set_option) AS no_set
       FROM pg_catalog.pg_auth_members
      WHERE roleid = pg_catalog.to_regrole($2)
-       AND member = pg_catalog.to_regrole($1)`, [ownerRole, activeMigratorRole])).rows[0].n);
+       AND member = pg_catalog.to_regrole($1)`, [ownerRole, activeMigratorRole])).rows[0];
+  const temporaryMemberships = Number(membershipState.temporary_memberships);
+  const automaticAdminMembership = {
+    count: Number(membershipState.memberships),
+    adminOnly: membershipState.memberships > 0 && membershipState.admin_only === true
+      && membershipState.no_inherit === true && membershipState.no_set === true,
+  };
   const pgcrypto = (await client.query(`
     SELECT count(*)::int AS functions,
            count(*) FILTER (WHERE EXISTS (
@@ -88,7 +98,7 @@ async function snapshot(client) {
      WHERE d.refclassid = 'pg_catalog.pg_extension'::pg_catalog.regclass
        AND d.classid = 'pg_catalog.pg_proc'::pg_catalog.regclass
        AND d.deptype = 'e' AND e.extname = 'pgcrypto'`)).rows[0];
-  return { roles, totalRoles, schemaOwner, extensionOwner, databaseAcl, schemaAcl, temporaryMemberships, pgcrypto };
+  return { roles, totalRoles, schemaOwner, extensionOwner, databaseAcl, schemaAcl, temporaryMemberships, automaticAdminMembership, pgcrypto };
 }
 
 try {
@@ -297,7 +307,11 @@ try {
   assert.equal(dbPrivileges.migrator_create, true, 'le migrateur doit recevoir CREATE sur la base pour être propriétaire du schéma');
   assert.equal(dbPrivileges.app_create, false, 'le rôle applicatif ne doit jamais recevoir CREATE sur la base');
   assert.equal(etatApresProvisionnement.temporaryMemberships, 0,
-    'l’appartenance SET temporaire doit être révoquée avant COMMIT');
+    'aucune appartenance SET/INHERIT temporaire ne doit subsister après le transfert');
+  assert.ok(etatApresProvisionnement.automaticAdminMembership.count === 0
+    || (etatApresProvisionnement.automaticAdminMembership.count === 1
+      && etatApresProvisionnement.automaticAdminMembership.adminOnly),
+    'seul le grant ADMIN automatique PostgreSQL, sans SET ni INHERIT, est toléré');
   assert.match(provisionnement.stdout, /propriété du schéma transférée avec SET temporaire puis révoqué/,
     'le chemin positif doit prouver le transfert via l’appartenance SET temporaire');
   assert.ok(etatApresProvisionnement.totalRoles === etatAvantProvisionnement.totalRoles + 2,
