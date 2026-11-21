@@ -486,7 +486,12 @@ async function assurerExtensions(modePgcrypto) {
   const requises = ['public.hmac(bytea,bytea,text)'];
   for (const signature of requises) {
     try {
-      await db.query(`GRANT EXECUTE ON FUNCTION ${signature} TO ${ROLE_MIGRATOR}`);
+      const avant = (await db.query(
+        `SELECT pg_catalog.has_function_privilege($1, $2, 'EXECUTE') AS mig`,
+        [ROLE_MIGRATOR, signature])).rows[0];
+      if (avant?.mig !== true) {
+        await db.query(`GRANT EXECUTE ON FUNCTION ${signature} TO ${ROLE_MIGRATOR}`);
+      }
       const { rows } = await db.query(
         `SELECT pg_catalog.has_function_privilege($1, $2, 'EXECUTE') AS mig,
                 pg_catalog.has_function_privilege($3, $2, 'EXECUTE') AS app`,
