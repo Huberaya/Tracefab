@@ -416,7 +416,7 @@ async function preflightPgcryptoAvantEcriture() {
     console.error('  REFUS AVANT ÉCRITURE — la fonction hmac(bytea,bytea,text) est absente.');
     return null;
   }
-  if (hmac.migrator_execute !== true && hmac.autorite_revoke !== true) {
+  if (hmac.migrator_execute !== true && hmac.public_execute !== true && hmac.autorite_revoke !== true) {
     console.error('  REFUS AVANT ÉCRITURE — aucune capacité démontrée pour donner EXECUTE sur hmac au rôle de migration.');
     return null;
   }
