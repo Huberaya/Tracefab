@@ -295,6 +295,8 @@ try {
   assert.equal(dbPrivileges.app_create, false, 'le rôle applicatif ne doit jamais recevoir CREATE sur la base');
   assert.equal(etatApresProvisionnement.temporaryMemberships, 0,
     'l’appartenance SET temporaire doit être révoquée avant COMMIT');
+  assert.match(provisionnement.stdout, /propriété du schéma transférée avec SET temporaire puis révoqué/,
+    'le chemin positif doit prouver le transfert via l’appartenance SET temporaire');
   assert.ok(etatApresProvisionnement.totalRoles === etatAvantProvisionnement.totalRoles + 1,
     'une seule identité applicative de sonde doit avoir été créée');
 
@@ -306,6 +308,7 @@ try {
   await rootNegative.connect();
   try {
     await rootNegative.query(`ALTER SCHEMA public OWNER TO ${qid(ownerRole)}`);
+    await rootNegative.query(`REVOKE tracefab_migrator FROM ${qid(ownerRole)}`);
     await rootNegative.query(`ALTER ROLE ${qid(ownerRole)} NOCREATEROLE`);
   } finally {
     await rootNegative.end();
