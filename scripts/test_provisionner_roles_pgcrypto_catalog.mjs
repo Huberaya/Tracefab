@@ -273,6 +273,8 @@ try {
     },
   });
 
+  assert.equal(provisionnement.status, 0,
+    `le provisionneur doit réussir avec un propriétaire pgcrypto accessible :\n${provisionnement.stdout}\n${provisionnement.stderr}`);
   const executionApres = new pg.Client({ connectionString: dbUrl.toString() });
   await executionApres.connect();
   const etatApresProvisionnement = await snapshot(executionApres);
@@ -288,8 +290,6 @@ try {
     ['tracefab_migrator', testAppRole])).rows[0];
   await executionApres.end();
 
-  assert.equal(provisionnement.status, 0,
-    `le provisionneur doit réussir avec un propriétaire pgcrypto accessible :\n${provisionnement.stdout}\n${provisionnement.stderr}`);
   assert.equal(appRole.rowCount, 1, 'le rôle applicatif de sonde doit être créé');
   assert.equal(etatApresProvisionnement.schemaOwner, 'tracefab_migrator',
     'le schéma public doit appartenir au rôle de migration');
