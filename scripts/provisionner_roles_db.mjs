@@ -321,7 +321,7 @@ async function verifierPublicPgcrypto(modePgcrypto = 'modifiable') {
       tousExternesPlateforme
         ? `${ouverts.length}/${rows.length} fonctions EXECUTE PUBLIC ; aucun REVOKE prétendu`
         : 'au moins une fonction publique n’appartient pas à un superutilisateur de plateforme');
-    const hmac = rows.find((r) => r.signature.replace(/\\s/g, '') === 'hmac(bytea,bytea,text)' || r.signature.replace(/\\s/g, '') === 'public.hmac(bytea,bytea,text)');
+    const hmac = rows.find((r) => r.signature.replace(/\s/g, '') === 'hmac(bytea,bytea,text)' || r.signature.replace(/\s/g, '') === 'public.hmac(bytea,bytea,text)');
     ok(Boolean(hmac), 'fonction hmac présente');
     return tousExternesPlateforme && Boolean(hmac);
   }
