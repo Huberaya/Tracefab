@@ -95,9 +95,9 @@ const corrigerAttributs = process.env.TF_CORRIGER_ATTRIBUTS === 'oui';
 // Surcharge réservée aux tests jetables : permet de reproduire le grantor
 // réel (l'exécutant crée son propre rôle migrateur) sans toucher au rôle
 // partagé tracefab_migrator du cluster CI.
-const ROLE_MIGRATOR_EFFECTIF_EFFECTIF = process.env.TF_MIGRATOR_ROLE_NAME || ROLE_MIGRATOR_EFFECTIF;
-if (ROLE_MIGRATOR_EFFECTIF_EFFECTIF !== ROLE_MIGRATOR_EFFECTIF && !/^tf_[a-z0-9_]+$/.test(ROLE_MIGRATOR_EFFECTIF_EFFECTIF)) {
-  console.error(`  REFUS — nom de rôle migrateur ${ROLE_MIGRATOR_EFFECTIF_EFFECTIF} hors liste fermée (${ROLE_MIGRATOR_EFFECTIF} ou tf_*).`);
+const ROLE_MIGRATOR_EFFECTIF = process.env.TF_MIGRATOR_ROLE_NAME || ROLE_MIGRATOR;
+if (ROLE_MIGRATOR_EFFECTIF !== ROLE_MIGRATOR_EFFECTIF && !/^tf_[a-z0-9_]+$/.test(ROLE_MIGRATOR_EFFECTIF)) {
+  console.error(`  REFUS — nom de rôle migrateur ${ROLE_MIGRATOR_EFFECTIF} hors liste fermée (${ROLE_MIGRATOR} ou tf_*).`);
   process.exit(2);
 }
 const url = (process.env.DATABASE_ADMIN_URL || process.env.DATABASE_URL || '').trim();
