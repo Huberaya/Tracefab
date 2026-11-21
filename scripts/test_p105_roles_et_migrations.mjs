@@ -194,6 +194,26 @@ await admin.connect();
 console.log(`  base jetable : ${base}`);
 await admin.query(`DROP DATABASE IF EXISTS ${base} WITH (FORCE)`);
 await admin.query(`CREATE DATABASE ${base}`);
+
+// Reproduire le résiduel Neon observé : pgcrypto est installé par le rôle
+// superutilisateur géré (analogue cloud_admin), puis le provisionneur est lancé
+// par l'administrateur CREATEROLE non-superuser. Si l'extension était créée par
+// cet administrateur, ses fonctions lui appartiendraient et le test basculerait
+// à tort dans le mode « ACL modifiables », où PUBLIC doit être révoqué et où
+// l'application ne doit plus hériter d'EXECUTE. Dans Neon, ces fonctions sont
+// détenues par le superutilisateur externe et leurs ACL PUBLIC préexistantes
+// sont explicitement classées, jamais révoquées.
+const proprietairePgcrypto = new pg.Client({
+  connectionString: urlProprietaire(base),
+  ssl: sslDepuisUrl(urlProprietaire(base)),
+  application_name: 'tracefab-p105-pgcrypto-owner',
+});
+await proprietairePgcrypto.connect();
+try {
+  await proprietairePgcrypto.query('CREATE EXTENSION IF NOT EXISTS pgcrypto');
+} finally {
+  await proprietairePgcrypto.end();
+}
 await assurerAdministrateurDeBanc();
 
 // Les roles sont des objets de CLUSTER : les provisionner ici change leur mot
