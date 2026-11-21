@@ -334,7 +334,7 @@ try {
   const apresSansCreateRole = await snapshot(apresSansCreateRoleClient);
   await apresSansCreateRoleClient.end();
   assert.notEqual(refusSet.status, 0,
-    'sans CREATEROLE ni ADMIN OPTION, l'appartenance temporaire doit être refusée');
+    "sans CREATEROLE ni ADMIN OPTION, l’appartenance temporaire doit être refusée");
   assert.match(refusSet.stdout + refusSet.stderr, /ROLLBACK — provisionnement annulé intégralement/,
     'le refus tardif doit déclencher un rollback explicite');
   assert.deepEqual(apresSansCreateRole, avantSansCreateRole,
