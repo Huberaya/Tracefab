@@ -213,7 +213,6 @@ try {
       DATABASE_URL: ownerUrl.toString(),
       DATABASE_ADMIN_URL: '',
       TF_APP_ROLE_NAME: testAppRole,
-      TF_MIGRATOR_ROLE_NAME: testMigratorRole,
       TF_ALLOW_PROVISIONING: 'oui',
     },
   });
@@ -266,6 +265,7 @@ try {
       DATABASE_URL: ownerUrl.toString(),
       DATABASE_ADMIN_URL: '',
       TF_APP_ROLE_NAME: testAppRole,
+      TF_MIGRATOR_ROLE_NAME: testMigratorRole,
       TF_ALLOW_PROVISIONING: 'oui',
     },
   });
