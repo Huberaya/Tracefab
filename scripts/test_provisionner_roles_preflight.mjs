@@ -13,6 +13,13 @@ const fin = source.indexOf('\nasync function assurerExtensions(', debut);
 assert.ok(debut >= 0 && fin > debut, 'le préflight pgcrypto existe et est délimité');
 const preflight = source.slice(debut, fin);
 
+const verifierDebut = source.indexOf('async function verifierPublicPgcrypto(');
+const verifierFin = source.indexOf('\nasync function preflightPgcryptoAvantEcriture()', verifierDebut);
+assert.ok(verifierDebut >= 0 && verifierFin > verifierDebut, 'le contrôle des ACL pgcrypto est délimité');
+const verifier = source.slice(verifierDebut, verifierFin);
+assert.match(verifier, /droitsAppHorsPublic/,
+  'un droit direct de l’application hors PUBLIC reste détecté comme écart');
+
 assert.match(preflight, /pg_catalog\.pg_available_extensions/,
   'l’absence de pgcrypto est évaluée avant les écritures');
 assert.match(preflight, /has_database_privilege\(current_user, current_database\(\), 'CREATE'\)/,
@@ -44,8 +51,6 @@ assert.ok(brancheManaged >= 0 && brancheRevoke > brancheManaged,
   'la branche Neon-managed est évaluée avant toute tentative de REVOKE');
 assert.match(assurance.slice(brancheManaged, brancheRevoke), /continue;/,
   'les ACL plateforme sont conservées explicitement, sans tentative de REVOKE');
-assert.match(assurance, /droitsAppHorsPublic/,
-  'un droit direct de l’application hors PUBLIC reste détecté comme écart');
 assert.match(assurance, /if \(modePgcrypto === 'managed-external'\) return;/,
   'aucun GRANT superflu n’est tenté dans le cas où PUBLIC donne déjà EXECUTE');
 
