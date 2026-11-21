@@ -45,7 +45,6 @@ let databaseCreated = false;
 let ownerCreated = false;
 let platformCreated = false;
 let unknownCreated = false;
-let appRoleCreated = false;
 
 async function snapshot(client) {
   const roles = (await client.query(`
@@ -272,8 +271,7 @@ try {
 
   assert.equal(provisionnement.status, 0,
     `le provisionneur doit réussir avec un propriétaire pgcrypto accessible :\n${provisionnement.stdout}\n${provisionnement.stderr}`);
-  appRoleCreated = appRole.rowCount === 1;
-  assert.equal(appRoleCreated, true, 'le rôle applicatif de sonde doit être créé');
+  assert.equal(appRole.rowCount, 1, 'le rôle applicatif de sonde doit être créé');
   assert.equal(etatApresProvisionnement.schemaOwner, 'tracefab_migrator',
     'le schéma public doit appartenir au rôle de migration');
   assert.equal(etatApresProvisionnement.pgcrypto.public_execute, 0,
@@ -288,10 +286,8 @@ try {
   if (databaseCreated) await admin.query(`DROP DATABASE IF EXISTS ${qid(database)} WITH (FORCE)`).catch(() => {});
   if (platformCreated) await admin.query(`DROP ROLE IF EXISTS ${qid(platformRole)}`).catch(() => {});
   if (unknownCreated) await admin.query(`DROP ROLE IF EXISTS ${qid(unknownRole)}`).catch(() => {});
-  if (appRoleCreated) {
-    await admin.query(`DROP OWNED BY ${qid(testAppRole)}`).catch(() => {});
-    await admin.query(`DROP ROLE IF EXISTS ${qid(testAppRole)}`).catch(() => {});
-  }
+  await admin.query(`DROP OWNED BY ${qid(testAppRole)}`).catch(() => {});
+  await admin.query(`DROP ROLE IF EXISTS ${qid(testAppRole)}`).catch(() => {});
   if (ownerCreated) await admin.query(`DROP ROLE IF EXISTS ${qid(ownerRole)}`).catch(() => {});
   if (verrou) await verrou.relacher().catch(() => {});
   await admin.end();
