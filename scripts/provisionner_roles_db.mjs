@@ -538,12 +538,14 @@ async function assurerDroitsSchema() {
     // CREATEDB et aucun droit CREATE n'est accordé au runtime.
     `GRANT CREATE ON DATABASE "${base}" TO ${ROLE_MIGRATOR}`,
     `GRANT USAGE ON SCHEMA public TO ${ROLE_APP_SURCHARGE}`,
+    // Donner les droits avant le transfert : une fois le schéma possédé par
+    // le migrateur, l'exécutant peut ne plus être autorisé à faire ce GRANT.
+    `GRANT USAGE, CREATE ON SCHEMA public TO ${ROLE_MIGRATOR}`,
     // Le proprietaire du SCHEMA, et pas seulement un detenteur de CREATE :
     // la premiere migration pose `COMMENT ON SCHEMA public`, qui exige la
     // propriete du schema (« must be owner of schema public », mesure).
     // Sur Neon, c'est deja le role proprietaire des objets qui le porte.
     `ALTER SCHEMA public OWNER TO ${ROLE_MIGRATOR}`,
-    `GRANT USAGE, CREATE ON SCHEMA public TO ${ROLE_MIGRATOR}`,
   ];
   for (const sql of instructions) {
     try {
