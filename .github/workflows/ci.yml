@@ -760,6 +760,11 @@ jobs:
         # Via le lanceur garde : refuse toute cible non jetable avant CREATE ROLE.
         run: node scripts/executer_avec_erreur_annotee.mjs "preparation du role applicatif" npm run db:prepare-ci-role
 
+      - name: Préflight pgcrypto Neon-managed — vrai catalogue PostgreSQL jetable
+        # Reproduit cloud_admin avec un rôle superuser non endossable dans une
+        # base temporaire. Le vrai --verifier doit classer les ACL sans écriture.
+        run: node scripts/executer_avec_erreur_annotee.mjs "preflight pgcrypto Neon-managed" npm run test:provisioning:pgcrypto-catalog
+
       - name: Appliquer les migrations avec le runner transactionnel contrôlé
         # La migration worker exige un bail SET/INHERIT fourni par un
         # administrateur distinct. Prisma CLI seul ne peut pas injecter ce bail
