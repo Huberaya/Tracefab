@@ -221,6 +221,10 @@ function quote(s) {
   return `'${String(s).replace(/'/g, "''")}'`;
 }
 
+function quoteIdent(s) {
+  return `"${String(s).replace(/"/g, '""')}"`;
+}
+
 /**
  * Les droits de SCHÉMA, que les rôles ne portent pas eux-mêmes.
  *
@@ -531,37 +535,67 @@ async function assurerExtensions(modePgcrypto) {
 
 async function assurerDroitsSchema() {
   const base = (await db.query('SELECT current_database() AS b')).rows[0].b;
+  const executant = identite.r;
   const instructions = [
     `GRANT CONNECT ON DATABASE "${base}" TO ${ROLE_APP_SURCHARGE}, ${ROLE_MIGRATOR}`,
-    // Même privilège minimal que le bootstrap CI : le nouveau propriétaire
-    // du schéma doit pouvoir créer des objets dans cette base. Ce n'est pas
-    // CREATEDB et aucun droit CREATE n'est accordé au runtime.
     `GRANT CREATE ON DATABASE "${base}" TO ${ROLE_MIGRATOR}`,
     `GRANT USAGE ON SCHEMA public TO ${ROLE_APP_SURCHARGE}`,
-    // Donner les droits avant le transfert : une fois le schéma possédé par
-    // le migrateur, l'exécutant peut ne plus être autorisé à faire ce GRANT.
     `GRANT USAGE, CREATE ON SCHEMA public TO ${ROLE_MIGRATOR}`,
-    // Le proprietaire du SCHEMA, et pas seulement un detenteur de CREATE :
-    // la premiere migration pose `COMMENT ON SCHEMA public`, qui exige la
-    // propriete du schema (« must be owner of schema public », mesure).
-    // Sur Neon, c'est deja le role proprietaire des objets qui le porte.
-    `ALTER SCHEMA public OWNER TO ${ROLE_MIGRATOR}`,
   ];
   for (const sql of instructions) {
     try {
       await db.query(sql);
     } catch (e) {
-      ok(false, 'droits de schéma', `${sql.slice(0, 42)}… → ${e.code || ''} ${e.message.split('\n')[0].slice(0, 70)}`);
+      throw new Error(`droits de schéma refusés (${sql.slice(0, 48)}…) : ${e.code || ''} ${e.message.split('\\n')[0]}`, { cause: e });
     }
   }
-  // Contrôle : le runtime ne doit pas pouvoir créer d'objet.
+
+  // PostgreSQL exige que l'exécutant puisse SET ROLE vers le futur propriétaire.
+  // CREATEROLE permet ici une appartenance strictement temporaire : aucun ADMIN,
+  // aucune inheritance, SET uniquement. Elle est retirée avant COMMIT.
+  // Si GRANT ou ALTER échoue, la transaction entière est annulée : l'appartenance
+  // temporaire ne peut donc pas survivre à un chemin d'erreur.
+  await db.query(
+    `GRANT ${ROLE_MIGRATOR} TO ${quoteIdent(executant)} WITH ADMIN FALSE, INHERIT FALSE, SET TRUE`,
+  );
+  const capacite = (await db.query(
+    `SELECT pg_catalog.pg_has_role(current_user, $1, 'SET') AS peut_endosser`,
+    [ROLE_MIGRATOR],
+  )).rows[0]?.peut_endosser;
+  if (capacite !== true) {
+    throw new Error(`appartenance temporaire accordée mais SET ROLE vers ${ROLE_MIGRATOR} non démontré`);
+  }
+
+  await db.query(`ALTER SCHEMA public OWNER TO ${ROLE_MIGRATOR}`);
+  await db.query(`REVOKE ${ROLE_MIGRATOR} FROM ${quoteIdent(executant)}`);
+
+  const final = (await db.query(
+    `SELECT pg_catalog.pg_has_role(current_user, $1, 'SET') AS peut_endosser,
+            EXISTS (
+              SELECT 1 FROM pg_catalog.pg_auth_members m
+               WHERE m.roleid = pg_catalog.to_regrole($1)
+                 AND m.member = pg_catalog.to_regrole(current_user)
+            ) AS appartenance_directe`,
+    [ROLE_MIGRATOR],
+  )).rows[0];
+  if (final.peut_endosser || final.appartenance_directe) {
+    throw new Error(`appartenance temporaire à ${ROLE_MIGRATOR} non révoquée après transfert`);
+  }
+
   const { rows } = await db.query(
     `SELECT has_schema_privilege($1, 'public', 'CREATE') AS app_create,
-            has_schema_privilege($2, 'public', 'CREATE') AS mig_create`,
+            has_schema_privilege($2, 'public', 'CREATE') AS mig_create,
+            pg_catalog.pg_get_userbyid(n.nspowner) AS schema_owner
+       FROM pg_catalog.pg_namespace n
+      WHERE n.nspname = 'public'`,
     [ROLE_APP_SURCHARGE, ROLE_MIGRATOR],
   );
-  ok(rows[0].app_create === false, `${ROLE_APP_SURCHARGE} n a pas CREATE sur le schéma public`, `create=${rows[0].app_create}`);
-  ok(rows[0].mig_create === true, 'tracefab_migrator a CREATE sur le schéma public', `create=${rows[0].mig_create}`);
+  if (rows[0]?.app_create !== false || rows[0]?.mig_create !== true
+      || rows[0]?.schema_owner !== ROLE_MIGRATOR) {
+    throw new Error(`post-contrôle schéma invalide : app_create=${rows[0]?.app_create}, mig_create=${rows[0]?.mig_create}, owner=${rows[0]?.schema_owner}`);
+  }
+  ok(true, 'propriété du schéma transférée avec SET temporaire puis révoqué',
+    `owner=${rows[0].schema_owner}, app_create=false, migrator_create=true, appartenance temporaire absente`);
 }
 
 if (!verifierSeulement) {
@@ -578,13 +612,21 @@ if (!verifierSeulement) {
   // PostgreSQL rend CREATE ROLE, CREATE EXTENSION, GRANT et ALTER SCHEMA
   // transactionnels ; une déconnexion inattendue provoque également ROLLBACK.
   await db.query('BEGIN');
+  try {
   // L'ordre compte : `tracefab_migrator` doit exister avant la chaîne, et
   // `tracefab_app` aussi (la chaîne lui accorde des privilèges par son nom).
   await assurerRole(ROLE_APP_SURCHARGE, process.env.TF_APP_PASSWORD);
   await assurerRole(ROLE_MIGRATOR, process.env.TF_MIGRATOR_PASSWORD);
-  if (echecs === 0) await assurerExtensions(modePgcrypto);
-  if (echecs === 0) await assurerDroitsSchema();
-  else console.error('  REFUS — droits du schema et transferts non executes : preconditions en echec.');
+  if (echecs > 0) throw new Error('préconditions de rôles en échec');
+  await assurerExtensions(modePgcrypto);
+  if (echecs > 0) throw new Error('préconditions pgcrypto en échec');
+  await assurerDroitsSchema();
+  } catch (e) {
+    await db.query('ROLLBACK').catch(() => {});
+    console.error(`  ROLLBACK — provisionnement annulé intégralement : ${e.code || ''} ${e.message.split('\\n')[0]}`);
+    await db.end();
+    process.exit(1);
+  }
   console.log('  note  tracefab_worker n est PAS créé ici : la migration');
   console.log('        20261028120100 le crée et lui transfère la propriété de six');
   console.log('        fonctions. Le créer avant rendrait cette migration inapplicable');
