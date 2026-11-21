@@ -28,6 +28,10 @@ assert.match(preflight, /determinerModePgcrypto\(/,
   'la décision de sécurité est déléguée à la politique pure testée');
 assert.match(preflight, /migrator_execute/,
   'l’accès du rôle de migration à hmac est vérifié avant les écritures');
+assert.match(preflight, /app_direct_execute/,
+  'les ACL EXECUTE directes du rôle applicatif sont contrôlées avant les écritures');
+assert.match(preflight, /possède déjà des ACL EXECUTE directes/,
+  'un octroi direct à l’application refuse avant provisionnement');
 assert.match(preflight, /aucune capacité démontrée pour donner EXECUTE sur hmac/,
   'l’absence de droit et de capacité de GRANT refuse avant écriture');
 assert.match(preflight, /decision\.mode === 'managed-external'/,
