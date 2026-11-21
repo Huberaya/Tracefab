@@ -543,6 +543,11 @@ if (!verifierSeulement) {
     await db.end();
     process.exit(1);
   }
+  // Toutes les écritures d'administration sont atomiques : un refus tardif
+  // (rôle, ACL, schéma) annule aussi les CREATE ROLE et REVOKE déjà exécutés.
+  // PostgreSQL rend CREATE ROLE, CREATE EXTENSION, GRANT et ALTER SCHEMA
+  // transactionnels ; une déconnexion inattendue provoque également ROLLBACK.
+  await db.query('BEGIN');
   // L'ordre compte : `tracefab_migrator` doit exister avant la chaîne, et
   // `tracefab_app` aussi (la chaîne lui accorde des privilèges par son nom).
   await assurerRole(ROLE_APP_SURCHARGE, process.env.TF_APP_PASSWORD);
@@ -594,6 +599,16 @@ ok(transitives.length === 0, `${ROLE_APP_SURCHARGE} n atteint aucun rôle par tr
 const migDirectes = await appartenancesDirectes(db, ROLE_MIGRATOR);
 ok(migDirectes.every((a) => a.role_accorde !== ROLE_APP_SURCHARGE), 'tracefab_migrator n est pas membre du rôle applicatif',
   migDirectes.map((a) => a.role_accorde).join(', ') || 'aucune appartenance');
+
+if (!verifierSeulement) {
+  if (echecs === 0) {
+    await db.query('COMMIT');
+    console.log('  transaction administrative validée atomiquement.');
+  } else {
+    await db.query('ROLLBACK');
+    console.error('  ROLLBACK — toutes les écritures de provisionnement ont été annulées.');
+  }
+}
 
 console.log('');
 if (echecs === 0) {
