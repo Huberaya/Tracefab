@@ -63,6 +63,7 @@ import {
   etatRole, ecartsAttributs, appartenancesDirectes, appartenancesTransitives,
 } from './lib/tracefab_roles.mjs';
 import { verifierAucuneAppartenance } from './lib/tracefab_app_role.mjs';
+import { determinerModePgcrypto } from './lib/pgcrypto_provisioning_policy.mjs';
 
 // Surcharge du nom du rôle applicatif, bornée aux noms `tf_*`.
 //
@@ -359,11 +360,16 @@ async function preflightPgcryptoAvantEcriture() {
     const { rows } = await db.query(`
       SELECT EXISTS (SELECT 1 FROM pg_catalog.pg_available_extensions WHERE name = 'pgcrypto') AS disponible,
              pg_catalog.has_database_privilege(current_user, current_database(), 'CREATE') AS create_database`);
-    if (rows[0]?.disponible === true && rows[0]?.create_database === true) {
+    const decision = determinerModePgcrypto({
+      extensionPresente: false,
+      extensionDisponible: rows[0]?.disponible === true,
+      peutInstaller: rows[0]?.create_database === true,
+    });
+    if (decision.mode === 'install') {
       console.log('  préflight pgcrypto : extension absente, installation autorisée vérifiée.');
-      return 'install';
+      return decision.mode;
     }
-    console.error('  REFUS AVANT ÉCRITURE — pgcrypto absente et installation non autorisée ou indisponible.');
+    console.error(`  REFUS AVANT ÉCRITURE — ${decision.reason}.`);
     return null;
   }
 
@@ -389,28 +395,28 @@ async function preflightPgcryptoAvantEcriture() {
        AND d.deptype = 'e'
        AND d.refobjid = (SELECT oid FROM pg_catalog.pg_extension WHERE extname = 'pgcrypto')
      ORDER BY 1`);
-  if (rows.length === 0) {
-    console.error('  REFUS AVANT ÉCRITURE — pgcrypto présente mais aucune fonction membre vérifiable.');
-    return null;
-  }
+  const decision = determinerModePgcrypto({
+    extensionPresente: true,
+    fonctions: rows,
+  });
 
-  const ouverts = rows.filter((r) => r.public_execute);
-  const sansAutorite = ouverts.filter((r) => r.autorite_revoke !== true);
-  if (sansAutorite.length === 0) {
-    console.log(`  préflight pgcrypto : ${rows.length} fonction(s), ${ouverts.length} EXECUTE PUBLIC modifiable(s).`);
-    return 'modifiable';
+  if (decision.mode === 'modifiable') {
+    const ouverts = rows.filter((r) => r.public_execute === true).length;
+    console.log(`  préflight pgcrypto : ${rows.length} fonction(s), ${ouverts} EXECUTE PUBLIC modifiable(s).`);
+    return decision.mode;
   }
-
-  const tousPlateforme = ouverts.length > 0 && ouverts.every((r) => r.proprietaire_superuser === true && r.autorite_revoke !== true);
-  if (tousPlateforme) {
-    console.log(`  AVERTISSEMENT — ${sansAutorite.length} fonction(s) pgcrypto appartiennent à un superutilisateur géré par la plateforme ; ACL PUBLIC préexistantes documentées, aucune tentative de REVOKE.`);
+  if (decision.mode === 'managed-external') {
+    const ouverts = rows.filter((r) => r.public_execute === true).length;
+    console.log(`  AVERTISSEMENT — ${ouverts} fonction(s) pgcrypto appartiennent à un superutilisateur géré par la plateforme ; ACL PUBLIC préexistantes documentées, aucune tentative de REVOKE.`);
     console.log('  Le résiduel est conservé explicitement ; aucune destruction/réinstallation de pgcrypto ni élévation cloud_admin.');
-    return 'managed-external';
+    return decision.mode;
   }
 
+  console.error(`  REFUS AVANT ÉCRITURE — ${decision.reason}.`);
+  const sansAutorite = rows.filter((r) => r.public_execute === true && r.autorite_revoke !== true);
   const detail = sansAutorite.slice(0, 8)
     .map((r) => `${r.signature} (propriétaire ${r.proprietaire})`).join(', ');
-  console.error(`  REFUS AVANT ÉCRITURE — propriétaire externe non classé sur ${sansAutorite.length} fonction(s) : ${detail}.`);
+  if (detail) console.error(`  Fonctions concernées : ${detail}.`);
   return null;
 }
 
