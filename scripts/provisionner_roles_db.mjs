@@ -583,8 +583,30 @@ async function assurerDroitsSchema() {
   // CREATEROLE crée un rôle. Ce grant système ne peut pas être révoqué par
   // l'exécutant. On retire notre grant SET temporaire et on tolère uniquement
   // ce résiduel documenté, sans capacité SET ni héritage.
+  //
+  // POURQUOI `pg_has_role(..., 'SET')` NE SUFFIT PAS À LUI SEUL
+  // ------------------------------------------------------------
+  // `pg_has_role` intègre le privilège SUPERUSER : sur PostgreSQL, un
+  // superutilisateur obtient TOUS les privilèges sur tous les rôles, donc
+  // `pg_has_role(current_user, n_importe_quel_role, 'SET')` vaut vrai pour lui
+  // SANS AUCUNE appartenance. Mesuré sur PostgreSQL 17.12 : exécuté par
+  // `postgres`, `pg_has_role` rend vrai alors que `pg_auth_members` ne contient
+  // aucune ligne pour ce couple.
+  //
+  // Lire `peut_endosser` seul faisait donc échouer le provisionnement pour un
+  // exécutant superutilisateur — exactement le cas de la sonde
+  // `B3.2 bis` (contrôle positif de `TF_CORRIGER_ATTRIBUTS`) et de tout
+  // opérateur qui provisionne avec un compte SUPERUSER. Le ROLLBACK annulait
+  // alors une correction d'attribut pourtant appliquée.
+  //
+  // La propriété à vérifier n'est pas « l'exécutant peut-il endosser ? » mais
+  // « RESTE-T-IL une appartenance qui le lui permette ? ». On sépare donc les
+  // deux : `capacite_par_privilege` explique le vrai, `peut_endosser_par_appartenance`
+  // est la seule chose que ce bloc doit faire échouer. Le refus reste entier
+  // pour un exécutant non superutilisateur, c'est-à-dire pour le modèle Neon.
   const final = (await db.query(
     `SELECT pg_catalog.pg_has_role(current_user, $1, 'SET') AS peut_endosser,
+            (SELECT rolsuper FROM pg_catalog.pg_roles WHERE rolname = current_user) AS executant_superuser,
             count(*)::int AS nb_appartenances,
             COALESCE(bool_and(m.admin_option), false) AS admin_seul,
             COALESCE(bool_and(NOT m.inherit_option), true) AS sans_inherit,
@@ -596,8 +618,17 @@ async function assurerDroitsSchema() {
   )).rows[0];
   const residuelAutomatiqueSûr = final.nb_appartenances === 0
     || (final.nb_appartenances === 1 && final.admin_seul && final.sans_inherit && final.sans_set);
-  if (final.peut_endosser || !residuelAutomatiqueSûr) {
+  // Une appartenance résiduelle qui ne donne ni SET ni héritage ne permet pas
+  // d'endosser : elle est inoffensive, et c'est le seul cas toléré.
+  const peutEndosserParAppartenance = final.nb_appartenances > 0
+    && (final.sans_set === false || final.sans_inherit === false);
+  if (peutEndosserParAppartenance || !residuelAutomatiqueSûr) {
     throw new Error(`appartenance SET temporaire à ${ROLE_MIGRATOR_EFFECTIF} non révoquée ou résiduel ADMIN non conforme`);
+  }
+  if (final.executant_superuser && final.peut_endosser) {
+    // Documenté, jamais silencieux : la capacité vient du privilège SUPERUSER,
+    // pas d'une appartenance. Aucun droit nouveau n'a donc été laissé derrière.
+    console.log(`  note  SET ROLE vers ${ROLE_MIGRATOR_EFFECTIF} disponible par privilège SUPERUSER, hors appartenance — aucune appartenance laissée (${final.nb_appartenances})`);
   }
 
   const { rows } = await db.query(
