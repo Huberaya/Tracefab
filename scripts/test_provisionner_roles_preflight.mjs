@@ -85,4 +85,13 @@ assert.match(source, /const modePgcrypto = await preflightPgcryptoAvantEcriture\
 assert.match(source, /await db\.query\('COMMIT'\)[\s\S]*await db\.query\('ROLLBACK'\)/,
   'le provisionnement valide ou annule atomiquement toutes ses écritures');
 
+assert.match(source, /WITH ADMIN FALSE, INHERIT FALSE, SET TRUE/,
+  'le droit SET est accordé temporairement sans ADMIN ni INHERIT');
+assert.match(source, /ALTER SCHEMA public OWNER TO ${ROLE_MIGRATOR}[\\s\\S]*REVOKE ${ROLE_MIGRATOR} FROM ${quoteIdent\(executant\)}/,
+  'l’appartenance temporaire est révoquée immédiatement après le transfert');
+assert.match(source, /appartenance temporaire absente/,
+  'l’absence d’appartenance privilégiée est vérifiée avant COMMIT');
+assert.match(source, /ROLLBACK — provisionnement annulé intégralement/,
+  'tout échec de l’étape temporaire annule la transaction et quitte sans poursuivre les contrôles');
+
 console.log('PASS — provisionneur branché sur une politique pure testée, fail-closed et sans REVOKE impossible.');
