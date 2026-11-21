@@ -91,6 +91,15 @@ const verifierSeulement = process.argv.includes('--verifier') || process.argv.in
 // `prepare_ci_db_role.mjs`). Ici, l'administrateur PEUT corriger — c'est sa
 // commande — mais il doit le dire.
 const corrigerAttributs = process.env.TF_CORRIGER_ATTRIBUTS === 'oui';
+
+// Surcharge réservée aux tests jetables : permet de reproduire le grantor
+// réel (l'exécutant crée son propre rôle migrateur) sans toucher au rôle
+// partagé tracefab_migrator du cluster CI.
+const ROLE_MIGRATOR_EFFECTIF_EFFECTIF = process.env.TF_MIGRATOR_ROLE_NAME || ROLE_MIGRATOR_EFFECTIF;
+if (ROLE_MIGRATOR_EFFECTIF_EFFECTIF !== ROLE_MIGRATOR_EFFECTIF && !/^tf_[a-z0-9_]+$/.test(ROLE_MIGRATOR_EFFECTIF_EFFECTIF)) {
+  console.error(`  REFUS — nom de rôle migrateur ${ROLE_MIGRATOR_EFFECTIF_EFFECTIF} hors liste fermée (${ROLE_MIGRATOR_EFFECTIF} ou tf_*).`);
+  process.exit(2);
+}
 const url = (process.env.DATABASE_ADMIN_URL || process.env.DATABASE_URL || '').trim();
 if (!url) {
   console.error('  NON EXECUTE — DATABASE_ADMIN_URL (ou DATABASE_URL) est absente.');
@@ -320,7 +329,7 @@ async function verifierPublicPgcrypto(modePgcrypto = 'modifiable') {
      WHERE d.refclassid = 'pg_catalog.pg_extension'::pg_catalog.regclass
        AND d.classid = 'pg_catalog.pg_proc'::pg_catalog.regclass
        AND d.deptype = 'e' AND e.extname = 'pgcrypto'
-     ORDER BY 1`, [ROLE_APP_SURCHARGE, ROLE_MIGRATOR]);
+     ORDER BY 1`, [ROLE_APP_SURCHARGE, ROLE_MIGRATOR_EFFECTIF]);
   if (rows.length === 0) {
     ok(false, 'fonctions membres pgcrypto vérifiables', 'extension ou fonctions absentes');
     return false;
@@ -347,7 +356,7 @@ async function verifierPublicPgcrypto(modePgcrypto = 'modifiable') {
     const hmac = rows.find((r) => r.signature.replace(/\s/g, '') === 'hmac(bytea,bytea,text)' || r.signature.replace(/\s/g, '') === 'public.hmac(bytea,bytea,text)');
     ok(Boolean(hmac), 'fonction hmac présente');
     ok(hmac?.migrator_execute === true,
-      `${ROLE_MIGRATOR} conserve EXECUTE sur hmac via l’ACL de plateforme`,
+      `${ROLE_MIGRATOR_EFFECTIF} conserve EXECUTE sur hmac via l’ACL de plateforme`,
       `execute=${hmac?.migrator_execute}`);
     return tousExternesPlateforme && droitsAppHorsPublic.length === 0
       && Boolean(hmac) && hmac.migrator_execute === true;
@@ -426,7 +435,7 @@ async function preflightPgcryptoAvantEcriture() {
        AND d.classid = 'pg_catalog.pg_proc'::pg_catalog.regclass
        AND d.deptype = 'e'
        AND d.refobjid = (SELECT oid FROM pg_catalog.pg_extension WHERE extname = 'pgcrypto')
-     ORDER BY 1`, [ROLE_MIGRATOR, ROLE_APP_SURCHARGE]);
+     ORDER BY 1`, [ROLE_MIGRATOR_EFFECTIF, ROLE_APP_SURCHARGE]);
   const droitsAppDirects = rows.filter((r) => r.app_direct_execute === true);
   if (droitsAppDirects.length > 0) {
     console.error(`  REFUS AVANT ÉCRITURE — ${ROLE_APP_SURCHARGE} possède déjà des ACL EXECUTE directes sur pgcrypto : ${droitsAppDirects.slice(0, 5).map((r) => r.signature).join(', ')}.`);
@@ -516,19 +525,19 @@ async function assurerExtensions(modePgcrypto) {
     try {
       const avant = (await db.query(
         `SELECT pg_catalog.has_function_privilege($1, $2, 'EXECUTE') AS mig`,
-        [ROLE_MIGRATOR, signature])).rows[0];
+        [ROLE_MIGRATOR_EFFECTIF, signature])).rows[0];
       if (avant?.mig !== true) {
-        await db.query(`GRANT EXECUTE ON FUNCTION ${signature} TO ${ROLE_MIGRATOR}`);
+        await db.query(`GRANT EXECUTE ON FUNCTION ${signature} TO ${ROLE_MIGRATOR_EFFECTIF}`);
       }
       const { rows } = await db.query(
         `SELECT pg_catalog.has_function_privilege($1, $2, 'EXECUTE') AS mig,
                 pg_catalog.has_function_privilege($3, $2, 'EXECUTE') AS app`,
-        [ROLE_MIGRATOR, signature, ROLE_APP_SURCHARGE]);
+        [ROLE_MIGRATOR_EFFECTIF, signature, ROLE_APP_SURCHARGE]);
       ok(rows[0].mig === true && rows[0].app === false,
-        `${signature} : EXECUTE accorde a ${ROLE_MIGRATOR} seul`,
+        `${signature} : EXECUTE accorde a ${ROLE_MIGRATOR_EFFECTIF} seul`,
         `migrator=${rows[0].mig} app=${rows[0].app}`);
     } catch (e) {
-      ok(false, `${signature} : EXECUTE pour ${ROLE_MIGRATOR}`, `${e.code || ''} ${e.message.split('\\n')[0].slice(0, 70)}`);
+      ok(false, `${signature} : EXECUTE pour ${ROLE_MIGRATOR_EFFECTIF}`, `${e.code || ''} ${e.message.split('\\n')[0].slice(0, 70)}`);
     }
   }
 }
@@ -537,10 +546,10 @@ async function assurerDroitsSchema() {
   const base = (await db.query('SELECT current_database() AS b')).rows[0].b;
   const executant = identite.r;
   const instructions = [
-    `GRANT CONNECT ON DATABASE "${base}" TO ${ROLE_APP_SURCHARGE}, ${ROLE_MIGRATOR}`,
-    `GRANT CREATE ON DATABASE "${base}" TO ${ROLE_MIGRATOR}`,
+    `GRANT CONNECT ON DATABASE "${base}" TO ${ROLE_APP_SURCHARGE}, ${ROLE_MIGRATOR_EFFECTIF}`,
+    `GRANT CREATE ON DATABASE "${base}" TO ${ROLE_MIGRATOR_EFFECTIF}`,
     `GRANT USAGE ON SCHEMA public TO ${ROLE_APP_SURCHARGE}`,
-    `GRANT USAGE, CREATE ON SCHEMA public TO ${ROLE_MIGRATOR}`,
+    `GRANT USAGE, CREATE ON SCHEMA public TO ${ROLE_MIGRATOR_EFFECTIF}`,
   ];
   for (const sql of instructions) {
     try {
@@ -556,18 +565,18 @@ async function assurerDroitsSchema() {
   // Si GRANT ou ALTER échoue, la transaction entière est annulée : l'appartenance
   // temporaire ne peut donc pas survivre à un chemin d'erreur.
   await db.query(
-    `GRANT ${ROLE_MIGRATOR} TO ${quoteIdent(executant)} WITH ADMIN FALSE, INHERIT FALSE, SET TRUE`,
+    `GRANT ${ROLE_MIGRATOR_EFFECTIF} TO ${quoteIdent(executant)} WITH ADMIN FALSE, INHERIT FALSE, SET TRUE`,
   );
   const capacite = (await db.query(
     `SELECT pg_catalog.pg_has_role(current_user, $1, 'SET') AS peut_endosser`,
-    [ROLE_MIGRATOR],
+    [ROLE_MIGRATOR_EFFECTIF],
   )).rows[0]?.peut_endosser;
   if (capacite !== true) {
-    throw new Error(`appartenance temporaire accordée mais SET ROLE vers ${ROLE_MIGRATOR} non démontré`);
+    throw new Error(`appartenance temporaire accordée mais SET ROLE vers ${ROLE_MIGRATOR_EFFECTIF} non démontré`);
   }
 
-  await db.query(`ALTER SCHEMA public OWNER TO ${ROLE_MIGRATOR}`);
-  await db.query(`REVOKE ${ROLE_MIGRATOR} FROM ${quoteIdent(executant)}`);
+  await db.query(`ALTER SCHEMA public OWNER TO ${ROLE_MIGRATOR_EFFECTIF}`);
+  await db.query(`REVOKE ${ROLE_MIGRATOR_EFFECTIF} FROM ${quoteIdent(executant)}`);
 
   const final = (await db.query(
     `SELECT pg_catalog.pg_has_role(current_user, $1, 'SET') AS peut_endosser,
@@ -576,10 +585,10 @@ async function assurerDroitsSchema() {
                WHERE m.roleid = pg_catalog.to_regrole($1)
                  AND m.member = pg_catalog.to_regrole(current_user)
             ) AS appartenance_directe`,
-    [ROLE_MIGRATOR],
+    [ROLE_MIGRATOR_EFFECTIF],
   )).rows[0];
   if (final.peut_endosser || final.appartenance_directe) {
-    throw new Error(`appartenance temporaire à ${ROLE_MIGRATOR} non révoquée après transfert`);
+    throw new Error(`appartenance temporaire à ${ROLE_MIGRATOR_EFFECTIF} non révoquée après transfert`);
   }
 
   const { rows } = await db.query(
@@ -588,10 +597,10 @@ async function assurerDroitsSchema() {
             pg_catalog.pg_get_userbyid(n.nspowner) AS schema_owner
        FROM pg_catalog.pg_namespace n
       WHERE n.nspname = 'public'`,
-    [ROLE_APP_SURCHARGE, ROLE_MIGRATOR],
+    [ROLE_APP_SURCHARGE, ROLE_MIGRATOR_EFFECTIF],
   );
   if (rows[0]?.app_create !== false || rows[0]?.mig_create !== true
-      || rows[0]?.schema_owner !== ROLE_MIGRATOR) {
+      || rows[0]?.schema_owner !== ROLE_MIGRATOR_EFFECTIF) {
     throw new Error(`post-contrôle schéma invalide : app_create=${rows[0]?.app_create}, mig_create=${rows[0]?.mig_create}, owner=${rows[0]?.schema_owner}`);
   }
   ok(true, 'propriété du schéma transférée avec SET temporaire puis révoqué',
@@ -616,7 +625,7 @@ if (!verifierSeulement) {
   // L'ordre compte : `tracefab_migrator` doit exister avant la chaîne, et
   // `tracefab_app` aussi (la chaîne lui accorde des privilèges par son nom).
   await assurerRole(ROLE_APP_SURCHARGE, process.env.TF_APP_PASSWORD);
-  await assurerRole(ROLE_MIGRATOR, process.env.TF_MIGRATOR_PASSWORD);
+  await assurerRole(ROLE_MIGRATOR_EFFECTIF, process.env.TF_MIGRATOR_PASSWORD);
   if (echecs > 0) throw new Error('préconditions de rôles en échec');
   await assurerExtensions(modePgcrypto);
   if (echecs > 0) throw new Error('préconditions pgcrypto en échec');
@@ -638,7 +647,7 @@ if (!verifierSeulement) {
   } else {
     ok(false, 'pgcrypto installée et vérifiable', 'extension absente ; mode --verifier ne modifie rien');
   }
-  for (const nom of [ROLE_APP_SURCHARGE, ROLE_MIGRATOR]) {
+  for (const nom of [ROLE_APP_SURCHARGE, ROLE_MIGRATOR_EFFECTIF]) {
     const etat = await etatRole(db, nom);
     const ecarts = ecartsAttributs(nom, etat);
     ok(ecarts.length === 0, `attributs de ${nom} conformes`, ecarts.join(' ; ') || 'aucun écart');
@@ -668,7 +677,7 @@ ok(dangereuses.length === 0, `${ROLE_APP_SURCHARGE} n hérite d aucun rôle priv
 ok(transitives.length === 0, `${ROLE_APP_SURCHARGE} n atteint aucun rôle par transitivité`,
   transitives.map((t) => `${t.atteint}(d=${t.profondeur})`).join(', ') || 'aucune');
 
-const migDirectes = await appartenancesDirectes(db, ROLE_MIGRATOR);
+const migDirectes = await appartenancesDirectes(db, ROLE_MIGRATOR_EFFECTIF);
 ok(migDirectes.every((a) => a.role_accorde !== ROLE_APP_SURCHARGE), 'tracefab_migrator n est pas membre du rôle applicatif',
   migDirectes.map((a) => a.role_accorde).join(', ') || 'aucune appartenance');
 
