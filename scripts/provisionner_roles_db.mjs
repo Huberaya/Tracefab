@@ -318,7 +318,7 @@ async function verifierPublicPgcrypto(modePgcrypto = 'modifiable') {
       tousExternesPlateforme
         ? `${ouverts.length}/${rows.length} fonctions EXECUTE PUBLIC ; aucun REVOKE prétendu`
         : 'au moins une fonction publique n’appartient pas à un superutilisateur de plateforme');
-    const hmac = rows.find((r) => r.signature === 'hmac(bytea,bytea,text)' || r.signature === 'public.hmac(bytea,bytea,text)');
+    const hmac = rows.find((r) => r.signature.replace(/\\s/g, '') === 'hmac(bytea,bytea,text)' || r.signature.replace(/\\s/g, '') === 'public.hmac(bytea,bytea,text)');
     ok(Boolean(hmac), 'fonction hmac présente');
     return tousExternesPlateforme && Boolean(hmac);
   }
@@ -392,7 +392,7 @@ async function preflightPgcryptoAvantEcriture() {
     return 'modifiable';
   }
 
-  const tousPlateforme = sansAutorite.every((r) => r.proprietaire_superuser === true);
+  const tousPlateforme = ouverts.length > 0 && ouverts.every((r) => r.proprietaire_superuser === true && r.autorite_revoke !== true);
   if (tousPlateforme) {
     console.log(`  AVERTISSEMENT — ${sansAutorite.length} fonction(s) pgcrypto appartiennent à un superutilisateur géré par la plateforme ; ACL PUBLIC préexistantes documentées, aucune tentative de REVOKE.`);
     console.log('  Le résiduel est conservé explicitement ; aucune destruction/réinstallation de pgcrypto ni élévation cloud_admin.');
