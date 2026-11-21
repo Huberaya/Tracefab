@@ -511,7 +511,12 @@ if (!verifierSeulement) {
   console.log('        fonctions. Le créer avant rendrait cette migration inapplicable');
   console.log('        par un rôle non superutilisateur (mesuré, P10.4).');
 } else {
-  await verifierPublicPgcrypto();
+  const modePgcrypto = await preflightPgcryptoAvantEcriture();
+  if (modePgcrypto === 'modifiable' || modePgcrypto === 'managed-external') {
+    await verifierPublicPgcrypto(modePgcrypto);
+  } else {
+    ok(false, 'pgcrypto installée et vérifiable', 'extension absente ; mode --verifier ne modifie rien');
+  }
   for (const nom of [ROLE_APP_SURCHARGE, ROLE_MIGRATOR]) {
     const etat = await etatRole(db, nom);
     const ecarts = ecartsAttributs(nom, etat);
