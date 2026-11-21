@@ -299,7 +299,16 @@ async function verifierPublicPgcrypto(modePgcrypto = 'modifiable') {
            END AS app_execute,
            CASE WHEN pg_catalog.to_regrole($2) IS NULL THEN NULL
              ELSE pg_catalog.has_function_privilege(pg_catalog.to_regrole($2), p.oid, 'EXECUTE')
-           END AS migrator_execute
+           END AS migrator_execute,
+           CASE WHEN pg_catalog.to_regrole($1) IS NULL THEN false
+             ELSE EXISTS (
+               SELECT 1 FROM pg_catalog.aclexplode(
+                 COALESCE(p.proacl, pg_catalog.acldefault('f', p.proowner))
+               ) acl
+                WHERE acl.grantee = pg_catalog.to_regrole($1)
+                  AND acl.privilege_type = 'EXECUTE'
+             )
+           END AS app_direct_execute
       FROM pg_catalog.pg_depend d
       JOIN pg_catalog.pg_proc p ON p.oid = d.objid
       JOIN pg_catalog.pg_roles r ON r.oid = p.proowner
@@ -322,7 +331,7 @@ async function verifierPublicPgcrypto(modePgcrypto = 'modifiable') {
     // par CREATE EXTENSION ne sont pas retirables sans détruire l'extension.
     // On ne prétend donc PAS les avoir fermées et on ne bloque pas les rôles.
     const tousExternesPlateforme = ouverts.length > 0 && ouverts.every((r) => r.proprietaire_superuser === true && r.autorite_revoke !== true);
-    const droitsAppHorsPublic = rows.filter((r) => r.public_execute !== true && r.app_execute === true);
+    const droitsAppHorsPublic = rows.filter((r) => r.app_direct_execute === true);
     ok(tousExternesPlateforme,
       'ACL pgcrypto de plateforme classées explicitement (résiduel documenté)',
       tousExternesPlateforme
@@ -396,7 +405,16 @@ async function preflightPgcryptoAvantEcriture() {
            ) AS autorite_revoke,
            CASE WHEN pg_catalog.to_regrole($1) IS NULL THEN false
              ELSE pg_catalog.has_function_privilege(pg_catalog.to_regrole($1), p.oid, 'EXECUTE')
-           END AS migrator_execute
+           END AS migrator_execute,
+           CASE WHEN pg_catalog.to_regrole($2) IS NULL THEN false
+             ELSE EXISTS (
+               SELECT 1 FROM pg_catalog.aclexplode(
+                 COALESCE(p.proacl, pg_catalog.acldefault('f', p.proowner))
+               ) acl
+                WHERE acl.grantee = pg_catalog.to_regrole($2)
+                  AND acl.privilege_type = 'EXECUTE'
+             )
+           END AS app_direct_execute
       FROM pg_catalog.pg_depend d
       JOIN pg_catalog.pg_proc p ON p.oid = d.objid
       JOIN pg_catalog.pg_roles r ON r.oid = p.proowner
@@ -404,7 +422,13 @@ async function preflightPgcryptoAvantEcriture() {
        AND d.classid = 'pg_catalog.pg_proc'::pg_catalog.regclass
        AND d.deptype = 'e'
        AND d.refobjid = (SELECT oid FROM pg_catalog.pg_extension WHERE extname = 'pgcrypto')
-     ORDER BY 1`, [ROLE_MIGRATOR]);
+     ORDER BY 1`, [ROLE_MIGRATOR, ROLE_APP_SURCHARGE]);
+  const droitsAppDirects = rows.filter((r) => r.app_direct_execute === true);
+  if (droitsAppDirects.length > 0) {
+    console.error(`  REFUS AVANT ÉCRITURE — ${ROLE_APP_SURCHARGE} possède déjà des ACL EXECUTE directes sur pgcrypto : ${droitsAppDirects.slice(0, 5).map((r) => r.signature).join(', ')}.`);
+    return null;
+  }
+
   const decision = determinerModePgcrypto({
     extensionPresente: true,
     fonctions: rows,
