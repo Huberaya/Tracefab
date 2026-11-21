@@ -69,6 +69,8 @@ const appel = blocProvisionnement.indexOf('await preflightPgcryptoAvantEcriture(
 const creation = blocProvisionnement.indexOf('await assurerRole(ROLE_APP_SURCHARGE');
 assert.ok(appel >= 0 && creation > appel,
   'le préflight est exécuté avant toute création ou modification de rôle');
+assert.match(blocProvisionnement.slice(0, creation), /await db\.query\('BEGIN'\)/,
+  'les mutations sont encapsulées dans une transaction après le préflight');
 assert.match(blocProvisionnement.slice(0, creation), /await db\.end\(\);[\s\S]*process\.exit\(1\)/,
   'un échec ferme la connexion et sort avant le provisionnement');
 
@@ -76,5 +78,7 @@ assert.match(source, /const modePgcrypto = await preflightPgcryptoAvantEcriture\
   'le mode détecté est transmis au provisionnement effectif');
 assert.match(source, /const modePgcrypto = await preflightPgcryptoAvantEcriture\(\);[\s\S]*verifierPublicPgcrypto\(modePgcrypto\)/,
   'le mode --verifier applique la même classification en lecture seule');
+assert.match(source, /await db\.query\('COMMIT'\)[\s\S]*await db\.query\('ROLLBACK'\)/,
+  'le provisionnement valide ou annule atomiquement toutes ses écritures');
 
 console.log('PASS — provisionneur branché sur une politique pure testée, fail-closed et sans REVOKE impossible.');
