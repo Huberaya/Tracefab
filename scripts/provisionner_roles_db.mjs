@@ -393,7 +393,10 @@ async function preflightPgcryptoAvantEcriture() {
              p.proowner = (SELECT oid FROM pg_catalog.pg_roles WHERE rolname = current_user)
              OR (SELECT rolsuper FROM pg_catalog.pg_roles WHERE rolname = current_user)
              OR pg_catalog.pg_has_role(current_user, p.proowner, 'SET')
-           ) AS autorite_revoke
+           ) AS autorite_revoke,
+           CASE WHEN pg_catalog.to_regrole($1) IS NULL THEN false
+             ELSE pg_catalog.has_function_privilege(pg_catalog.to_regrole($1), p.oid, 'EXECUTE')
+           END AS migrator_execute
       FROM pg_catalog.pg_depend d
       JOIN pg_catalog.pg_proc p ON p.oid = d.objid
       JOIN pg_catalog.pg_roles r ON r.oid = p.proowner
@@ -401,11 +404,22 @@ async function preflightPgcryptoAvantEcriture() {
        AND d.classid = 'pg_catalog.pg_proc'::pg_catalog.regclass
        AND d.deptype = 'e'
        AND d.refobjid = (SELECT oid FROM pg_catalog.pg_extension WHERE extname = 'pgcrypto')
-     ORDER BY 1`);
+     ORDER BY 1`, [ROLE_MIGRATOR]);
   const decision = determinerModePgcrypto({
     extensionPresente: true,
     fonctions: rows,
   });
+
+  const hmac = rows.find((r) => r.signature.replace(/\s/g, '') === 'hmac(bytea,bytea,text)'
+    || r.signature.replace(/\s/g, '') === 'public.hmac(bytea,bytea,text)');
+  if (!hmac) {
+    console.error('  REFUS AVANT ÉCRITURE — la fonction hmac(bytea,bytea,text) est absente.');
+    return null;
+  }
+  if (hmac.migrator_execute !== true && hmac.autorite_revoke !== true) {
+    console.error('  REFUS AVANT ÉCRITURE — aucune capacité démontrée pour donner EXECUTE sur hmac au rôle de migration.');
+    return null;
+  }
 
   if (decision.mode === 'modifiable') {
     const ouverts = rows.filter((r) => r.public_execute === true).length;
