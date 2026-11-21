@@ -285,6 +285,9 @@ async function verifierPublicPgcrypto(modePgcrypto = 'modifiable') {
     SELECT p.oid::pg_catalog.regprocedure::text AS signature,
            pg_catalog.pg_get_userbyid(p.proowner) AS proprietaire,
            r.rolsuper AS proprietaire_superuser,
+           (p.proowner = (SELECT oid FROM pg_catalog.pg_roles WHERE rolname = current_user)
+             OR (SELECT rolsuper FROM pg_catalog.pg_roles WHERE rolname = current_user)
+             OR pg_catalog.pg_has_role(current_user, p.proowner, 'SET')) AS autorite_revoke,
            EXISTS (
              SELECT 1 FROM pg_catalog.aclexplode(
                COALESCE(p.proacl, pg_catalog.acldefault('f', p.proowner))
@@ -312,7 +315,7 @@ async function verifierPublicPgcrypto(modePgcrypto = 'modifiable') {
     // Le rapport P10.7 documente cet état comme préexistant : les ACL posées
     // par CREATE EXTENSION ne sont pas retirables sans détruire l'extension.
     // On ne prétend donc PAS les avoir fermées et on ne bloque pas les rôles.
-    const tousExternesPlateforme = ouverts.every((r) => r.proprietaire_superuser === true);
+    const tousExternesPlateforme = ouverts.length > 0 && ouverts.every((r) => r.proprietaire_superuser === true && r.autorite_revoke !== true);
     ok(tousExternesPlateforme,
       'ACL pgcrypto de plateforme classées explicitement (résiduel documenté)',
       tousExternesPlateforme
