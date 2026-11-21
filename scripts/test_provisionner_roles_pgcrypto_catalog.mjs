@@ -61,6 +61,15 @@ async function snapshot(client) {
   const extensionOwner = (await client.query(`
     SELECT pg_catalog.pg_get_userbyid(extowner) AS owner
       FROM pg_catalog.pg_extension WHERE extname = 'pgcrypto'`)).rows[0]?.owner;
+  const databaseAcl = (await client.query(`
+    SELECT datacl::text AS acl FROM pg_catalog.pg_database WHERE datname = current_database()`)).rows[0]?.acl ?? null;
+  const schemaAcl = (await client.query(`
+    SELECT nspacl::text AS acl FROM pg_catalog.pg_namespace WHERE nspname = 'public'`)).rows[0]?.acl ?? null;
+  const temporaryMemberships = Number((await client.query(`
+    SELECT count(*)::int AS n
+      FROM pg_catalog.pg_auth_members
+     WHERE roleid = pg_catalog.to_regrole('tracefab_migrator')
+       AND member = pg_catalog.to_regrole($1)`, [ownerRole])).rows[0].n);
   const pgcrypto = (await client.query(`
     SELECT count(*)::int AS functions,
            count(*) FILTER (WHERE EXISTS (
@@ -76,7 +85,7 @@ async function snapshot(client) {
      WHERE d.refclassid = 'pg_catalog.pg_extension'::pg_catalog.regclass
        AND d.classid = 'pg_catalog.pg_proc'::pg_catalog.regclass
        AND d.deptype = 'e' AND e.extname = 'pgcrypto'`)).rows[0];
-  return { roles, totalRoles, schemaOwner, extensionOwner, pgcrypto };
+  return { roles, totalRoles, schemaOwner, extensionOwner, databaseAcl, schemaAcl, temporaryMemberships, pgcrypto };
 }
 
 try {
@@ -284,10 +293,51 @@ try {
   assert.equal(hmac.app, false, 'le rôle applicatif ne doit pas pouvoir exécuter hmac');
   assert.equal(dbPrivileges.migrator_create, true, 'le migrateur doit recevoir CREATE sur la base pour être propriétaire du schéma');
   assert.equal(dbPrivileges.app_create, false, 'le rôle applicatif ne doit jamais recevoir CREATE sur la base');
+  assert.equal(etatApresProvisionnement.temporaryMemberships, 0,
+    'l’appartenance SET temporaire doit être révoquée avant COMMIT');
   assert.ok(etatApresProvisionnement.totalRoles === etatAvantProvisionnement.totalRoles + 1,
     'une seule identité applicative de sonde doit avoir été créée');
 
-  console.log('PASS — PostgreSQL réel : ACL Neon-managed, refus avant écriture et provisionnement positif non-superuser validés.');
+  // Contre-épreuve transactionnelle : le même exécutant perd CREATEROLE.
+  // Les rôles applicatif et migrator existent déjà ; le provisionneur doit
+  // donc atteindre l'étape SET temporaire, échouer sans privilège, puis
+  // restaurer exactement les ACL et le propriétaire du schéma.
+  const rootNegative = new pg.Client({ connectionString: dbUrl.toString() });
+  await rootNegative.connect();
+  try {
+    await rootNegative.query(`ALTER SCHEMA public OWNER TO ${qid(ownerRole)}`);
+    await rootNegative.query(`ALTER ROLE ${qid(ownerRole)} NOCREATEROLE`);
+  } finally {
+    await rootNegative.end();
+  }
+  const avantSansCreateRoleClient = new pg.Client({ connectionString: dbUrl.toString() });
+  await avantSansCreateRoleClient.connect();
+  const avantSansCreateRole = await snapshot(avantSansCreateRoleClient);
+  await avantSansCreateRoleClient.end();
+
+  const refusSet = spawnSync(process.execPath, ['scripts/provisionner_roles_db.mjs'], {
+    cwd: process.cwd(),
+    encoding: 'utf8',
+    env: {
+      ...process.env,
+      DATABASE_URL: ownerUrl.toString(),
+      DATABASE_ADMIN_URL: '',
+      TF_APP_ROLE_NAME: testAppRole,
+      TF_ALLOW_PROVISIONING: 'oui',
+    },
+  });
+  const apresSansCreateRoleClient = new pg.Client({ connectionString: dbUrl.toString() });
+  await apresSansCreateRoleClient.connect();
+  const apresSansCreateRole = await snapshot(apresSansCreateRoleClient);
+  await apresSansCreateRoleClient.end();
+  assert.notEqual(refusSet.status, 0,
+    'sans CREATEROLE ni ADMIN OPTION, l'appartenance temporaire doit être refusée');
+  assert.match(refusSet.stdout + refusSet.stderr, /ROLLBACK — provisionnement annulé intégralement/,
+    'le refus tardif doit déclencher un rollback explicite');
+  assert.deepEqual(apresSansCreateRole, avantSansCreateRole,
+    'le refus du SET temporaire doit annuler toutes les écritures et ne laisser aucune appartenance');
+
+  console.log('PASS — PostgreSQL réel : SET temporaire, révocation avant COMMIT, refus sans CREATEROLE et rollback atomique validés.');
 } finally {
   if (databaseCreated) await admin.query(`DROP DATABASE IF EXISTS ${qid(database)} WITH (FORCE)`).catch(() => {});
   if (platformCreated) await admin.query(`DROP ROLE IF EXISTS ${qid(platformRole)}`).catch(() => {});
