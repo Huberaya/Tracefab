@@ -613,7 +613,7 @@ async function assurerDroitsSchema() {
     throw new Error(`post-contrôle schéma invalide : app_create=${rows[0]?.app_create}, mig_create=${rows[0]?.mig_create}, owner=${rows[0]?.schema_owner}`);
   }
   ok(true, 'propriété du schéma transférée avec SET temporaire puis révoqué',
-    `owner=${rows[0].schema_owner}, app_create=false, migrator_create=true, appartenance SET temporaire révoquée ; éventuel ADMIN automatique sans SET/INHERIT`);
+    `owner=${rows[0].schema_owner}, app_create=false, migrator_create=true, appartenance temporaire absente côté SET/INHERIT ; ADMIN automatique éventuel sans SET/INHERIT`);
 }
 
 if (!verifierSeulement) {
