@@ -15,6 +15,7 @@ import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
 import pg from 'pg';
+import { verrouillerCluster } from './lib/ephemeral-db.mjs';
 
 const urlCluster = (process.env.DATABASE_URL || '').trim();
 if (!urlCluster) {
@@ -39,6 +40,7 @@ const qid = (value) => `"${String(value).replace(/"/g, '""')}"`;
 
 const admin = new pg.Client({ connectionString: urlCluster });
 await admin.connect();
+let verrou = null;
 let databaseCreated = false;
 let ownerCreated = false;
 let platformCreated = false;
@@ -78,6 +80,7 @@ async function snapshot(client) {
 }
 
 try {
+  verrou = await verrouillerCluster({ urlProprietaire: urlCluster });
   const exists = (await admin.query(
     `SELECT rolname FROM pg_catalog.pg_roles WHERE rolname IN ('tracefab_app','tracefab_migrator')`,
   )).rows.map((r) => r.rolname);
@@ -224,5 +227,6 @@ try {
   if (platformCreated) await admin.query(`DROP ROLE IF EXISTS ${qid(platformRole)}`).catch(() => {});
   if (unknownCreated) await admin.query(`DROP ROLE IF EXISTS ${qid(unknownRole)}`).catch(() => {});
   if (ownerCreated) await admin.query(`DROP ROLE IF EXISTS ${qid(ownerRole)}`).catch(() => {});
+  if (verrou) await verrou.relacher().catch(() => {});
   await admin.end();
 }
