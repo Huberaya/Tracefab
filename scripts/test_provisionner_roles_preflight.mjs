@@ -87,7 +87,7 @@ assert.match(source, /await db\.query\('COMMIT'\)[\s\S]*await db\.query\('ROLLBA
 
 assert.match(source, /WITH ADMIN FALSE, INHERIT FALSE, SET TRUE/,
   'le droit SET est accordé temporairement sans ADMIN ni INHERIT');
-assert.match(source, /ALTER SCHEMA public OWNER TO ${ROLE_MIGRATOR}[\\s\\S]*REVOKE ${ROLE_MIGRATOR} FROM ${quoteIdent\(executant\)}/,
+assert.match(source, /ALTER SCHEMA public OWNER TO ${ROLE_MIGRATOR}[\s\S]*REVOKE ${ROLE_MIGRATOR} FROM ${quoteIdent\(executant\)}/,
   'l’appartenance temporaire est révoquée immédiatement après le transfert');
 assert.match(source, /appartenance temporaire absente/,
   'l’absence d’appartenance privilégiée est vérifiée avant COMMIT');
