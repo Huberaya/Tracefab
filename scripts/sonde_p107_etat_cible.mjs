@@ -210,7 +210,9 @@ function construireRapport({ mesures, test, roleRuntime }) {
     table_cles: presence.cles_presentes,
     table_politique: presence.politique_presente,
     fonction_verification: presence.fonction_verification_presente,
+    fonction_verification_systeme: presence.fonction_verification_systeme_presente ?? false,
     mode_identite: presence.politique_presente ? 'NON_MESURE' : 'ABSENTE',
+    mode_identite_systeme: presence.colonne_systeme_strict_presente ? 'NON_MESURE' : 'ABSENTE',
     cles_total: null,
     cles_actives: null,
   } : null);
@@ -251,14 +253,29 @@ function construireRapport({ mesures, test, roleRuntime }) {
     if (porteeCle && (porteeCle.app_lit_les_cles === true || porteeCle.app_ecrit_les_cles === true)) {
       arrets.push('B8 : le rôle du runtime lit ou écrit la table des clés — le HMAC ne protège plus rien');
     }
+    if (porteeCle?.app_appelle_predicat_systeme === true) {
+      arrets.push('B8 : le rôle du runtime peut exécuter tracefab_identite_systeme() directement — périmètre élargi sans usage');
+    }
+    if (porteeCle?.predicat_systeme_present === true && Number(porteeCle.operations_systeme_non_gardees) > 0) {
+      arrets.push(`B8 : ${porteeCle.operations_systeme_non_gardees} opération(s) système SECURITY DEFINER sans garde tracefab_identite_systeme()`);
+    }
     if (historique && Number(historique.en_echec) > 0) {
       arrets.push(`B1 : ${historique.en_echec} migration(s) en échec dans le registre`);
     }
     if (attendues.some((a) => a.en_echec)) {
-      arrets.push('B2 : une migration P10.5/P10.6 est en échec dans le registre');
+      arrets.push('B2 : une migration jalon P10.5→P12 est en échec dans le registre');
     }
     if (droits && droits.migrator_superuser === true) {
       arrets.push('B6 : le rôle de migration est SUPERUSER hors fenêtre d élévation — état d exploitation anormal');
+    }
+    if (droits?.migrator_membre_worker === true) {
+      arrets.push('B6 : tracefab_migrator détient une appartenance résiduelle à tracefab_worker');
+    }
+    if (droits?.app_membre_worker === true) {
+      arrets.push('B6 : tracefab_app est membre de tracefab_worker — escalade vers le worker système');
+    }
+    if (droits?.neon_worker_swap_requis === true) {
+      arrets.push('B6 : grant cloud_admin avec ADMIN OPTION sur tracefab_worker non isolé — exécuter provisionner_worker_neon.mjs avant la chaîne');
     }
   }
 
@@ -394,7 +411,10 @@ function afficherRapport(rapport) {
     console.log(`  hygiène        : ${rapport.b5_hygiene.definer_sans_search_path} DEFINER sans search_path · ${rapport.b5_hygiene.executables_par_public} exécutable(s) par PUBLIC`);
   }
   if (rapport.b7_identite) {
-    console.log(`  identité       : ${rapport.b7_identite.mode_identite} · ${rapport.b7_identite.cles_actives ?? '?'} clé(s) active(s) sur ${rapport.b7_identite.cles_total ?? '?'}`);
+    console.log(`  identité       : utilisateur=${rapport.b7_identite.mode_identite} · système=${rapport.b7_identite.mode_identite_systeme ?? 'ABSENTE'} · ${rapport.b7_identite.cles_actives ?? '?'} clé(s) active(s) sur ${rapport.b7_identite.cles_total ?? '?'}`);
+  }
+  if (rapport.b8_portee_de_la_cle && rapport.b8_portee_de_la_cle.operations_systeme_gardees !== undefined) {
+    console.log(`  gardes système : ${rapport.b8_portee_de_la_cle.operations_systeme_gardees} gardée(s) · ${rapport.b8_portee_de_la_cle.operations_systeme_non_gardees} non gardée(s)`);
   }
   console.log(`  appartenances  : ${rapport.a3_atteintes_privilegiees} atteinte(s) d un rôle privilégié (${rapport.a3_atteintes_totales} appartenance(s) mesurée(s) au total)`);
   console.log('');

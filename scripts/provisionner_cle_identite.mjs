@@ -118,12 +118,16 @@ if (app) {
   console.log('  info  tracefab_app absent : contrôle d ACL reporté au provisioning des rôles.');
 }
 
-const strict = await db.query('SELECT strict FROM public.tracefab_identity_politique WHERE singleton');
-const enStrict = strict.rows[0]?.strict === true;
-console.log(`  info  mode de vérification : ${enStrict ? 'STRICT (jeton obligatoire)' : 'permissif (jeton vérifié s il est présent)'}`);
-if (!enStrict) {
-  console.log('        le passage en mode strict est une décision d exploitation — voir');
-  console.log('        docs/security/2026-10-31-p105-hmac.md § 4.');
+const politique = await db.query('SELECT to_jsonb(p) AS doc FROM public.tracefab_identity_politique p WHERE p.singleton');
+const docPolitique = politique.rows[0]?.doc || {};
+const enStrict = docPolitique.strict === true;
+const aModeSysteme = Object.prototype.hasOwnProperty.call(docPolitique, 'systeme_strict');
+const enSystemeStrict = docPolitique.systeme_strict === true;
+console.log(`  info  mode identité utilisateur : ${enStrict ? 'STRICT (jeton obligatoire)' : 'permissif (jeton vérifié s il est présent)'}`);
+console.log(`  info  mode identité système     : ${!aModeSysteme ? 'ABSENT (avant 20261106130000)' : enSystemeStrict ? 'STRICT (jeton système obligatoire)' : 'permissif (transition avant bascule)'}`);
+if (!enStrict || (aModeSysteme && !enSystemeStrict)) {
+  console.log('        le passage en mode strict est un acte d exploitation — voir');
+  console.log('        docs/security/2026-11-02-p107-plan-activation-stricte.md § 9-10.');
 }
 
 console.log('');

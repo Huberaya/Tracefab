@@ -1,13 +1,19 @@
--- TRACEFAB — P10.7/P11 — préflight du registre des fonctions Runtime.
+-- TRACEFAB — P10.7/P12 — préflight et postflight du registre des fonctions Runtime.
 -- Lecture seule, PostgreSQL, aucun DDL et aucune écriture dans _prisma_migrations.
 -- Exécuté sur Neon Production le 11/11/2026 avant toute migration.
 --
 -- Cette sonde reproduit les préconditions du contrôle 3.a/3.b/3.c de
--- 20261028120000_runtime_function_registry, sans créer le registre :
---   1. les 84 fonctions inscrites existent une seule fois dans public ;
---   2. elles appartiennent au rôle courant (ou au worker s'il existe) ;
---   3. aucune fonction appelée par une politique RLS n'est hors registre ;
---   4. aucune fonction SECURITY DEFINER du propriétaire courant n'est
+-- 20261028120000_runtime_function_registry (84 fonctions historiques) ET mesure
+-- séparément le périmètre cible de la chaîne de 100 migrations (93 fonctions =
+-- 84 seed + 9 ajoutées par 20261028120100, 20261028120200, 20261031120000 et
+-- 20261106130000), sans créer ni modifier le registre :
+--   1. en PRÉFLIGHT (avant 20261028120000) : `registered_expected = 84`,
+--      `missing_functions = 0`, `overloaded_names = 0` ;
+--   2. en POSTFLIGHT (après les 100 migrations) : `registered_final_expected = 93`,
+--      `missing_post_chain_functions = 0`, `overloaded_final_names = 0` ;
+--   3. elles appartiennent au rôle courant (ou à `tracefab_worker`) ;
+--   4. aucune fonction appelée par une politique RLS n'est hors registre cible ;
+--   5. aucune fonction SECURITY DEFINER du propriétaire courant n'est
 --      exécutable par PUBLIC.
 --
 -- Résultat mesuré le 11/11/2026 sur la branche Neon Production :
@@ -106,6 +112,23 @@ VALUES
   ('tracefab_update_supply_chain_node'),
   ('tracefab_waive_quality_issue')
 ),
+added_after_registry(name) AS (
+VALUES
+  ('tracefab_archive_clerk_organization'),
+  ('tracefab_clerk_organization_uuid'),
+  ('tracefab_ensure_clerk_user'),
+  ('tracefab_identite_systeme_jeton_valide'),
+  ('tracefab_identity_jeton_utilisateur'),
+  ('tracefab_mark_document_scanning'),
+  ('tracefab_notification_outbox_health'),
+  ('tracefab_soft_delete_clerk_user'),
+  ('tracefab_upsert_clerk_user')
+),
+expected_final(name) AS (
+  SELECT name FROM expected
+  UNION
+  SELECT name FROM added_after_registry
+),
 fm AS (
   SELECT e.name,
          count(p.oid) FILTER (WHERE n.nspname = 'public' AND p.prokind = 'f')::int AS overloads,
@@ -113,6 +136,17 @@ fm AS (
            ORDER BY pg_catalog.pg_get_userbyid(p.proowner))
            FILTER (WHERE n.nspname = 'public' AND p.prokind = 'f') AS owners
     FROM expected e
+    LEFT JOIN pg_catalog.pg_proc p ON p.proname = e.name AND p.prokind = 'f'
+    LEFT JOIN pg_catalog.pg_namespace n ON n.oid = p.pronamespace
+   GROUP BY e.name
+),
+fm_final AS (
+  SELECT e.name,
+         count(p.oid) FILTER (WHERE n.nspname = 'public' AND p.prokind = 'f')::int AS overloads,
+         string_agg(DISTINCT pg_catalog.pg_get_userbyid(p.proowner), ','
+           ORDER BY pg_catalog.pg_get_userbyid(p.proowner))
+           FILTER (WHERE n.nspname = 'public' AND p.prokind = 'f') AS owners
+    FROM expected_final e
     LEFT JOIN pg_catalog.pg_proc p ON p.proname = e.name AND p.prokind = 'f'
     LEFT JOIN pg_catalog.pg_namespace n ON n.oid = p.pronamespace
    GROUP BY e.name
@@ -135,18 +169,22 @@ policy_functions AS (
 )
 SELECT current_user AS migration_executor,
        (SELECT count(*) FROM expected) AS registered_expected,
+       (SELECT count(*) FROM expected_final) AS registered_final_expected,
        (SELECT count(*) FROM fm WHERE overloads = 0) AS missing_functions,
        (SELECT string_agg(name, ',' ORDER BY name) FROM fm WHERE overloads = 0) AS missing_names,
+       (SELECT count(*) FROM fm_final WHERE overloads = 0) AS missing_post_chain_functions,
+       (SELECT string_agg(name, ',' ORDER BY name) FROM fm_final WHERE overloads = 0) AS missing_post_chain_names,
        (SELECT count(*) FROM fm WHERE overloads > 1) AS overloaded_names,
        (SELECT string_agg(name, ',' ORDER BY name) FROM fm WHERE overloads > 1) AS overloaded_list,
+       (SELECT count(*) FROM fm_final WHERE overloads > 1) AS overloaded_final_names,
        (SELECT count(*) FROM fm
          WHERE overloads = 1 AND owners NOT IN (current_user, 'tracefab_worker')) AS wrong_owner_count,
        (SELECT string_agg(name || '=' || coalesce(owners, '?'), ',' ORDER BY name)
           FROM fm WHERE overloads = 1 AND owners NOT IN (current_user, 'tracefab_worker')) AS wrong_owners,
        (SELECT count(*) FROM policy_functions pf
-         WHERE NOT EXISTS (SELECT 1 FROM expected e WHERE e.name = pf.name)) AS unregistered_policy_functions,
+         WHERE NOT EXISTS (SELECT 1 FROM expected_final e WHERE e.name = pf.name)) AS unregistered_policy_functions,
        (SELECT string_agg(pf.name, ',' ORDER BY pf.name) FROM policy_functions pf
-         WHERE NOT EXISTS (SELECT 1 FROM expected e WHERE e.name = pf.name)) AS unregistered_policy_names,
+         WHERE NOT EXISTS (SELECT 1 FROM expected_final e WHERE e.name = pf.name)) AS unregistered_policy_names,
        (SELECT count(*)
           FROM pg_catalog.pg_proc p
           JOIN pg_catalog.pg_namespace n ON n.oid = p.pronamespace
