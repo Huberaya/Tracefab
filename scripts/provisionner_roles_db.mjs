@@ -584,6 +584,17 @@ async function assurerDroitsSchema() {
   // l'exécutant. On retire notre grant SET temporaire et on tolère uniquement
   // ce résiduel documenté, sans capacité SET ni héritage.
   //
+  // Mesuré sur PostgreSQL 17.12 (CREATE ROLE par un rôle CREATEROLE
+  // non-superuser) : l'appartenance automatique vaut bien
+  // {admin:true, inherit:false, set:false} et `pg_has_role(…, 'SET')` rend
+  // FAUX. Ce résidu est donc réellement inoffensif, et il doit être toléré.
+  //
+  // Ce cas ne l'était pas auparavant : lire `peut_endosser` sans distinguer
+  // SUPERUSER refusait le cas automatique pour un exécutant superutilisateur,
+  // et un superutilisateur a `peut_endosser = vrai` même avec zéro
+  // appartenance. Les deux défauts venaient de la même confusion, et sont
+  // corrigés ensemble ci-dessous.
+  //
   // POURQUOI `pg_has_role(..., 'SET')` NE SUFFIT PAS À LUI SEUL
   // ------------------------------------------------------------
   // `pg_has_role` intègre le privilège SUPERUSER : sur PostgreSQL, un
@@ -600,10 +611,15 @@ async function assurerDroitsSchema() {
   // alors une correction d'attribut pourtant appliquée.
   //
   // La propriété à vérifier n'est pas « l'exécutant peut-il endosser ? » mais
-  // « RESTE-T-IL une appartenance qui le lui permette ? ». On sépare donc les
-  // deux : `capacite_par_privilege` explique le vrai, `peut_endosser_par_appartenance`
-  // est la seule chose que ce bloc doit faire échouer. Le refus reste entier
-  // pour un exécutant non superutilisateur, c'est-à-dire pour le modèle Neon.
+  // « reste-t-il une appartenance qui le lui permette ? ». `pg_has_role` reste
+  // donc consulté — il voit aussi les appartenances TRANSITIVES, qu'une lecture
+  // de `pg_auth_members` seule manquerait — mais on lui retire exactement le
+  // cas mesuré : SUPERUSER avec zéro appartenance, où le vrai ne vient
+  // d'aucune appartenance et où il n'y a donc rien à révoquer.
+  //
+  // La dispense est plus étroite que l'ancienne : un superutilisateur qui
+  // garderait une appartenance résiduelle, comme un non-superutilisateur en
+  // appartenance transitive, échouent toujours.
   const final = (await db.query(
     `SELECT pg_catalog.pg_has_role(current_user, $1, 'SET') AS peut_endosser,
             (SELECT rolsuper FROM pg_catalog.pg_roles WHERE rolname = current_user) AS executant_superuser,
@@ -618,14 +634,12 @@ async function assurerDroitsSchema() {
   )).rows[0];
   const residuelAutomatiqueSûr = final.nb_appartenances === 0
     || (final.nb_appartenances === 1 && final.admin_seul && final.sans_inherit && final.sans_set);
-  // Une appartenance résiduelle qui ne donne ni SET ni héritage ne permet pas
-  // d'endosser : elle est inoffensive, et c'est le seul cas toléré.
-  const peutEndosserParAppartenance = final.nb_appartenances > 0
-    && (final.sans_set === false || final.sans_inherit === false);
-  if (peutEndosserParAppartenance || !residuelAutomatiqueSûr) {
+  const capaciteParSuperuserSeul = final.executant_superuser === true && final.nb_appartenances === 0;
+  const peutEndosserInjustifie = final.peut_endosser === true && !capaciteParSuperuserSeul;
+  if (peutEndosserInjustifie || !residuelAutomatiqueSûr) {
     throw new Error(`appartenance SET temporaire à ${ROLE_MIGRATOR_EFFECTIF} non révoquée ou résiduel ADMIN non conforme`);
   }
-  if (final.executant_superuser && final.peut_endosser) {
+  if (capaciteParSuperuserSeul && final.peut_endosser) {
     // Documenté, jamais silencieux : la capacité vient du privilège SUPERUSER,
     // pas d'une appartenance. Aucun droit nouveau n'a donc été laissé derrière.
     console.log(`  note  SET ROLE vers ${ROLE_MIGRATOR_EFFECTIF} disponible par privilège SUPERUSER, hors appartenance — aucune appartenance laissée (${final.nb_appartenances})`);
