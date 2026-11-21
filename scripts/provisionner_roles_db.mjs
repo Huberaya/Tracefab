@@ -519,7 +519,7 @@ async function assurerExtensions(modePgcrypto) {
       const { rows } = await db.query(
         `SELECT pg_catalog.has_function_privilege($1, $2, 'EXECUTE') AS mig,
                 pg_catalog.has_function_privilege($3, $2, 'EXECUTE') AS app`,
-        [ROLE_MIGRATOR, signature, ROLE_APP]);
+        [ROLE_MIGRATOR, signature, ROLE_APP_SURCHARGE]);
       ok(rows[0].mig === true && rows[0].app === false,
         `${signature} : EXECUTE accorde a ${ROLE_MIGRATOR} seul`,
         `migrator=${rows[0].mig} app=${rows[0].app}`);
