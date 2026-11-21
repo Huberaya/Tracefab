@@ -533,6 +533,10 @@ async function assurerDroitsSchema() {
   const base = (await db.query('SELECT current_database() AS b')).rows[0].b;
   const instructions = [
     `GRANT CONNECT ON DATABASE "${base}" TO ${ROLE_APP_SURCHARGE}, ${ROLE_MIGRATOR}`,
+    // Même privilège minimal que le bootstrap CI : le nouveau propriétaire
+    // du schéma doit pouvoir créer des objets dans cette base. Ce n'est pas
+    // CREATEDB et aucun droit CREATE n'est accordé au runtime.
+    `GRANT CREATE ON DATABASE "${base}" TO ${ROLE_MIGRATOR}`,
     `GRANT USAGE ON SCHEMA public TO ${ROLE_APP_SURCHARGE}`,
     // Le proprietaire du SCHEMA, et pas seulement un detenteur de CREATE :
     // la premiere migration pose `COMMENT ON SCHEMA public`, qui exige la
