@@ -21,6 +21,7 @@ async function run() {
 
       await tx.$executeRawUnsafe(`SELECT set_config('tracefab.user_id', '${userId}', true);`);
       await tx.$executeRawUnsafe(`SELECT set_config('tracefab.user_email', '${userEmail}', true);`);
+      await tx.$executeRawUnsafe(`SELECT set_config('tracefab.active_organization_id', '${brandOrgId}', true);`);
 
       // 2. Create dedicated product with descriptive greenwashing terms
       const product = await tx.tracefab_products.create({
