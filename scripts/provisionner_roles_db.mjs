@@ -280,67 +280,92 @@ function quote(s) {
 // Un REVOKE sans autorité peut renvoyer une simple NOTICE et ne rien changer.
 // Lire les ACL réelles, y compris le défaut PUBLIC quand proacl est NULL.
 // Cette vérification est aussi utilisée en --verifier, sans aucune écriture.
-async function verifierPublicPgcrypto() {
+async function verifierPublicPgcrypto(modePgcrypto = 'modifiable') {
   const { rows } = await db.query(`
     SELECT p.oid::pg_catalog.regprocedure::text AS signature,
            pg_catalog.pg_get_userbyid(p.proowner) AS proprietaire,
+           r.rolsuper AS proprietaire_superuser,
            EXISTS (
              SELECT 1 FROM pg_catalog.aclexplode(
                COALESCE(p.proacl, pg_catalog.acldefault('f', p.proowner))
              ) acl WHERE acl.grantee = 0 AND acl.privilege_type = 'EXECUTE'
            ) AS public_execute,
-           CASE WHEN pg_catalog.to_regrole($1) IS NULL THEN NULL
-             ELSE pg_catalog.has_function_privilege(pg_catalog.to_regrole($1), p.oid, 'EXECUTE')
-           END AS app_execute
+           pg_catalog.has_function_privilege($1, p.oid, 'EXECUTE') AS app_execute
       FROM pg_catalog.pg_depend d
       JOIN pg_catalog.pg_proc p ON p.oid = d.objid
+      JOIN pg_catalog.pg_roles r ON r.oid = p.proowner
       JOIN pg_catalog.pg_extension e ON e.oid = d.refobjid
      WHERE d.refclassid = 'pg_catalog.pg_extension'::pg_catalog.regclass
        AND d.classid = 'pg_catalog.pg_proc'::pg_catalog.regclass
        AND d.deptype = 'e' AND e.extname = 'pgcrypto'
      ORDER BY 1`, [ROLE_APP_SURCHARGE]);
   if (rows.length === 0) {
-    ok(false, 'ACL PUBLIC de pgcrypto vérifiables', 'extension ou fonctions absentes');
+    ok(false, 'fonctions membres pgcrypto vérifiables', 'extension ou fonctions absentes');
     return false;
   }
+
   const ouverts = rows.filter((r) => r.public_execute);
-  const details = ouverts.slice(0, 5).map((r) => `${r.signature} (proprietaire ${r.proprietaire})`).join(', ');
-  ok(ouverts.length === 0, 'EXECUTE de pgcrypto retire a PUBLIC',
-    ouverts.length ? `${ouverts.length}/${rows.length} encore ouverts : ${details} ; intervention du proprietaire/administrateur requise` : `${rows.length} fonction(s) verifiee(s) dans le catalogue`);
+  if (modePgcrypto === 'managed-external') {
+    // Neon expose parfois des fonctions pgcrypto appartenant à cloud_admin
+    // alors que l'extension elle-même appartient à neondb_owner. Le propriétaire
+    // est un superutilisateur géré par la plateforme, non endossable par nous.
+    // Le rapport P10.7 documente cet état comme préexistant : les ACL posées
+    // par CREATE EXTENSION ne sont pas retirables sans détruire l'extension.
+    // On ne prétend donc PAS les avoir fermées et on ne bloque pas les rôles.
+    const tousExternesPlateforme = ouverts.every((r) => r.proprietaire_superuser === true);
+    ok(tousExternesPlateforme,
+      'ACL pgcrypto de plateforme classées explicitement (résiduel documenté)',
+      tousExternesPlateforme
+        ? `${ouverts.length}/${rows.length} fonctions EXECUTE PUBLIC ; aucun REVOKE prétendu`
+        : 'au moins une fonction publique n’appartient pas à un superutilisateur de plateforme');
+    const hmac = rows.find((r) => r.signature === 'hmac(bytea,bytea,text)' || r.signature === 'public.hmac(bytea,bytea,text)');
+    ok(Boolean(hmac), 'fonction hmac présente');
+    return tousExternesPlateforme && Boolean(hmac);
+  }
+
   const appOuvertes = rows.filter((r) => r.app_execute !== false);
-  const appDetails = appOuvertes.slice(0, 5).map((r) => r.signature).join(', ');
+  ok(ouverts.length === 0, 'EXECUTE de pgcrypto retiré à PUBLIC',
+    ouverts.length ? `${ouverts.length}/${rows.length} encore ouverts` : `${rows.length} fonction(s) vérifiée(s)`);
   ok(appOuvertes.length === 0, `${ROLE_APP_SURCHARGE} sans EXECUTE sur pgcrypto`,
-    appOuvertes.length ? `${appOuvertes.length}/${rows.length} ouverts ou role absent : ${appDetails}` : `${rows.length} fonction(s) verifiee(s)`);
+    appOuvertes.length ? `${appOuvertes.length}/${rows.length} ouvertes` : `${rows.length} fonction(s) vérifiée(s)`);
   return ouverts.length === 0 && appOuvertes.length === 0;
 }
 
 /**
- * Préflight STRICT avant toute écriture de provisionnement.
- * Neon peut exposer pgcrypto via cloud_admin : l'extension est visible,
- * mais neondb_owner ne peut ni SET ROLE cloud_admin ni modifier ses ACL.
- * Un REVOKE peut alors ne produire qu'une NOTICE ; la vérification postérieure
- * arrive trop tard car les rôles auraient déjà été créés.
- *
- * On exige que pgcrypto soit déjà installée et que l'exécutant puisse modifier
- * chaque fonction encore ouverte à PUBLIC. Ce contrôle est strictement en lecture seule.
+ * Préflight en lecture seule avant toute écriture.
+ * Trois issues explicites :
+ * - install : extension absente mais installable par l'exécutant ;
+ * - modifiable : ACL PUBLIC présentes et propriétaire endossable ;
+ * - managed-external : fonctions détenues par un superutilisateur géré
+ *   (ex. cloud_admin), ACL préexistantes documentées et non modifiables.
+ * Tout autre propriétaire externe entraîne un refus avant CREATE ROLE.
  */
 async function preflightPgcryptoAvantEcriture() {
-  const extension = (await db.query(
-    "SELECT EXISTS (SELECT 1 FROM pg_catalog.pg_extension WHERE extname = 'pgcrypto') AS presente",
-  )).rows[0]?.presente === true;
-  if (!extension) {
-    console.error('  REFUS — pgcrypto absente : installer et vérifier l’extension séparément avant le provisionnement des rôles.');
-    return false;
+  const { rows: extRows } = await db.query(`
+    SELECT e.extname,
+           pg_catalog.pg_get_userbyid(e.extowner) AS proprietaire_extension
+      FROM pg_catalog.pg_extension e
+     WHERE e.extname = 'pgcrypto'`);
+  if (extRows.length === 0) {
+    const { rows } = await db.query(`
+      SELECT EXISTS (SELECT 1 FROM pg_catalog.pg_available_extensions WHERE name = 'pgcrypto') AS disponible,
+             pg_catalog.has_database_privilege(current_user, current_database(), 'CREATE') AS create_database`);
+    if (rows[0]?.disponible === true && rows[0]?.create_database === true) {
+      console.log('  préflight pgcrypto : extension absente, installation autorisée vérifiée.');
+      return 'install';
+    }
+    console.error('  REFUS AVANT ÉCRITURE — pgcrypto absente et installation non autorisée ou indisponible.');
+    return null;
   }
 
   const { rows } = await db.query(`
     SELECT p.oid::pg_catalog.regprocedure::text AS signature,
            pg_catalog.pg_get_userbyid(p.proowner) AS proprietaire,
+           r.rolsuper AS proprietaire_superuser,
            EXISTS (
              SELECT 1 FROM pg_catalog.aclexplode(
                COALESCE(p.proacl, pg_catalog.acldefault('f', p.proowner))
-             ) acl
-              WHERE acl.grantee = 0 AND acl.privilege_type = 'EXECUTE'
+             ) acl WHERE acl.grantee = 0 AND acl.privilege_type = 'EXECUTE'
            ) AS public_execute,
            (
              p.proowner = (SELECT oid FROM pg_catalog.pg_roles WHERE rolname = current_user)
@@ -349,48 +374,55 @@ async function preflightPgcryptoAvantEcriture() {
            ) AS autorite_revoke
       FROM pg_catalog.pg_depend d
       JOIN pg_catalog.pg_proc p ON p.oid = d.objid
+      JOIN pg_catalog.pg_roles r ON r.oid = p.proowner
      WHERE d.refclassid = 'pg_catalog.pg_extension'::pg_catalog.regclass
        AND d.classid = 'pg_catalog.pg_proc'::pg_catalog.regclass
        AND d.deptype = 'e'
        AND d.refobjid = (SELECT oid FROM pg_catalog.pg_extension WHERE extname = 'pgcrypto')
-     ORDER BY 1
-  `);
-
+     ORDER BY 1`);
   if (rows.length === 0) {
-    console.error('  REFUS — pgcrypto présente mais aucune fonction membre vérifiable.');
-    return false;
+    console.error('  REFUS AVANT ÉCRITURE — pgcrypto présente mais aucune fonction membre vérifiable.');
+    return null;
   }
 
-  const aModifier = rows.filter((r) => r.public_execute);
-  const sansAutorite = aModifier.filter((r) => r.autorite_revoke !== true);
-  console.log(`  préflight pgcrypto : ${rows.length} fonction(s), ${aModifier.length} encore EXECUTE PUBLIC.`);
-  if (sansAutorite.length) {
-    const detail = sansAutorite.slice(0, 8)
-      .map((r) => `${r.signature} (propriétaire ${r.proprietaire})`).join(', ');
-    console.error(`  REFUS AVANT ÉCRITURE — l’exécutant ${identite.r} ne peut pas révoquer EXECUTE PUBLIC sur ${sansAutorite.length}/${aModifier.length} fonction(s) : ${detail}.`);
-    console.error('  Aucun CREATE ROLE, ALTER ROLE, GRANT, REVOKE ni ALTER SCHEMA n’a été exécuté.');
-    console.error('  Intervention du propriétaire réel ou procédure officiellement supportée par Neon requise ; aucune élévation cloud_admin ne sera tentée.');
-    return false;
+  const ouverts = rows.filter((r) => r.public_execute);
+  const sansAutorite = ouverts.filter((r) => r.autorite_revoke !== true);
+  if (sansAutorite.length === 0) {
+    console.log(`  préflight pgcrypto : ${rows.length} fonction(s), ${ouverts.length} EXECUTE PUBLIC modifiable(s).`);
+    return 'modifiable';
   }
-  console.log('  ok    autorité de révocation vérifiée pour toutes les fonctions pgcrypto encore ouvertes.');
-  return true;
+
+  const tousPlateforme = sansAutorite.every((r) => r.proprietaire_superuser === true);
+  if (tousPlateforme) {
+    console.log(`  AVERTISSEMENT — ${sansAutorite.length} fonction(s) pgcrypto appartiennent à un superutilisateur géré par la plateforme ; ACL PUBLIC préexistantes documentées, aucune tentative de REVOKE.`);
+    console.log('  Le résiduel est conservé explicitement ; aucune destruction/réinstallation de pgcrypto ni élévation cloud_admin.');
+    return 'managed-external';
+  }
+
+  const detail = sansAutorite.slice(0, 8)
+    .map((r) => `${r.signature} (propriétaire ${r.proprietaire})`).join(', ');
+  console.error(`  REFUS AVANT ÉCRITURE — propriétaire externe non classé sur ${sansAutorite.length} fonction(s) : ${detail}.`);
+  return null;
 }
 
-async function assurerExtensions() {
+async function assurerExtensions(modePgcrypto) {
   for (const ext of ['pgcrypto']) {
     try {
       await db.query(`CREATE EXTENSION IF NOT EXISTS ${ext}`);
       const { rows } = await db.query(
         `SELECT pg_catalog.pg_get_userbyid(e.extowner) AS proprietaire
            FROM pg_catalog.pg_extension e WHERE e.extname = $1`, [ext]);
-      console.log(`  ok    extension ${ext} disponible (proprietaire ${rows[0]?.proprietaire}, non transferee : PostgreSQL ne le permet pas)`);
+      console.log(`  ok    extension ${ext} disponible (proprietaire ${rows[0]?.proprietaire}, non transferee)`);
     } catch (e) {
-      ok(false, `extension ${ext} disponible`, `${e.code || ''} ${e.message.split('\n')[0].slice(0, 90)}`);
-      console.error(`         un administrateur doit jouer : CREATE EXTENSION IF NOT EXISTS ${ext};`);
+      ok(false, `extension ${ext} disponible`, `${e.code || ''} ${e.message.split('\\n')[0].slice(0, 90)}`);
       continue;
     }
 
-    // Fermeture de PUBLIC sur les fonctions de l'extension.
+    if (modePgcrypto === 'managed-external') {
+      console.log('  note  ACL EXECUTE PUBLIC de pgcrypto conservées : fonctions détenues par le superutilisateur géré de la plateforme ; résiduel documenté P10.7.');
+      continue;
+    }
+
     const membres = (await db.query(
       `SELECT p.oid::pg_catalog.regprocedure::text AS signature
          FROM pg_catalog.pg_depend d
@@ -407,16 +439,11 @@ async function assurerExtensions() {
         ok(false, `REVOKE EXECUTE sur ${signature}`, `${e.code || ''}`);
       }
     }
-    // Le succès de la commande ne garantit pas la révocation effective.
-    if (!(await verifierPublicPgcrypto())) return;
+    if (!(await verifierPublicPgcrypto('modifiable'))) return;
   }
 
-  // Fermer PUBLIC ne suffit pas : le proprietaire des fonctions SECURITY
-  // DEFINER doit pouvoir appeler `hmac`, sinon la verification du jeton echoue
-  // en 42501 « permission denied for function hmac » (mesure du 02/11, apres
-  // la fermeture de PUBLIC). On accorde donc le STRICT NECESSAIRE au role de
-  // migration — l'appelant reel de `hmac` dans ce depot — et rien de plus :
-  // `tracefab_app` reste sans aucun droit sur l'extension.
+  if (modePgcrypto === 'managed-external') return;
+
   const requises = ['public.hmac(bytea,bytea,text)'];
   for (const signature of requises) {
     try {
@@ -429,7 +456,7 @@ async function assurerExtensions() {
         `${signature} : EXECUTE accorde a ${ROLE_MIGRATOR} seul`,
         `migrator=${rows[0].mig} app=${rows[0].app}`);
     } catch (e) {
-      ok(false, `${signature} : EXECUTE pour ${ROLE_MIGRATOR}`, `${e.code || ''} ${e.message.split('\n')[0].slice(0, 70)}`);
+      ok(false, `${signature} : EXECUTE pour ${ROLE_MIGRATOR}`, `${e.code || ''} ${e.message.split('\\n')[0].slice(0, 70)}`);
     }
   }
 }
@@ -466,7 +493,8 @@ async function assurerDroitsSchema() {
 if (!verifierSeulement) {
   // Garde impérative : elle précède CREATE ROLE, ALTER ROLE, CREATE EXTENSION,
   // REVOKE, GRANT et ALTER SCHEMA. Un échec laisse la base strictement intacte.
-  if (!(await preflightPgcryptoAvantEcriture())) {
+  const modePgcrypto = await preflightPgcryptoAvantEcriture();
+  if (!modePgcrypto) {
     console.error('  VERDICT : provisionnement refusé avant toute écriture.');
     await db.end();
     process.exit(1);
@@ -475,7 +503,7 @@ if (!verifierSeulement) {
   // `tracefab_app` aussi (la chaîne lui accorde des privilèges par son nom).
   await assurerRole(ROLE_APP_SURCHARGE, process.env.TF_APP_PASSWORD);
   await assurerRole(ROLE_MIGRATOR, process.env.TF_MIGRATOR_PASSWORD);
-  if (echecs === 0) await assurerExtensions();
+  if (echecs === 0) await assurerExtensions(modePgcrypto);
   if (echecs === 0) await assurerDroitsSchema();
   else console.error('  REFUS — droits du schema et transferts non executes : preconditions en echec.');
   console.log('  note  tracefab_worker n est PAS créé ici : la migration');
