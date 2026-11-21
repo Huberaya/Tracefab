@@ -87,8 +87,8 @@ assert.match(source, /await db\.query\('COMMIT'\)[\s\S]*await db\.query\('ROLLBA
 
 assert.match(source, /WITH ADMIN FALSE, INHERIT FALSE, SET TRUE/,
   'le droit SET est accordé temporairement sans ADMIN ni INHERIT');
-const transfertTemporaire = source.indexOf('await db.query(`ALTER SCHEMA public OWNER TO ${ROLE_MIGRATOR}`)');
-const revokeTemporaire = source.indexOf('await db.query(`REVOKE ${ROLE_MIGRATOR} FROM ${quoteIdent(executant)}`)');
+const transfertTemporaire = source.indexOf('await db.query(`ALTER SCHEMA public OWNER TO ${ROLE_MIGRATOR_EFFECTIF}`)');
+const revokeTemporaire = source.indexOf('await db.query(`REVOKE ${ROLE_MIGRATOR_EFFECTIF} FROM ${quoteIdent(executant)}`)');
 assert.ok(transfertTemporaire >= 0 && revokeTemporaire > transfertTemporaire,
   'l’appartenance temporaire est révoquée immédiatement après le transfert');
 assert.match(source, /appartenance temporaire absente/,
