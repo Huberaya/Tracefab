@@ -26,6 +26,10 @@ assert.match(preflight, /pg_catalog\.pg_has_role\(current_user, p\.proowner, 'SE
   'la capacité réelle à endosser le propriétaire est vérifiée');
 assert.match(preflight, /determinerModePgcrypto\(/,
   'la décision de sécurité est déléguée à la politique pure testée');
+assert.match(preflight, /migrator_execute/,
+  'l’accès du rôle de migration à hmac est vérifié avant les écritures');
+assert.match(preflight, /aucune capacité démontrée pour donner EXECUTE sur hmac/,
+  'l’absence de droit et de capacité de GRANT refuse avant écriture');
 assert.match(preflight, /decision\.mode === 'managed-external'/,
   'le cas Neon-managed est explicitement reconnu');
 assert.match(preflight, /REFUS AVANT ÉCRITURE/,
