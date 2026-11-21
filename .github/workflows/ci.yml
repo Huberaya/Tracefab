@@ -56,6 +56,11 @@ jobs:
       - name: Installer les dependances
         run: npm ci
 
+      - name: Préflight pgcrypto — propriétaire Neon géré sans faux refus
+        # Test statique ciblé : le mode cloud_admin est explicitement conservé,
+        # sans REVOKE impossible, tandis qu'un propriétaire externe inconnu refuse.
+        run: npm run test:provisioning:preflight
+
       - name: Generer le client Prisma
         run: npm run db:generate
 
