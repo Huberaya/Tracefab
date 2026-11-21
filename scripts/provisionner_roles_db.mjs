@@ -611,15 +611,37 @@ async function assurerDroitsSchema() {
   // alors une correction d'attribut pourtant appliquée.
   //
   // La propriété à vérifier n'est pas « l'exécutant peut-il endosser ? » mais
-  // « reste-t-il une appartenance qui le lui permette ? ». `pg_has_role` reste
-  // donc consulté — il voit aussi les appartenances TRANSITIVES, qu'une lecture
-  // de `pg_auth_members` seule manquerait — mais on lui retire exactement le
-  // cas mesuré : SUPERUSER avec zéro appartenance, où le vrai ne vient
-  // d'aucune appartenance et où il n'y a donc rien à révoquer.
+  // « reste-t-il une appartenance qui le lui permette ? ».
   //
-  // La dispense est plus étroite que l'ancienne : un superutilisateur qui
-  // garderait une appartenance résiduelle, comme un non-superutilisateur en
-  // appartenance transitive, échouent toujours.
+  // PREUVE PAR EXECUTION, PAS PAR DEDUCTION
+  // ---------------------------------------
+  // Une dispense deduite de `nb_appartenances === 0` supposait que l'appartenance
+  // temporaire était forcement partie : elle laissait passer un cas ou le
+  // `REVOKE` aurait echoue en silence en laissant une appartenance SET ouverte a
+  // un executant SUPERUSER (mesure du 21/11, garde isolee : ce cas etait classe
+  // « conforme » a tort).
+  //
+  // On MESURE donc la capacite reelle, dans l'etat ou l'appartenance est censee
+  // avoir ete retiree : `REVOKE ... ; SET LOCAL ROLE <role>` derriere un SAVEPOINT.
+  // Si l'appartenance est bien partie, le SET LOCAL echoue pour TOUT executant —
+  // superutilisateur excepte, qui peut legitimement endosser par privilege — et on
+  // revient au SAVEPOINT. Si une appartenance subsiste, le SET LOCAL REUSSIT : le
+  // residu est constate, pas suppose.
+  //
+  // `SET LOCAL` est defait par le ROLLBACK vers le SAVEPOINT, et ne peut de toute
+  // facon jamais sortir de la transaction : cet essai ne peut pas laisser de trace.
+  const peutEndosserMaintenant = await (async () => {
+    await db.query('SAVEPOINT tf_sonde_set_role');
+    try {
+      await db.query(`SET LOCAL ROLE ${quoteIdent(ROLE_MIGRATOR_EFFECTIF)}`);
+      await db.query('ROLLBACK TO SAVEPOINT tf_sonde_set_role');
+      return true;
+    } catch {
+      await db.query('ROLLBACK TO SAVEPOINT tf_sonde_set_role');
+      return false;
+    }
+  })();
+
   const final = (await db.query(
     `SELECT pg_catalog.pg_has_role(current_user, $1, 'SET') AS peut_endosser,
             (SELECT rolsuper FROM pg_catalog.pg_roles WHERE rolname = current_user) AS executant_superuser,
@@ -634,16 +656,26 @@ async function assurerDroitsSchema() {
   )).rows[0];
   const residuelAutomatiqueSûr = final.nb_appartenances === 0
     || (final.nb_appartenances === 1 && final.admin_seul && final.sans_inherit && final.sans_set);
-  const capaciteParSuperuserSeul = final.executant_superuser === true && final.nb_appartenances === 0;
-  const peutEndosserInjustifie = final.peut_endosser === true && !capaciteParSuperuserSeul;
+  // Un SUPERUSER endosse par PRIVILEGE : son SET LOCAL reussit toujours, sans
+  // qu'aucune appartenance n'existe. Pour lui seul, la preuve par execution ne
+  // peut donc pas conclure, et c'est l'etat declare qui tranche — avec la
+  // tolerance etroite du residu automatique. Pour tout autre executant, la
+  // mesure fait foi : aucune deduction.
+  const capaciteParSuperuserSeul = final.executant_superuser === true;
+  const peutEndosserInjustifie = capaciteParSuperuserSeul
+    ? (final.peut_endosser === true && !residuelAutomatiqueSûr)
+    : peutEndosserMaintenant === true;
   if (peutEndosserInjustifie || !residuelAutomatiqueSûr) {
     throw new Error(`appartenance SET temporaire à ${ROLE_MIGRATOR_EFFECTIF} non révoquée ou résiduel ADMIN non conforme`);
   }
-  if (capaciteParSuperuserSeul && final.peut_endosser) {
+  if (capaciteParSuperuserSeul && final.peut_endosser && final.nb_appartenances === 0) {
     // Documenté, jamais silencieux : la capacité vient du privilège SUPERUSER,
     // pas d'une appartenance. Aucun droit nouveau n'a donc été laissé derrière.
     console.log(`  note  SET ROLE vers ${ROLE_MIGRATOR_EFFECTIF} disponible par privilège SUPERUSER, hors appartenance — aucune appartenance laissée (${final.nb_appartenances})`);
   }
+  console.log(capaciteParSuperuserSeul
+    ? `  sonde SET LOCAL ROLE ${ROLE_MIGRATOR_EFFECTIF} : reussie par privilege SUPERUSER — capacite intrinseque, sans appartenance`
+    : `  sonde SET LOCAL ROLE ${ROLE_MIGRATOR_EFFECTIF} : ${peutEndosserMaintenant ? 'REUSSIE — une appartenance subsiste encore' : 'refusee — aucune capacite residuelle'}`);
 
   const { rows } = await db.query(
     `SELECT has_schema_privilege($1, 'public', 'CREATE') AS app_create,
