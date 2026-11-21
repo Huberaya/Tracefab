@@ -314,6 +314,68 @@ async function verifierPublicPgcrypto() {
   return ouverts.length === 0 && appOuvertes.length === 0;
 }
 
+/**
+ * Préflight STRICT avant toute écriture de provisionnement.
+ * Neon peut exposer pgcrypto via cloud_admin : l'extension est visible,
+ * mais neondb_owner ne peut ni SET ROLE cloud_admin ni modifier ses ACL.
+ * Un REVOKE peut alors ne produire qu'une NOTICE ; la vérification postérieure
+ * arrive trop tard car les rôles auraient déjà été créés.
+ *
+ * On exige que pgcrypto soit déjà installée et que l'exécutant puisse modifier
+ * chaque fonction encore ouverte à PUBLIC. Ce contrôle est strictement en lecture seule.
+ */
+async function preflightPgcryptoAvantEcriture() {
+  const extension = (await db.query(
+    "SELECT EXISTS (SELECT 1 FROM pg_catalog.pg_extension WHERE extname = 'pgcrypto') AS presente",
+  )).rows[0]?.presente === true;
+  if (!extension) {
+    console.error('  REFUS — pgcrypto absente : installer et vérifier l’extension séparément avant le provisionnement des rôles.');
+    return false;
+  }
+
+  const { rows } = await db.query(`
+    SELECT p.oid::pg_catalog.regprocedure::text AS signature,
+           pg_catalog.pg_get_userbyid(p.proowner) AS proprietaire,
+           EXISTS (
+             SELECT 1 FROM pg_catalog.aclexplode(
+               COALESCE(p.proacl, pg_catalog.acldefault('f', p.proowner))
+             ) acl
+              WHERE acl.grantee = 0 AND acl.privilege_type = 'EXECUTE'
+           ) AS public_execute,
+           (
+             p.proowner = (SELECT oid FROM pg_catalog.pg_roles WHERE rolname = current_user)
+             OR (SELECT rolsuper FROM pg_catalog.pg_roles WHERE rolname = current_user)
+             OR pg_catalog.pg_has_role(current_user, p.proowner, 'SET')
+           ) AS autorite_revoke
+      FROM pg_catalog.pg_depend d
+      JOIN pg_catalog.pg_proc p ON p.oid = d.objid
+     WHERE d.refclassid = 'pg_catalog.pg_extension'::pg_catalog.regclass
+       AND d.classid = 'pg_catalog.pg_proc'::pg_catalog.regclass
+       AND d.deptype = 'e'
+       AND d.refobjid = (SELECT oid FROM pg_catalog.pg_extension WHERE extname = 'pgcrypto')
+     ORDER BY 1
+  `);
+
+  if (rows.length === 0) {
+    console.error('  REFUS — pgcrypto présente mais aucune fonction membre vérifiable.');
+    return false;
+  }
+
+  const aModifier = rows.filter((r) => r.public_execute);
+  const sansAutorite = aModifier.filter((r) => r.autorite_revoke !== true);
+  console.log(`  préflight pgcrypto : ${rows.length} fonction(s), ${aModifier.length} encore EXECUTE PUBLIC.`);
+  if (sansAutorite.length) {
+    const detail = sansAutorite.slice(0, 8)
+      .map((r) => `${r.signature} (propriétaire ${r.proprietaire})`).join(', ');
+    console.error(`  REFUS AVANT ÉCRITURE — l’exécutant ${identite.r} ne peut pas révoquer EXECUTE PUBLIC sur ${sansAutorite.length}/${aModifier.length} fonction(s) : ${detail}.`);
+    console.error('  Aucun CREATE ROLE, ALTER ROLE, GRANT, REVOKE ni ALTER SCHEMA n’a été exécuté.');
+    console.error('  Intervention du propriétaire réel ou procédure officiellement supportée par Neon requise ; aucune élévation cloud_admin ne sera tentée.');
+    return false;
+  }
+  console.log('  ok    autorité de révocation vérifiée pour toutes les fonctions pgcrypto encore ouvertes.');
+  return true;
+}
+
 async function assurerExtensions() {
   for (const ext of ['pgcrypto']) {
     try {
@@ -402,6 +464,13 @@ async function assurerDroitsSchema() {
 }
 
 if (!verifierSeulement) {
+  // Garde impérative : elle précède CREATE ROLE, ALTER ROLE, CREATE EXTENSION,
+  // REVOKE, GRANT et ALTER SCHEMA. Un échec laisse la base strictement intacte.
+  if (!(await preflightPgcryptoAvantEcriture())) {
+    console.error('  VERDICT : provisionnement refusé avant toute écriture.');
+    await db.end();
+    process.exit(1);
+  }
   // L'ordre compte : `tracefab_migrator` doit exister avant la chaîne, et
   // `tracefab_app` aussi (la chaîne lui accorde des privilèges par son nom).
   await assurerRole(ROLE_APP_SURCHARGE, process.env.TF_APP_PASSWORD);
