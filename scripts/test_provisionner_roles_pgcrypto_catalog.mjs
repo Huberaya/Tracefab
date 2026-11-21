@@ -98,6 +98,12 @@ try {
 
   await admin.query(`CREATE ROLE ${qid(ownerRole)} LOGIN CREATEROLE NOSUPERUSER NOBYPASSRLS NOCREATEDB PASSWORD '${ownerPassword}'`);
   ownerCreated = true;
+  // En Production, le provisionneur crée tracefab_migrator : son exécutant
+  // conserve donc l'ADMIN OPTION sur le rôle qu'il vient de créer. Ici le
+  // rôle existe déjà au niveau du cluster CI ; on reproduit explicitement
+  // cette capacité pour le scénario positif. Le provisionneur doit la
+  // consommer uniquement pour le GRANT SET temporaire puis la révoquer.
+  await admin.query(`GRANT tracefab_migrator TO ${qid(ownerRole)} WITH ADMIN OPTION`);
   await admin.query(`CREATE ROLE ${qid(platformRole)} NOLOGIN SUPERUSER`);
   platformCreated = true;
   await admin.query(`CREATE DATABASE ${qid(database)} OWNER ${qid(ownerRole)}`);
