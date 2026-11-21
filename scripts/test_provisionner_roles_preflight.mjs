@@ -1,24 +1,18 @@
 #!/usr/bin/env node
 /**
- * Garde statique du provisionneur : le préflight classe les ACL pgcrypto
- * Neon-managed comme résiduel documenté, sans faux refus ni REVOKE impossible.
- * Ce test statique ne remplace pas la suite d'intégration PostgreSQL.
+ * Garde statique du provisionneur : vérifie le branchement de la politique
+ * pgcrypto testée séparément par une matrice unitaire.
+ * Ne remplace pas un test d'intégration PostgreSQL.
  */
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 
 const source = await readFile(new URL('./provisionner_roles_db.mjs', import.meta.url), 'utf8');
+const policy = await readFile(new URL('./lib/pgcrypto_provisioning_policy.mjs', import.meta.url), 'utf8');
 const debut = source.indexOf('async function preflightPgcryptoAvantEcriture() {');
 const fin = source.indexOf('\nasync function assurerExtensions(', debut);
 assert.ok(debut >= 0 && fin > debut, 'le préflight pgcrypto existe et est délimité');
 const preflight = source.slice(debut, fin);
-
-const verifierDebut = source.indexOf('async function verifierPublicPgcrypto(');
-const verifierFin = source.indexOf('\nasync function preflightPgcryptoAvantEcriture()', verifierDebut);
-assert.ok(verifierDebut >= 0 && verifierFin > verifierDebut, 'le contrôle des ACL pgcrypto est délimité');
-const verifier = source.slice(verifierDebut, verifierFin);
-assert.match(verifier, /droitsAppHorsPublic/,
-  'un droit direct de l’application hors PUBLIC reste détecté comme écart');
 
 assert.match(preflight, /pg_catalog\.pg_available_extensions/,
   'l’absence de pgcrypto est évaluée avant les écritures');
@@ -30,16 +24,26 @@ assert.match(preflight, /pg_catalog\.aclexplode\([\s\S]*acl\.grantee = 0[\s\S]*E
   'EXECUTE PUBLIC est lu depuis les ACL effectives');
 assert.match(preflight, /pg_catalog\.pg_has_role\(current_user, p\.proowner, 'SET'\)/,
   'la capacité réelle à endosser le propriétaire est vérifiée');
-assert.match(preflight, /return 'managed-external'/,
-  'les fonctions détenues par un superutilisateur plateforme sont classées, pas bloquées');
-assert.match(preflight, /ouverts\.every\(\(r\) => r\.proprietaire_superuser === true && r\.autorite_revoke !== true\)/,
-  'toutes les fonctions encore publiques doivent appartenir à un superutilisateur externe non endossable');
-assert.match(preflight, /proprietaire_superuser === true/,
-  'le classement plateforme exige un propriétaire superutilisateur');
-assert.match(preflight, /REFUS AVANT ÉCRITURE — propriétaire externe non classé/,
-  'un propriétaire externe non reconnu reste bloquant');
+assert.match(preflight, /determinerModePgcrypto\(/,
+  'la décision de sécurité est déléguée à la politique pure testée');
+assert.match(preflight, /decision\.mode === 'managed-external'/,
+  'le cas Neon-managed est explicitement reconnu');
+assert.match(preflight, /REFUS AVANT ÉCRITURE/,
+  'un état non classé refuse avant toute écriture');
 assert.doesNotMatch(preflight, /\b(?:CREATE|ALTER|DROP|GRANT|REVOKE)\s+(?:ROLE|SCHEMA|EXTENSION|EXECUTE|CONNECT|USAGE)/i,
   'le préflight lui-même ne contient aucune mutation SQL');
+
+assert.match(policy, /ouverts\.every\([\s\S]*proprietaire_superuser === true[\s\S]*autorite_revoke === false/,
+  'le mode Neon-managed exige que toutes les fonctions publiques soient détenues par un superutilisateur externe non endossable');
+assert.match(policy, /mélange de propriétaires publics/,
+  'les états mixtes restent refusés');
+
+const verifierDebut = source.indexOf('async function verifierPublicPgcrypto(');
+const verifierFin = source.indexOf('\nasync function preflightPgcryptoAvantEcriture()', verifierDebut);
+assert.ok(verifierDebut >= 0 && verifierFin > verifierDebut, 'le contrôle des ACL pgcrypto est délimité');
+const verifier = source.slice(verifierDebut, verifierFin);
+assert.match(verifier, /droitsAppHorsPublic/,
+  'un droit direct de l’application hors PUBLIC reste détecté comme écart');
 
 const assuranceDebut = source.indexOf('async function assurerExtensions(modePgcrypto)');
 const assuranceFin = source.indexOf('\nasync function assurerDroitsSchema()', assuranceDebut);
@@ -67,4 +71,4 @@ assert.match(source, /const modePgcrypto = await preflightPgcryptoAvantEcriture\
 assert.match(source, /const modePgcrypto = await preflightPgcryptoAvantEcriture\(\);[\s\S]*verifierPublicPgcrypto\(modePgcrypto\)/,
   'le mode --verifier applique la même classification en lecture seule');
 
-console.log('PASS — préflight fail-closed, ACL Neon-managed explicitement conservées, aucun REVOKE/GRANT impossible.');
+console.log('PASS — provisionneur branché sur une politique pure testée, fail-closed et sans REVOKE impossible.');
