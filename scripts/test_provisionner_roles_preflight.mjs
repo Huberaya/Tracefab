@@ -33,7 +33,7 @@ assert.match(preflight, /REFUS AVANT ÉCRITURE/,
 assert.doesNotMatch(preflight, /\b(?:CREATE|ALTER|DROP|GRANT|REVOKE)\s+(?:ROLE|SCHEMA|EXTENSION|EXECUTE|CONNECT|USAGE)/i,
   'le préflight lui-même ne contient aucune mutation SQL');
 
-assert.match(policy, /ouverts\.every\([\s\S]*proprietaire_superuser === true[\s\S]*autorite_revoke === false/,
+assert.match(policy, /publiques\.every\([\s\S]*proprietaire_superuser === true[\s\S]*autorite_revoke === false/,
   'le mode Neon-managed exige que toutes les fonctions publiques soient détenues par un superutilisateur externe non endossable');
 assert.match(policy, /mélange de propriétaires publics/,
   'les états mixtes restent refusés');
