@@ -94,7 +94,7 @@ async function snapshot(client) {
 try {
   verrou = await verrouillerCluster({ urlProprietaire: urlCluster });
   const exists = (await admin.query(
-    `SELECT rolname FROM pg_catalog.pg_roles WHERE rolname IN ('tracefab_app','tracefab_migrator')`,
+    `SELECT rolname FROM pg_catalog.pg_roles WHERE rolname = 'tracefab_app'`,
   )).rows.map((r) => r.rolname);
   assert.ok(exists.includes('tracefab_app'), 'tracefab_app doit être provisionné avant cette étape CI');
 
@@ -288,7 +288,7 @@ try {
   await executionApres.end();
 
   assert.equal(appRole.rowCount, 1, 'le rôle applicatif de sonde doit être créé');
-  assert.equal(etatApresProvisionnement.schemaOwner, 'tracefab_migrator',
+  assert.equal(etatApresProvisionnement.schemaOwner, testMigratorRole,
     'le schéma public doit appartenir au rôle de migration');
   assert.equal(etatApresProvisionnement.pgcrypto.public_execute, 0,
     'EXECUTE PUBLIC doit être retiré des fonctions pgcrypto lorsque le propriétaire est accessible');
