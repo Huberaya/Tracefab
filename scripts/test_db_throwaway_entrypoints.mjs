@@ -127,6 +127,13 @@ console.log('UNGUARDED_SCRIPT');
 process.exit(7);
 `);
 
+  writeFileSync(join(harnessRoot, 'scripts', 'migrer_fidelement.mjs'), `#!/usr/bin/env node
+const { appendFileSync } = require('fs');
+appendFileSync(process.env.TF_PRISMA_SENTINEL, JSON.stringify({ runner: true, argv: process.argv.slice(2) }) + '\\n');
+console.log('SENTINEL_RUNNER_FAKE');
+process.exit(43);
+`);
+
   function writeHarnessPackage(scriptBody) {
     writeFileSync(packageJson, `${JSON.stringify({
       name: 'tf-t15-harness',
@@ -329,6 +336,36 @@ process.exit(7);
       && !leaks(r.combined)
       ? ok('flux prisma : URL caviardée, sentinelle exit 42')
       : ko(`caviardage status=${r.status} leaks=${leaks(r.combined)} body=${r.combined.slice(0, 280)}`);
+  }
+
+  console.log('\n  C4. runner fidèle : deux identités locales, garde conservée, Prisma non appelé');
+
+  {
+    const r = runNpm({
+      DATABASE_URL: 'postgresql://tracefab_migrator:motdepasse@127.0.0.1:5432/tracefab_test',
+      TF_ADMIN_URL: 'postgresql://tracefab_ci_admin:motdepasse@127.0.0.1:5432/tracefab_test',
+      TF_ALLOW_WRITE: 'oui',
+      TF_MIGRATION_ENGINE: 'fidele',
+    });
+    const runner = sentinelInvocations().find(x => x.runner === true);
+    r.status === 43 && r.invocations.length === 0
+      && Boolean(runner) && /SENTINEL_RUNNER_FAKE/.test(r.combined)
+      && /throwaway_local/.test(r.combined)
+      ? ok('runner fidèle : cible locale validée, runner appelé, Prisma jamais appelé')
+      : ko(`runner fidèle status=${r.status} invocations=${JSON.stringify(r.invocations)} body=${r.combined.slice(0, 260)}`);
+    leaks(r.combined) ? ko('runner fidèle : URL ou secret dans les logs') : ok('runner fidèle : logs sans URL ni secret');
+  }
+  {
+    const r = runNpm({
+      DATABASE_URL: 'postgresql://tracefab_migrator:motdepasse@127.0.0.1:5432/tracefab_test',
+      TF_ADMIN_URL: NEON_URL,
+      TF_ALLOW_WRITE: 'oui',
+      TF_MIGRATION_ENGINE: 'fidele',
+    });
+    r.status === 3 && r.invocations.length === 0
+      && !/SENTINEL_RUNNER_FAKE/.test(r.combined)
+      ? ok('runner fidèle : administrateur distant refusé avant exécution')
+      : ko(`admin distant status=${r.status} body=${r.combined.slice(0, 240)}`);
   }
 
   console.log('\n  D. substitution dangereuse du corps npm');
