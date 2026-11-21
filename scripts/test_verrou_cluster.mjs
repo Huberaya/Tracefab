@@ -124,6 +124,9 @@ const DOIVENT_VERROUILLER = [
   // provisionnent : elle prend le verrou, et le relache avant d'appeler
   // `migrer_fidelement.mjs` (verrou non reentrant).
   'scripts/test_p106_preflight_avant_ecriture.mjs',
+  // P10 : le banc pgcrypto crée des rôles et une base temporaires sur le
+  // cluster partagé ; il tient le même verrou pendant toute la mesure.
+  'scripts/test_provisionner_roles_pgcrypto_catalog.mjs',
   // P10.7 : cree une base jetable dans le cluster partage et y provisionne le
   // role applicatif (`bootstrap_app_role.mjs`) pour eprouver l'activation du
   // mode strict. Elle PRENAIT le verrou dans son corps, mais son nom ne
@@ -150,6 +153,7 @@ const NE_DOIVENT_PAS = [
   // il n en execute aucun. Le laisser hors des listes ferait croire qu il
   // provisionne.
   ['scripts/test_destructive_suite_routing.mjs', 'test statique — ne provisionne rien'],
+  ['scripts/test_provisionner_roles_preflight.mjs', 'test statique — ne provisionne rien'],
 
   // Cluster prive, cree et detruit par le script lui-meme : rien a serialiser.
   ['scripts/test_routes_sous_role_app.mjs', 'embedded-postgres prive'],

@@ -125,6 +125,13 @@ async function assurerAdministrateurDeBanc() {
   // pour la CI (`GRANT <migrator> TO <admin> WITH ADMIN TRUE, SET FALSE,
   // INHERIT FALSE`, grantor `postgres`).
   await admin.query(`GRANT tracefab_migrator TO ${ROLE_ADMIN_BANCS} WITH ADMIN TRUE, SET FALSE, INHERIT FALSE`);
+  // Le provisionneur doit être éprouvé sous le compte CREATEROLE non-superuser,
+  // pas sous postgres : sinon pg_has_role(postgres, migrator, 'SET') reste vrai
+  // par privilège superuser et le préflight ne représente pas Neon. L'admin
+  // reçoit ADMIN sur les deux rôles pour poser leurs mots de passe, puis devient
+  // propriétaire de la base jetable (équivalent fonctionnel de neondb_owner).
+  await admin.query(`GRANT tracefab_app TO ${ROLE_ADMIN_BANCS} WITH ADMIN TRUE, SET FALSE, INHERIT FALSE`);
+  await admin.query(`ALTER DATABASE "${base}" OWNER TO ${ROLE_ADMIN_BANCS}`);
   adminBancsCree = true;
   process.env.TF_ADMIN_URL = `postgresql://${ROLE_ADMIN_BANCS}:${MDP_ADMIN_BANCS}@${new URL(urlAdmin).host}/postgres`;
   console.log(`  administrateur de banc : ${ROLE_ADMIN_BANCS} (CREATEROLE, NON superuser)`);
@@ -187,6 +194,26 @@ await admin.connect();
 console.log(`  base jetable : ${base}`);
 await admin.query(`DROP DATABASE IF EXISTS ${base} WITH (FORCE)`);
 await admin.query(`CREATE DATABASE ${base}`);
+
+// Reproduire le résiduel Neon observé : pgcrypto est installé par le rôle
+// superutilisateur géré (analogue cloud_admin), puis le provisionneur est lancé
+// par l'administrateur CREATEROLE non-superuser. Si l'extension était créée par
+// cet administrateur, ses fonctions lui appartiendraient et le test basculerait
+// à tort dans le mode « ACL modifiables », où PUBLIC doit être révoqué et où
+// l'application ne doit plus hériter d'EXECUTE. Dans Neon, ces fonctions sont
+// détenues par le superutilisateur externe et leurs ACL PUBLIC préexistantes
+// sont explicitement classées, jamais révoquées.
+const proprietairePgcrypto = new pg.Client({
+  connectionString: urlProprietaire(base),
+  ssl: sslDepuisUrl(urlProprietaire(base)),
+  application_name: 'tracefab-p105-pgcrypto-owner',
+});
+await proprietairePgcrypto.connect();
+try {
+  await proprietairePgcrypto.query('CREATE EXTENSION IF NOT EXISTS pgcrypto');
+} finally {
+  await proprietairePgcrypto.end();
+}
 await assurerAdministrateurDeBanc();
 
 // Les roles sont des objets de CLUSTER : les provisionner ici change leur mot
@@ -222,7 +249,9 @@ try {
   // B3.1 — provisioning, deux fois : la seconde ne doit RIEN émettre d'ALTER.
   // -------------------------------------------------------------------------
   const envProv = {
-    DATABASE_URL: (() => { const u = new URL(urlAdmin); u.pathname = `/${base}`; return u.toString(); })(),
+    // Reproduire le vrai modèle d'administration Neon : le CREATEROLE non-
+    // superuser propriétaire de la base, jamais le compte postgres du cluster.
+    DATABASE_URL: urlAdminSession(base),
     TF_ALLOW_PROVISIONING: 'oui',
     TF_APP_PASSWORD: MDP_APP,
     TF_MIGRATOR_PASSWORD: MDP_MIG,
