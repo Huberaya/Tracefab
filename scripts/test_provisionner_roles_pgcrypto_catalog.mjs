@@ -34,6 +34,9 @@ const ownerRole = `tf_p10_owner_${suffix}`;
 const platformRole = `tf_p10_cloud_${suffix}`;
 const unknownRole = `tf_p10_unknown_${suffix}`;
 const testAppRole = `tf_p10_app_${suffix}`;
+const testMigratorRole = `tf_p10_migrator_${suffix}`;
+const negativeMigratorRole = `tf_p10_migrator_negative_${suffix}`;
+let activeMigratorRole = testMigratorRole;
 const database = `tf_p10_pgcrypto_${suffix}`;
 const ownerPassword = `p10_${randomBytes(12).toString('hex')}`;
 const qid = (value) => `"${String(value).replace(/"/g, '""')}"`;
@@ -51,8 +54,8 @@ async function snapshot(client) {
     SELECT rolname, rolcanlogin, rolsuper, rolbypassrls, rolcreaterole,
            rolcreatedb, rolinherit
       FROM pg_catalog.pg_roles
-     WHERE rolname IN ('tracefab_app', 'tracefab_migrator')
-     ORDER BY rolname`)).rows;
+     WHERE rolname IN ('tracefab_app', $1)
+     ORDER BY rolname`, [activeMigratorRole])).rows;
   const totalRoles = Number((await client.query(
     'SELECT count(*)::int AS n FROM pg_catalog.pg_roles')).rows[0].n);
   const schemaOwner = (await client.query(`
@@ -68,8 +71,8 @@ async function snapshot(client) {
   const temporaryMemberships = Number((await client.query(`
     SELECT count(*)::int AS n
       FROM pg_catalog.pg_auth_members
-     WHERE roleid = pg_catalog.to_regrole('tracefab_migrator')
-       AND member = pg_catalog.to_regrole($1)`, [ownerRole])).rows[0].n);
+     WHERE roleid = pg_catalog.to_regrole($2)
+       AND member = pg_catalog.to_regrole($1)`, [ownerRole, activeMigratorRole])).rows[0].n);
   const pgcrypto = (await client.query(`
     SELECT count(*)::int AS functions,
            count(*) FILTER (WHERE EXISTS (
@@ -94,16 +97,9 @@ try {
     `SELECT rolname FROM pg_catalog.pg_roles WHERE rolname IN ('tracefab_app','tracefab_migrator')`,
   )).rows.map((r) => r.rolname);
   assert.ok(exists.includes('tracefab_app'), 'tracefab_app doit être provisionné avant cette étape CI');
-  assert.ok(exists.includes('tracefab_migrator'), 'tracefab_migrator doit être provisionné avant cette étape CI');
 
   await admin.query(`CREATE ROLE ${qid(ownerRole)} LOGIN CREATEROLE NOSUPERUSER NOBYPASSRLS NOCREATEDB PASSWORD '${ownerPassword}'`);
   ownerCreated = true;
-  // En Production, le provisionneur crée tracefab_migrator : son exécutant
-  // conserve donc l'ADMIN OPTION sur le rôle qu'il vient de créer. Ici le
-  // rôle existe déjà au niveau du cluster CI ; on reproduit explicitement
-  // cette capacité pour le scénario positif. Le provisionneur doit la
-  // consommer uniquement pour le GRANT SET temporaire puis la révoquer.
-  await admin.query(`GRANT tracefab_migrator TO ${qid(ownerRole)} WITH ADMIN OPTION`);
   await admin.query(`CREATE ROLE ${qid(platformRole)} NOLOGIN SUPERUSER`);
   platformCreated = true;
   await admin.query(`CREATE DATABASE ${qid(database)} OWNER ${qid(ownerRole)}`);
@@ -217,6 +213,7 @@ try {
       DATABASE_URL: ownerUrl.toString(),
       DATABASE_ADMIN_URL: '',
       TF_APP_ROLE_NAME: testAppRole,
+      TF_MIGRATOR_ROLE_NAME: testMigratorRole,
       TF_ALLOW_PROVISIONING: 'oui',
     },
   });
@@ -283,11 +280,11 @@ try {
   const hmac = (await executionApres.query(
     `SELECT pg_catalog.has_function_privilege($1, 'public.hmac(bytea,bytea,text)', 'EXECUTE') AS migrator,
             pg_catalog.has_function_privilege($2, 'public.hmac(bytea,bytea,text)', 'EXECUTE') AS app`,
-    ['tracefab_migrator', testAppRole])).rows[0];
+    [testMigratorRole, testAppRole])).rows[0];
   const dbPrivileges = (await executionApres.query(
     `SELECT pg_catalog.has_database_privilege($1, current_database(), 'CREATE') AS migrator_create,
             pg_catalog.has_database_privilege($2, current_database(), 'CREATE') AS app_create`,
-    ['tracefab_migrator', testAppRole])).rows[0];
+    [testMigratorRole, testAppRole])).rows[0];
   await executionApres.end();
 
   assert.equal(appRole.rowCount, 1, 'le rôle applicatif de sonde doit être créé');
@@ -303,19 +300,19 @@ try {
     'l’appartenance SET temporaire doit être révoquée avant COMMIT');
   assert.match(provisionnement.stdout, /propriété du schéma transférée avec SET temporaire puis révoqué/,
     'le chemin positif doit prouver le transfert via l’appartenance SET temporaire');
-  assert.ok(etatApresProvisionnement.totalRoles === etatAvantProvisionnement.totalRoles + 1,
+  assert.ok(etatApresProvisionnement.totalRoles === etatAvantProvisionnement.totalRoles + 2,
     'une seule identité applicative de sonde doit avoir été créée');
 
-  // Contre-épreuve transactionnelle : le même exécutant perd CREATEROLE.
-  // Les rôles applicatif et migrator existent déjà ; le provisionneur doit
-  // donc atteindre l'étape SET temporaire, échouer sans privilège, puis
-  // restaurer exactement les ACL et le propriétaire du schéma.
+  // Contre-épreuve : un rôle migrateur préexistant, créé par l'administrateur
+  // du cluster, n'accorde aucune ADMIN OPTION à l'exécutant. Celui-ci perd aussi
+  // CREATEROLE : le GRANT SET doit échouer puis la transaction être annulée.
   const rootNegative = new pg.Client({ connectionString: dbUrl.toString() });
   await rootNegative.connect();
   try {
+    await rootNegative.query(`CREATE ROLE ${qid(negativeMigratorRole)} NOLOGIN CREATEROLE BYPASSRLS`);
     await rootNegative.query(`ALTER SCHEMA public OWNER TO ${qid(ownerRole)}`);
-    await rootNegative.query(`REVOKE tracefab_migrator FROM ${qid(ownerRole)}`);
     await rootNegative.query(`ALTER ROLE ${qid(ownerRole)} NOCREATEROLE`);
+    activeMigratorRole = negativeMigratorRole;
   } finally {
     await rootNegative.end();
   }
@@ -332,6 +329,7 @@ try {
       DATABASE_URL: ownerUrl.toString(),
       DATABASE_ADMIN_URL: '',
       TF_APP_ROLE_NAME: testAppRole,
+      TF_MIGRATOR_ROLE_NAME: negativeMigratorRole,
       TF_ALLOW_PROVISIONING: 'oui',
     },
   });
@@ -351,6 +349,8 @@ try {
   if (databaseCreated) await admin.query(`DROP DATABASE IF EXISTS ${qid(database)} WITH (FORCE)`).catch(() => {});
   if (platformCreated) await admin.query(`DROP ROLE IF EXISTS ${qid(platformRole)}`).catch(() => {});
   if (unknownCreated) await admin.query(`DROP ROLE IF EXISTS ${qid(unknownRole)}`).catch(() => {});
+  await admin.query(`DROP ROLE IF EXISTS ${qid(negativeMigratorRole)}`).catch(() => {});
+  await admin.query(`DROP ROLE IF EXISTS ${qid(testMigratorRole)}`).catch(() => {});
   await admin.query(`DROP OWNED BY ${qid(testAppRole)}`).catch(() => {});
   await admin.query(`DROP ROLE IF EXISTS ${qid(testAppRole)}`).catch(() => {});
   if (ownerCreated) await admin.query(`DROP ROLE IF EXISTS ${qid(ownerRole)}`).catch(() => {});
