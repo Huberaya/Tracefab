@@ -44,6 +44,8 @@ assert.ok(verifierDebut >= 0 && verifierFin > verifierDebut, 'le contrôle des A
 const verifier = source.slice(verifierDebut, verifierFin);
 assert.match(verifier, /droitsAppHorsPublic/,
   'un droit direct de l’application hors PUBLIC reste détecté comme écart');
+assert.match(verifier, /hmac\?\.migrator_execute === true/,
+  'le rôle de migration doit conserver EXECUTE sur hmac dans le mode Neon-managed');
 
 const assuranceDebut = source.indexOf('async function assurerExtensions(modePgcrypto)');
 const assuranceFin = source.indexOf('\nasync function assurerDroitsSchema()', assuranceDebut);
