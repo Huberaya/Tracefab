@@ -83,7 +83,7 @@ async function main() {
     { id: otherSupplierId, organization_id: otherOrganizationId, onboarding_status: 'in_progress' },
   ] });
 
-  await runAs(ownerId, ownerEmail, async (tx) => {
+  await runAs(ownerId, ownerEmail, organizationId, async (tx) => {
     const visibleOrganizations = await tx.$queryRaw`SELECT id FROM organizations ORDER BY id`;
     assert(visibleOrganizations.length === 1 && visibleOrganizations[0].id === organizationId, 'supplier organization RLS leaked another tenant');
 
@@ -115,7 +115,7 @@ async function main() {
   });
 
   await expectFailure(
-    () => runAs(viewerId, viewerEmail, (tx) => tx.data_points.create({ data: {
+    () => runAs(viewerId, viewerEmail, organizationId, (tx) => tx.data_points.create({ data: {
       owner_organization_id: organizationId,
       supplier_id: supplierId,
       data_key: 'annual_production_capacity',
@@ -129,11 +129,11 @@ async function main() {
   );
 
   await expectFailure(
-    () => runAs(ownerId, ownerEmail, (tx) => tx.organization_memberships.update({ where: { organization_id_user_id: { organization_id: organizationId, user_id: ownerId } }, data: { status: 'suspended' } })),
+    () => runAs(ownerId, ownerEmail, organizationId, (tx) => tx.organization_memberships.update({ where: { organization_id_user_id: { organization_id: organizationId, user_id: ownerId } }, data: { status: 'suspended' } })),
     'last_owner_membership_required',
   );
   await expectFailure(
-    () => runAs(ownerId, ownerEmail, (tx) => tx.organization_invitations.create({ data: {
+    () => runAs(ownerId, ownerEmail, organizationId, (tx) => tx.organization_invitations.create({ data: {
       organization_id: organizationId,
       email: `cannot-owner-${process.pid}@example.test`,
       target_role: 'owner',
@@ -147,11 +147,14 @@ async function main() {
   console.log('Neon Supplier Portal advanced integration passed: tenant isolation, data-point versioning, role RLS and owner invariants');
 }
 
-async function runAs(userId, email, callback) {
+async function runAs(userId, email, activeOrganizationId, callback) {
   return prisma.$transaction(async (tx) => {
     await tx.$executeRawUnsafe(`SET LOCAL ROLE ${role}`);
     await tx.$executeRaw`SELECT set_config('tracefab.user_id', ${userId}, true)`;
     await tx.$executeRaw`SELECT set_config('tracefab.user_email', ${email}, true)`;
+    if (activeOrganizationId) {
+      await tx.$executeRaw`SELECT set_config('tracefab.active_organization_id', ${activeOrganizationId}, true)`;
+    }
     return callback(tx);
   });
 }
