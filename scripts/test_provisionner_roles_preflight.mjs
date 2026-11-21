@@ -25,6 +25,8 @@ assert.match(preflight, /pg_catalog\.pg_has_role\(current_user, p\.proowner, 'SE
   'la capacité réelle à endosser le propriétaire est vérifiée');
 assert.match(preflight, /return 'managed-external'/,
   'les fonctions détenues par un superutilisateur plateforme sont classées, pas bloquées');
+assert.match(preflight, /ouverts\.every\(\(r\) => r\.proprietaire_superuser === true && r\.autorite_revoke !== true\)/,
+  'toutes les fonctions encore publiques doivent appartenir à un superutilisateur externe non endossable');
 assert.match(preflight, /proprietaire_superuser === true/,
   'le classement plateforme exige un propriétaire superutilisateur');
 assert.match(preflight, /REFUS AVANT ÉCRITURE — propriétaire externe non classé/,
@@ -42,6 +44,8 @@ assert.ok(brancheManaged >= 0 && brancheRevoke > brancheManaged,
   'la branche Neon-managed est évaluée avant toute tentative de REVOKE');
 assert.match(assurance.slice(brancheManaged, brancheRevoke), /continue;/,
   'les ACL plateforme sont conservées explicitement, sans tentative de REVOKE');
+assert.match(assurance, /droitsAppHorsPublic/,
+  'un droit direct de l’application hors PUBLIC reste détecté comme écart');
 assert.match(assurance, /if \(modePgcrypto === 'managed-external'\) return;/,
   'aucun GRANT superflu n’est tenté dans le cas où PUBLIC donne déjà EXECUTE');
 
