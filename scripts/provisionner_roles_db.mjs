@@ -296,7 +296,10 @@ async function verifierPublicPgcrypto(modePgcrypto = 'modifiable') {
            ) AS public_execute,
            CASE WHEN pg_catalog.to_regrole($1) IS NULL THEN NULL
              ELSE pg_catalog.has_function_privilege(pg_catalog.to_regrole($1), p.oid, 'EXECUTE')
-           END AS app_execute
+           END AS app_execute,
+           CASE WHEN pg_catalog.to_regrole($2) IS NULL THEN NULL
+             ELSE pg_catalog.has_function_privilege(pg_catalog.to_regrole($2), p.oid, 'EXECUTE')
+           END AS migrator_execute
       FROM pg_catalog.pg_depend d
       JOIN pg_catalog.pg_proc p ON p.oid = d.objid
       JOIN pg_catalog.pg_roles r ON r.oid = p.proowner
@@ -304,7 +307,7 @@ async function verifierPublicPgcrypto(modePgcrypto = 'modifiable') {
      WHERE d.refclassid = 'pg_catalog.pg_extension'::pg_catalog.regclass
        AND d.classid = 'pg_catalog.pg_proc'::pg_catalog.regclass
        AND d.deptype = 'e' AND e.extname = 'pgcrypto'
-     ORDER BY 1`, [ROLE_APP_SURCHARGE]);
+     ORDER BY 1`, [ROLE_APP_SURCHARGE, ROLE_MIGRATOR]);
   if (rows.length === 0) {
     ok(false, 'fonctions membres pgcrypto vérifiables', 'extension ou fonctions absentes');
     return false;
@@ -330,7 +333,11 @@ async function verifierPublicPgcrypto(modePgcrypto = 'modifiable') {
       droitsAppHorsPublic.map((r) => r.signature).slice(0, 5).join(', ') || 'aucun');
     const hmac = rows.find((r) => r.signature.replace(/\s/g, '') === 'hmac(bytea,bytea,text)' || r.signature.replace(/\s/g, '') === 'public.hmac(bytea,bytea,text)');
     ok(Boolean(hmac), 'fonction hmac présente');
-    return tousExternesPlateforme && droitsAppHorsPublic.length === 0 && Boolean(hmac);
+    ok(hmac?.migrator_execute === true,
+      `${ROLE_MIGRATOR} conserve EXECUTE sur hmac via l’ACL de plateforme`,
+      `execute=${hmac?.migrator_execute}`);
+    return tousExternesPlateforme && droitsAppHorsPublic.length === 0
+      && Boolean(hmac) && hmac.migrator_execute === true;
   }
 
   const appOuvertes = rows.filter((r) => r.app_execute !== false);
@@ -457,7 +464,10 @@ async function assurerExtensions(modePgcrypto) {
     if (!(await verifierPublicPgcrypto('modifiable'))) return;
   }
 
-  if (modePgcrypto === 'managed-external') return;
+  if (modePgcrypto === 'managed-external') {
+    await verifierPublicPgcrypto('managed-external');
+    return;
+  }
 
   const requises = ['public.hmac(bytea,bytea,text)'];
   for (const signature of requises) {
