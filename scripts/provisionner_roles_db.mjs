@@ -578,17 +578,26 @@ async function assurerDroitsSchema() {
   await db.query(`ALTER SCHEMA public OWNER TO ${ROLE_MIGRATOR_EFFECTIF}`);
   await db.query(`REVOKE ${ROLE_MIGRATOR_EFFECTIF} FROM ${quoteIdent(executant)}`);
 
+  // PostgreSQL 16+ crée automatiquement, via le bootstrap grantor, une
+  // appartenance ADMIN TRUE / INHERIT FALSE / SET FALSE lorsqu'un rôle
+  // CREATEROLE crée un rôle. Ce grant système ne peut pas être révoqué par
+  // l'exécutant. On retire notre grant SET temporaire et on tolère uniquement
+  // ce résiduel documenté, sans capacité SET ni héritage.
   const final = (await db.query(
     `SELECT pg_catalog.pg_has_role(current_user, $1, 'SET') AS peut_endosser,
-            EXISTS (
-              SELECT 1 FROM pg_catalog.pg_auth_members m
-               WHERE m.roleid = pg_catalog.to_regrole($1)
-                 AND m.member = pg_catalog.to_regrole(current_user)
-            ) AS appartenance_directe`,
+            count(*)::int AS nb_appartenances,
+            COALESCE(bool_and(m.admin_option), false) AS admin_seul,
+            COALESCE(bool_and(NOT m.inherit_option), true) AS sans_inherit,
+            COALESCE(bool_and(NOT m.set_option), true) AS sans_set
+       FROM pg_catalog.pg_auth_members m
+      WHERE m.roleid = pg_catalog.to_regrole($1)
+        AND m.member = pg_catalog.to_regrole(current_user)`,
     [ROLE_MIGRATOR_EFFECTIF],
   )).rows[0];
-  if (final.peut_endosser || final.appartenance_directe) {
-    throw new Error(`appartenance temporaire à ${ROLE_MIGRATOR_EFFECTIF} non révoquée après transfert`);
+  const residuelAutomatiqueSûr = final.nb_appartenances === 0
+    || (final.nb_appartenances === 1 && final.admin_seul && final.sans_inherit && final.sans_set);
+  if (final.peut_endosser || !residuelAutomatiqueSûr) {
+    throw new Error(`appartenance SET temporaire à ${ROLE_MIGRATOR_EFFECTIF} non révoquée ou résiduel ADMIN non conforme`);
   }
 
   const { rows } = await db.query(
@@ -604,7 +613,7 @@ async function assurerDroitsSchema() {
     throw new Error(`post-contrôle schéma invalide : app_create=${rows[0]?.app_create}, mig_create=${rows[0]?.mig_create}, owner=${rows[0]?.schema_owner}`);
   }
   ok(true, 'propriété du schéma transférée avec SET temporaire puis révoqué',
-    `owner=${rows[0].schema_owner}, app_create=false, migrator_create=true, appartenance temporaire absente`);
+    `owner=${rows[0].schema_owner}, app_create=false, migrator_create=true, appartenance SET temporaire révoquée ; éventuel ADMIN automatique sans SET/INHERIT`);
 }
 
 if (!verifierSeulement) {
