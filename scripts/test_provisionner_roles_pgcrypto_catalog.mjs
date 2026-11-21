@@ -31,6 +31,8 @@ if (!['localhost', '127.0.0.1', '::1'].includes(cluster.hostname)
 const suffix = randomBytes(3).toString('hex');
 const ownerRole = `tf_p10_owner_${suffix}`;
 const platformRole = `tf_p10_cloud_${suffix}`;
+const unknownRole = `tf_p10_unknown_${suffix}`;
+const testAppRole = `tf_p10_app_${suffix}`;
 const database = `tf_p10_pgcrypto_${suffix}`;
 const ownerPassword = `p10_${randomBytes(12).toString('hex')}`;
 const qid = (value) => `"${String(value).replace(/"/g, '""')}"`;
@@ -40,6 +42,7 @@ await admin.connect();
 let databaseCreated = false;
 let ownerCreated = false;
 let platformCreated = false;
+let unknownCreated = false;
 
 async function snapshot(client) {
   const roles = (await client.query(`
@@ -161,10 +164,65 @@ try {
   assert.match(execution.stdout, /VERDICT : rôles conformes/,
     'le provisionneur doit rendre un verdict conforme');
 
-  console.log('PASS — PostgreSQL réel : propriétaire externe superuser reconnu, ACL PUBLIC conservées explicitement, zéro écriture.');
+  // Contre-épreuve : propriétaire externe inconnu, non-superuser et non
+  // endossable. Le vrai mode provisionnement doit refuser AVANT de créer le
+  // rôle applicatif de sonde ou de modifier le schéma/les ACL.
+  await admin.query(`CREATE ROLE ${qid(unknownRole)} NOLOGIN NOSUPERUSER NOBYPASSRLS NOCREATEROLE NOCREATEDB`);
+  unknownCreated = true;
+  const rootAgain = new pg.Client({ connectionString: dbUrl.toString() });
+  await rootAgain.connect();
+  try {
+    const members = (await rootAgain.query(`
+      SELECT p.oid::pg_catalog.regprocedure::text AS signature
+        FROM pg_catalog.pg_depend d
+        JOIN pg_catalog.pg_proc p ON p.oid = d.objid
+        JOIN pg_catalog.pg_extension e ON e.oid = d.refobjid
+       WHERE d.refclassid = 'pg_catalog.pg_extension'::pg_catalog.regclass
+         AND d.classid = 'pg_catalog.pg_proc'::pg_catalog.regclass
+         AND d.deptype = 'e' AND e.extname = 'pgcrypto'`)).rows;
+    for (const { signature } of members) {
+      await rootAgain.query(`ALTER FUNCTION ${signature} OWNER TO ${qid(unknownRole)}`);
+    }
+  } finally {
+    await rootAgain.end();
+  }
+
+  const avantRefusClient = new pg.Client({ connectionString: dbUrl.toString() });
+  await avantRefusClient.connect();
+  const avantRefus = await snapshot(avantRefusClient);
+  await avantRefusClient.end();
+  const ownerRefusal = spawnSync(process.execPath, ['scripts/provisionner_roles_db.mjs'], {
+    cwd: process.cwd(),
+    encoding: 'utf8',
+    env: {
+      ...process.env,
+      DATABASE_URL: ownerUrl.toString(),
+      DATABASE_ADMIN_URL: '',
+      TF_APP_ROLE_NAME: testAppRole,
+      TF_ALLOW_PROVISIONING: 'oui',
+    },
+  });
+  const apresRefusClient = new pg.Client({ connectionString: dbUrl.toString() });
+  await apresRefusClient.connect();
+  const apresRefus = await snapshot(apresRefusClient);
+  const roleSonde = await apresRefusClient.query(
+    'SELECT 1 FROM pg_catalog.pg_roles WHERE rolname = $1', [testAppRole]);
+  await apresRefusClient.end();
+
+  assert.notEqual(ownerRefusal.status, 0,
+    'un propriétaire externe non classé doit faire échouer le provisionnement');
+  assert.match(ownerRefusal.stderr + ownerRefusal.stdout, /REFUS AVANT ÉCRITURE/,
+    'le refus doit être explicite et précéder toute mutation');
+  assert.equal(roleSonde.rowCount, 0,
+    'le rôle applicatif de sonde ne doit pas avoir été créé');
+  assert.deepEqual(apresRefus, avantRefus,
+    'le refus doit laisser les rôles, le schéma et les ACL inchangés');
+
+  console.log('PASS — PostgreSQL réel : Neon-managed accepté sans écriture ; propriétaire externe inconnu refusé avant CREATE ROLE.');
 } finally {
   if (databaseCreated) await admin.query(`DROP DATABASE IF EXISTS ${qid(database)} WITH (FORCE)`).catch(() => {});
   if (platformCreated) await admin.query(`DROP ROLE IF EXISTS ${qid(platformRole)}`).catch(() => {});
+  if (unknownCreated) await admin.query(`DROP ROLE IF EXISTS ${qid(unknownRole)}`).catch(() => {});
   if (ownerCreated) await admin.query(`DROP ROLE IF EXISTS ${qid(ownerRole)}`).catch(() => {});
   await admin.end();
 }
