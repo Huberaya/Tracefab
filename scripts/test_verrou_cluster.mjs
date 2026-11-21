@@ -153,6 +153,7 @@ const NE_DOIVENT_PAS = [
   // il n en execute aucun. Le laisser hors des listes ferait croire qu il
   // provisionne.
   ['scripts/test_destructive_suite_routing.mjs', 'test statique — ne provisionne rien'],
+  ['scripts/test_provisionner_roles_preflight.mjs', 'test statique — ne provisionne rien'],
 
   // Cluster prive, cree et detruit par le script lui-meme : rien a serialiser.
   ['scripts/test_routes_sous_role_app.mjs', 'embedded-postgres prive'],
