@@ -600,11 +600,14 @@ jobs:
           #     un meme cluster). Memes exigences que test:p105:* : base
           #     migree, roles applicatifs, et pour la seconde le droit de
           #     creer une base. Cablees une par une dans le job « Base ».
-          #   test:p107:*                 — les quatre suites P10.7 (contrat
+          #   test:p107:*                 — les suites P10.7 (contrat
           #     d identite pur, sonde de catalogue, sonde cote runtime,
-          #     demonstration du mode strict). Trois exigent la base migree et
-          #     les deux roles ; la premiere n exige rien et tourne partout.
-          #     Cablees une par une dans le job « Base ».
+          #     demonstration du mode strict, fail-closed de la sonde, porte
+          #     d acces, repetition de la reconciliation sur 100 migrations).
+          #     Trois n exigent rien (contrat pur, fail-closed et porte
+          #     tournent sur PGlite en memoire) ; les autres exigent la base
+          #     migree et les deux roles. Cablees une par une dans le job
+          #     « Base ».
           scripts=$(node -e "console.log(Object.keys(require('./package.json').scripts).filter(k=>k.startsWith('test:')&&!k.includes('neon')&&!k.includes('staging')&&k!=='test:p2'&&k!=='test:regression'&&k!=='test:audit-script'&&k!=='test:provisioning:pgcrypto-catalog'&&k!=='test:dpp:review-publication'&&k!=='test:dpp:branche'&&k!=='test:dpp:role-applicatif'&&k!=='test:garde-fous:neon'&&!k.startsWith('test:jetables')&&!k.startsWith('test:p105')&&!k.startsWith('test:p106')&&!k.startsWith('test:p107')).join(' '))")
           echoues=''
           for s in $scripts; do
@@ -1511,6 +1514,35 @@ jobs:
         # l operateur n execute que des SELECT : une sonde qui ecrit en
         # production est pire qu'aucune sonde.
         run: node scripts/executer_avec_erreur_annotee.mjs "P10.5 sonde production" npm run test:p105:sonde
+
+      - name: P10.7 — la reconciliation et l activation stricte, rejouees sur 100 migrations
+        # 32 assertions sur un vrai moteur PostgreSQL (PGlite, en memoire) : la
+        # chaine complete des 100 migrations part de l etat Production mesure
+        # (56 attestees), pose les trois roles Neon, execute le preflight du
+        # registre, applique les 9 migrations jalons P10.5 -> P12, verifie le
+        # postflight (93/93 fonctions), provisionne les cles HMAC, bascule en
+        # systeme_strict puis strict, fait tourner une cle v1 -> v2 sans
+        # coupure, et revient en arriere R1a/R1b. Aucune base distante n est
+        # touchee. Le meme banc a servi a valider le runbook d activation : le
+        # runbook et le test ne peuvent plus diverger sans que l un des deux
+        # echoue.
+        run: node scripts/executer_avec_erreur_annotee.mjs "P10.7 repetition 100 migrations" npm run test:p107:rehearsal-100
+
+      - name: P10.7 — la sonde fail-closed, eprouvee sur PostgreSQL
+        # 63 assertions PGlite. La sonde doit REFUSER de conclure quand elle ne
+        # peut pas mesurer : table de registre absente, fonction manquante,
+        # droits insuffisants. Une sonde qui repond « tout va bien » faute d
+        # avoir pu lire est plus dangereuse qu une sonde absente. Ce fichier
+        # existait dans le depot sans etre cable : il ne pouvait donc pas
+        # echouer, donc il ne prouvait rien.
+        run: node scripts/executer_avec_erreur_annotee.mjs "P10.7 sonde fail-closed" npm run test:p107:sonde-fail-closed
+
+      - name: P10.7 — la porte d acces de la sonde runtime
+        # 16 assertions. Verifie la porte elle-meme : la sonde runtime ne doit
+        # s ouvrir que sur une cible autorisee, et refuser une cible distante
+        # sans opt-in explicite. Meme situation que ci-dessus : presente dans
+        # `package.json`, appelee par aucun workflow.
+        run: node scripts/executer_avec_erreur_annotee.mjs "P10.7 porte sonde runtime" npm run test:p107:sonde-runtime-porte
 
       - name: Aucune base jetable residuelle apres le job
         # Controle SEPARE des suites qu'il controle : une suite qui oublie de se

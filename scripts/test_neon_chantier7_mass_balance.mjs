@@ -59,6 +59,7 @@ async function runTests() {
       // Set session contexts for transaction
       await tx.$executeRawUnsafe(`SELECT set_config('tracefab.user_id', '${userId}', true)`);
       await tx.$executeRawUnsafe(`SELECT set_config('tracefab.user_email', 'compliance-${rand}@massbalancetest.com', true)`);
+      await tx.$executeRawUnsafe(`SELECT set_config('tracefab.active_organization_id', '${brandOrgId}', true)`);
 
       console.log('✓ Fixtures initialized successfully.\n');
 

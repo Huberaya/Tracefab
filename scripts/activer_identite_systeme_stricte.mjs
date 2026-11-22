@@ -28,7 +28,9 @@
  *   - elle n'ecrit que sur une cible JETABLE, par le classifieur commun. Un
  *     environnement qui sert n'est pas une cible de script : c'est une decision
  *     d'operateur prise avec l'outil de deploiement de cet environnement, et
- *     l'ordre de deploiement est ecrit dans l'en-tete de 20261105120100.
+ *     l'ordre de deploiement est ecrit dans l'en-tete de
+ *     20261106130000_identite_systeme_signee et dans
+ *     docs/security/2026-11-02-p107-plan-activation-stricte.md.
  *     `--verifier` reste utilisable partout : il ne lit que.
  *
  * USAGE
@@ -81,7 +83,7 @@ if (mode !== 'verifier') {
   if (!classification.allowed) {
     console.error(`  REFUS — ecriture refusee sur cette cible (${classification.code}) : ${classification.reason}.`);
     console.error('  Rien n a ete ecrit. Le basculement d un environnement qui sert est un acte');
-    console.error('  d exploitation documente (en-tete de 20261105120100), pas une commande de script.');
+    console.error('  d exploitation documente (20261106130000_identite_systeme_signee), pas une commande de script.');
     process.exit(3);
   }
   if (process.env.TF_ALLOW_WRITE !== 'oui') {

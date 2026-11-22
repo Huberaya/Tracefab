@@ -88,6 +88,7 @@ async function run() {
     // Set RLS session context as brand user
     await tx.$executeRawUnsafe(`SELECT set_config('tracefab.user_id', '${brandUser.id}', true)`);
     await tx.$executeRawUnsafe(`SELECT set_config('tracefab.user_email', '${brandUser.email}', true)`);
+    await tx.$executeRawUnsafe(`SELECT set_config('tracefab.active_organization_id', '${brandOrg.id}', true)`);
 
     // 2. Brand creates a Corrective Action Plan (CAP)
     const capRows = await tx.$queryRawUnsafe(`
@@ -124,6 +125,7 @@ async function run() {
     // Switch context to supplier
     await tx.$executeRawUnsafe(`SELECT set_config('tracefab.user_id', '${supplierUser.id}', true)`);
     await tx.$executeRawUnsafe(`SELECT set_config('tracefab.user_email', '${supplierUser.email}', true)`);
+    await tx.$executeRawUnsafe(`SELECT set_config('tracefab.active_organization_id', '${supplierOrg.id}', true)`);
 
     const supplierMessage = await tx.quality_cap_messages.create({
       data: {
@@ -155,6 +157,7 @@ async function run() {
     // 5. Brand reviews and approves remediation
     await tx.$executeRawUnsafe(`SELECT set_config('tracefab.user_id', '${brandUser.id}', true)`);
     await tx.$executeRawUnsafe(`SELECT set_config('tracefab.user_email', '${brandUser.email}', true)`);
+    await tx.$executeRawUnsafe(`SELECT set_config('tracefab.active_organization_id', '${brandOrg.id}', true)`);
 
     const reviewRows = await tx.$queryRawUnsafe(`
       SELECT * FROM tracefab_review_quality_remediation(

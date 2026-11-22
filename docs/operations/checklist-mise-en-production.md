@@ -40,7 +40,20 @@ curl -s -H "x-tracefab-worker-secret: $TRACEFAB_NOTIFICATION_WORKER_SECRET" \
 
 ## B. Base de données
 
-- [ ] `npx prisma migrate status` : aucune migration en attente.
+- [ ] `npx prisma migrate status` : aucune migration en attente (**100/100**
+      migrations appliquées dans l'ordre lexicographique).
+- [ ] Sondes P10.7/P12 en lecture seule vertes (catalogue, 93 fonctions du
+      registre runtime, isolation worker Neon, et aller-retour HMAC avant
+      bascule de `systeme_strict` puis `strict` — voir
+      `docs/security/2026-11-02-p107-plan-activation-stricte.md`) :
+
+```bash
+TF_P107_AUTORISER_HOTE_DISTANT=oui \
+  node scripts/sonde_p107_etat_cible.mjs --url "$TRACEFAB_LECTURE_URL" --role-runtime tracefab_app
+TF_P107_AUTORISER_HOTE_DISTANT=oui \
+  node scripts/sonde_p107_runtime.mjs --url "$TRACEFAB_RUNTIME_URL" --role-attendu tracefab_app
+```
+
 - [ ] Fenêtre d'historique Neon configurée et **couvrant un week-end** — une
       corruption du vendredi soir se découvre le lundi.
 - [ ] Un instantané récent existe.

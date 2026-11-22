@@ -168,6 +168,7 @@ async function run() {
         VALUES (gen_random_uuid(), ${brandOrg.id}::uuid, ${testUser.id}::uuid, 'owner'::membership_role, ${'mem_bulk_' + SUFFIXE})
       `;
       await tx.$executeRaw`SELECT set_config('tracefab.user_id', ${testUser.id}, true)`;
+      await tx.$executeRaw`SELECT set_config('tracefab.active_organization_id', ${brandOrg.id}, true)`;
 
       const csvContent = `reference,name,category,sku,countryOfManufacture,weightGrams,materialsSummary,gtin
 TF-BULK-01-${timestamp},"Pull Laine Mérinos Bio",Pull,SKU-MERINOS-01,PT,380,"100% Laine Mérinos",376034583359

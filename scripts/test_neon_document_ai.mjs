@@ -36,6 +36,7 @@ try {
       INSERT INTO organization_memberships (organization_id, user_id, role, status)
       VALUES (${orgId}::uuid, ${userId}::uuid, 'owner', 'active');
     `;
+    await tx.$executeRaw`SELECT set_config('tracefab.active_organization_id', ${orgId}, true)`;
 
     const supRes = await tx.$queryRaw`
       INSERT INTO suppliers (organization_id, onboarding_status, contact_email)

@@ -10,6 +10,7 @@
 import process from 'node:process';
 import { readFileSync } from 'node:fs';
 import { PGlite } from '@electric-sql/pglite';
+import { pgcrypto } from '@electric-sql/pglite/contrib/pgcrypto';
 import {
   CHEMIN_SONDE,
   decouperSonde,
@@ -32,8 +33,8 @@ const executer = (db, options = {}) => executerSonde({
   roleRuntime: 'tracefab_app',
 });
 
-async function creerBase({ migrations = true, hmac = true, app = true } = {}) {
-  const db = new PGlite();
+async function creerBase({ migrations = true, hmac = true, app = true, avecPgcrypto = false } = {}) {
+  const db = new PGlite(avecPgcrypto ? { extensions: { pgcrypto } } : undefined);
   await db.waitReady;
   await db.query('CREATE ROLE tracefab_worker NOLOGIN NOSUPERUSER NOBYPASSRLS');
   await db.query('CREATE ROLE tracefab_migrator NOLOGIN NOSUPERUSER NOBYPASSRLS');
@@ -306,6 +307,134 @@ await avecBase({}, async (db) => {
   ok(r.test_lecture_seule.rollback_effectue === true,
     'S8 ROLLBACK systématique même après écriture acceptée');
   await verifierAbsenceEcriture(db, 'S8 l écriture acceptée ne persiste pas après ROLLBACK');
+});
+
+/* S9 — garde P10.7/P12 : schéma sans systeme_strict restitue ABSENTE sans 42703,
+ * puis l'ajout de systeme_strict, d'une opération système non gardée, d'un
+ * EXECUTE direct du prédicat ou d'un grant cloud_admin Neon déclenchent leurs ARRÊTS. */
+await avecBase({}, async (db) => {
+  const avantP107 = await executer(db);
+  ok(avantP107.codeSortie === 0
+      && avantP107.rapport.b7_identite?.mode_identite === 'permissif'
+      && avantP107.rapport.b7_identite?.mode_identite_systeme === 'ABSENTE',
+    'S9 base antérieure à 20261106130000 (sans colonne systeme_strict) : mode_identite_systeme=ABSENTE sans 42703');
+
+  await db.query('ALTER TABLE public.tracefab_identity_politique ADD COLUMN systeme_strict boolean NOT NULL DEFAULT false');
+  await db.query(`CREATE FUNCTION public.tracefab_identite_systeme() RETURNS boolean
+    LANGUAGE sql STABLE SECURITY INVOKER AS $f$ SELECT true $f$`);
+  await db.query('REVOKE EXECUTE ON FUNCTION public.tracefab_identite_systeme() FROM PUBLIC');
+
+  const apresColonne = await executer(db);
+  ok(apresColonne.codeSortie === 0 && apresColonne.rapport.b7_identite?.mode_identite_systeme === 'permissif',
+    'S9 colonne systeme_strict présente à false : mode_identite_systeme=permissif');
+
+  // Opération système SECURITY DEFINER sans la garde tracefab_identite_systeme()
+  await db.query(`CREATE FUNCTION public.tracefab_sync_clerk_membership() RETURNS integer
+    LANGUAGE sql SECURITY DEFINER SET search_path = pg_catalog, public
+    AS $f$ SELECT 1 $f$`);
+  await db.query('REVOKE EXECUTE ON FUNCTION public.tracefab_sync_clerk_membership() FROM PUBLIC');
+  const opNonGardee = await executer(db);
+  ok(opNonGardee.codeSortie === 1
+      && opNonGardee.rapport.b8_portee_de_la_cle?.operations_systeme_non_gardees === 1
+      && opNonGardee.rapport.arrets.some((a) => a.startsWith('B8') && a.includes('opération(s) système')),
+    'S9 opération système non gardée déclenche un ARRÊT B8');
+
+  // Pose de la garde d'origine : l'arrêt disparaît
+  await db.query(`CREATE OR REPLACE FUNCTION public.tracefab_sync_clerk_membership() RETURNS integer
+    LANGUAGE sql SECURITY DEFINER SET search_path = pg_catalog, public
+    AS $f$ SELECT CASE WHEN public.tracefab_identite_systeme() THEN 1 ELSE 0 END $f$`);
+  const opGardee = await executer(db);
+  ok(opGardee.codeSortie === 0 && opGardee.rapport.b8_portee_de_la_cle?.operations_systeme_gardees === 1,
+    'S9 opération système gardée : retour à code 0');
+
+  // EXECUTE direct du prédicat accordé au runtime -> ARRÊT B8
+  await db.query('GRANT EXECUTE ON FUNCTION public.tracefab_identite_systeme() TO tracefab_app');
+  const predicatOuvert = await executer(db);
+  ok(predicatOuvert.codeSortie === 1
+      && predicatOuvert.rapport.arrets.some((a) => a.startsWith('B8') && a.includes('tracefab_identite_systeme()')),
+    'S9 EXECUTE sur tracefab_identite_systeme() accordé à tracefab_app déclenche un ARRÊT B8');
+  await db.query('REVOKE EXECUTE ON FUNCTION public.tracefab_identite_systeme() FROM tracefab_app');
+
+  // Appartenance résiduelle de tracefab_migrator à tracefab_worker -> ARRÊT B6
+  await db.query('GRANT tracefab_worker TO tracefab_migrator WITH INHERIT TRUE, SET TRUE, ADMIN FALSE');
+  const membreWorker = await executer(db);
+  ok(membreWorker.codeSortie === 1
+      && membreWorker.rapport.arrets.some((a) => a.startsWith('B6') && a.includes('appartenance résiduelle')),
+    'S9 appartenance résiduelle tracefab_migrator -> tracefab_worker déclenche un ARRÊT B6');
+  await db.query('REVOKE tracefab_worker FROM tracefab_migrator');
+
+  // Grant cloud_admin Neon (ADMIN TRUE, INHERIT FALSE, SET FALSE, sans tracefab_worker_legacy) -> ARRÊT B6
+  await db.query('CREATE ROLE cloud_admin SUPERUSER NOLOGIN');
+  await db.query('GRANT tracefab_worker TO cloud_admin WITH ADMIN TRUE');
+  await db.query('GRANT tracefab_worker TO tracefab_migrator WITH ADMIN TRUE, INHERIT FALSE, SET FALSE GRANTED BY cloud_admin');
+  const swapNeonRequis = await executer(db);
+  ok(swapNeonRequis.codeSortie === 1
+      && swapNeonRequis.rapport.b6_droits_migration?.neon_worker_swap_requis === true
+      && swapNeonRequis.rapport.arrets.some((a) => a.startsWith('B6') && a.includes('provisionner_worker_neon.mjs')),
+    'S9 grant cloud_admin non isolé sur tracefab_worker déclenche un ARRÊT B6 explicite');
+
+  await verifierAbsenceEcriture(db, 'S9 aucune écriture persistée par la sonde');
+});
+
+/* S10 — Alignement Neon managed-external (PR #136) : pgcrypto détenue par un
+ * superutilisateur externe non endossable (cloud_admin) sous neondb_owner
+ * non-superuser est classée dans extensions_plateforme_publiques sans faux
+ * arrêt B5, tandis qu'une fonction applicative ou SECURITY DEFINER ouverte à
+ * PUBLIC déclenche toujours l'arrêt B5. */
+await avecBase({ avecPgcrypto: true }, async (db) => {
+  await db.exec('CREATE ROLE neondb_owner LOGIN NOSUPERUSER NOBYPASSRLS NOCREATEROLE NOCREATEDB');
+  await db.exec('CREATE ROLE cloud_admin NOLOGIN SUPERUSER');
+  await db.exec('GRANT USAGE ON SCHEMA public TO neondb_owner');
+  await db.exec('GRANT SELECT ON ALL TABLES IN SCHEMA public TO neondb_owner');
+  await db.exec('CREATE EXTENSION pgcrypto');
+
+  const { rows: membres } = await db.query(`
+    SELECT p.oid::pg_catalog.regprocedure::text AS sig
+      FROM pg_catalog.pg_depend d
+      JOIN pg_catalog.pg_proc p ON p.oid = d.objid
+      JOIN pg_catalog.pg_extension e ON e.oid = d.refobjid
+     WHERE d.refclassid = 'pg_catalog.pg_extension'::pg_catalog.regclass
+       AND d.classid = 'pg_catalog.pg_proc'::pg_catalog.regclass
+       AND d.deptype = 'e' AND e.extname = 'pgcrypto'`);
+  for (const { sig } of membres) {
+    await db.exec(`ALTER FUNCTION ${sig} OWNER TO cloud_admin`);
+  }
+
+  // Sous un superuser (postgres), les fonctions sont révocables -> executables_par_public > 0
+  const sousSuperuser = await executer(db);
+  ok(sousSuperuser.codeSortie === 1
+      && sousSuperuser.rapport.b5_hygiene?.executables_par_public === membres.length,
+    'S10 sous superuser (autorité REVOKE présente), pgcrypto ouverte à PUBLIC reste un arrêt B5');
+
+  // Sous neondb_owner (NOSUPERUSER, sans appartenance à cloud_admin) -> classée managed-external
+  await db.exec('SET ROLE neondb_owner');
+  let sousNeonOwner;
+  try {
+    sousNeonOwner = await executer(db);
+  } finally {
+    await db.exec('RESET ROLE');
+  }
+  ok(sousNeonOwner.codeSortie === 0
+      && sousNeonOwner.rapport.b5_hygiene?.executables_par_public === 0
+      && sousNeonOwner.rapport.b5_hygiene?.extensions_plateforme_publiques === membres.length,
+    'S10 sous neondb_owner non-superuser, pgcrypto cloud_admin est classée sans faux arrêt B5',
+    `ext=${sousNeonOwner.rapport.b5_hygiene?.extensions_plateforme_publiques}`);
+
+  // Mais une fonction applicative ouverte à PUBLIC reste bloquée sous neondb_owner !
+  await db.exec(`CREATE FUNCTION public.tracefab_fuite_public_temoin() RETURNS int
+    LANGUAGE sql STABLE AS $$ SELECT 42 $$`);
+  await db.exec('SET ROLE neondb_owner');
+  let avecFuiteApp;
+  try {
+    avecFuiteApp = await executer(db);
+  } finally {
+    await db.exec('RESET ROLE');
+  }
+  ok(avecFuiteApp.codeSortie === 1
+      && avecFuiteApp.rapport.b5_hygiene?.executables_par_public === 1
+      && avecFuiteApp.rapport.b5_hygiene?.extensions_plateforme_publiques === membres.length,
+    'S10 une fonction applicative ouverte à PUBLIC déclenche toujours l arrêt B5 sous neondb_owner');
+  await db.exec('DROP FUNCTION public.tracefab_fuite_public_temoin()');
 });
 
 console.log('');
