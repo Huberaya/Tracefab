@@ -35,6 +35,7 @@ import { uuid_ossp } from '@electric-sql/pglite/contrib/uuid_ossp';
 import { readdirSync, readFileSync, existsSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { executerMigrationPglite } from './lib/pglite-worker-runner.mjs';
 
 const racine = join(dirname(fileURLToPath(import.meta.url)), '..');
 const MIGRATIONS = join(racine, 'prisma', 'migrations');
@@ -98,7 +99,7 @@ async function base() {
 async function appliquer(db, d) {
   try {
     await db.exec('BEGIN');
-    await db.exec(lire(d));
+    await executerMigrationPglite(db, d, lire(d));
     await db.exec('COMMIT');
     return { ok: true };
   } catch (e) {
@@ -158,7 +159,9 @@ console.log('0. Les quatre noms signales absents existent-ils dans le depot ?');
   console.log('         NOLOGIN + politiques sur current_user + 6 fonctions nommees.');
   // Et les objets reels, eux, doivent etre dans le depot.
   const reel = lire('20261028120100_worker_identity_not_forgeable');
-  ok('le correctif reel cree bien le role tracefab_worker', /CREATE ROLE tracefab_worker/.test(reel));
+  ok('le bootstrap exige un worker préprovisionné par le runner',
+    /tracefab_worker_must_be_preprovisioned_by_runner/.test(reel)
+      && !/CREATE ROLE tracefab_worker/.test(reel));
   ok('il reindexe les politiques sur current_user', /current_user = ''tracefab_worker''/.test(reel));
 }
 

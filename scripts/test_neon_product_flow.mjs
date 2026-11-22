@@ -53,7 +53,7 @@ async function main() {
     ],
   });
 
-  await inUserContext(ownerA, async (tx) => {
+  await inUserContext(ownerA, orgA, async (tx) => {
     const materialRows = await tx.$queryRaw`
       SELECT * FROM tracefab_create_material(
         ${orgA}::uuid, 'fiber', 'Organic cotton', '{"organic":true}'::jsonb, 'FR'
@@ -98,7 +98,7 @@ async function main() {
     assert(typeof actualProductA === 'string', 'product id missing');
   });
 
-  await inUserContext(ownerB, async (tx) => {
+  await inUserContext(ownerB, orgB, async (tx) => {
     const productRows = await tx.$queryRaw`
       SELECT * FROM tracefab_create_product(${orgB}::uuid, 'TF-PROD-B', 'Product B', 'trousers', 'SKU-B')
     `;
@@ -113,6 +113,7 @@ async function main() {
   await prisma.$transaction(async (tx) => {
     await tx.$executeRawUnsafe(`SET LOCAL ROLE ${role}`);
     await tx.$executeRaw`SELECT set_config('tracefab.user_id', ${viewerA}, true)`;
+    await tx.$executeRaw`SELECT set_config('tracefab.active_organization_id', ${orgA}, true)`;
     const visibleProducts = await tx.$queryRaw`SELECT id FROM tracefab_products ORDER BY reference`;
     assert(visibleProducts.length === 1, 'product RLS leaked another brand');
     assert(visibleProducts[0].id !== productBId, 'product B was visible to brand A viewer');
@@ -137,6 +138,7 @@ async function main() {
     const n = await prisma.$transaction(async (tx) => {
       await tx.$executeRawUnsafe(`SET LOCAL ROLE ${role}`);
       await tx.$executeRaw`SELECT set_config('tracefab.user_id', ${viewerA}, true)`;
+    await tx.$executeRaw`SELECT set_config('tracefab.active_organization_id', ${orgA}, true)`;
       return tx.$executeRaw`
         UPDATE tracefab_products SET name = 'must not write' WHERE id = ${productAId}::uuid
       `;
@@ -153,9 +155,10 @@ async function main() {
   console.log('Neon product integration passed: product data, revision, composition, identifiers and RLS isolation');
 }
 
-async function inUserContext(userId, callback) {
+async function inUserContext(userId, organizationId, callback) {
   return prisma.$transaction(async (tx) => {
     await tx.$executeRaw`SELECT set_config('tracefab.user_id', ${userId}, true)`;
+    await tx.$executeRaw`SELECT set_config('tracefab.active_organization_id', ${organizationId}, true)`;
     return callback(tx);
   });
 }

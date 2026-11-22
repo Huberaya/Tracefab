@@ -1,12 +1,13 @@
 #!/usr/bin/env node
 /**
- * P10.5 — B2 et B3 : la chaîne de migrations tourne avec un rôle dédié, sans
- * SUPERUSER, et le runtime ne peut ni migrer ni s'élever.
+ * P10.5 — B2 et B3 : la chaîne tourne avec un rôle dédié ; seul le bootstrap
+ * initial du worker reçoit une élévation administrative bornée et révoquée.
+ * Le runtime ne peut ni migrer ni s'élever.
  *
  * CE QUE CE TEST ÉPROUVE, ET POURQUOI CHAQUE POINT COMPTE
  *
- *   B2.1  68/68 migrations sur une base VIERGE, exécutées par
- *         `tracefab_migrator` — un rôle `NOSUPERUSER` qui possède les objets.
+ *   B2.1  99/99 migrations sur une base VIERGE, exécutées par
+ *         `tracefab_migrator` ; l'élévation initiale est bornée et révoquée.
  *   B2.2  reprise : relancer ne rejoue rien et ne casse rien.
  *   B2.3  `tracefab_app` ne peut PAS exécuter de migration (42501).
  *   B2.4  `tracefab_app` ne peut PAS prendre le rôle propriétaire ni le rôle
@@ -29,10 +30,14 @@
  */
 import process from 'node:process';
 import { spawnSync } from 'node:child_process';
+import { mkdtempSync, mkdirSync, writeFileSync, rmSync, readFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import pg from 'pg';
 import { sslDepuisUrl } from './lib/pg-ssl.mjs';
 import { ROLE_APP, ROLE_MIGRATOR, ROLE_WORKER, etatRole } from './lib/tracefab_roles.mjs';
 import { verrouillerCluster } from './lib/ephemeral-db.mjs';
+import { diagnosticProvisionnement } from './lib/diagnostic_provisionnement.mjs';
 
 const urlAdmin = (process.env.DATABASE_URL || '').trim();
 if (!urlAdmin) {
@@ -50,6 +55,103 @@ const base = `tf_p105_${suffixe}`;
 const MDP_APP = `app_${suffixe}`;
 const MDP_MIG = `mig_${suffixe}`;
 
+/**
+ * URL du compte qui joue l'administrateur Neon (CREATEROLE, NON superuser).
+ *
+ * `DATABASE_URL` n'en est pas un : en CI comme en local, c'est `postgres`,
+ * SUPERUSER du service jetable. Le runner refuse desormais cette identite
+ * (`assurerRoleWorker` : « CREATEROLE non-superuser requis »), et c'est le
+ * comportement voulu — un superutilisateur ne prouve rien du modele Neon.
+ *
+ * La suite accepte donc `TF_ADMIN_URL` quand il est fourni (c'est ce que la CI
+ * exporte pour `db:deploy:throwaway`), et ne retombe sur `DATABASE_URL` que
+ * pour l'administration de CLUSTER (creation de base, verifieurs, verrou), qui
+ * exige precisement un superutilisateur local.
+ */
+const urlAdminSession = (nomBase) => {
+  const u = new URL((process.env.TF_ADMIN_URL || '').trim() || urlAdmin);
+  u.pathname = `/${nomBase}`;
+  return u.toString();
+};
+
+/**
+ * L'administrateur que la suite donne au runner quand l'environnement n'en
+ * fournit pas.
+ *
+ * `TF_ADMIN_URL` n'est pas exporte au niveau du job : seule l'etape
+ * `db:deploy:throwaway` le recoit. Sans lui, la suite passait `DATABASE_URL`
+ * (`postgres`, SUPERUSER) et le runner refusait — a raison. Le banc reproduit
+ * donc le modele de la CI : il se donne un administrateur CREATEROLE
+ * NON-SUPERUSER, cree sur le service jetable, et le detruit a la fin.
+ *
+ * Ce n'est pas un contournement de la garde : la garde interdit un
+ * SUPERUSER, et l'administrateur cree ici n'en est pas un.
+ */
+const ROLE_ADMIN_BANCS = 'tf_p105_admin';
+const MDP_ADMIN_BANCS = `adm_${suffixe}`;
+let adminBancsCree = false;
+
+async function assurerAdministrateurDeBanc() {
+  if ((process.env.TF_ADMIN_URL || '').trim()) return;
+  await admin.query(
+    `DO $$ BEGIN
+       IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = '${ROLE_ADMIN_BANCS}') THEN
+         CREATE ROLE ${ROLE_ADMIN_BANCS} LOGIN CREATEROLE NOSUPERUSER NOBYPASSRLS NOCREATEDB;
+       END IF;
+     END $$;`);
+  await admin.query(`ALTER ROLE ${ROLE_ADMIN_BANCS} WITH LOGIN CREATEROLE NOSUPERUSER NOBYPASSRLS NOCREATEDB PASSWORD ${admin.escapeLiteral(MDP_ADMIN_BANCS)}`);
+  // `tracefab_worker` n'existe pas encore a cet instant : c'est la 62e
+  // migration qui le cree. L'administrateur de banc doit pouvoir lui accorder
+  // une appartenance ensuite ; or seul un role membre de `tracefab_worker` avec
+  // ADMIN peut le faire, et `tracefab_worker` n'a pas encore de membre.
+  //
+  // Le runner gere deja ce cas : il confie la creation a l'administrateur, qui
+  // devient de fait membre ADMIN du role qu'il vient de creer. On reproduit donc
+  // le preprovisionnement de la CI en avancant la creation du worker, avec les
+  // attributs exacts que la migration impose (NOLOGIN, NOINHERIT,
+  // NOBYPASSRLS, NOSUPERUSER, NOCREATEROLE, NOCREATEDB, NOREPLICATION).
+  await admin.query(
+    `DO $$ BEGIN
+       IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'tracefab_worker') THEN
+         CREATE ROLE tracefab_worker NOLOGIN NOINHERIT NOBYPASSRLS NOSUPERUSER
+           NOCREATEROLE NOCREATEDB NOREPLICATION;
+       END IF;
+     END $$;`);
+  await admin.query(`GRANT tracefab_worker TO ${ROLE_ADMIN_BANCS} WITH ADMIN TRUE, SET FALSE, INHERIT FALSE`);
+  // Et ADMIN sur le MIGRATEUR : la 62e migration accorde a `current_user`
+  // (le migrateur) une appartenance au worker, puis la revoque. Seul un role
+  // portant ADMIN sur `tracefab_migrator` peut accorder cette appartenance a
+  // celui-ci — c'est exactement ce que `prepare_ci_migration_roles.mjs` pose
+  // pour la CI (`GRANT <migrator> TO <admin> WITH ADMIN TRUE, SET FALSE,
+  // INHERIT FALSE`, grantor `postgres`).
+  await admin.query(`GRANT tracefab_migrator TO ${ROLE_ADMIN_BANCS} WITH ADMIN TRUE, SET FALSE, INHERIT FALSE`);
+  // Le provisionneur doit être éprouvé sous le compte CREATEROLE non-superuser,
+  // pas sous postgres : sinon pg_has_role(postgres, migrator, 'SET') reste vrai
+  // par privilège superuser et le préflight ne représente pas Neon. L'admin
+  // reçoit ADMIN sur les deux rôles pour poser leurs mots de passe, puis devient
+  // propriétaire de la base jetable (équivalent fonctionnel de neondb_owner).
+  await admin.query(`GRANT tracefab_app TO ${ROLE_ADMIN_BANCS} WITH ADMIN TRUE, SET FALSE, INHERIT FALSE`);
+  await admin.query(`ALTER DATABASE "${base}" OWNER TO ${ROLE_ADMIN_BANCS}`);
+  adminBancsCree = true;
+  process.env.TF_ADMIN_URL = `postgresql://${ROLE_ADMIN_BANCS}:${MDP_ADMIN_BANCS}@${new URL(urlAdmin).host}/postgres`;
+  console.log(`  administrateur de banc : ${ROLE_ADMIN_BANCS} (CREATEROLE, NON superuser)`);
+}
+
+/**
+ * URL du PROPRIETAIRE de la base du banc — `postgres` en CI comme en local.
+ *
+ * La matrice de roles seme son decor avant de mesurer (organisations,
+ * utilisateurs, produit, document) : il lui faut les privileges de table du
+ * proprietaire. Ce n'est pas une entorse a ce qu'elle etablit : ses mesures se
+ * font sous `SET SESSION AUTHORIZATION` des trois roles, et son en-tete
+ * documente que le `session_user` initial est superutilisateur.
+ */
+const urlProprietaire = (nomBase) => {
+  const u = new URL(urlAdmin);
+  u.pathname = `/${nomBase}`;
+  return u.toString();
+};
+
 const url = (nom) => {
   const u = new URL(urlAdmin);
   u.pathname = `/${base}`;
@@ -65,11 +167,26 @@ const ok = (cond, libelle, detail = '') => {
   console.log(`  ${cond ? 'ok   ' : 'ECHEC'} ${libelle}${detail ? ` — ${detail}` : ''}`);
   if (!cond) echecs += 1;
 };
-const lancer = (args, env) => spawnSync(process.execPath, args, {
-  env: { ...process.env, ...env },
-  encoding: 'utf8',
-  cwd: process.cwd(),
-});
+/**
+ * Lance un script du depot avec un environnement EXPLICITE.
+ *
+ * `TF_APP_MDP` et `TF_MIGRATOR_MDP` sont retires : ils designent les mots de
+ * passe des sessions authentifiees de la matrice de roles, et cette suite
+ * FOURNIT les siens (`MDP_APP`/`MDP_MIG`, tires au sort). Les laisser passer
+ * faisait echouer la matrice en 28P01 des que l'environnement appelant en
+ * portait une valeur perimee — mesure du 2026-11-12, reproductible en posant
+ * `TF_APP_MDP=stale`. Un banc ne doit pas dependre d'un reste d'environnement.
+ */
+const lancer = (args, env) => {
+  const herite = { ...process.env };
+  delete herite.TF_APP_MDP;
+  delete herite.TF_MIGRATOR_MDP;
+  return spawnSync(process.execPath, args, {
+    env: { ...herite, ...env },
+    encoding: 'utf8',
+    cwd: process.cwd(),
+  });
+};
 
 const admin = new pg.Client({ connectionString: urlAdmin, ssl: sslDepuisUrl(urlAdmin), application_name: 'tracefab-p105-admin' });
 await admin.connect();
@@ -77,6 +194,27 @@ await admin.connect();
 console.log(`  base jetable : ${base}`);
 await admin.query(`DROP DATABASE IF EXISTS ${base} WITH (FORCE)`);
 await admin.query(`CREATE DATABASE ${base}`);
+
+// Reproduire le résiduel Neon observé : pgcrypto est installé par le rôle
+// superutilisateur géré (analogue cloud_admin), puis le provisionneur est lancé
+// par l'administrateur CREATEROLE non-superuser. Si l'extension était créée par
+// cet administrateur, ses fonctions lui appartiendraient et le test basculerait
+// à tort dans le mode « ACL modifiables », où PUBLIC doit être révoqué et où
+// l'application ne doit plus hériter d'EXECUTE. Dans Neon, ces fonctions sont
+// détenues par le superutilisateur externe et leurs ACL PUBLIC préexistantes
+// sont explicitement classées, jamais révoquées.
+const proprietairePgcrypto = new pg.Client({
+  connectionString: urlProprietaire(base),
+  ssl: sslDepuisUrl(urlProprietaire(base)),
+  application_name: 'tracefab-p105-pgcrypto-owner',
+});
+await proprietairePgcrypto.connect();
+try {
+  await proprietairePgcrypto.query('CREATE EXTENSION IF NOT EXISTS pgcrypto');
+} finally {
+  await proprietairePgcrypto.end();
+}
+await assurerAdministrateurDeBanc();
 
 // Les roles sont des objets de CLUSTER : les provisionner ici change leur mot
 // de passe pour tout le cluster, y compris les suites suivantes du meme job
@@ -111,15 +249,19 @@ try {
   // B3.1 — provisioning, deux fois : la seconde ne doit RIEN émettre d'ALTER.
   // -------------------------------------------------------------------------
   const envProv = {
-    DATABASE_URL: (() => { const u = new URL(urlAdmin); u.pathname = `/${base}`; return u.toString(); })(),
+    // Reproduire le vrai modèle d'administration Neon : le CREATEROLE non-
+    // superuser propriétaire de la base, jamais le compte postgres du cluster.
+    DATABASE_URL: urlAdminSession(base),
     TF_ALLOW_PROVISIONING: 'oui',
     TF_APP_PASSWORD: MDP_APP,
     TF_MIGRATOR_PASSWORD: MDP_MIG,
   };
   verrou = await verrouillerCluster({ urlProprietaire: urlAdmin });
   const prov1 = lancer(['scripts/provisionner_roles_db.mjs'], envProv);
+  for (const ligne of diagnosticProvisionnement(prov1, 1)) console.error(`  ${ligne}`);
   ok(prov1.status === 0, 'B3.1 provisioning initial réussi', `sortie ${prov1.status}`);
   const prov2 = lancer(['scripts/provisionner_roles_db.mjs'], envProv);
+  for (const ligne of diagnosticProvisionnement(prov2, 2)) console.error(`  ${ligne}`);
   ok(prov2.status === 0, 'B3.1 re-provisioning réussi (idempotent)', `sortie ${prov2.status}`);
   const alterEmis = /durci/.test(prov2.stdout);
   ok(!alterEmis, 'B3.1 le re-provisioning n émet AUCUN ALTER ROLE', alterEmis ? 'un durcissement a eu lieu' : 'aucune instruction ALTER');
@@ -131,12 +273,38 @@ try {
   // -------------------------------------------------------------------------
   const mig1 = lancer(['scripts/migrer_fidelement.mjs'], {
     DATABASE_URL: url(ROLE_MIGRATOR),
-    TF_ADMIN_URL: (() => { const u = new URL(urlAdmin); u.pathname = `/${base}`; return u.toString(); })(),
+    TF_ADMIN_URL: urlAdminSession(base),
     TF_ALLOW_ELEVATION: 'oui',
     TF_ALLOW_WRITE: 'oui',
   });
   const appliquees = (mig1.stdout.match(/appliquee\s+20/g) || []).length;
   ok(mig1.status === 0, 'B2.1 la chaîne s applique intégralement', `sortie ${mig1.status}, ${appliquees} appliquée(s)`);
+  // CE QUI EST MESURE ICI A CHANGE, ET POURQUOI.
+  //
+  // Sur `main`, la 62e migration etait « assistee » : le runner elevait
+  // temporairement `tracefab_migrator` en SUPERUSER puis verifiait sa
+  // revocation. `MIGRATIONS_ASSISTEES` est desormais VIDE — le worker est
+  // PREPROVISIONNE par un administrateur distinct (CREATEROLE non-superuser,
+  // le modele Neon) avant la chaine, et le migrateur n'est plus jamais
+  // superutilisateur, meme temporairement. C'est un renforcement, pas une
+  // perte : le compte qui execute la chaine finit exactement la ou il a
+  // commence, sans elevation a oublier.
+  //
+  // L'assertion mesurait donc un mecanisme SUPPRIME. Elle mesure maintenant ce
+  // qui le remplace, et qui compte davantage : le worker a bien ete
+  // preprovisionne par la connexion administrative, et le migrateur n'a JAMAIS
+  // ete eleve de toute l'execution.
+  const workerPreprovisionne = /tracefab_worker préprovisionné\/vérifié/.test(mig1.stdout);
+  const jamaisEleve = !/élévation temporaire de tracefab_migrator/.test(mig1.stdout);
+  ok(workerPreprovisionne && jamaisEleve,
+    'B2.1 bootstrap worker : preprovisionne par l administrateur, sans elevation du migrateur',
+    `preprovisionne=${workerPreprovisionne}, jamais eleve=${jamaisEleve}`);
+  const migratorApres = (await admin.query(
+    'SELECT rolsuper FROM pg_catalog.pg_roles WHERE rolname = $1', [ROLE_MIGRATOR],
+  )).rows[0];
+  ok(migratorApres?.rolsuper === false,
+    'B2.1 le migrateur n est pas superutilisateur apres le bootstrap worker',
+    String(migratorApres?.rolsuper));
   if (mig1.status !== 0) console.log(mig1.stdout.split('\n').filter((l) => /ECHEC|REFUS/.test(l)).join('\n'));
 
   const cible = new pg.Client({ connectionString: url(ROLE_MIGRATOR), ssl: sslDepuisUrl(url(ROLE_MIGRATOR)) });
@@ -168,6 +336,134 @@ try {
   ok(etatWorker?.rolcanlogin === false && etatWorker?.rolsuper === false,
     'B2.5 le worker reste NOLOGIN et non superutilisateur',
     `login=${etatWorker?.rolcanlogin} superuser=${etatWorker?.rolsuper}`);
+
+  const membreWorker = (await cible.query(
+    `SELECT pg_catalog.pg_has_role(current_user, 'tracefab_worker', 'MEMBER') AS membre`)).rows[0];
+  ok(membreWorker?.membre === false,
+    'B2.5bis tracefab_migrator n est plus membre du worker après la chaîne',
+    `membre=${membreWorker?.membre}`);
+  let escaladeWorker = null;
+  try { await cible.query('SET ROLE tracefab_worker'); escaladeWorker = 'ACCEPTE'; }
+  catch (e) { escaladeWorker = e.code || 'ERREUR'; }
+  ok(escaladeWorker === '42501',
+    'B2.5ter tracefab_migrator ne peut pas endosser tracefab_worker', escaladeWorker);
+
+  const urlAdminBase = new URL(urlAdminSession(base));
+  // Simuler un arrêt brutal après le GRANT temporaire : un run de reprise
+  // sans migration en attente doit nettoyer l'appartenance résiduelle.
+  // Le GRANT est pose par la MEME identite que celle que le runner utilise
+  // pour revoquer (`TF_ADMIN_URL`). Ce n'est pas un detail : PostgreSQL n'
+  // autorise la revocation d'une appartenance qu'a son GRANTOR (ou a un
+  // superutilisateur). Mesure du 2026-11-12 : pose par `postgres` puis
+  // revocation tentee par `tracefab_ci_admin` -> « must be able to SET ROLE ».
+  // La simulation doit ressembler a ce qu'elle simule.
+  {
+    const grantor = new pg.Client({
+      connectionString: urlAdminSession(base),
+      ssl: sslDepuisUrl(urlAdminSession(base)),
+      application_name: 'tracefab-p105-grantor',
+    });
+    await grantor.connect();
+    await grantor.query('GRANT tracefab_worker TO tracefab_migrator WITH INHERIT TRUE, SET TRUE, ADMIN FALSE');
+    await grantor.end();
+  }
+  const residualAvantReprise = (await cible.query(
+    `SELECT pg_catalog.pg_has_role(current_user, 'tracefab_worker', 'MEMBER') AS membre`)).rows[0].membre;
+  ok(residualAvantReprise === true, 'B2.5quater scénario de reprise : appartenance résiduelle simulée', `membre=${residualAvantReprise}`);
+  const reprise = lancer(['scripts/migrer_fidelement.mjs'], {
+    DATABASE_URL: url(ROLE_MIGRATOR),
+    TF_ADMIN_URL: urlAdminBase.toString(),
+    TF_ALLOW_WRITE: 'oui',
+  });
+  const residualApresReprise = (await cible.query(
+    `SELECT pg_catalog.pg_has_role(current_user, 'tracefab_worker', 'MEMBER') AS membre`)).rows[0].membre;
+  ok(reprise.status === 0 && residualApresReprise === false,
+    'B2.5quinquies reprise sans migrations : appartenance résiduelle révoquée',
+    `sortie=${reprise.status}, membre=${residualApresReprise}, stderr=${String(reprise.stderr || '').slice(-500)}`);
+
+  // La migration terminale doit elle-même refuser une appartenance résiduelle.
+  await admin.query('GRANT tracefab_worker TO tracefab_migrator WITH INHERIT TRUE, SET TRUE, ADMIN FALSE');
+  let refusGarde = null;
+  try {
+    const sqlGarde = readFileSync(
+      'prisma/migrations/20261108120700_assert_worker_membership_revoked/migration.sql', 'utf8');
+    await cible.query(sqlGarde);
+    refusGarde = 'ACCEPTE';
+  } catch (e) { refusGarde = e.message || e.code || 'ERREUR'; }
+  ok(/tracefab_migrator_worker_membership_residuelle/.test(String(refusGarde)),
+    'B2.5quinquies-bis la garde terminale refuse explicitement le migrator membre du worker',
+    String(refusGarde).split('\\n')[0].slice(0, 120));
+  await admin.query('REVOKE tracefab_worker FROM tracefab_migrator');
+
+  // Le runner doit rétablir l'appartenance temporaire pour cette migration post-bootstrap.
+  // La migration injectée échoue ensuite ; le catch doit révoquer avant de quitter.
+  const dossierTemp = mkdtempSync(join(tmpdir(), 'tracefab-worker-membership-'));
+  const nomEchec = '20261108120800_test_force_failure_membership_cleanup';
+  mkdirSync(join(dossierTemp, nomEchec));
+  const definitionWorker = (await admin.query(
+    `SELECT pg_catalog.pg_get_functiondef(p.oid) AS definition
+       FROM pg_catalog.pg_proc p
+       JOIN pg_catalog.pg_roles r ON r.oid = p.proowner
+       JOIN pg_catalog.pg_namespace n ON n.oid = p.pronamespace
+      WHERE n.nspname = 'public' AND p.proname = 'tracefab_notification_outbox_health'
+        AND r.rolname = 'tracefab_worker'
+      ORDER BY p.oid LIMIT 1`,
+  )).rows[0]?.definition;
+  if (!definitionWorker) throw new Error('fonction worker de sonde introuvable pour le test d échec transactionnel');
+  // MARQUEUR DE REMPLACEMENT — requis pour PROUVER que la DDL a réellement été
+  // jouée avant l'erreur volontaire. Sans lui, on ne sait pas si le ROLLBACK a
+  // annulé un remplacement effectif ou si rien n'avait été joué du tout : les
+  // deux états produisent la même erreur. Le marqueur est un COMMENTAIRE sur la
+  // fonction, choisi parce que `COMMENT ON` est transactionnel lui aussi — il
+  // disparaît au ROLLBACK, ce qui rend le contrôle « après » probant.
+  const marqueurRemplacement = `test_p105_remplacement_${Date.now()}`;
+  const definitionEchappee = definitionWorker.replace(/'/g, "''");
+  const injectionTransactionnelle =
+    `DO $tracefab_worker_failure$ BEGIN EXECUTE '${definitionEchappee};';`
+    + ` EXECUTE 'COMMENT ON FUNCTION public.tracefab_notification_outbox_health() IS ''${marqueurRemplacement}''';`
+    + ` PERFORM 1/0; END $tracefab_worker_failure$;`;
+  writeFileSync(join(dossierTemp, nomEchec, 'migration.sql'), injectionTransactionnelle);
+  try {
+    const echec = lancer(['scripts/migrer_fidelement.mjs'], {
+      DATABASE_URL: url(ROLE_MIGRATOR),
+      TF_ADMIN_URL: urlAdminBase.toString(),
+      TF_ALLOW_WRITE: 'oui',
+      TF_MIGRATIONS_PATH: dossierTemp,
+    });
+    const residualApresEchec = (await cible.query(
+      `SELECT pg_catalog.pg_has_role(current_user, 'tracefab_worker', 'MEMBER') AS membre`)).rows[0].membre;
+    const journalEchec = (await cible.query(
+      `SELECT logs FROM public._prisma_migrations
+        WHERE migration_name = $1 ORDER BY started_at DESC LIMIT 1`, [nomEchec],
+    )).rows[0]?.logs || '';
+    const injectionAtteinte = /division by zero/i.test(journalEchec + echec.stdout + echec.stderr);
+    // PREUVE DU ROLLBACK : le marqueur posé AVANT l'erreur ne doit exister nulle
+    // part après coup. S'il subsistait, la DDL aurait survécu à l'échec — c'est
+    // exactement le défaut que ce scénario doit interdire.
+    const commentaireApres = (await cible.query(
+      `SELECT pg_catalog.obj_description(p.oid, 'pg_proc') AS c
+         FROM pg_catalog.pg_proc p
+        WHERE p.oid = 'public.tracefab_notification_outbox_health()'::regprocedure`,
+    )).rows[0]?.c || '';
+    const remplacementAnnule = commentaireApres !== marqueurRemplacement;
+    ok(injectionAtteinte && remplacementAnnule,
+      'B2.5sexies-bis le remplacement a bien eu lieu AVANT l erreur, et le rollback l a annule',
+      `marqueur present=${commentaireApres === marqueurRemplacement ? 'OUI (ROLLBACK INCOMPLET)' : 'non'}`);
+    ok(echec.status === 1 && residualApresEchec === false && injectionAtteinte,
+      'B2.5sexies échec après remplacement réel : rollback transactionnel et appartenance worker absente',
+      `sortie=${echec.status}, membre=${residualApresEchec}, erreur injectée atteinte=${injectionAtteinte}`);
+  } finally {
+    rmSync(dossierTemp, { recursive: true, force: true });
+  }
+
+  const matrice = lancer(['livrables-finalisation/sondes/matrice-securite-roles.mjs'], {
+    DATABASE_URL: urlProprietaire(base),
+    TF_APP_MDP: MDP_APP,
+    TF_MIGRATOR_MDP: MDP_MIG,
+  });
+  ok(matrice.status === 0, 'B2.6 matrice complète app/worker/migrator sous sessions authentifiées',
+    `sortie=${matrice.status}`);
+  if (matrice.status !== 0) console.log(matrice.stdout.split('\\n').filter((l) => /ECHEC|VERDICT/.test(l)).join('\\n'));
   await cible.end();
 
   // -------------------------------------------------------------------------
@@ -332,6 +628,13 @@ try {
     await admin.query(`DROP ROLE IF EXISTS ${r}`).catch(() => {});
   }
   rolesSondes.clear();
+
+  // L'administrateur de banc n'existe que si la suite l'a cree (aucun
+  // TF_ADMIN_URL fourni). Il est jete comme les roles de sonde : `test_garde_
+  // cible_ecriture` echoue si un role `tf_*` survit a la suite.
+  if (adminBancsCree) {
+    await admin.query(`DROP ROLE IF EXISTS ${ROLE_ADMIN_BANCS}`).catch(() => {});
+  }
 
   // Restauration des verifieurs : PostgreSQL accepte un verifieur SCRAM deja
   // calcule et le stocke tel quel. C'est la seule facon de rendre au cluster

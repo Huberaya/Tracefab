@@ -289,10 +289,39 @@ console.log('\n  D. les requetes nommees repondent avec des invariants durs\n');
     (noms.includes('tracefab_app') && noms.includes('postgres'))
       ? ok(`Q2 : ${noms.length} role(s) hors pg_*, avec tracefab_app et postgres`)
       : ko(`Q2 : roles attendus absents (rolnames : ${noms.slice(0, 6).join(', ')}...)`);
-    const contournants = res.roles.rows.filter((r) => r.rolbypassrls === true && !['postgres'].includes(r.rolname));
-    contournants.length === 0
-      ? ok('Q2 : aucun role hors postgres ne possede BYPASSRLS')
-      : ko(`Q2 : BYPASSRLS chez ${contournants.map((r) => r.rolname).join(', ')}`);
+    // BYPASSRLS : le controle ne doit pas etre « un seul role en a le droit »,
+    // il doit etre « chaque role est dans le contrat, ou il est signale ».
+    //
+    // MESURE DU 2026-11-12, en rejouant le job `base-de-donnees` pas a pas :
+    // cette assertion sortait en echec des que la base etait migree, parce que
+    // `tracefab_migrator` porte BYPASSRLS — ce que le depot DOCUMENTE et
+    // JUSTIFIE, mesure a l'appui (`scripts/lib/tracefab_roles.mjs`, entree
+    // `ATTRIBUTS_ATTENDUS[ROLE_MIGRATOR]`) : plusieurs migrations historiques
+    // ecrivent des donnees de reference dans des tables en FORCE ROW LEVEL
+    // SECURITY, ou le PROPRIETAIRE lui-meme est soumis aux politiques. Sans ce
+    // droit, la chaine s'arrete a la 31e migration. Ce n'est pas un
+    // elargissement : le role de migration possede deja les objets et peut
+    // faire `DROP POLICY` ou `NO FORCE ROW LEVEL SECURITY` sans lui.
+    //
+    // Pire : la regle precedente n'aurait pas signale un role de RUNTIME
+    // contournant, du moment qu'il ne s'appelait pas `tracefab_migrator` — elle
+    // etait donc a la fois trop large et trop etroite. On lit desormais le
+    // contrat, et on signale tout role hors contrat.
+    const { ATTRIBUTS_ATTENDUS } = await import('./lib/tracefab_roles.mjs');
+    const horsContrat = res.roles.rows.filter((r) => {
+      const contrat = ATTRIBUTS_ATTENDUS[r.rolname];
+      // Un role d'exploitation non declare par le depot (superutilisateur de
+      // plateforme) n'est juge que sur le contournement de la RLS.
+      if (!contrat) return r.rolbypassrls === true && r.rolname !== 'postgres';
+      return r.rolbypassrls !== contrat.rolbypassrls
+        || r.rolsuper !== contrat.rolsuper
+        || r.rolcreaterole !== contrat.rolcreaterole
+        || r.rolcreatedb !== contrat.rolcreatedb
+        || r.rolcanlogin !== contrat.rolcanlogin;
+    });
+    horsContrat.length === 0
+      ? ok('Q2 : chaque role est conforme a son contrat (BYPASSRLS compris)')
+      : ko(`Q2 : role(s) hors contrat : ${horsContrat.map((r) => `${r.rolname}(bypassrls=${r.rolbypassrls},super=${r.rolsuper},creerole=${r.rolcreaterole})`).join(', ')}`);
   }
   if (res.resume_rls) {
     // Exception unique et documentee : _prisma_migrations est la table de

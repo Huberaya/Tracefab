@@ -1,0 +1,240 @@
+#!/usr/bin/env node
+/**
+ * Garde-fous du script de preuve runtime P10.7 — non-regression sur deux faux
+ * temoins trouves le 2026-11-19.
+ *
+ * DEFaut 1 : `C4.6` s ecrivait `Boolean(...) || true`. La condition etait vraie
+ * quoi qu il arrive, donc le critere rendait PASS sans rien mesurer. C est le
+ * faux temoin le plus dangereux : il est vert, donc personne ne le regarde.
+ *
+ * DEFaut 2 : `C4.4` testait `db.canAssumePrivilegedRole`, un champ qui n a
+ * jamais existe dans la reponse de la route (le champ reel est `canEscalate`).
+ * Le critere echouait donc TOUJOURS, mais pour un motif faux — il envoyait
+ * chercher un defaut de privilege la ou il n y en avait pas.
+ *
+ * Ces deux tests lisent la SOURCE du script. C est volontaire : ils doivent
+ * echouer si le motif revient, y compris si le reste du script est reecrit.
+ */
+
+import fs from 'node:fs';
+import path from 'node:path';
+
+const racine = path.resolve(import.meta.dirname, '..');
+const brut = fs.readFileSync(path.join(racine, 'scripts', 'preuve_runtime_p107.mjs'), 'utf8');
+
+// On analyse le CODE, pas les commentaires.
+//
+// Sans ce retrait, le test s auto-invalidait : les commentaires qui EXPLIQUENT
+// les deux defauts citent forcement `|| true` et `canAssumePrivilegedRole`, donc
+// le garde-fou les signalait comme des regressions. Un garde-fou qui interdit de
+// documenter le defaut qu il protege finit par etre supprime — et le defaut
+// revient avec lui.
+const source = brut
+  .replace(/\/\*[\s\S]*?\*\//g, '')   // blocs /* ... */
+  .split('\n')
+  .map((l) => l.replace(/(^|[^:])\/\/.*$/, '$1')) // commentaires de ligne
+  .join('\n');
+
+let echecs = 0;
+const verifier = (cond, libelle, detail = '') => {
+  if (cond) return;
+  echecs += 1;
+  console.error(`  ECHEC ${libelle}${detail ? ` — ${detail}` : ''}`);
+};
+
+// --- 1. Aucune condition artificiellement vraie ----------------------------
+// On cherche `|| true` et `&& false` n importe ou dans le fichier.
+verifier(!/\|\|\s*true\b/.test(source),
+  'aucune condition `|| true` (faux temoin toujours vert)');
+verifier(!/\)\s*&&\s*false\b/.test(source),
+  'aucune condition `&& false` (faux temoin toujours rouge)');
+
+// --- 2. Le champ reel de la reponse --------------------------------------
+verifier(/db\.canEscalate\s*===\s*false/.test(source),
+  'C4.4 teste le champ reel `canEscalate`');
+verifier(!/canAssumePrivilegedRole/.test(source),
+  'C4.4 ne teste plus le champ inexistant `canAssumePrivilegedRole`');
+
+// --- 3. Quatre etats distincts, et l indetermine bloque ------------------
+verifier(/INDETERMINATE/.test(source),
+  'le script distingue l etat INDETERMINATE');
+const blocVerdict = source.slice(source.indexOf('function verdict'), source.indexOf('function verdict') + 700);
+verifier(/etat\s*!==\s*'PASS'/.test(blocVerdict),
+  'un verdict non-PASS (dont INDETERMINATE) est bloquant');
+verifier(/condition === null/.test(blocVerdict),
+  '`null` est traite comme indetermine, pas comme FAIL ni comme PASS');
+
+// --- 4. C4.6 ne peut pas rendre PASS sans mesure ------------------------
+//
+// L assertion d origine exigeait un `null` LITTERAL : « C4.6 passe `null` et
+// non une expression toujours vraie ». Elle a fait son travail — elle a tue le
+// `Boolean(...) || true` — puis elle est devenue un obstacle : le `null` en dur
+// declarait la mesure IMPOSSIBLE, alors que le contexte tenant se mesure en
+// lecture seule. Une assertion qui exige un `null` litteral protege desormais
+// le defaut qu elle avait corrige.
+//
+// Ce qui doit rester vrai, et qui est verifie ici, est plus precis : C4.6 doit
+// dependre d une CONDITION LUE, et valoir `null` quand cette condition manque.
+const ligneC46 = source.split('\n').filter((l) => l.includes("'C4.6'"));
+verifier(ligneC46.length > 0, 'le critere C4.6 existe toujours');
+verifier(/ct && ct\.measured === true/.test(source),
+  'C4.6 est conditionne par `measured` : sans mesure, pas de verdict');
+verifier(/contexteTenant/.test(source),
+  'C4.6 lit le champ `contexteTenant` publie par la route');
+verifier(/ct\.organisationEtrangereRefusee === true/.test(source),
+  'C4.6 exige le CONTROLE NEGATIF (organisation etrangere refusee), pas seulement le positif');
+// Une expression toujours vraie resterait un faux temoin, meme bien nommee.
+const blocC46 = source.slice(source.indexOf("'C4.6'"), source.indexOf("'C4.6'") + 900);
+verifier(!/\|\|\s*true/.test(blocC46), 'C4.6 ne contient aucune disjonction toujours vraie');
+
+// --- 5. C4 est evalue AUSSI sur 503 ---------------------------------------
+// Sortir avant d evaluer C4 transformait une mesure disponible en « non
+// mesuree ». Le corps du 503 porte `databaseIdentity` : la preuve y est.
+// La forme exacte a change (C4.6 mesure desormais `contexteTenant`, donc
+// l appel passe deux arguments). Ce qui est verifie ici est la PROPRIETE :
+// l appel existe dans la branche 503, precede la sortie en 2, et n est pas
+// conditionne a `databaseIdentity` seul — sans quoi un corps portant
+// uniquement `contexteTenant` rendrait C4 indetermine par contagion.
+const posExit = source.indexOf('process.exit(2)', source.indexOf('sonde.statut === 503'));
+const posAppel = source.indexOf('evaluerC4(sonde.corps.databaseIdentity');
+verifier(posAppel !== -1 && posAppel < posExit,
+  'C4 est evalue sur un 503 avant la sortie en 2', `appel=${posAppel} exit=${posExit}`);
+verifier(/sonde\.corps\?\.databaseIdentity \|\| sonde\.corps\?\.contexteTenant/.test(source),
+  'C4 est evalue des que databaseIdentity OU contexteTenant est present');
+verifier(/function evaluerC4/.test(source), 'la fonction evaluerC4 existe');
+const nbC41 = (source.match(/'C4\.1'/g) || []).length;
+verifier(nbC41 === 1, 'C4.1 n apparait qu une fois (pas de doublon)', `${nbC41} occurrence(s)`);
+
+// --- 6. Tracabilite : la ref du workflow n'est pas le SHA du deploiement ----
+verifier(/workflow_sha:/.test(source), 'la preuve enregistre workflow_sha');
+verifier(/deployment_sha:/.test(source), 'la preuve enregistre deployment_sha');
+verifier(/process\.env\.SHA_ATTENDU/.test(source),
+  'deployment_sha est lu depuis SHA_ATTENDU (l input du workflow)');
+verifier(/sha_traceabilite/.test(source),
+  'la preuve explique ce que `sha` designe');
+
+// --- 7. C1 et C2 sont evalues AUSSI sur un statut != 200 -------------------
+// Defaut trouve sur le run 44483815489 : le corps du 503 portait
+// `identitySysteme.verifiee_par_la_base: true` / `aller_retour_reussi`, et le
+// script sortait avant de lire. Six verdicts declares inatteignables alors que
+// la mesure etait dans la main — meme classe que le defaut C4 corrige plus haut.
+verifier(/function evaluerC1C2/.test(source), 'la fonction evaluerC1C2 existe');
+const nbC12 = (source.match(/'C1\.2'/g) || []).length;
+verifier(nbC12 === 1, 'C1.2 n apparait qu une fois (pas de doublon)', `${nbC12} occurrence(s)`);
+verifier(/evaluerC1C2\(sonde\.corps\)/.test(source),
+  'C1/C2 sont evalues sur un 503 quand le corps porte les champs d identite');
+
+// L appel doit etre DANS la branche 503, pas apres le `process.exit(2)`.
+const posExit503 = source.indexOf('process.exit(2)', source.indexOf('sonde.statut === 503'));
+const posAppelC1C2 = source.indexOf('evaluerC1C2(sonde.corps)');
+verifier(posAppelC1C2 !== -1 && posExit503 !== -1 && posAppelC1C2 < posExit503,
+  'l evaluation C1/C2 precede la sortie en 2 (sinon elle ne s execute jamais)',
+  `appel=${posAppelC1C2} exit=${posExit503}`);
+
+// --- 8. Un `null` de verification ne peut pas devenir un PASS -------------
+// `verifiee_par_la_base` vaut true / false / null. Seul `true` est un PASS.
+verifier(/verifiee_par_la_base === true \? true/.test(source)
+  || /verifiee_par_la_base === true/.test(source),
+  'C1.2 exige strictement `verifiee_par_la_base === true`');
+verifier(!/'C1\.2'[^;]*verifiee_par_la_base !== false/.test(source),
+  'C1.2 ne se contente pas de « non faux » (un null n est pas une preuve)');
+
+// --- 9. Aucune cause recopiee en dur dans l interpretation du 503 ---------
+// L ancienne ligne affirmait « cle d identite absente » sans lire le corps.
+verifier(!/cle d identite absente\)/.test(source)
+  && !/'runtime non pret \(cle d identite absente\)/.test(source),
+  'l interpretation du 503 n affirme plus une cause non lue');
+verifier(/const clePresente = utilisateur\?\.configured === true/.test(source),
+  'l interpretation du 503 se deduit de `identityTokens.configured`');
+
+// --- 10. Aucune mesure n'est evaluee sur un corps NON EXPURGE --------------
+// Defaut trouve deux fois dans la meme session : C1/C2 lus APRES le exit(2),
+// puis C5 nourri du corps BRUT — le corps etait retire de la preuve, mais son
+// hote ressortait par le detail du verdict.
+//
+// Regle : toute fonction `evaluer*` recoit un corps EXPURGE, et tout appel
+// place dans la branche 503 precede la sortie.
+for (const fn of ['evaluerC1C2', 'evaluerC4', 'evaluerC5']) {
+  const position = source.indexOf(`${fn}(`);
+  verifier(position !== -1, `${fn} est appelee`);
+}
+verifier(/evaluerC5\(corpsPourC5\)/.test(source),
+  'C5 est evalue sur un corps EXPURGE (corpsPourC5), pas sur le corps brut');
+verifier(!/evaluerC5\(sonde\.corps\)/.test(source),
+  'C5 ne recoit plus le corps brut de la reponse');
+verifier(/evaluerC5\(expurger\(corps\)/.test(source),
+  'C5 est egalement evalue sur un corps expurge dans la branche 200');
+
+// Et la position : tout appel dans la branche 503 doit preceder la sortie.
+const posSortie = source.indexOf('process.exit(2)', source.indexOf('sonde.statut === 503'));
+for (const appel of ['evaluerC4(', 'evaluerC5(', 'evaluerC1C2(']) {
+  // Les appels dans la branche 503 sont les seuls qui precedent la sortie.
+  const avant = source.slice(0, posSortie);
+  verifier(avant.includes(appel),
+    `${appel}) est evalue AVANT la sortie en 2 du chemin 503`,
+    `appel absent avant exit=${posSortie}`);
+}
+
+// --- 11. L endpoint publie ne peut pas etre une chaine de connexion --------
+// P10.8 publie `identite_base.hote` : c'est le seul champ qui vient d'une URL.
+verifier(/user:pass@|:\[\^\/\\s@\]\+@|@\/\.test\(texte\)/.test(source) || /\[\^\/\\s:@\]\+:/.test(source),
+  'expurger() refuse une chaine utilisateur:mot de passe@');
+verifier(/hotesPublies/.test(source),
+  'expurger() inspecte les hotes publies et exige un nom d hote seul');
+
+// --- 12. C5.4 ne peut pas etre neutralise sans que ca se voie ---------------
+// C5.3 compare l'hote joint a l'hote declare ; deux valeurs egales le rendent
+// PASS meme si les deux designent la PRODUCTION. C5.4 est le seul controle qui
+// repond « la Preview joint-elle la Production ? ». Un C5.4 supprime, ou dont
+// le FAIL serait adouci en INDETERMINATE, rendrait C5 structurellement
+// incapable de voir le cas le plus grave.
+verifier(/verdict\('C5\.4'/.test(source),
+  'C5.4 existe et rend un verdict');
+verifier(/hote_est_production/.test(source),
+  'C5.4 s appuie sur hote_est_production publie par la route');
+verifier(/estProduction === false/.test(source),
+  'C5.4 ne rend PASS que si hote_est_production vaut strictement false');
+verifier(!/verdict\('C5\.4'[\s\S]{0,400}?estProduction\s*\?\s*null/.test(source),
+  'un hote de Production n est jamais converti en INDETERMINATE');
+
+// --- 13. Les verdicts sont LISIBLES, et publies avant toute sortie ----------
+// Une preuve que personne ne peut lire ne vaut pas mieux qu'une absence de
+// preuve. Quatrieme occurrence du meme defaut dans ce fichier : un appel place
+// apres `process.exit` ne s execute jamais. Ici il s agit de la publication des
+// verdicts dans l API checks, seul canal lisible quand l artefact et le journal
+// sont inatteignables.
+verifier(/function publierVerdicts\(\)/.test(source),
+  'une fonction publie les verdicts hors du fichier (canal lisible)');
+verifier(/const titre = .*P10\.7 verdicts runtime/.test(source),
+  'le titre de l annotation nomme le chantier et son enjeu');
+const posExitPublie = source.indexOf('process.exit(2)', source.indexOf('sonde.statut === 503'));
+const posPub = source.indexOf('publierVerdicts();', source.indexOf('sonde.statut === 503'));
+verifier(posPub !== -1 && posExitPublie !== -1 && posPub < posExitPublie,
+  'les verdicts sont publies AVANT la sortie en 2 du chemin 503',
+  `publication=${posPub} exit=${posExitPublie}`);
+// Aucune donnee sensible : la fonction ne doit lire ni jeton ni URL de connexion.
+const corpsPub = source.slice(source.indexOf('function publierVerdicts()'),
+  source.indexOf('function publierVerdicts()') + 1600);
+verifier(!/process\.env\.|DATABASE_URL|TOKEN|SECRET/.test(corpsPub),
+  'la publication ne lit aucune variable d environnement sensible');
+
+// --- 14. C5 s execute MEME quand la donnee manque ---------------------------
+// Defaut mesure au run 44732047701 : les quatre contrôles C5 etaient
+// TOTALEMENT ABSENTS des verdicts, parce que l appel etait conditionne a
+// l existence de `baseIdentite.identite_base` — la donnee qu ils doivent
+// juger. Un controle qui ne peut pas constater une absence ne signale jamais
+// un champ manquant : il disparait en silence, et le rapport parait complet.
+verifier(!/if \(\s*corpsPourC5\.baseIdentite\?\.identite_base\s*\)\s*evaluerC5/.test(source),
+  'evaluerC5 n est plus conditionne a l existence de la donnee qu il juge');
+verifier(/evaluerC5\(corpsPourC5\);/.test(source),
+  'evaluerC5 est appele inconditionnellement sur le chemin 503');
+const blocC5 = source.slice(source.indexOf('const corpsPourC5'), source.indexOf('const corpsPourC5') + 1800);
+verifier(/evaluerC5\(corpsPourC5\);/.test(blocC5) && blocC5.includes('corpsPourC5'),
+  'l appel porte bien sur le corps EXPURGE, meme inconditionnel');
+
+if (echecs === 0) {
+  console.log('  Preuve runtime P10.7 : garde-fous anti-faux-temoin OK.');
+  process.exit(0);
+}
+console.error(`  Preuve runtime P10.7 : ${echecs} echec(s).`);
+process.exit(1);

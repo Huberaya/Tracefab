@@ -1,7 +1,7 @@
 import type { VercelRequest, VercelResponse } from '../../../_lib/vercel-types.js';
 import { json, methodNotAllowed } from '../../../_lib/http.js';
 import { notificationAlertConfigured } from '../../../_lib/notification-observability.js';
-import { withTracefabWorkerContext } from '../../../_lib/context.js';
+import { withTracefabWorkerContext } from '../../../_lib/contexte-systeme.js';
 import { workerAuthorized, workerSecretConfigured } from '../../../_lib/worker-auth.js';
 
 type OutboxHealthRow = {

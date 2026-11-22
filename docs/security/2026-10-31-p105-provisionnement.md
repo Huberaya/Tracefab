@@ -18,7 +18,7 @@ ne sont jamais relues en clair.
 | Rôle | LOGIN | SUPERUSER | BYPASSRLS | CREATEROLE | Appartenances | Rôle réel |
 |---|---|---|---|---|---|---|
 | `tracefab_app` | oui | non | non | non | **aucune** | runtime |
-| `tracefab_migrator` | oui | non | **oui** (justifié) | oui | membre de `tracefab_worker` | migrations |
+| `tracefab_migrator` | oui | non | **oui** (justifié) | oui | aucune hors fenêtre temporaire | migrations |
 | `tracefab_worker` | non | non | non | non | — | propriétaire d'objets |
 | `postgres` / propriétaire de branche | oui | oui | oui | oui | — | administration |
 
@@ -33,6 +33,9 @@ Trois points méritent d'être explicités, parce qu'ils sont contre-intuitifs :
   obtenir BYPASSRLS du rôle visé. P10.4 avait mesuré 0 → 4 produits visibles.
 - **`tracefab_worker` est NOLOGIN.** Il possède des objets, il ne se connecte
   pas.
+- **`tracefab_migrator` n'est jamais membre permanent de `tracefab_worker`.**
+  Le runner accorde INHERIT/SET sans ADMIN uniquement pendant la chaîne, puis
+  révoque et vérifie l'appartenance avant la garde terminale 20261108120700.
 
 ## 2. Séquence de référence (rejouée, 68/68)
 
@@ -62,8 +65,9 @@ node scripts/verifier_hierarchie_roles.mjs
 node scripts/lire-disponibilite-role-app.mjs
 ```
 
-Résultat mesuré de l'étape 2 : `68 migration(s) appliquee(s)`, puis, en
-reprise, `68 deja appliquee(s)`, `0 en attente`.
+Résultat historique mesuré de l'étape 2 : `68 migration(s) appliquee(s)`, puis,
+en reprise, `68 deja appliquee(s)`, `0 en attente`. Le lot correctif ajoute une
+garde terminale et des contrôles de sécurité du rôle migrateur.
 
 ### 2.1 L'élévation, bornée et refermée
 
@@ -76,13 +80,34 @@ une seule entrée). Pour celle-ci et pour elle seule :
 - l'élévation est temporaire, bornée à cette migration ;
 - elle est **refermée** (`SUPERUSER` → `NOSUPERUSER`) puis **relue** dans
   `pg_roles` ; si la relecture ne confirme pas, sortie 1 ;
-- le crochet `apres` (`GRANT tracefab_worker TO <rôle> WITH ADMIN OPTION,
-  INHERIT TRUE, SET TRUE`) s'exécute sur la connexion d'administration, pas sur
-  celle du rôle de migration : mesuré, depuis le migrator il échoue.
+- pour chaque migration qui doit remplacer une fonction possédée par le worker,
+  le runner ouvre une transaction administrative, accorde `INHERIT TRUE, SET TRUE,
+  ADMIN FALSE`, endosse `tracefab_migrator`, exécute la migration, inscrit son
+  résultat, revient au rôle administratif, révoque l'appartenance et vérifie
+  son absence **avant COMMIT** ;
+- le `GRANT`, le SQL de migration, le registre et le `REVOKE` sont atomiques :
+  un échec, SIGINT, SIGTERM, SIGKILL ou une coupure annule la transaction et
+  annule aussi l'appartenance. Aucun grant ne reste ouvert entre deux migrations ;
+- au démarrage, le runner nettoie également les appartenances résiduelles
+  laissées par les versions antérieures, avec une connexion administrative,
+  et s'arrête si la révocation n'est pas démontrée.
 
 Aucune migration historique n'a été réécrite pour obtenir ce résultat.
 
-### 2.2 La migration 68 et son point de rupture
+### 2.2 Garde terminale et reprise après interruption
+
+La migration additive `20261108120700_assert_worker_membership_revoked` échoue
+si `tracefab_migrator` peut encore endosser `tracefab_worker`. Le runner doit
+révoquer cette appartenance avant de l'appliquer. Le contrôle porte sur
+l'appartenance effective, pas seulement sur une entrée ACL directe.
+
+Après SIGKILL ou perte brutale du processus, PostgreSQL annule la transaction
+ouverte à la fermeture de la connexion. Comme l'appartenance est accordée et
+révoquée dans cette même transaction que la migration, le `GRANT` est lui aussi
+annulé. Le nettoyage au démarrage ne sert qu'à récupérer les appartenances
+résiduelles créées par les anciennes versions du runner.
+
+### 2.3 La migration 68 et son point de rupture
 
 `ALTER TABLE public.tracefab_identity_cles OWNER TO tracefab_worker` a échoué en
 `42501 permission denied for schema public` : `tracefab_worker` **n'a pas**

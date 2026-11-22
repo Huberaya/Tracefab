@@ -45,6 +45,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { executerMigrationPglite, preparerWorkerPglite } from './lib/pglite-worker-runner.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const MIGRATIONS = path.join(root, 'prisma/migrations');
@@ -112,7 +113,7 @@ async function baseRealiste({ avecTableRegistre = false } = {}) {
     // elles n'ont jamais ete deployees. Depuis 20261031120000, les inclure est
     // une erreur mesurable (elle exige le registre runtime, absent d'ici).
     if (d.slice(0, 14) > BORNE_RELEVE) continue;
-    await db.exec(lire(d));
+    await executerMigrationPglite(db, d, lire(d));
   }
   /**
    * L'HISTORIQUE EST AUSSI IMPORTANT QUE LE CATALOGUE.
@@ -184,17 +185,21 @@ async function aAppliquer(db) {
 async function deployer(db, liste) {
   const journal = [];
   for (const d of liste) {
+    let nettoyer = async () => {};
     await db.exec('BEGIN');
     try {
+      nettoyer = await preparerWorkerPglite(db, d);
       await db.exec(lire(d));
+      await nettoyer();
       await db.exec(`INSERT INTO _prisma_migrations
         (id, checksum, migration_name, finished_at, applied_steps_count)
         VALUES (md5(random()::text), md5('${d}-c'), '${d}', now(), 1)`);
       await db.exec('COMMIT');
       journal.push({ d, ok: true });
     } catch (e) {
-      await db.exec('ROLLBACK');
-      journal.push({ d, ok: false, message: String(e.message).split('\n')[0] });
+      await db.exec('ROLLBACK').catch(() => {});
+      await nettoyer().catch(() => {});
+      journal.push({ d, ok: false, message: String(e.message).split('\\n')[0] });
       break;
     }
   }

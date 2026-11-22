@@ -34,6 +34,7 @@ import pg from 'pg';
 import { sslDepuisUrl } from './lib/pg-ssl.mjs';
 import { requireThrowawayDb } from './lib/require-throwaway-db.mjs';
 import { creerBaseEphemere, verrouillerCluster } from './lib/ephemeral-db.mjs';
+import { appliquerCommeLeRunner } from './lib/appliquer_chaine_comme_le_runner.mjs';
 
 const RACINE = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const SORTIE_DEFAUT = 1;
@@ -133,8 +134,10 @@ const dossiers = fs
 for (const d of dossiers) {
   const sql = fs.readFileSync(path.join(RACINE, 'prisma', 'migrations', d, 'migration.sql'), 'utf8');
   if (!sql.trim() || sql.trim() === '-- This is an empty migration.') continue;
+  // Comme le runner : transaction par migration + declaration du bail worker
+  // pour les six migrations qui l exigent (`lib/appliquer_chaine_comme_le_runner.mjs`).
   try {
-    await mig.query(sql);
+    await appliquerCommeLeRunner(mig, d, sql);
   } catch (e) {
     console.log(`    MIGRATION EN ECHEC ${d} — ${e.code} ${String(e.message).split('\n')[0]}`);
   }

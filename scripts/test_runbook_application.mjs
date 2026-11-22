@@ -26,6 +26,7 @@
  *   npm run test:runbook-application
  */
 import fs from 'node:fs';
+import { executerMigrationPglite } from './lib/pglite-worker-runner.mjs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -72,7 +73,7 @@ async function base({ avecCorrective }) {
   `);
   for (const d of dossiers) {
     if (d === CORRECTIVE && !avecCorrective) continue;
-    await db.exec(LIRE(d));
+    await executerMigrationPglite(db, d, LIRE(d));
   }
   // Deux couples distincts : la contrainte d unicite interdit deux relations
   // entre les memes organisations, et la relation terminee doit exister pour

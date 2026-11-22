@@ -385,7 +385,12 @@ try {
     await admin.query(`REVOKE ALL ON SCHEMA public FROM ${ROLE_PROPRIO}`).catch(() => {});
     await admin.query(`DROP OWNED BY ${ROLE_PROPRIO}`).catch(() => {});
     await admin.query(`DROP ROLE IF EXISTS ${ROLE_PROPRIO}`);
-    await admin.query(`CREATE ROLE ${ROLE_PROPRIO} LOGIN PASSWORD '${MDP_SONDE}' NOSUPERUSER NOCREATEDB NOCREATEROLE NOBYPASSRLS`);
+    await admin.query(`CREATE ROLE ${ROLE_PROPRIO} LOGIN PASSWORD '${MDP_SONDE}' NOSUPERUSER NOCREATEDB NOCREATEROLE BYPASSRLS`);
+    const profilProprietaire = await admin.query(
+      `SELECT rolsuper, rolbypassrls FROM pg_roles WHERE rolname = $1`, [ROLE_PROPRIO]);
+    verifier('A9 le rôle propriétaire simule le runtime : NOSUPERUSER + BYPASSRLS',
+      profilProprietaire.rows[0]?.rolsuper === false && profilProprietaire.rows[0]?.rolbypassrls === true,
+      JSON.stringify(profilProprietaire.rows[0] || null));
     nettoyage.push(async () => {
       await admin.query(`ALTER FUNCTION public.tracefab_ingest_plm_erp_payload(UUID, TEXT, JSONB, UUID) OWNER TO "${proprietaireInitial}"`).catch(() => {});
       await admin.query(`REVOKE ALL ON SCHEMA public FROM ${ROLE_PROPRIO}`).catch(() => {});

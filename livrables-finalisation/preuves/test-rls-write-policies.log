@@ -1,0 +1,23 @@
+  garde cible : DATABASE_URL -> ACCEPTEE | classe=throwaway_local | base=tracefab_test | empreinte=ee5b7ce50beb | raison=cible locale
+
+  chargeur : node
+  ok    schema public non vide — 53 tables
+  ok    toutes les tables ont RLS activee — 53/53
+  ok    toutes les tables ont RLS forcee — 53/53
+  ok    politiques presentes — 137
+  ok    aucune politique sans USING ni WITH CHECK — 0 politique permissive totale
+  ok    toute politique d'ecriture sans WITH CHECK possede un USING — 5 politique(s) heritent de USING comme WITH CHECK
+  ok    aucune fonction SECURITY DEFINER sans search_path fixe — 0 sur 125
+  ok    tout search_path epingle ne nomme que pg_catalog et public — 0 sur 125
+  ok    deux organisations distinctes avec un proprietaire — fixture disponible
+  ok    tracefab_products porte une colonne organisation — brand_organization_id
+  ok    un produit appartient a l'organisation A — 4a9252c8-dea2-4c19-8e85-7420bc274fce
+  ok    le role de sonde n'a ni BYPASSRLS ni SUPERUSER — bypassrls=false superuser=false
+  ok    le proprietaire modifie une colonne ordinaire de sa ligne — 1 ligne(s)
+  ok    le transfert de propriete vers une organisation etrangere est refuse — 42501 new row violates row-level security policy
+  ok    un acteur etranger ne voit pas la ligne — 0 ligne(s)
+  ok    la propriete de la ligne est restee intacte — organisation A conservee, reason=sonde-autorisee
+
+  --------------------------------------------
+  Politiques d'ecriture : 16 assertions, WITH CHECK reel prouve par execution.
+  --------------------------------------------

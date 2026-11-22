@@ -3,9 +3,25 @@ import { emailDeliveryConfigured } from '../../_lib/email.js';
 import { notificationAlertConfigured } from '../../_lib/notification-observability.js';
 import { storageConfig } from '../../_lib/storage.js';
 import { json, methodNotAllowed } from '../../_lib/http.js';
-import { workerAuthorized, workerSecretConfigured } from '../../_lib/worker-auth.js';
-import { databaseIdentityIsSafe, probeDatabaseIdentity, runLiveProbes } from '../../_lib/readiness-probes.js';
+import { runtimeProbeAuthorized, workerAuthorized, workerSecretConfigured } from '../../_lib/worker-auth.js';
+import { normaliserHote, estHoteProduction } from '../../_lib/hote-production.js';
+import { databaseIdentityIsSafe, probeContexteTenant, probeDatabaseIdentity, runLiveProbes } from '../../_lib/readiness-probes.js';
+import { ecartIdentiteRuntime } from '../../_lib/identite-contrat.js';
 import { etatCleIdentite } from '../../_lib/identite-jeton.js';
+import { prisma } from '../../_lib/prisma.js';
+import { withTracefabWorkerContext } from '../../_lib/contexte-systeme.js';
+import { etatCleSysteme, signerIdentiteSysteme } from '../../_lib/identite-systeme.js';
+
+type OutboxHealthRow = {
+  pending: number;
+  processing: number;
+  sent: number;
+  failed: number;
+  ready: number;
+  staleProcessing: number;
+  exhausted: number;
+  oldestReadyAt: Date | null;
+};
 
 function configured(name: string) {
   return Boolean(process.env[name]?.trim());
@@ -26,10 +42,20 @@ function privateStorageReadiness() {
   return { configured: missing.length === 0 && configValid, missing, probe: 'configuration_only' };
 }
 
+
+
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'GET') return methodNotAllowed(res, ['GET']);
-  if (!workerSecretConfigured()) return json(res, 503, { error: 'worker_not_configured' });
-  if (!workerAuthorized(req)) return json(res, 401, { error: 'worker_unauthorized' });
+  const workerConfigured = workerSecretConfigured();
+  const workerAccess = workerConfigured && workerAuthorized(req);
+  // Le jeton de sonde n'autorise que la lecture de l'identite DB en Preview
+  // sur la branche P11. Il ne peut pas declencher les sondes live externes.
+  const runtimeIdentityProbe = req.query?.identity === '1'
+    && req.query?.probe !== 'live'
+    && runtimeProbeAuthorized(req);
+  if (!workerConfigured && !runtimeIdentityProbe) return json(res, 503, { error: 'worker_not_configured' });
+  if (!workerAccess && !runtimeIdentityProbe) return json(res, 401, { error: 'worker_unauthorized' });
 
   // ?probe=live exerce reellement chaque service au lieu de constater que ses
   // variables existent. Volontairement opt-in : on ne veut pas appeler cinq
@@ -48,7 +74,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     probe: 'configuration_only',
   };
   const services = { privateStorage, email, alerting };
-  const configured_ = Object.values(services).every((service) => service.configured);
+  // Alerting is explicitly optional in docs/operations/production-hardening.md.
+  // It remains visible in the report, but cannot hold core readiness red.
+  const configured_ = privateStorage.configured && email.configured;
 
   // Identite reelle de la connexion applicative — opt-in.
   //
@@ -83,26 +111,432 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   };
 
   const wantIdentity = req.query?.identity === '1';
+
+  // P10.7 — l'application sait-elle signer une identite SYSTEME, et la base
+  // sait-elle la VERIFIER ?
+  //
+  // Ce n'est pas la meme question que `identityTokens` : le jeton utilisateur et
+  // le jeton systeme partagent la cle mais pas l'usage, et le mode strict de
+  // l'un n'est pas celui de l'autre. Un operateur doit pouvoir constater les
+  // deux avant d'activer quoi que ce soit.
+  //
+  // `verifiee_par_la_base` n'est pas un constat de configuration : c'est un
+  // ALLER-RETOUR reel — on signe un jeton, on le fait verifier par la base, et
+  // on rapporte le booleen. Une application qui signe et une base qui refuse
+  // (cle differente, mode strict, table vide) est exactement le mode de panne
+  // que cette sonde doit rendre visible AVANT la bascule.
+  const etatSysteme = etatCleSysteme();
+  let verificationBase: boolean | null = null;
+  let verificationDetail = 'non_sondee';
+  if (etatSysteme === 'valide' && wantIdentity) {
+    const signe = signerIdentiteSysteme({ cle: process.env.TRACEFAB_IDENTITY_KEY });
+    if (signe === null) {
+      verificationDetail = 'signature_impossible';
+    } else {
+      try {
+        const rows = await prisma.$queryRaw<Array<{ v: boolean | null }>>`
+          SELECT public.tracefab_identite_systeme_jeton_valide(${signe.jeton}) AS v
+        `;
+        verificationBase = rows?.[0]?.v === true;
+        verificationDetail = verificationBase ? 'aller_retour_reussi' : 'base_a_refuse';
+      } catch (error) {
+        // Une erreur n'est PAS un « non » : c'est une incapacite de mesurer, et
+        // la distinguer evite de lire un feu vert la ou rien n'a ete verifie.
+        verificationBase = null;
+        verificationDetail = error instanceof Error && /42501|permission denied/.test(error.message)
+          ? 'verification_non_accordee_au_runtime'
+          : 'verification_en_erreur';
+      }
+    }
+  }
+  // P10.7 — L'ETAT DE LA BASE, MEME QUAND LA CLE RUNTIME MANQUE.
+  //
+  // Mesure du 2026-11-17 : `mode = non_configure` parce que
+  // `TRACEFAB_IDENTITY_KEY` est absente de Preview. L'operateur lit alors
+  // « non configure » et ne sait pas si la BASE, elle, est prete. Il doit
+  // regenerer une cle sans savoir si une version active existe deja — et sans
+  // ce fait, il ne peut pas decider entre « provisionner » et « reutiliser ».
+  //
+  // On interroge donc le CATALOGUE, pas la table des cles : `pg_class` pour
+  // l'existence, `pg_policy`/`pg_class` pour la RLS. Aucune ligne de
+  // `tracefab_identity_cles` n'est lue, aucun secret n'est approche. Un role
+  // sans privilege sur la table peut lire ces catalogues.
+  //
+  // Ce bloc ne s'execute que sur demande explicite (`?identity=1`) et derriere
+  // l'authentification de sonde deja exigee ci-dessus.
+  let baseIdentite: {
+    table_presente: boolean;
+    table_vue_par_pg_class: boolean;
+    prisma_migrations_presente: boolean;
+    tables_publiques: number;
+    fonction_posterieure_presente: boolean | null;
+    identite_base: { base_oid: number; base_nom: string; hote_empreinte: string;
+      schemas_empreinte: string; sondes_p107: Record<string, boolean> | null;
+      hote_conforme: boolean | null; hote_attendu_declare: boolean;
+      hote?: string; hote_est_pooler?: boolean; hote_est_production?: boolean } | null;
+    rls_forcee: boolean;
+    mode_strict: boolean | null;
+  } | null = null;
+  // POURQUOI PLUS DE CONDITION SUR `etatSysteme`.
+  //
+  // La condition etait `wantIdentity && etatSysteme !== 'valide'` : la route ne
+  // publiait `baseIdentite` que lorsque la cle SYSTEME n'etait PAS valide.
+  // Mesure du 2026-11-20, run 44732047701 : le runtime deploye publiait
+  // `C1.1 mode=signe` — donc `etatSysteme === 'valide'` — et le corps ne
+  // contenait AUCUN `baseIdentite`. C5.1 a donc rendu INDETERMINATE, et C5.2 a
+  // C5.4 n'ont jamais ete evalues : le rattachement de la base etait
+  // IMMESURABLE precisement sur un runtime SAIN.
+  //
+  // La condition inversait la logique : plus le runtime etait en bonne sante,
+  // moins il publiait sur sa base. Et `etatCleSysteme()` (cle systeme) n'a
+  // aucun rapport logique avec l'identite de la base jointe — deux proprietes
+  // independantes que rien ne justifiait de lier.
+  //
+  // `?identity=1` reste la garde : on n'interroge la base que sur demande.
+  // Raison d'echec de la mesure, publiee SEULEMENT si elle a eu lieu.
+  let echecIdentiteBase: string | null = null;
+  if (wantIdentity) {
+    // DEUX REQUETES SEPAREES, ET POURQUOI.
+    //
+    // La premiere version combinait les trois champs dans un seul SELECT avec
+    // `CASE WHEN to_regclass('...politique') IS NOT NULL THEN (SELECT ...)`.
+    // Mesure du run 44262660569 : `baseIdentite: null`, alors que le GRANT
+    // SELECT et la politique de lecture existent bien. Un `CASE` n'empeche pas
+    // PostgreSQL de planifier — donc de resoudre — la sous-requete de la branche
+    // non prise : sur une base sans cette table, la requete entiere echouait.
+    //
+    // On separe donc : d'abord le catalogue (toujours lisible, aucun privilege
+    // requis), puis la politique SEULEMENT si sa table existe. Une incapacite de
+    // mesurer n'est pas un « non » : chaque etape degrade vers `null`.
+    try {
+      // DEUX TEMOINS INDEPENDANTS POUR L'EXISTENCE, ET POURQUOI.
+      //
+      // `to_regclass` resout le nom en passant par le catalogue des schemas :
+      // sans USAGE sur `public`, il ne rend pas NULL mais leve 42501. Il est
+      // donc fiable pour dire « absente » quand il rend NULL — mesure PGlite :
+      // une table PRIVEE (aucun GRANT, mais USAGE sur le schema) reste vue.
+      //
+      // `pg_class` ne consulte aucun privilege d'usage : c'est le temoin
+      // independant. Les deux doivent concorder. Une divergence signale une
+      // base qui n'est pas celle qu'on croit, pas une table absente.
+      const cat = await prisma.$queryRaw<Array<{
+        vue_to_regclass: boolean; vue_pg_class: boolean; rls_forcee: boolean; politique_presente: boolean;
+        prisma_migrations_presente: boolean; tables_publiques: number;
+      }>>`
+        SELECT
+          to_regclass('public.tracefab_identity_cles') IS NOT NULL AS vue_to_regclass,
+          EXISTS (SELECT 1 FROM pg_catalog.pg_class c
+                    JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
+                   WHERE n.nspname = 'public' AND c.relname = 'tracefab_identity_cles') AS vue_pg_class,
+          COALESCE((SELECT c.relrowsecurity AND c.relforcerowsecurity
+                      FROM pg_catalog.pg_class c
+                      JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
+                     WHERE n.nspname = 'public' AND c.relname = 'tracefab_identity_cles'), false) AS rls_forcee,
+          EXISTS (SELECT 1 FROM pg_catalog.pg_class c
+                    JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
+                   WHERE n.nspname = 'public' AND c.relname = 'tracefab_identity_politique') AS politique_presente,
+          -- TROISIEME TEMOIN, ET LE PLUS PARLANT : la base que ce runtime atteint
+          -- a-t-elle SEULEMENT la table de suivi des migrations ? Si faux, ce
+          -- n'est pas « la migration d'identite manque » : c'est que la base
+          -- jointe par ce deploiement n'est pas une base migree par Prisma du
+          -- tout. Cette distinction decide de l'action a mener, donc elle est
+          -- mesuree et non deduite.
+          EXISTS (SELECT 1 FROM pg_catalog.pg_class c
+                    JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
+                   WHERE n.nspname = 'public' AND c.relname = '_prisma_migrations') AS prisma_migrations_presente,
+          (SELECT count(*)::int FROM pg_catalog.pg_class c
+             JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
+            WHERE n.nspname = 'public' AND c.relkind = 'r') AS tables_publiques
+      `;
+      // IDENTITE DE LA BASE, SANS JAMAIS LIVRER LA CHAINE DE CONNEXION.
+      //
+      // La question ouverte etait : « le deploiement joint-il reellement la base
+      // attendue ? ». Un nom de branche Neon ne se deduit pas de son libelle, et
+      // une URL de connexion ne doit jamais apparaitre dans une preuve.
+      //
+      // Trois elements suffisent a trancher, et aucun ne reconstitue l'URL :
+      //   - l'identifiant systeme de la base (`pg_database.datdba` non : on lit
+      //     `oid` et `datname`), qui distingue deux bases homonymes ;
+      //   - une EMPREINTE de l'hote (SHA-256 tronque a 12 hex) : deux
+      //     deployements qui joignent le meme hote ont la meme empreinte, et
+      //     l'empreinte ne permet pas de remonter a l'hote ;
+      //   - la concordance avec un prefixe d'endpoint ATTENDU, publie dans la
+      //     configuration de la sonde (jamais un secret : un endpoint Neon est
+      //     un nom d'hote public).
+      const attendu = (process.env.TRACEFAB_PREVIEW_DB_ENDPOINT ?? '').trim();
+      let identiteBase: {
+        base_oid: number; base_nom: string; hote_empreinte: string; schemas_empreinte: string;
+        sondes_p107: Record<string, boolean> | null;
+        hote_conforme: boolean | null; hote_attendu_declare: boolean;
+        // P10.8 — L'ENDPOINT LUI-MEME, PAS SEULEMENT SON EMPREINTE.
+        //
+        // Le 2026-11-19, « rattacher la base a br-square-bread-b1gu7jk7 » etait
+        // BLOQUE faute de pouvoir nommer l'hote : une empreinte SHA-256 permet
+        // de COMPARER deux hotes, jamais d'en NOMMER un. La valeur etait donc
+        // indevinable, et l'operateur n'avait aucun moyen de la fournir.
+        //
+        // Un endpoint Neon (`ep-…`) est un NOM D'HOTE PUBLIC : il figure dans
+        // une chaine de connexion, pas un mot de passe. Le publier derriere
+        // l'authentification de sonde ne divulgue aucun secret, et c'est la
+        // seule facon de rendre le rattachement DECIDABLE.
+        //
+        // CE QUI N'EST TOUJOURS PAS PUBLIE : utilisateur, mot de passe, port,
+        // parametres de requete, base de donnees du chemin. Seul `hostname`
+        // est extrait, et `new URL` ne peut pas en restituer le reste.
+        hote: string;
+        hote_est_pooler: boolean;
+        hote_est_production: boolean;
+      } | null = null;
+      try {
+        const b = await prisma.$queryRaw<Array<{ base_oid: number; base_nom: string }>>`
+          SELECT (SELECT d.oid FROM pg_catalog.pg_database d
+                   WHERE d.datname = current_database())::int AS base_oid,
+                 current_database() AS base_nom
+        `;
+        let hote = '';
+        try {
+          const u = new URL(process.env.DATABASE_URL ?? '');
+          hote = u.hostname || '';
+        } catch {
+          hote = '';
+        }
+        const crypto = await import('node:crypto');
+        const empreinte = hote
+          ? crypto.createHash('sha256').update(hote).digest('hex').slice(0, 12)
+          : '';
+        // Le catalogue des schemas : deux bases homonymes ne divergent pas
+        // seulement par leur oid, elles divergent par ce qu'elles contiennent.
+        // Empreinte courte et stable : meme schema => meme empreinte, et
+        // l'empreinte ne decrit pas le schema, elle ne fait que le comparer.
+        let schemas = '';
+        try {
+          const sc = await prisma.$queryRaw<Array<{ noms: string }>>`
+            SELECT COALESCE(string_agg(n.nspname, ',' ORDER BY n.nspname), '') AS noms
+              FROM pg_catalog.pg_namespace n
+             WHERE n.nspname NOT LIKE 'pg\_%' AND n.nspname <> 'information_schema'
+          `;
+          schemas = sc?.[0]?.noms ?? '';
+        } catch {
+          schemas = '';
+        }
+        const empreinteSchemas = schemas
+          ? crypto.createHash('sha256').update(schemas).digest('hex').slice(0, 12)
+          : '';
+
+        // Les sondes P10.7, nommees, presentes ou non. Ce sont des NOMS deja
+        // publics dans le depot : aucun secret, et l'operateur voit d'un coup
+        // d'oeil ce qui manque a CETTE base.
+        let sondes: Record<string, boolean> | null = null;
+        try {
+          const sn = await prisma.$queryRaw<Array<{ cles: boolean; migr: boolean; fonc: boolean }>>`
+            SELECT EXISTS (SELECT 1 FROM pg_catalog.pg_class c JOIN pg_catalog.pg_namespace n ON n.oid=c.relnamespace
+                            WHERE n.nspname='public' AND c.relname='tracefab_identity_cles') AS cles,
+                   EXISTS (SELECT 1 FROM pg_catalog.pg_class c JOIN pg_catalog.pg_namespace n ON n.oid=c.relnamespace
+                            WHERE n.nspname='public' AND c.relname='tracefab_identity_politique') AS migr,
+                   EXISTS (SELECT 1 FROM pg_catalog.pg_proc p JOIN pg_catalog.pg_namespace n ON n.oid=p.pronamespace
+                            WHERE n.nspname='public' AND p.proname='tracefab_current_user_email') AS fonc
+          `;
+          sondes = {
+            tracefab_identity_cles: sn?.[0]?.cles ?? false,
+            tracefab_identity_politique: sn?.[0]?.migr ?? false,
+            tracefab_current_user_email: sn?.[0]?.fonc ?? false,
+          };
+        } catch {
+          sondes = null;
+        }
+
+        identiteBase = {
+          base_oid: b?.[0]?.base_oid ?? -1,
+          base_nom: b?.[0]?.base_nom ?? '',
+          hote_empreinte: empreinte,
+          schemas_empreinte: empreinteSchemas,
+          sondes_p107: sondes,
+          hote_attendu_declare: attendu.length > 0,
+          // Comparaison NORMALISEE. `startsWith` comparait une chaine brute a un
+          // prefixe : un endpoint saisi avec un suffixe de pooler, une casse
+          // differente ou un point final aurait echoue sans que personne ne
+          // comprenne pourquoi, et l'echec aurait ressemble a « mauvaise base ».
+          // On compare donc le nom d'hote complet, sans casse ni point final.
+          hote_conforme: attendu.length > 0 && hote.length > 0
+            ? normaliserHote(hote) === normaliserHote(attendu)
+            : null,
+          hote,
+          hote_est_pooler: /-pooler\./.test(hote),
+          // Un PASS de `hote_conforme` ne suffit pas : les deux cotes peuvent
+          // designer la Production. Ce booleen est le seul controle qui repond
+          // a « la Preview joint-elle la Production ? ».
+          hote_est_production: estHoteProduction(hote),
+        };
+      } catch {
+        identiteBase = null;
+      }
+
+      const ligne = cat?.[0];
+      let modeStrict: boolean | null = null;
+      if (ligne?.politique_presente) {
+        try {
+          const pol = await prisma.$queryRaw<Array<{ strict: boolean | null }>>`
+            SELECT p.strict FROM public.tracefab_identity_politique p WHERE p.singleton
+          `;
+          modeStrict = pol?.[0]?.strict ?? null;
+        } catch {
+          modeStrict = null;
+        }
+      }
+      // QUATRIEME TEMOIN : OU EN EST CETTE BASE ?
+      //
+      // « table absente » ne dit pas si la migration d'identite n'a jamais ete
+      // jouee ou si c'est la base entiere qui est en retard. On interroge pour
+      // cela une FONCTION creee par une migration POSTERIEURE a celle de
+      // l'identite (`20261102120000` cree `tracefab_current_user_email`).
+      //
+      // Pourquoi une fonction : `_prisma_migrations` est refuse a `tracefab_app`
+      // (mesure PGlite : 42501 permission denied for table _prisma_migrations).
+      // Le catalogue `pg_proc` est en lecture seule et ne divulgue aucun
+      // secret — seulement des NOMS, qui sont deja dans le depot public.
+      //
+      // Lecture :
+      //   fonction=true  et tables=false -> l'identite a ete SAUTEE : la base a
+      //     avance au-dela sans elle. Ce n'est pas un retard, c'est un trou.
+      //   fonction=false et tables=false -> base anterieure au 31/10.
+      let fonctionUlterieure: boolean | null = null;
+      try {
+        const sonde = await prisma.$queryRaw<Array<{ presente: boolean }>>`
+          SELECT EXISTS (SELECT 1 FROM pg_catalog.pg_proc p
+                           JOIN pg_catalog.pg_namespace n ON n.oid = p.pronamespace
+                          WHERE n.nspname = 'public'
+                            AND p.proname = 'tracefab_current_user_email') AS presente
+        `;
+        fonctionUlterieure = sonde?.[0]?.presente ?? null;
+      } catch {
+        fonctionUlterieure = null;
+      }
+
+      if (ligne) {
+        baseIdentite = {
+          table_presente: ligne.vue_to_regclass,
+          table_vue_par_pg_class: ligne.vue_pg_class,
+          prisma_migrations_presente: ligne.prisma_migrations_presente,
+          tables_publiques: ligne.tables_publiques,
+          fonction_posterieure_presente: fonctionUlterieure,
+          identite_base: identiteBase,
+          rls_forcee: ligne.rls_forcee,
+          mode_strict: modeStrict,
+        };
+      }
+    } catch (erreur) {
+      // NE PAS AVALER LA CAUSE.
+      //
+      // `catch { baseIdentite = null; }` rendait `baseIdentite` absent du corps,
+      // ce qui est indistinguable de « la route ne publie pas ce champ » — et
+      // c'est exactement ce qui a fait rendre INDETERMINATE a C5.1 sans qu'on
+      // puisse dire POURQUOI. Un echec de mesure doit etre nomme.
+      //
+      // On ne publie que le CODE d'erreur PostgreSQL quand il existe (ex.
+      // `42501` = permission refusee) : c'est un fait de catalogue, pas une
+      // donnee. Jamais le message brut, qui peut citer la requete, ni l'URL.
+      const code = (erreur as { code?: unknown })?.code;
+      baseIdentite = null;
+      echecIdentiteBase = typeof code === 'string' && /^[0-9A-Z]{5}$/.test(code)
+        ? `erreur_pg_${code}`
+        : 'mesure_impossible';
+    }
+  }
+
+  const jetonsSysteme = {
+    // Meme cle que `identityTokens` : deux variables distinctes pour la meme
+    // valeur seraient deux occasions de les faire diverger.
+    configured: etatSysteme === 'valide',
+    mode: etatSysteme === 'valide' ? 'signe' : etatSysteme === 'invalide' ? 'cle_invalide' : 'non_configure',
+    usage: 'tracefab_system',
+    // `null` = non mesuree (et non « fausse ») : le champ n'est renseigne que
+    // sur demande (`?identity=1`), pour ne pas interroger la base a chaque
+    // passage d'une sonde de supervision.
+    verifiee_par_la_base: verificationBase,
+    verification: verificationDetail,
+  };
+
   const databaseIdentity = wantIdentity ? await probeDatabaseIdentity() : undefined;
+
+  // P10.7 — C4.6 : le contexte tenant est-il pose et VERIFIE par la base ?
+  //
+  // Jusqu'ici ce point etait declare INDETERMINATE au motif que « la route de
+  // diagnostic n ouvre pas de transaction metier ». Le motif etait exact, la
+  // conclusion ne l'etait pas : le contexte se mesure en LECTURE SEULE, par un
+  // aller-retour signe + controle negatif. Voir `probeContexteTenant`.
+  //
+  // L'echec de cette sonde ne rend PAS la route indisponible : `measured:false`
+  // est un resultat publie, pas une exception. Un diagnostic qui tombe ne doit
+  // pas emporter le diagnostic entier.
+  const contexteTenant = wantIdentity ? await probeContexteTenant() : undefined;
+
+  // P10.7 — verification reelle de l'outbox sous contexte systeme signe.
+  // Lecture seule : aucun element n'est reclame, modifie, ni envoye.
+  let notificationOutbox: { verified: boolean; detail: string; health?: OutboxHealthRow } | undefined;
+  if (req.query?.outbox === '1' && wantIdentity) {
+    try {
+      const rows = await withTracefabWorkerContext((tx) => tx.$queryRaw<OutboxHealthRow[]>`
+        SELECT * FROM tracefab_notification_outbox_health()
+      `);
+      notificationOutbox = {
+        verified: true,
+        detail: 'aller_retour_reussi',
+        health: rows[0] ?? {
+          pending: 0, processing: 0, sent: 0, failed: 0, ready: 0,
+          staleProcessing: 0, exhausted: 0, oldestReadyAt: null,
+        },
+      };
+    } catch (error) {
+      notificationOutbox = {
+        verified: false,
+        detail: error instanceof Error && /42501|authentication_required/.test(error.message)
+          ? 'identite_systeme_refusee'
+          : 'sonde_en_erreur',
+      };
+    }
+  }
   // En mode diagnostic, la readiness est rouge tant que l'identité effective
   // ne prouve pas le rôle applicatif sans privilèges de contournement RLS.
   const identitySafe = !wantIdentity || databaseIdentityIsSafe(databaseIdentity);
+
+  // POURQUOI UN MOTIF, ET POURQUOI MAINTENANT
+  //
+  // Mesure du run 44074983675 (SHA c0f8d6f) : la sonde authentifiee rendait 503.
+  // Le corps tronque ne permettait pas de savoir si le refus venait de la
+  // CONFIGURATION (`configured_`) ou de l'IDENTITE (`identitySafe`). Deux
+  // causes, deux corrections opposees : on ne peut pas les confondre.
+  //
+  // `ecartIdentiteRuntime` ne rend que des ecarts lisibles — noms de roles,
+  // drapeaux booleens — jamais une cle, un mot de passe ni une URL. Il n'est
+  // expose que derriere l'authentification de sonde deja exigee ci-dessus, et
+  // seulement quand l'identite est ROUGE : un feu vert n'a pas a se justifier.
+  const identiteEcarts = wantIdentity && !identitySafe ? ecartIdentiteRuntime(databaseIdentity) : undefined;
 
   if (!live) {
     return json(res, configured_ && identitySafe ? 200 : 503, {
       schema: 'tracefab-p2-readiness-v1',
       ready: configured_ && identitySafe,
       configurationOnly: true,
+      configurationSuffisante: configured_,
+      identiteSaine: identitySafe,
+      ...(identiteEcarts ? { identiteEcarts } : {}),
       services,
       identityTokens: jetonsIdentite,
+      identitySysteme: jetonsSysteme,
+      ...(baseIdentite ? { baseIdentite } : {}),
+      ...(echecIdentiteBase ? { echecIdentiteBase } : {}),
       ...(databaseIdentity ? { databaseIdentity } : {}),
+      ...(contexteTenant ? { contexteTenant } : {}),
+      ...(notificationOutbox ? { notificationOutbox } : {}),
     });
   }
 
   const probes = await runLiveProbes();
   // Le collecteur d'erreurs est souhaitable, pas bloquant : son absence degrade
   // l'exploitation, elle n'empeche pas de servir.
-  const blocking = [probes.database, probes.privateStorage, probes.antivirus, probes.email, probes.alerting];
+  // Alerting is optional: a missing or unreachable collector degrades
+  // observability but must not block document, identity, or email workflows.
+  const blocking = [probes.database, probes.privateStorage, probes.antivirus, probes.email];
   const ready = configured_ && blocking.every((probe) => probe.reachable) && identitySafe;
   return json(res, ready ? 200 : 503, {
     schema: 'tracefab-p2-readiness-v1',
@@ -111,6 +545,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     services,
     probes,
     identityTokens: jetonsIdentite,
+    identitySysteme: jetonsSysteme,
+    ...(baseIdentite ? { baseIdentite } : {}),
+    ...(echecIdentiteBase ? { echecIdentiteBase } : {}),
     ...(databaseIdentity ? { databaseIdentity } : {}),
+    ...(contexteTenant ? { contexteTenant } : {}),
+    ...(notificationOutbox ? { notificationOutbox } : {}),
   });
 }

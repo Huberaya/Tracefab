@@ -43,7 +43,7 @@ async function main() {
   });
 
   const invitationHash = createHash('sha256').update(randomBytes(32)).digest('hex');
-  const invitation = await inUserContext(brandUser, brandEmail, (tx) => tx.$queryRaw`
+  const invitation = await inUserContext(brandUser, brandEmail, brandOrganization, (tx) => tx.$queryRaw`
     SELECT * FROM tracefab_invite_supplier(
       ${brandOrganization}::uuid,
       ${supplierEmail},
@@ -57,19 +57,25 @@ async function main() {
   supplierOrganization = invitation[0].supplier_organization_id;
 
   await expectSqlCode(
-    () => inUserContext(wrongUser, wrongEmail, (tx) => tx.$queryRaw`
+    () => inUserContext(wrongUser, wrongEmail, brandOrganization, (tx) => tx.$queryRaw`
       SELECT * FROM tracefab_accept_organization_invitation(${invitationHash})
     `),
     'invitation_email_mismatch',
   );
 
-  const accepted = await inUserContext(supplierUser, supplierEmail, (tx) => tx.$queryRaw`
+  const accepted = await inUserContext(supplierUser, supplierEmail, brandOrganization, (tx) => tx.$queryRaw`
     SELECT * FROM tracefab_accept_organization_invitation(${invitationHash})
   `);
   assert(accepted.length === 1, 'supplier invitation was not accepted');
   const supplierId = accepted[0].supplier_id;
+  // `tracefab_update_supplier_profile` / `tracefab_submit_supplier_profile` sont
+  // gardees par `tracefab_require_active_tenant_for_organization(v_supplier.
+  // organization_id)` : le locataire a armer pour ces appels est celui du
+  // FOURNISSEUR, pas celui de la marque invitante. Le prendre dans le retour de
+  // l'acceptation evite de le supposer.
+  supplierOrganization = accepted[0].organization_id;
 
-  const updated = await inUserContext(supplierUser, supplierEmail, (tx) => tx.$queryRaw`
+  const updated = await inUserContext(supplierUser, supplierEmail, supplierOrganization, (tx) => tx.$queryRaw`
     SELECT * FROM tracefab_update_supplier_profile(
       ${supplierId}::uuid,
       ${'A complete supplier profile summary for the Neon integration test.'},
@@ -86,7 +92,7 @@ async function main() {
   await prisma.supplier_sites.create({
     data: { supplier_id: supplierId, name: 'Flow Test Site', country_code: 'FR', city: 'Nantes' },
   });
-  const submitted = await inUserContext(supplierUser, supplierEmail, (tx) => tx.$queryRaw`
+  const submitted = await inUserContext(supplierUser, supplierEmail, supplierOrganization, (tx) => tx.$queryRaw`
     SELECT * FROM tracefab_submit_supplier_profile(${supplierId}::uuid)
   `);
   assert(submitted[0]?.onboarding_status === 'submitted', 'complete supplier profile was not submitted');
@@ -95,10 +101,18 @@ async function main() {
   console.log('Neon supplier integration passed: invite, email-bound acceptance, profile update and submission');
 }
 
-async function inUserContext(userId, email, callback) {
+// Le locataire actif est OBLIGATOIRE des lors que la fonction appelee est
+// bornee a la tenancy : `tracefab_in_active_tenant()` rend `false` quand
+// `tracefab.active_organization_id` n'est pas arme, et la garde leve alors
+// `active_tenant_mismatch`. Le passer explicitement garde le test
+// representatif du runtime, qui nomme toujours le locataire de la requete.
+async function inUserContext(userId, email, activeOrganizationId, callback) {
   return prisma.$transaction(async (tx) => {
     await tx.$executeRaw`SELECT set_config('tracefab.user_id', ${userId}, true)`;
     await tx.$executeRaw`SELECT set_config('tracefab.user_email', ${email}, true)`;
+    if (activeOrganizationId) {
+      await tx.$executeRaw`SELECT set_config('tracefab.active_organization_id', ${activeOrganizationId}, true)`;
+    }
     return callback(tx);
   });
 }

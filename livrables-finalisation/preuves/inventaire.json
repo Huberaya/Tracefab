@@ -1,0 +1,10 @@
+{
+  "tables": 54,
+  "vues": 0,
+  "fonctions": 176,
+  "politiques": 137,
+  "rls_active": 53,
+  "rls_forcee": 53,
+  "secdef_publiques": 0,
+  "migrations": 76
+}

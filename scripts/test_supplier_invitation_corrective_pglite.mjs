@@ -92,9 +92,35 @@ async function baseChaine({ avecCorrective = false } = {}) {
     CREATE ROLE tracefab_app LOGIN PASSWORD 'runtime' NOSUPERUSER NOBYPASSRLS NOCREATEROLE NOCREATEDB;
     GRANT USAGE ON SCHEMA public TO tracefab_app;
   `);
+  const migrationsAvecWorkerTemporaire = new Set([
+    '20261028120100_worker_identity_not_forgeable',
+    '20261028120200_document_reserved_fields_internal_only',
+    '20261031120000_identite_hmac_liee_au_contexte',
+    '20261105235900_active_tenant_policy_and_worker_closure',
+    '20261108120100_worker_fonctions_systeme_completes',
+    '20261108120200_corrections_p106_ownership_et_appartenance',
+  ]);
   for (const d of dossiers) {
     if (d === CORRECTIVE && !avecCorrective) continue;
+    if (d === '20261028120100_worker_identity_not_forgeable') {
+      await db.exec(`
+        CREATE ROLE tracefab_worker NOLOGIN NOINHERIT NOBYPASSRLS
+          NOSUPERUSER NOCREATEROLE NOCREATEDB NOREPLICATION;
+      `);
+    }
+    if (migrationsAvecWorkerTemporaire.has(d)) {
+      await db.exec(`
+        GRANT tracefab_worker TO postgres WITH SET TRUE, INHERIT TRUE, ADMIN FALSE;
+        SET tracefab.worker_membership_managed = 'true';
+      `);
+    }
     await db.exec(LIRE(d));
+    if (migrationsAvecWorkerTemporaire.has(d)) {
+      await db.exec(`
+        RESET tracefab.worker_membership_managed;
+        REVOKE tracefab_worker FROM postgres;
+      `);
+    }
   }
   await db.exec(`
     INSERT INTO organizations (id, type, legal_name) VALUES

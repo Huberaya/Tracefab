@@ -1,0 +1,173 @@
+Loaded Prisma config from prisma.config.ts.
+
+Prisma config detected, skipping environment variable loading.
+Prisma schema loaded from prisma/schema.migrate.prisma
+Datasource "db": PostgreSQL database "tracefab_test", schema "public" using driver adapter "@prisma/adapter-pg"
+
+WARNING: Your schema specifies the following datasource properties but you are using a Driver Adapter via prisma.config.ts:
+- url
+
+The values from your schema will NOT be used!
+
+We recommend you to remove those properties from your schema to avoid confusion if you are only using driver adapters.
+
+76 migrations found in prisma/migrations
+
+
+The following migration(s) have been applied:
+
+migrations/
+  └─ 20260923130000_tracefab_neon_initial/
+    └─ migration.sql
+  └─ 20260923140000_tracefab_clerk_context/
+    └─ migration.sql
+  └─ 20260923150000_fix_invitation_acceptance/
+    └─ migration.sql
+  └─ 20260923160000_tracefab_product_api_functions/
+    └─ migration.sql
+  └─ 20260923170000_fix_data_collection_workflow_context/
+    └─ migration.sql
+  └─ 20260923180000_fix_data_response_progress_guard/
+    └─ migration.sql
+  └─ 20260923190000_tracefab_notification_outbox/
+    └─ migration.sql
+  └─ 20260923200000_tracefab_collection_reminders/
+    └─ migration.sql
+  └─ 20261005090000_supplier_portal_advanced_hardening/
+    └─ migration.sql
+  └─ 20261005100000_supplier_invitation_compatibility/
+    └─ migration.sql
+  └─ 20261006100000_security_force_rls_and_document_access/
+    └─ migration.sql
+  └─ 20261006110000_quality_center_shared_access/
+    └─ migration.sql
+  └─ 20261006113000_clerk_directory_membership_sync/
+    └─ migration.sql
+  └─ 20261006120000_data_collection_bridge_and_quality_automation/
+    └─ migration.sql
+  └─ 20261006120000_external_schema_bindings/
+    └─ migration.sql
+  └─ 20261006123000_clerk_sync_security_functions/
+    └─ migration.sql
+  └─ 20261006130000_tracefab_manual_data_request_reminders/
+    └─ migration.sql
+  └─ 20261006140000_supply_chain_traceability_api/
+    └─ migration.sql
+  └─ 20261006160000_dpp_readiness_exposure/
+    └─ migration.sql
+  └─ 20261006180000_supplier_self_onboarding/
+    └─ migration.sql
+  └─ 20261006190000_catalog_import_export/
+    └─ migration.sql
+  └─ 20261006200000_catalog_import_kind/
+    └─ migration.sql
+  └─ 20261006200000_document_ai_automated_verification/
+    └─ migration.sql
+  └─ 20261006210000_plm_erp_gs1_interoperability/
+    └─ migration.sql
+  └─ 20261006220000_esg_pef_footprint_engine/
+    └─ migration.sql
+  └─ 20261006220000_production_hardening/
+    └─ migration.sql
+  └─ 20261006230000_green_claims_anti_greenwashing_engine/
+    └─ migration.sql
+  └─ 20261006240000_quality_corrective_action_plans_cap/
+    └─ migration.sql
+  └─ 20261006250000_universal_supplier_passport/
+    └─ migration.sql
+  └─ 20261006260000_mass_balance_anti_fraud_engine/
+    └─ migration.sql
+  └─ 20261007100000_security_definer_execute_hardening/
+    └─ migration.sql
+  └─ 20261007120000_force_rls_schema_bindings/
+    └─ migration.sql
+  └─ 20261008100000_rate_limit_counters/
+    └─ migration.sql
+  └─ 20261009120000_fix_materials_policy_recursion/
+    └─ migration.sql
+  └─ 20261009180000_public_read_context/
+    └─ migration.sql
+  └─ 20261010120000_publication_explicite/
+    └─ migration.sql
+  └─ 20261012120000_close_public_execute_gap/
+    └─ migration.sql
+  └─ 20261014100000_revoke_material_visible_public/
+    └─ migration.sql
+  └─ 20261014110000_revoke_dpp_functions_public/
+    └─ migration.sql
+  └─ 20261014120000_close_global_default_function_execute/
+    └─ migration.sql
+  └─ 20261014130000_revoke_public_schema_privileges/
+    └─ migration.sql
+  └─ 20261014140000_remove_public_supplier_passport_share_token/
+    └─ migration.sql
+  └─ 20261016130000_dynamic_dpp_lifecycle/
+    └─ migration.sql
+  └─ 20261016150000_dpp_claim_evidence_chain/
+    └─ migration.sql
+  └─ 20261016170000_dpp_resolvable_identity/
+    └─ migration.sql
+  └─ 20261017100000_fix_document_lifecycle_access/
+    └─ migration.sql
+  └─ 20261017120000_active_tenant_context/
+    └─ migration.sql
+  └─ 20261017120000_harden_dpp_table_privileges/
+    └─ migration.sql
+  └─ 20261017150000_harden_finalize_ops_gate/
+    └─ migration.sql
+  └─ 20261019120000_restreindre_dml_role_applicatif/
+    └─ migration.sql
+  └─ 20261019140000_restreindre_suppression_compteurs_debit/
+    └─ migration.sql
+  └─ 20261019160000_retablir_dml_tables_ecrites_directement/
+    └─ migration.sql
+  └─ 20261020120000_structured_supply_chain_graph_membership/
+    └─ migration.sql
+  └─ 20261021120000_limit_app_function_execute/
+    └─ migration.sql
+  └─ 20261021130000_reconcile_runtime_dml_and_migration_history/
+    └─ migration.sql
+  └─ 20261021170000_dpp_readiness_truthful_gates/
+    └─ migration.sql
+  └─ 20261023120000_revoke_app_default_dml/
+    └─ migration.sql
+  └─ 20261027100000_dpp_quality_gate_requires_assessment/
+    └─ migration.sql
+  └─ 20261027130000_dpp_review_preservation_and_publication_coherence/
+    └─ migration.sql
+  └─ 20261028120000_runtime_function_registry/
+    └─ migration.sql
+  └─ 20261028120100_worker_identity_not_forgeable/
+    └─ migration.sql
+  └─ 20261028120200_document_reserved_fields_internal_only/
+    └─ migration.sql
+  └─ 20261028130000_product_computed_fields_column_scoped/
+    └─ migration.sql
+  └─ 20261028140000_supplier_invitation_owner_relationship_scope/
+    └─ migration.sql
+  └─ 20261028150000_reconcile_plm_erp_sync_job_policies/
+    └─ migration.sql
+  └─ 20261029180000_plm_erp_sync_jobs_policy_dedup/
+    └─ migration.sql
+  └─ 20261030140000_ingest_payload_role_guard_and_acl/
+    └─ migration.sql
+  └─ 20261031120000_identite_hmac_liee_au_contexte/
+    └─ migration.sql
+  └─ 20261102120000_identite_stricte_email_et_rotation/
+    └─ migration.sql
+  └─ 20261108120000_ingest_plm_graphe_versionne/
+    └─ migration.sql
+  └─ 20261108120100_worker_fonctions_systeme_completes/
+    └─ migration.sql
+  └─ 20261108120200_corrections_p106_ownership_et_appartenance/
+    └─ migration.sql
+  └─ 20261108120300_acl_colonnes_bornees_au_runtime/
+    └─ migration.sql
+  └─ 20261108120400_lien_graphe_statut_enum_type/
+    └─ migration.sql
+  └─ 20261108120500_lecture_users_requise_par_les_politiques/
+    └─ migration.sql
+  └─ 20261108120600_lecture_orders_requise_par_le_runtime/
+    └─ migration.sql
+      
+All migrations have been successfully applied.

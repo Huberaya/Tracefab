@@ -41,6 +41,7 @@ import pg from 'pg';
 import { sslDepuisUrl } from './lib/pg-ssl.mjs';
 import { requireThrowawayDb } from './lib/require-throwaway-db.mjs';
 import { creerBaseEphemere, verrouillerCluster, filetDeNettoyage } from './lib/ephemeral-db.mjs';
+import { appliquerCommeLeRunner } from './lib/appliquer_chaine_comme_le_runner.mjs';
 import { ensureAppRole, APP_ROLE, TABLES_ECRITURE_DIRECTE } from './lib/tracefab_app_role.mjs';
 
 const RACINE = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -350,8 +351,13 @@ console.log("\n  E. Chaîne réelle — rôle AVANT les migrations, puis privil�
     for (const d of dossiers) {
       const sql = fs.readFileSync(path.join(RACINE, 'prisma', 'migrations', d, 'migration.sql'), 'utf8');
       if (!sql.trim() || sql.trim() === '-- This is an empty migration.') continue;
+      // Comme le runner : transaction par migration + declaration du bail
+      // worker pour les six migrations qui l exigent. Sans cela, la chaine
+      // s arretait sur `worker_membership_must_be_managed_by_runner` et cette
+      // assertion — qui mesure le PROVISIONNEMENT du role, pas la chaine —
+      // tombait pour une raison qui ne la concernait pas (mesure du 2026-11-12).
       try {
-        await mig.query(sql);
+        await appliquerCommeLeRunner(mig, d, sql);
         appliquees += 1;
       } catch (e) {
         migrationEnEchec.push(`${d.slice(0, 14)}:${e.code}`);

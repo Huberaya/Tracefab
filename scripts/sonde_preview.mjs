@@ -27,6 +27,7 @@
 import fs from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import { estProtectionVercel as estProtectionVercelPartage } from './detecter_protection_vercel.mjs';
 
 const args = process.argv.slice(2);
 
@@ -137,8 +138,7 @@ const sondes = [
  * route a l'autre et la marque peut tomber au-dela d'un extrait tronque.
  */
 const estProtectionVercel = (corps, entetes) =>
-  /vercel_auth_enabled|Protected by Vercel Authentication/i.test(corps) ||
-  /vercel\.com\/sso-api/i.test(entetes.get('location') || '');
+  estProtectionVercelPartage({ statut: 200, texte: corps, entetes });
 
 const sonder = async (s) => {
   const entetes = { accept: 'application/json' };

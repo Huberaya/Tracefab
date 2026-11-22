@@ -1,0 +1,24 @@
+deploy=0
+OK   cas nominal : lien cree — statut=declared
+OK   cas nominal : statut declared — recu=declared
+OK   avec preuve documentaire : statut documented — statut=documented
+OK   metadata NULL -> {} (pas NULL) — metadata={}
+OK   type de lien non autorise refuse — 22P02 invalid input value for enum supply_chain_link_type: "type_invalide"
+OK   sequence negative refusee — traceability_sequence_must_be_positive
+OK   sequence NULL acceptee — seq=null
+OK   membre viewer refuse — traceability_brand_role_required
+OK   produit inexistant refuse — traceability_brand_role_required
+OK   lien sur produit d une autre organisation refuse — traceability_brand_role_required
+OK   aucun lien ecrit sur l autre tenant — 0 -> 0
+OK   exactement les liens attendus sur le tenant A — 3 attendus 3
+OK   SECURITY DEFINER preserve — prosecdef=true
+OK   search_path fige a public — ["search_path=public"]
+OK   proprietaire = role de migration (postgres au banc) — proprietaire=postgres
+OK   EXECUTE accorde a tracefab_app — app=true
+     (informatif) EXECUTE pour tracefab_worker : false
+OK   pas d EXECUTE pour PUBLIC — 0 grant(s) PUBLIC
+
+echecs : 0/17
+defaut ENUM 42804 present : non
+VERDICT : fonction conforme sur tous les cas testes
+sonde=0

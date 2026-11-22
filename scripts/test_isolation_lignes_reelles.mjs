@@ -33,6 +33,7 @@ import pg from 'pg';
 import { sslDepuisUrl } from './lib/pg-ssl.mjs';
 import { requireThrowawayDb } from './lib/require-throwaway-db.mjs';
 import { creerBaseEphemere, verrouillerCluster } from './lib/ephemeral-db.mjs';
+import { appliquerCommeLeRunner } from './lib/appliquer_chaine_comme_le_runner.mjs';
 import { TABLES_ECRITURE_DIRECTE } from './lib/tracefab_app_role.mjs';
 
 const RACINE = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -136,8 +137,13 @@ let appliquees = 0;
 for (const d of dossiers) {
   const sql = fs.readFileSync(path.join(RACINE, 'prisma', 'migrations', d, 'migration.sql'), 'utf8');
   if (!sql.trim() || sql.trim() === '-- This is an empty migration.') continue;
+  // Comme le runner : transaction par migration, et declaration du bail worker
+  // quand la migration l'exige. Sans cela, la chaine s'arrete sur
+  // `worker_membership_must_be_managed_by_runner` et tout ce qui suit tombe en
+  // 25P02 — mesure du 2026-11-12, alors que ce banc mesurait deja l'isolation
+  // sur une base incomplete.
   try {
-    await mig.query(sql);
+    await appliquerCommeLeRunner(mig, d, sql);
     appliquees += 1;
   } catch (e) {
     console.log(`    MIGRATION EN ECHEC ${d} — ${e.code} ${String(e.message).split('\n')[0]}`);
@@ -230,11 +236,14 @@ verifier("la connexion est le rôle applicatif", identite.rows[0].u === APP_ROLE
 verifier("le rôle ne contourne pas la RLS", identite.rows[0].b === false, `rolbypassrls=${identite.rows[0].b}`);
 
 /** Pose l'identité d'un utilisateur pour la durée de la transaction. */
-async function enTantQue(userId, fn) {
+async function enTantQue(userId, organizationId, fn) {
   await app.query('BEGIN');
   try {
     if (userId) {
       await app.query(`SELECT set_config('tracefab.user_id', $1, true)`, [userId]);
+    }
+    if (organizationId) {
+      await app.query(`SELECT set_config('tracefab.active_organization_id', $1, true)`, [organizationId]);
     }
     return await fn();
   } finally {
@@ -279,7 +288,7 @@ async function tente(sql, params = []) {
 
 console.log('\n  A. lecture inter-tenant, sur lignes existantes');
 
-await enTantQue(A.user, async () => {
+await enTantQue(A.user, A.org, async () => {
   const propres = await app.query(`SELECT id FROM documents WHERE id = $1`, [docA]);
   verifier('contrôle positif : A lit son propre document', propres.rowCount === 1, `${propres.rowCount} ligne`);
 
@@ -296,7 +305,7 @@ console.log('\n  B. modification inter-tenant');
 
 // `documents` fait partie des quatre tables où le rôle applicatif a vraiment le
 // droit d'écrire. C'est donc ici que la RLS — et non le privilège — doit agir.
-await enTantQue(A.user, async () => {
+await enTantQue(A.user, A.org, async () => {
   // La colonne modifiée est `original_filename`. Deux versions précédentes
   // écrivaient status puis byte_size, et restaient vertes même RLS désactivée :
   // le déclencheur de la migration initiale lève
@@ -325,7 +334,7 @@ verifier("le document de B est intact après la tentative", apresUpdate === 'pre
 
 console.log('\n  C. suppression inter-tenant');
 
-await enTantQue(A.user, async () => {
+await enTantQue(A.user, A.org, async () => {
   const r = await tente(`DELETE FROM documents WHERE id = $1`, [docB]);
   verifier(
     "A ne peut pas supprimer le document de B",
@@ -374,7 +383,7 @@ verifier("le document de B existe toujours", docBExiste === 1, `${docBExiste} li
 
 console.log('\n  D. insertion avec identité ou organisation falsifiée');
 
-await enTantQue(A.user, async () => {
+await enTantQue(A.user, A.org, async () => {
   // A tente d'écrire un document en se déclarant propriétaire l'organisation B.
   const r = await tente(
     `INSERT INTO documents (id, owner_organization_id, storage_bucket, storage_path,
@@ -416,7 +425,7 @@ verifier(
 
 // Le contexte « worker » ne doit pas ouvrir l'écriture inter-tenant : il arme
 // les politiques de l'outbox de notifications, pas celles des documents.
-await enTantQue(A.user, async () => {
+await enTantQue(A.user, A.org, async () => {
   await app.query(`SELECT set_config('tracefab.worker_context', 'true', true)`);
   // La colonne modifiée est `original_filename`. Deux versions précédentes
   // écrivaient status puis byte_size, et restaient vertes même RLS désactivée :

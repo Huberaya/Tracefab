@@ -63,8 +63,12 @@ async function maintenance() {
 function lancerSuite(chemin) {
   return new Promise((resoudre) => {
     const p = spawn(process.execPath, [join(RACINE, 'scripts', 'run-db-suite.mjs'), join(RACINE, chemin)],
-      { env: process.env, stdio: 'ignore' });
-    p.on('exit', (code) => resoudre(code));
+      { env: process.env, stdio: ['ignore', 'pipe', 'pipe'] });
+    let stdout = '';
+    let stderr = '';
+    p.stdout.setEncoding('utf8').on('data', (chunk) => { stdout = (stdout + chunk).slice(-6000); });
+    p.stderr.setEncoding('utf8').on('data', (chunk) => { stderr = (stderr + chunk).slice(-6000); });
+    p.on('exit', (code, signal) => resoudre({ code: code ?? 1, signal, stdout, stderr }));
   });
 }
 
@@ -84,9 +88,15 @@ const PAIRE = [
 
 for (let tour = 1; tour <= TOURS; tour += 1) {
   const [a, b] = PAIRE[(tour - 1) % PAIRE.length];
-  const [ca, cb] = await Promise.all([lancerSuite(a), lancerSuite(b)]);
+  const [ra, rb] = await Promise.all([lancerSuite(a), lancerSuite(b)]);
+  const detail = (r) => r.code === 0 ? '' : [
+    `exit=${r.code} signal=${r.signal ?? 'aucun'}`,
+    r.stderr.trim(),
+    r.stdout.trim().split('\n').slice(-18).join('\n'),
+  ].filter(Boolean).join('\n');
   verifier(`tour ${tour} : ${a.split('/').pop()} + ${b.split('/').pop()}`,
-    ca === 0 && cb === 0, `${a.split('/').pop()}=${ca}, ${b.split('/').pop()}=${cb}`);
+    ra.code === 0 && rb.code === 0,
+    `${a.split('/').pop()}=${ra.code} ${detail(ra)}\n${b.split('/').pop()}=${rb.code} ${detail(rb)}`);
 }
 
 /* ========================================================================== *
@@ -98,9 +108,9 @@ console.log('\n  B. preuve de serialisation — verrou tenu de l exterieur');
 {
   const verrou = await verrouillerCluster({ urlProprietaire });
   let termine = false;
-  const suite = lancerSuite('scripts/test_privileges_role_app.mjs').then((code) => {
+  const suite = lancerSuite('scripts/test_privileges_role_app.mjs').then((resultat) => {
     termine = true;
-    return code;
+    return resultat;
   });
 
   await dormir(4000);
@@ -109,8 +119,14 @@ console.log('\n  B. preuve de serialisation — verrou tenu de l exterieur');
     termine ? 'la suite a abouti sans attendre le verrou' : '');
 
   await verrou.relacher();
-  const code = await suite;
-  verifier('une fois le verrou relache, la suite aboutit', code === 0, `exit=${code}`);
+  const resultat = await suite;
+  const diagnostic = resultat.code === 0 ? '' : [
+    `signal=${resultat.signal ?? 'aucun'}`,
+    resultat.stderr.trim(),
+    resultat.stdout.trim().split('\n').slice(-18).join('\n'),
+  ].filter(Boolean).join('\n');
+  verifier('une fois le verrou relache, la suite aboutit', resultat.code === 0,
+    `exit=${resultat.code}\n${diagnostic}`);
   verifier('et le processus concurrent observe bien la fin', termine, 'suite non terminee');
 }
 

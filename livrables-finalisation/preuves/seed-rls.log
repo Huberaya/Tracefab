@@ -1,0 +1,9 @@
+  garde cible : DATABASE_URL -> ACCEPTEE | classe=throwaway_local | base=tracefab_test | empreinte=ee5b7ce50beb | raison=cible locale
+
+  chargeur : node
+  role tracefab_app deja present (OID 16385), attributs conformes — aucune instruction ALTER emise
+  droits applicatifs accordes a tracefab_app (lecture generale filtree par RLS ; ecriture directe limitee a 16 tables ; tracefab_products en ecriture colonne par colonne (20 colonnes, champs calcules exclus) ; le reste des mutations par fonctions SECURITY DEFINER)
+  locataire Maison Alpha : utilisateur, adhesion, fournisseur, 2 produits, 1 document
+  locataire Maison Beta : utilisateur, adhesion, fournisseur, 2 produits, 1 document
+  total : 2 organisations · 2 utilisateurs · 4 produits
+  base prete pour npm run test:neon:rls

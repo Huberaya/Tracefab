@@ -75,8 +75,18 @@ export async function propriétairesInjoignables(db, executeur, migrations) {
       );
       for (const { proprietaire } of rows) {
         if (proprietaire === executeur) continue;
+        // DÉFAUT MESURÉ : `pg_has_role` LÈVE 42704 quand le rôle interrogé
+        // n'existe pas — il ne rend pas `false`. Le préflight est appelé sur le
+        // cluster de CI par des suites qui ne provisionnent pas
+        // `tracefab_migrator` (P10.6 en mode postgres) : la requête faisait
+        // tomber la suite en `role "tracefab_migrator" does not exist` au lieu
+        // de conclure. Un exécutant absent ne peut rien endosser : le préflight
+        // doit le REFUSER, pas lever. `to_regrole` rend NULL au lieu de lever.
+        // Ce n'est pas un adoucissement : le cas « rôle absent » reste un écart.
         const { rows: joignable } = await db.query(
-          'SELECT pg_catalog.pg_has_role($1, $2, $3) AS ok', [executeur, proprietaire, 'SET'],
+          `SELECT CASE WHEN pg_catalog.to_regrole($1) IS NULL THEN false
+                       ELSE pg_catalog.pg_has_role($1, $2, $3) END AS ok`,
+          [executeur, proprietaire, 'SET'],
         );
         if (joignable[0]?.ok !== true) ecarts.push({ migration: nom, fonction, proprietaire });
       }

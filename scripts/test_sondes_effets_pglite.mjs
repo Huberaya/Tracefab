@@ -26,6 +26,7 @@
  *   npm run test:sondes-effets
  */
 import fs from 'node:fs';
+import { executerMigrationPglite } from './lib/pglite-worker-runner.mjs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -52,7 +53,9 @@ const ok = (libelle, condition, detail = '') => {
   console.error(`  ECHEC ${libelle}${detail ? ` — ${detail}` : ''}`);
 };
 
-/** Les onze migrations dont l'historique de production ne porte pas la trace. */
+/** Les onze migrations dont l'historique de production ne porte pas la trace.
+ * Le nombre de politiques est mesuré après toute la chaîne : trois politiques
+ * supplémentaires sont créées par les migrations ultérieures du candidat. */
 const ECARTS = [
   '20261010120000_publication_explicite',
   '20261017120000_active_tenant_context',
@@ -86,11 +89,16 @@ async function construire(sans = new Set()) {
   for (const d of dossiers) {
     if (sans.has(d)) { sautees.push(d); continue; }
     try {
-      await db.exec(lire(d));
+      await executerMigrationPglite(db, d, lire(d));
     } catch (e) {
       // Retirer une migration peut rendre la suivante impossible (elle modifie
       // une fonction que sa predecesseure cree). On le dit, on ne le masque pas.
       sautees.push(`${d} (echec : ${String(e.message).split('\n')[0].slice(0, 90)})`);
+      // PGlite conserve la transaction en echec si la migration contenait
+      // BEGIN avant l'erreur. Cette base est jetable : on annule uniquement
+      // cette transaction pour que les migrations suivantes puissent etre
+      // tentees et que la sonde lise l'etat partiel sans faux 25P02.
+      try { await db.exec('ROLLBACK'); } catch { /* aucune transaction ouverte */ }
     }
   }
   return { db, sautees };
@@ -118,7 +126,7 @@ console.log(`  A — chaine complete : ${dossiers.length - a.sautees.length}/${d
 ok('la chaine complete s applique sans erreur', a.sautees.length === 0, a.sautees.join(' ; '));
 
 const sa = await sonder(a.db);
-ok('onze sondes rendues', sa.size === 11, `${sa.size}`);
+ok('treize lignes de sonde rendues (11 migrations + 2 controles transverses)', sa.size === 13, `${sa.size}`);
 
 /* -------------------------------------------------------------------------
    2. La calibration : UNE base par migration, retiree SEULE
@@ -201,11 +209,13 @@ const attendu = {
   '20261027100000': 'requirement_met_lit_scores_du_produit|true',
   '20261027130000': 'suspend_nonconforming_posee|oui',
   '20261028120000': 'table_registre|oui',
-  '20261028120100': 'role_tracefab_worker|oui|politiques_sur_current_user|11',
+  '20261028120100': 'role_tracefab_worker|oui|politiques_sur_current_user|14',
   '20261028120200': 'mark_document_scanning_posee|oui|update_app_sur_documents|false',
-  '20261028130000': 'update_app_sur_tracefab_products|false|trigger_lit_encore_le_guc|false',
+  '20261028130000': 'table_level_update_app|false|update_version_calculee|false|update_name_metier|true',
   '20261028140000': 'garde_relation_invitation|true',
-  '20261028150000': 'politiques_plm_erp_sync_jobs|2|attendu|2',
+  '20261028150000': 'politiques_plm_erp_sync_jobs|2|noms|plm_sync_jobs_insert_brand,plm_sync_jobs_select_org|insert_contributor|false',
+  '20261028120050': 'fonction_apply_runtime_function_grants|oui',
+  historique: '20261010120000_et_20261017120000|0|tentatives_annulees|0',
 };
 
 for (const [m, v] of Object.entries(attendu)) {

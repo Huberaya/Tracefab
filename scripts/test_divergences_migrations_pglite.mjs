@@ -34,6 +34,7 @@ import path from 'node:path';
 import { createHash } from 'node:crypto';
 import { execSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import { executerMigrationPglite } from './lib/pglite-worker-runner.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const HIST = path.join(root, 'scripts', 'fixtures', 'empreintes-production-20261028');
@@ -340,7 +341,7 @@ console.log('\n  4. `plm_erp_gs1_interoperability` : valeurs de reference du dep
   const dossiers = fs.readdirSync(MIGRATIONS).filter((d) => /^\d{14}_/.test(d)).sort();
   let appliquees = 0;
   for (const d of dossiers) {
-    await db.exec(fs.readFileSync(path.join(MIGRATIONS, d, 'migration.sql'), 'utf8'));
+    await executerMigrationPglite(db, d, fs.readFileSync(path.join(MIGRATIONS, d, 'migration.sql'), 'utf8'));
     appliquees += 1;
     if (d === cible) break;
   }

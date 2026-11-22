@@ -56,6 +56,11 @@ jobs:
       - name: Installer les dependances
         run: npm ci
 
+      - name: Préflight pgcrypto — propriétaire Neon géré sans faux refus
+        # Test statique ciblé : le mode cloud_admin est explicitement conservé,
+        # sans REVOKE impossible, tandis qu'un propriétaire externe inconnu refuse.
+        run: npm run test:provisioning:preflight && npm run test:provisioning:pgcrypto-policy
+
       - name: Generer le client Prisma
         run: npm run db:generate
 
@@ -79,15 +84,82 @@ jobs:
         # provoquer aucune requete metier.
         run: npm run test:active-tenant
 
+      - name: Frontiere entre Vercel Authentication et un refus de l'application
+        # Une requete interceptee par Vercel n'atteint pas l'application : la
+        # compter comme un refus applicatif produit un faux negatif (mesure du
+        # run 43850436311, ou un 302 est devenu un echec de C3). Ce test fixe la
+        # frontiere dans les deux sens, contre-epreuves comprises.
+        run: npm run test:detection-vercel
+
+      - name: Garde-fous du diagnostic de base Preview
+        run: npm run test:diagnostic-base-preview
+
+      - name: Garde-fous anti-faux-temoin de la preuve runtime
+        run: npm run test:preuve-runtime-garde-fous
+
+      - name: Script de preuve runtime — bout en bout hors ligne
+        # Le script avait raison de refuser de conclure sur une cible non
+        # atteinte, mais la cause etait une ReferenceError. Ce test exerce le
+        # chemin reel et exige qu aucune exception ne se deguise en diagnostic.
+        run: npm run test:preuve-runtime-bout-en-bout
+
+      - name: Sondeur de Preview valide hors ligne
+        run: npm run test:sonde-preview
+
       - name: Commentaires de fin de ligne dans les routes compactees
         # Un commentaire `//` dans une route ecrite sur une ligne met en
         # commentaire tout le handler, sans erreur de compilation.
         run: npm run test:minified-comments
 
+      - name: Contrat HTTP du passeport public — cache et publication
+        # La route publique /api/dpp/[gtin] servait son cache avec
+        # `stale-while-revalidate=300` : un passeport SUSPENDU restait donc
+        # servi jusqu'a cinq minutes apres la suspension. Le contrat fige
+        # desormais la revalidation, et la suite etait jusqu'ici branchee
+        # nulle part — le defaut ne pouvait donc pas etre vu en CI.
+        # Statique et sans base : sa place est ici, dans le socle.
+        run: npm run test:public-dpp-route
+
+      - name: Transport stockage prive — refus SSRF et redirections
+        # `test:private-storage` existait deja et n etait branche nulle part :
+        # le durcissement du transport (credentials dans l URL, HTTP en clair
+        # hors loopback, redirections sur requete signee, timeout) serait donc
+        # livre sans garde. Ce test est statique et sans base : il a sa place
+        # ici. Il est execute AVANT le test historique, par le script lui-meme.
+        run: npm run test:private-storage
+
       - name: Garde-fous de mise en production
         # Barriere d'erreur centrale, caviardage des secrets reellement
         # execute, et contrat de variables d'environnement a jour.
         run: npm run test:production-readiness
+
+      - name: Falsification C2 — l identite systeme est-elle falsifiable ?
+        # 14 cas, dont 13 negatifs. Les scenarios vivaient dans
+        # preuve_c1c2c3_p107.mjs, qui exige PostgreSQL et ne tourne donc pas en
+        # CI : une regression de la verification n'aurait ete vue qu'a la
+        # campagne de preuve. Ici, seules les fonctions pures sont exercees.
+        run: npm run test:p107:falsification-c2
+
+      - name: Generateur de cle d identite — format et refus
+        # La procedure de generation vivait dans un message d erreur. Ce test
+        # fige le format attendu par le runtime (64 hex minuscules) et verifie
+        # que la valeur ne part jamais sur stderr.
+        run: npm run test:generer-cle-identite
+
+      - name: Oracle de signature — la cle HMAC est-elle inatteignable ?
+        # C4.13 a C4.20 executes sur PGlite, avec le schema ET l'ACL reels. Un
+        # role applicatif qui lirait tracefab_identity_cles, ou qui heriterait
+        # d'un role privilegie, se fabriquerait une signature valide et toute
+        # l'identite signee tomberait. La contre-epreuve C4.14bis verifie que la
+        # lecture reste refusee MEME avec SELECT accorde.
+        run: npm run test:p107:oracle-signature
+
+      - name: Ordre et unicite des migrations
+        # `prisma migrate` ordonne par nom de dossier. Deux migrations de meme
+        # horodatage voient leur ordre relatif fixe par l'alphabet, pas par le
+        # temps. Le depot en contient quatre paires, aucune avec dependance
+        # croisee — c'est mesure ici, et une cinquieme paire fera echouer.
+        run: npm run test:ordre-migrations
 
       - name: Historique des migrations — fail-closed
         run: npm run test:migration-history
@@ -168,6 +240,15 @@ jobs:
         # Deux controles statiques : coherence migrations/schema et unicite des
         # horodatages. Aucun des deux n'a besoin de base ni de client Prisma.
         run: npm run test:migrations:controle && npm run test:migrations:horodatages
+
+      - name: Restauration du role d entree des migrations
+        # Mesure du 2026-11-12 : `RESET ROLE` ne retablit pas le role etabli par
+        # `SET LOCAL ROLE` par le runner, mais l'utilisateur de session. Dans
+        # `tracefab_apply_runtime_function_grants()`, cela vidait la lecture du
+        # registre (FORCE RLS), revoquait les 84 droits et faisait echouer la
+        # 61e migration. Le controle est statique et mord dans les deux sens :
+        # la version fautive est signalee par 5 assertions.
+        run: npm run test:migrations:restauration-role
 
       - name: Validation TLS jamais desactivee
         # Verifie qu'aucun chemin de connexion ne pose rejectUnauthorized: false
@@ -352,6 +433,18 @@ jobs:
         # gardes fail-closed, et les privileges EFFECTIFS du role applicatif.
         run: npm run test:plm-rls-isolation
 
+      - name: Isolation du tenant actif — 18 scenarios, sur la chaine reelle
+        # Mission n°8 : cette suite ne verifie pas la PRESENCE d un helper, elle
+        # EXERCE les gardes. Elle rejoue les 100 migrations du depot sur une base
+        # jetable, puis mesure sous `tracefab_app` (NOBYPASSRLS) avec les GUC
+        # poses en transaction comme `api/_lib/context.ts` : fail-closed sans
+        # tenant, positif avec tenant, negatif croise (l union des adhesions ne
+        # suffit plus), WITH CHECK dans les deux sens, et controle negatif.
+        # Sa sensibilite est prouvee par mutation : RLS retiree => 7 echecs.
+        # Elle est independante de Neon : elle ne remplace pas les suites
+        # `test:neon:*`, qui restent exigeantes sur un vrai PostgreSQL.
+        run: npm run test:preuve-isolation:main
+
       - name: PLM — les 4 politiques de production confrontees aux 2 canoniques
         # Chaine reelle sur base jetable : etat a 4 politiques reproduit, puis
         # migration corrective. Puis 6 scenarios de garde (table absente,
@@ -439,7 +532,7 @@ jobs:
         run: npm run db:generate
 
       - name: Installer Chromium pour Playwright
-        run: npx playwright install --with-deps chromium
+        run: npx playwright install chromium
 
       - name: Compilation complete
         # `build` enchaine deja types, schema, routes, i18n et les tests de
@@ -512,7 +605,7 @@ jobs:
           #     demonstration du mode strict). Trois exigent la base migree et
           #     les deux roles ; la premiere n exige rien et tourne partout.
           #     Cablees une par une dans le job « Base ».
-          scripts=$(node -e "console.log(Object.keys(require('./package.json').scripts).filter(k=>k.startsWith('test:')&&!k.includes('neon')&&!k.includes('staging')&&k!=='test:p2'&&k!=='test:regression'&&k!=='test:audit-script'&&k!=='test:dpp:review-publication'&&k!=='test:dpp:branche'&&k!=='test:dpp:role-applicatif'&&k!=='test:garde-fous:neon'&&!k.startsWith('test:jetables')&&!k.startsWith('test:p105')&&!k.startsWith('test:p106')&&!k.startsWith('test:p107')).join(' '))")
+          scripts=$(node -e "console.log(Object.keys(require('./package.json').scripts).filter(k=>k.startsWith('test:')&&!k.includes('neon')&&!k.includes('staging')&&k!=='test:p2'&&k!=='test:regression'&&k!=='test:audit-script'&&k!=='test:provisioning:pgcrypto-catalog'&&k!=='test:dpp:review-publication'&&k!=='test:dpp:branche'&&k!=='test:dpp:role-applicatif'&&k!=='test:garde-fous:neon'&&!k.startsWith('test:jetables')&&!k.startsWith('test:p105')&&!k.startsWith('test:p106')&&!k.startsWith('test:p107')).join(' '))")
           echoues=''
           for s in $scripts; do
             if npm run "$s" --silent >"/tmp/$s.log" 2>&1; then
@@ -564,7 +657,7 @@ jobs:
         run: npm run db:generate
 
       - name: Installer Chromium pour Playwright
-        run: npx playwright install --with-deps chromium
+        run: npx playwright install chromium
 
       - name: Demarrer le serveur de previsualisation
         run: |
@@ -665,18 +758,42 @@ jobs:
         run: npm ci
 
       - name: Generer le client Prisma
-        run: npm run db:generate
+        run: node scripts/executer_avec_erreur_annotee.mjs "generation client prisma" npm run db:generate
+
+      - name: Provisionner les identités de migration non-superutilisatrices
+        id: migration-identities
+        # Le banc de CI reproduit le modèle Neon : administrateur CREATEROLE
+        # distinct du migrateur CREATEROLE. Les deux rôles sont jetables et
+        # créés uniquement sur le service Postgres local, avec mots de passe
+        # aléatoires masqués et sorties limitées à l'étape suivante.
+        # Enveloppe : ce script a deja echoue en CI sans laisser de trace
+        # exploitable (l'API des journaux rend EOF pour ce depot). Mesure du
+        # 2026-11-12 : etape 7 en echec, aucune annotation, aucun moyen de
+        # savoir laquelle de ses assertions est tombee. Le wrapper ajoute une
+        # annotation `::error::` avec la cause, sans changer le code de sortie.
+        run: node scripts/executer_avec_erreur_annotee.mjs "provisionnement des identites de migration" node scripts/prepare_ci_migration_roles.mjs
 
       - name: Préparer le rôle applicatif avant migrations
         # Via le lanceur garde : refuse toute cible non jetable avant CREATE ROLE.
-        run: npm run db:prepare-ci-role
+        run: node scripts/executer_avec_erreur_annotee.mjs "preparation du role applicatif" npm run db:prepare-ci-role
 
-      - name: Appliquer les migrations sur la base jetable
-        # db:deploy:throwaway, PAS db:deploy. db:deploy est la commande
-        # operationnelle sans garde. Ici : Postgres 17 du service CI,
-        # DATABASE_URL = localhost/tracefab_test, aucun secret. La cible
-        # est classee avant le binaire prisma local. Jamais npx.
-        run: npm run db:deploy:throwaway
+      - name: Préflight pgcrypto Neon-managed — vrai catalogue PostgreSQL jetable
+        # Reproduit cloud_admin avec un rôle superuser non endossable dans une
+        # base temporaire. Le vrai --verifier doit classer les ACL sans écriture.
+        run: node scripts/executer_avec_erreur_annotee.mjs "preflight pgcrypto Neon-managed" npm run test:provisioning:pgcrypto-catalog
+
+      - name: Appliquer les migrations avec le runner transactionnel contrôlé
+        # La migration worker exige un bail SET/INHERIT fourni par un
+        # administrateur distinct. Prisma CLI seul ne peut pas injecter ce bail
+        # dans sa transaction ; le runner le fait puis le révoque avant COMMIT.
+        # Le wrapper db:deploy:throwaway conserve la garde de cible stricte ;
+        # aucun secret ni aucune base distante ne sont accessibles depuis ce job.
+        run: node scripts/executer_avec_erreur_annotee.mjs "chaine de migrations" npm run db:deploy:throwaway
+        env:
+          DATABASE_URL: ${{ steps.migration-identities.outputs.migrator_url }}
+          TF_ADMIN_URL: ${{ steps.migration-identities.outputs.admin_url }}
+          TF_ALLOW_WRITE: oui
+          TF_MIGRATION_ENGINE: fidele
 
       - name: Privilèges et RLS effectifs — mesurés dans le catalogue
         # Une migration qui contient GRANT ne prouve pas ce que la base accorde.
@@ -684,14 +801,21 @@ jobs:
         # données, aucun droit d'écriture hors RLS, fonctions SECURITY DEFINER
         # avec search_path figé, aucune fonction exécutable par PUBLIC. Il sort
         # en 1 si l'une de ces propriétés tombe.
-        run: npm run audit:privileges
+        run: node scripts/executer_avec_erreur_annotee.mjs "audit des privileges" npm run audit:privileges
         env:
           TF_EXIGER_LOCAL: oui
 
       - name: Privilèges SQL après migrations, avant le seed
         # Vérifie les GRANT conditionnels dans le scénario où tracefab_app
         # existe déjà, comme en production, avant que le seed n'accorde des droits.
-        run: npm run test:neon:privileges
+        # Enveloppe : le journal de ce job n'est pas lisible depuis la session
+        # de travail (l'API rend EOF). Sans annotation, un echec ici ne laisse
+        # que « exit code 1 » et un numero d'etape — mesure du 2026-11-12, ou
+        # l'etape a echoue en 0,0 s sans rien laisser d'exploitable. Le wrapper
+        # ne change ni la commande ni son code de sortie : il ajoute une
+        # annotation `::error::` avec la trace, en masquant toute chaine de
+        # connexion.
+        run: node scripts/executer_avec_erreur_annotee.mjs "privileges SQL apres migrations" npm run test:neon:privileges
 
       - name: Privilèges du rôle applicatif — minimaux, et éprouvés par écriture
         # L'audit precedent lit le catalogue. Celui-ci se CONNECTE avec le role
@@ -699,20 +823,20 @@ jobs:
         # doit echouer, l'ecriture autorisee doit reussir. Il cree et detruit sa
         # propre base dans le cluster du service, pour ne pas modifier les
         # privileges vus par les suites suivantes.
-        run: npm run test:neon:privileges-role-app
+        run: node scripts/executer_avec_erreur_annotee.mjs "privileges du role applicatif" npm run test:neon:privileges-role-app
 
       - name: Garde propriétaire SQL — scénario de refus
         # Crée un objet PUBLIC EXECUTE possédé par un autre rôle et prouve que
         # la migration échouerait de façon explicite. Le script refuse tout hôte
         # autre que localhost/tracefab_test.
-        run: node scripts/test_migration_owner_guard.mjs
+        run: node scripts/executer_avec_erreur_annotee.mjs "garde proprietaire SQL" node scripts/test_migration_owner_guard.mjs
 
       - name: Creer le role tracefab_app et deux locataires
         # Via npm run db:seed-rls, donc via la garde de cible : ce script cree
         # un role, accorde des privileges et ecrit des lignes. Meme sur la
         # base jetable de ce job, il ne s execute qu apres avoir prouve sa
         # cible — c est la garde, pas la bonne volonte, qui protege.
-        run: npm run db:seed-rls
+        run: node scripts/executer_avec_erreur_annotee.mjs "seed RLS" npm run db:seed-rls
 
       - name: Identite applicative — refus du superutilisateur (R13)
         # Le job cree des roles : il lui faut une connexion d administration,
@@ -721,7 +845,7 @@ jobs:
         # l identite applicative est distincte, non privilegiee, et sur le meme
         # cluster ; elle sort en 2 (bloquant) si TF_RLS_APP_URL a disparu, en 3
         # si elle est identique a DATABASE_URL ou porte un attribut interdit.
-        run: node scripts/verifier_identite_app_ci.mjs
+        run: node scripts/executer_avec_erreur_annotee.mjs "identite applicative" node scripts/verifier_identite_app_ci.mjs
 
       - name: Gardes des ressources jetables, du verrou et de la reprise (R6/R7/R9)
         # Douze suites, 334 assertions, qui n etaient joignables par AUCUN
@@ -769,7 +893,7 @@ jobs:
       - name: Isolation RLS prouvee par execution
         # Le role tracefab_app ne porte pas BYPASSRLS : les politiques sont
         # reellement evaluees. Le test echoue s'il ne peut pas s'executer.
-        run: npm run test:neon:rls
+        run: node scripts/executer_avec_erreur_annotee.mjs "isolation RLS" npm run test:neon:rls
 
       - name: Registre des fonctions runtime — perimetre et coherence
         # Bloquant. Echoue si (1) une fonction autorisee n'existe pas, (2) le
@@ -778,7 +902,7 @@ jobs:
         # (5) la migration 20261021120000 a change de contenu, (6) une migration
         # posterieure accorde EXECUTE directement sans passer par le registre.
         # Sans ce controle, un elargissement silencieux passerait inapercu.
-        run: npm run test:neon:registre-fonctions
+        run: node scripts/executer_avec_erreur_annotee.mjs "registre des fonctions" npm run test:neon:registre-fonctions
 
       - name: L'identite worker n'est pas falsifiable — bloquant
         # CE TEST ECHOUE SUR LE CODE VULNERABLE, pas seulement il passe sur le
@@ -788,28 +912,28 @@ jobs:
         # utilisateurs et adhesions en posant tracefab.worker_context, que les
         # six operations systeme fonctionnent sous identite autorisee, et
         # qu'aucun des deux roles ne peut endosser l'autre.
-        run: npm run test:neon:worker-non-forgeable
+        run: node scripts/executer_avec_erreur_annotee.mjs "worker non falsifiable" npm run test:neon:worker-non-forgeable
 
       - name: Garde-fous de la commande de validation Neon
         # Neuf chemins d'arret eprouves par execution : arbre modifie, revision
         # inattendue, cible de production, cible non nommee, banc applicatif
         # incomplet, `db:deploy` en echec, migration exigee absente. Le banc
         # sort en 1 si un seul de ces cas rend un code nul — un faux succes.
-        run: npm run test:garde-fous:neon
+        run: node scripts/executer_avec_erreur_annotee.mjs "garde-fous Neon" npm run test:garde-fous:neon
 
       - name: Inventaire des consommateurs de la base — un seul point d'entrée
         # Analyse statique : une seule variable de connexion, un seul client
         # Prisma, aucun secret de base dans les workflows, crons inventories.
         # Le banc a ete ecrit apres que la premiere version a compte deux
         # clients Prisma et un secret qui etaient... des commentaires.
-        run: npm run test:inventaire:consommateurs
+        run: node scripts/executer_avec_erreur_annotee.mjs "inventaire des consommateurs" npm run test:inventaire:consommateurs
 
       - name: Garde-fous du recalcul réel — deux noms pour écrire
         # `--appliquer` ecrit. Ce banc prouve, sans ouvrir de connexion, qu'il
         # ne franchit pas les gardes sans deux noms concordants (cible +
         # confirmation), qu'il refuse la production, et qu'une simple lecture
         # ne demande, elle, qu'un seul nom.
-        run: npm run test:garde-fous:recalcul
+        run: node scripts/executer_avec_erreur_annotee.mjs "garde-fous du recalcul" npm run test:garde-fous:recalcul
 
       - name: Colonnes différées — mesurable, différée, inattendue
         # Le verificateur d identite interroge des colonnes de revue creees par
@@ -819,7 +943,7 @@ jobs:
         # (declaree), une colonne absente que rien n ajoute reste une
         # INCOHERENCE (echec). Une relaxation future qui rendrait le script
         # muet sur une vraie colonne manquante casse ce test.
-        run: npm run test:colonnes-differees
+        run: node scripts/executer_avec_erreur_annotee.mjs "colonnes differees" npm run test:colonnes-differees
 
       - name: Revue et publication — non-regression sur base migree
         # Neuf cas qui echouent si le recalcul efface une revue sans raison,
@@ -827,7 +951,7 @@ jobs:
         # se perd. Tourne sur le Postgres jetable, APRES `prisma migrate
         # deploy` : c'est aussi une execution reelle du registre de
         # migrations, pas une reprise maison.
-        run: npm run test:dpp:review-publication
+        run: node scripts/executer_avec_erreur_annotee.mjs "revue et publication" npm run test:dpp:review-publication
 
       - name: Politiques d'ecriture — WITH CHECK reel, pas suppose
         # Cinq politiques d'ecriture sont declarees sans WITH CHECK. Ce n'est
@@ -837,7 +961,7 @@ jobs:
         # role de sonde sans BYPASSRLS cree puis detruit, et il passe au rouge
         # si une politique permissive FOR ALL est ajoutee (controle negatif
         # verifie sur PostgreSQL 18.4).
-        run: npm run test:neon:write-policies
+        run: node scripts/executer_avec_erreur_annotee.mjs "politiques d ecriture" npm run test:neon:write-policies
 
       - name: Disponibilite a la bascule du runtime vers tracefab_app
         # Le runtime se connecte aujourd'hui avec neondb_owner, qui porte
@@ -848,7 +972,7 @@ jobs:
         # l'ecriture anonyme — et exige le resultat attendu dans les deux sens.
         # Controle negatif verifie : une politique permissive ajoutee sur
         # tracefab_products le fait passer au rouge (3 echecs, sortie 1).
-        run: npm run test:neon:app-readiness
+        run: node scripts/executer_avec_erreur_annotee.mjs "disponibilite a la bascule" npm run test:neon:app-readiness
 
       - name: Controle negatif — l isolement vient bien de la RLS
         # Une suite qui verifie « A ne voit rien de B » ne prouve rien si la
@@ -858,21 +982,26 @@ jobs:
         # privilegie reussit la ou le role applicatif echoue, l'echec vient de
         # la RLS et non d'un artefact du test. Le role de sonde est detruit dans
         # un finally, et le script refuse toute URL Neon.
-        run: npm run test:neon:bypass-control
+        run: node scripts/executer_avec_erreur_annotee.mjs "controle negatif RLS" npm run test:neon:bypass-control
 
       - name: Provenance DPP / Wallet
-        run: npm run test:neon:dpp-provenance
+        # Les routes DPP/Wallet exigent une origine canonique ; cette valeur .invalid est une fixture CI, jamais une origine réelle.
+        env:
+          TRACEFAB_PUBLIC_BASE_URL: https://tracefab-test.invalid
+        run: node scripts/executer_avec_erreur_annotee.mjs "provenance DPP" npm run test:neon:dpp-provenance
 
       - name: Cycle de vie DPP dynamique — deux tenants
         # Epreuve non mockee : publication, preuve, correction, idempotence,
         # refus cross-tenant, historique, suspension et retrait public.
-        run: npm run test:neon:dpp-lifecycle
+        run: node scripts/executer_avec_erreur_annotee.mjs "cycle de vie DPP" npm run test:neon:dpp-lifecycle
 
       - name: Provisionnement auth runtime
-        run: npm run test:neon:auth-provisioning
+        run: node scripts/executer_avec_erreur_annotee.mjs "provisionnement auth" npm run test:neon:auth-provisioning
 
       - name: Deploiement publication explicite (jetable)
-        run: npm run test:neon:deploiement-publication
+        env:
+          TRACEFAB_PUBLIC_BASE_URL: https://tracefab.example
+        run: node scripts/executer_avec_erreur_annotee.mjs "deploiement publication" npm run test:neon:deploiement-publication
 
       # Les trois routes POST de la PR sont Clerk-gatees : un POST non
       # authentifie doit rendre 401 sans creer ni modifier aucun document.
@@ -891,14 +1020,14 @@ jobs:
       # Le script est execute par run-db-suite.mjs, qui lui applique la garde
       # de cible et choisit tsx — node nu ne saurait pas charger api/index.ts.
       - name: Ecriture refusee sans authentification sur les routes POST
-        run: npm run test:neon:ecriture-non-authentifiee
+        run: node scripts/executer_avec_erreur_annotee.mjs "ecriture non authentifiee" npm run test:neon:ecriture-non-authentifiee
 
       - name: Audit en lecture seule — la session ne peut pas ecrire
         # La lecture seule est appliquee par le serveur, et le test le prouve
         # en TENTANT une ecriture : elle doit etre refusee avec « read-only
         # transaction ». Le rapport est relu avant affichage pour verifier
         # qu il ne divulgue ni chaine de connexion ni identifiant.
-        run: npm run test:audit-script
+        run: node scripts/executer_avec_erreur_annotee.mjs "audit en lecture seule" npm run test:audit-script
 
       - name: Privileges d execution des fonctions SECURITY DEFINER
         # Aucune fonction SECURITY DEFINER ne doit etre executable par PUBLIC,
@@ -906,12 +1035,12 @@ jobs:
         # ont besoin. C'est la regression constatee : la migration
         # 20261009120000 a rendu tracefab_material_visible_via_product
         # executable par PUBLIC.
-        run: npm run test:neon:privileges
+        run: node scripts/executer_avec_erreur_annotee.mjs "privileges des fonctions" npm run test:neon:privileges
 
       - name: Isolation inter-organisations
         # Prouve que deux organisations distinctes ne peuvent pas accéder aux
         # données de l'autre via INSERT, UPDATE, SELECT, DELETE ni fonctions SD.
-        run: npm run test:neon:cross-tenant
+        run: node scripts/executer_avec_erreur_annotee.mjs "isolation inter-organisations" npm run test:neon:cross-tenant
 
       - name: Contexte de locataire actif en base
         # La RLS seule ne suffisait pas : le defaut Production du 2026-10-17
@@ -922,13 +1051,13 @@ jobs:
         # sous l'autre — alors que la RLS seule laisse passer dans les deux cas.
         # Verifie aussi que le GUC ne survit pas a la transaction (pool de
         # connexions) et que les trois fonctions sont fermees a PUBLIC.
-        run: npm run test:neon:active-tenant
+        run: node scripts/executer_avec_erreur_annotee.mjs "locataire actif" npm run test:neon:active-tenant
 
       - name: Cycle de vie documentaire — visibilite, roles de scan, fail-closed
         # TF-2 : le proprietaire lit ses documents dans tous les etats non
         # supprimes, la finalisation exige un role ecrivain, aucun verdict
         # d'analyse absent ne devient « sain ».
-        run: npm run test:neon:document-lifecycle
+        run: node scripts/executer_avec_erreur_annotee.mjs "cycle de vie documentaire" npm run test:neon:document-lifecycle
 
       - name: Privilèges minimaux du rôle applicatif — provisioning réel
         # Ce contrôle couvre un trou : `bootstrap_app_role.mjs` n'était exécuté
@@ -945,14 +1074,14 @@ jobs:
         # accordent elles-mêmes DML ... TO PUBLIC, donc ce n'est pas le GRANT
         # qui confine mais la RLS — d'où l'exigence que toute table applicative
         # porte une RLS active et forcée.
-        run: npm run test:neon:privileges-role-app
+        run: node scripts/executer_avec_erreur_annotee.mjs "privileges du role applicatif" npm run test:neon:privileges-role-app
 
       - name: Ecarts de privileges — les deux sens eprouves sur base reelle
         # Le controle statique dit que le lecteur compare a la liste declaree ;
         # il ne dit pas qu'il detecte quoi que ce soit. Cette etape provoque un
         # sur-privilege puis un sous-privilege sur la base jetable, verifie que
         # chacun est nomme, puis restaure l'etat mesure au depart.
-        run: npm run test:neon:ecarts-privileges
+        run: node scripts/executer_avec_erreur_annotee.mjs "ecarts de privileges" npm run test:neon:ecarts-privileges
 
       - name: Isolation RLS sur lignes existantes — deux organisations
         # Les contrôles existants s'appuient sur has_table_privilege, sur la
@@ -971,7 +1100,64 @@ jobs:
         # Il embarque son propre contrôle négatif : avec
         # ISOLATION_CONTROLE_NEGATIF=desactive_rls_documents, huit assertions
         # passent au rouge. C'est ce qui prouve qu'elles mesurent la RLS.
-        run: npm run test:neon:isolation-lignes
+        run: node scripts/executer_avec_erreur_annotee.mjs "isolation RLS sur lignes reelles" npm run test:neon:isolation-lignes
+
+      - name: P10.7 — la sonde de contexte tenant est EXERCEE sur la vraie base
+        # CE QUE CETTE ETAPE REPARE
+        #
+        # `probeContexteTenant` (C4.6) etait verifiee par trois scenarios hors
+        # ligne qui testent le SCRIPT DE PREUVE, pas le code qui produit la
+        # mesure. Si le SQL de la sonde etait faux, ou si `tracefab_app` n'avait
+        # pas EXECUTE sur `tracefab_current_user_id()`, ces scenarios resteraient
+        # verts et C4.6 serait PASS sur une mesure jamais faite.
+        #
+        # Cette etape execute le SQL de la sonde sur la base migree, avec le
+        # role applicatif REEL, et exige le controle NEGATIF : un jeton signe
+        # pour une AUTRE organisation doit etre refuse. C'est ce refus qui
+        # distingue une mesure d'une simple presence de variable.
+        #
+        #
+        # LE TEST POSE SA PROPRE CLE, ET N'APPELLE AUCUN OUTIL D'OPERATEUR.
+        #
+        # La premiere version de cette etape appelait l outil de provisioning de
+        # la cle d identite. C'est un ecrivain d'OPERATEUR, et
+        # `test_destructive_suite_routing` interdit qu'un workflow le reference —
+        # a raison : un outil qui pose une cle sur une base nommee n'a rien a
+        # faire dans une chaine ou la cible peut changer. Le nom du fichier
+        # n'est pas ecrit ici, precisement parce que la regle cherche une
+        # reference textuelle et qu un commentaire en est une.
+        # Mesure du run 44631158092, etape « Socle ».
+        #
+        # Le test ecrit donc sa cle lui-meme, sur la base jetable, avec le role
+        # proprietaire : une fixture, comme les autres du job, qui disparait
+        # avec le runner. Aucune valeur au depot, aucune empreinte imprimee.
+        env:
+          DATABASE_ADMIN_URL: postgresql://postgres:postgres@localhost:5432/tracefab_test
+        run: node scripts/executer_avec_erreur_annotee.mjs "sonde contexte tenant" npm run test:neon:contexte-tenant-sonde
+
+      - name: P10.7 — la regle « cet hote est-il la Production ? » discrimine
+        # C5.4 rend FAIL sur `hote_est_production === true`. Ce controle ne vaut
+        # que ce que vaut le calcul qui l alimente : une regle qui repondrait
+        # toujours `false` rendrait C5.4 vert toujours, et personne ne le
+        # verrait. Cette etape eprouve le CALCUL, sans base et sans reseau.
+        #
+        # Elle verifie les DEUX sens, car le danger est symetrique : une regle
+        # qui refuserait « tout hote *.neon.tech » rendrait C5.4 rouge sur une
+        # Preview parfaitement rattachee. Mesure : la mutation « jamais la
+        # Production » fait tomber 4 assertions, la mutation « tout Neon » en
+        # fait tomber 2. Aucune des deux ne passe.
+        run: node scripts/executer_avec_erreur_annotee.mjs "hote de production" npm run test:p107:hote-production
+
+      - name: P10.7 — le test de la sonde ne peut pas diverger de la sonde
+        # Sans base, et sans dependance : lit les deux sources.
+        #
+        # `test_neon_contexte_tenant_sonde` rejoue le SQL de la sonde au lieu
+        # d'importer la fonction (le client Prisma n'est pas genere ici). Un test
+        # qui RECOPIE ce qu'il verifie peut mentir le jour ou la sonde change :
+        # il continue de passer en verifiant l'ancien contrat. Ce garde-fou
+        # exige que les deux citent le meme GUC, la meme fonction, la meme
+        # portee transactionnelle et le meme format de jeton.
+        run: node scripts/executer_avec_erreur_annotee.mjs "contrat sonde contexte tenant" node scripts/test_sonde_contexte_tenant_contrat.mjs
 
       - name: Limitation de débit — opérations légitimes et abus refusés
         # La politique rate_limit_counters_global était FOR ALL USING (true)
@@ -991,7 +1177,7 @@ jobs:
         # migration 20261019140000 il tombe à 8/18. Sans la seule garde sur
         # expires_at il tombe à 27/30 : raccourcir la fenêtre puis supprimer
         # suffit alors à éliminer un compteur actif en deux étapes autorisées.
-        run: npm run test:neon:compteurs-debit
+        run: node scripts/executer_avec_erreur_annotee.mjs "limitation de debit" npm run test:neon:compteurs-debit
 
       - name: Sonde d'identité du runtime — justesse de l'instrument
         # Toute la sécurité du runtime repose sur la RLS, et la RLS ne
@@ -1006,7 +1192,7 @@ jobs:
         # discriminer un rôle soumis (bypasses_rls false) du rôle propriétaire
         # (true). Il borne aussi ce que la sonde expose et vérifie que la route
         # interne authentifie avant de l'appeler.
-        run: npm run test:neon:sonde-identite
+        run: node scripts/executer_avec_erreur_annotee.mjs "sonde identite runtime" npm run test:neon:sonde-identite
 
       # ---------------------------------------------------------------------
       # Six suites qui n'etaient cablees dans AUCUN workflow
@@ -1038,21 +1224,21 @@ jobs:
         # n'ouvre rien entre locataires : lecture des organisations et des
         # fournisseurs, ecriture directe refusee, et refus explicite de la
         # fonction de mise a jour de profil pour un viewer.
-        run: npm run test:neon:security
+        run: node scripts/executer_avec_erreur_annotee.mjs "securite multi-tenant" npm run test:neon:security
 
       - name: Parcours produit — donnees, composition, identifiants
         # Cree deux marques, un produit et sa composition de chaque cote, puis
         # verifie l'isolation de lecture et le refus d'ecriture pour un viewer.
-        run: npm run test:neon:product
+        run: node scripts/executer_avec_erreur_annotee.mjs "parcours produit" npm run test:neon:product
 
       - name: Parcours fournisseur — invitation, partage, portee
-        run: npm run test:neon:supplier
+        run: node scripts/executer_avec_erreur_annotee.mjs "parcours fournisseur" npm run test:neon:supplier
 
       - name: Parcours qualite — signalement, actions correctives, roles
-        run: npm run test:neon:quality
+        run: node scripts/executer_avec_erreur_annotee.mjs "parcours qualite" npm run test:neon:quality
 
       - name: Collecte de donnees — demandes, reponses, isolation
-        run: npm run test:neon:collection
+        run: node scripts/executer_avec_erreur_annotee.mjs "collecte de donnees" npm run test:neon:collection
 
       # Non-regression 20261028130000 : les champs calcules d'un produit ne
       # dependent plus d'un GUC falsifiable — l'ecriture du role runtime est
@@ -1060,12 +1246,12 @@ jobs:
       # data_ready_at. Le test echoue sur l'etat vulnerable, pas seulement sur
       # le correctif, et verifie que l'INSERT et la revision fonctionnent encore.
       - name: Champs calcules produit — hors de portee du role runtime
-        run: npm run test:neon:produit-champs-calcules
+        run: node scripts/executer_avec_erreur_annotee.mjs "champs calcules produit" npm run test:neon:produit-champs-calcules
 
       - name: Quotas de stockage — calcul et refus au-dela du quota
         # Celui-ci passe par TF_RLS_APP_URL quand il est fourni ; il exige le
         # client Prisma, genere plus haut dans ce job.
-        run: npm run test:neon:storage:chantier10
+        run: node scripts/executer_avec_erreur_annotee.mjs "quotas de stockage" npm run test:neon:storage:chantier10
 
       # ---------------------------------------------------------------------
       # P10.2 — CHANTIERS A, B, C.
@@ -1088,7 +1274,7 @@ jobs:
         # Le test passe par le VRAI chemin (role applicatif + GUC transactionnel)
         # et mesure les refus : role non autorise, identite absente, GUC
         # falsifie, identite d'une AUTRE organisation.
-        run: npm run test:jetables:ingest-acl
+        run: node scripts/executer_avec_erreur_annotee.mjs "ingestion PLM ERP ACL" npm run test:jetables:ingest-acl
 
       - name: Scripts de migration obsoletes — absents, et non reintroduits
         # Chantier B. Les quatre `apply_migration_chantier{2,3,4,5}` rejouaient
@@ -1097,14 +1283,14 @@ jobs:
         # doit etre mesuree, pas seulement les controles statiques.
         env:
           TF_EXIGER_CATALOGUE: '1'
-        run: npm run test:scripts-migration-obsoletes
+        run: node scripts/executer_avec_erreur_annotee.mjs "scripts de migration obsoletes" npm run test:scripts-migration-obsoletes
 
       - name: Ressources jetables — inscription (R4), SIGKILL et reprise
         # Chantier C. `reinitialiser_base_jetable` creait une base SANS
         # l'inscrire au manifeste : orpheline definitive. Le test fait tuer un
         # enfant par SIGKILL apres creation, puis reprend par les seules
         # donnees durables, et verifie qu'une ressource vivante est CONSERVEE.
-        run: npm run test:jetables:r4-inscription
+        run: node scripts/executer_avec_erreur_annotee.mjs "ressources jetables R4" npm run test:jetables:r4-inscription
 
       - name: Outils de cycle de vie — harnais, reinitialisation, reprise
         # Les trois outils n'etaient joignables par aucun workflow (audit
@@ -1143,20 +1329,20 @@ jobs:
       # ---------------------------------------------------------------------
 
       - name: P10.5 — chaine de migrations et escalade de role, refuses
-        run: npm run test:p105:roles-et-migrations
+        run: node scripts/executer_avec_erreur_annotee.mjs "P10.5 roles et migrations" npm run test:p105:roles-et-migrations
 
       - name: P10.5 — les jetons d identite sont signes par l application et verifies par la base
         # Chemin reel : provisionnement de la cle par le script operateur,
         # signature par `signerIdentite()`, verification sous `tracefab_app`.
         # Il verifie aussi les echecs fermes (cle trop courte, non hexadecimale).
         # Il lui faut le client Prisma, genere plus haut dans ce job.
-        run: npm run test:p105:jeton
+        run: node scripts/executer_avec_erreur_annotee.mjs "P10.5 jeton signe" npm run test:p105:jeton
 
       - name: P10.5 — HMAC, huit scenarios et un controle negatif
-        run: npm run test:p105:hmac
+        run: node scripts/executer_avec_erreur_annotee.mjs "P10.5 HMAC" npm run test:p105:hmac
 
       - name: P10.5 — ingestion PLM/ERP sous le role applicatif, permissif ET strict
-        run: npm run test:p105:ingestion
+        run: node scripts/executer_avec_erreur_annotee.mjs "P10.5 ingestion" npm run test:p105:ingestion
 
       - name: P10.6 — controle NEGATIF permanent de l identite signee
         # Trente-sept assertions qui ne decrivent que des REFUS : GUC forge
@@ -1169,7 +1355,7 @@ jobs:
         # par l identite signee. Elles tiennent donc pour toute fonction
         # ajoutee plus tard, y compris par une migration qui ignorerait ce
         # fichier. Aucune n est en continue-on-error.
-        run: npm run test:p106:identite-negative
+        run: node scripts/executer_avec_erreur_annotee.mjs "P10.6 identite negative" npm run test:p106:identite-negative
 
       - name: P10.6 — la chaine de migrations est REJOUABLE dans un meme cluster
         # Defaut D5 mesure le 02/11 : 20261028120100 accordait puis revoquait
@@ -1182,7 +1368,7 @@ jobs:
         # verifie l appartenance finale, puis detruit la base. Il rougit si
         # une entree du registre accorde une appartenance sans fournir de
         # bloc « avant ».
-        run: npm run test:p106:rejouabilite-chaine
+        run: node scripts/executer_avec_erreur_annotee.mjs "P10.6 rejouabilite chaine" npm run test:p106:rejouabilite-chaine
 
       - name: P10.8 — le preflight D6 refuse AVANT la premiere ecriture (etat de forme production)
         # Sur une base jetable amenee a l'ETAT DE LA PRODUCTION (tout applique
@@ -1195,7 +1381,7 @@ jobs:
         #   - aucune elevation demandee ni residuelle.
         # Controle POSITIF dans la meme suite : jouee par le proprietaire, la
         # chaine s'applique — le preflight ne refuse pas a tort.
-        run: npm run test:p106:preflight-avant-ecriture
+        run: node scripts/executer_avec_erreur_annotee.mjs "P10.6 preflight avant ecriture" npm run test:p106:preflight-avant-ecriture
 
       - name: P10.7 — le contrat d identite runtime refuse aussi l ESCALADE
         # Onze cas sur une fonction PURE (aucune base) : le role doit etre
@@ -1203,7 +1389,7 @@ jobs:
         # atteignable vers un role privilegie. Ce dernier point est nouveau en
         # P10.7 : un role sans attribut qui peut `SET ROLE` vers un role
         # BYPASSRLS redevient privilegie, donc la RLS n est pas opposable.
-        run: npm run test:p107:contrat-identite
+        run: node scripts/executer_avec_erreur_annotee.mjs "P10.7 contrat identite" npm run test:p107:contrat-identite
 
       - name: P10.7 — la sonde d etat cible est en LECTURE SEULE, et ses arrets se declenchent
         # Controle statique (chaque instruction commence par SELECT ou WITH),
@@ -1212,7 +1398,7 @@ jobs:
         # NEGATIF : un role de connexion qui atteint un role privilegie doit
         # faire sortir la sonde en 1 avec un arret nomme, et le meme role sans
         # l appartenance ne le fait plus.
-        run: npm run test:p107:sonde
+        run: node scripts/executer_avec_erreur_annotee.mjs "P10.7 sonde etat cible" npm run test:p107:sonde
 
       - name: P10.7 — la sonde cote RUNTIME distingue une identite conforme d une identite privilegiee
         # T1 conforme (code 0) ; T2 `postgres` refuse avec chaque attribut
@@ -1220,7 +1406,7 @@ jobs:
         # refuse ; T5 contexte transactionnel (absent apres la transaction,
         # donc sur quel que soit le mode du pooler) ; T6 cible distante
         # refusee sans opt-in. Aucune valeur de cle n est lue.
-        run: npm run test:p107:sonde-runtime
+        run: node scripts/executer_avec_erreur_annotee.mjs "P10.7 sonde runtime" npm run test:p107:sonde-runtime
 
       - name: P10.7 — demonstration du mode STRICT sur cluster jetable
         # D1..D9 : jeton valide, sans jeton, jeton invalide, GUC forge,
@@ -1229,7 +1415,69 @@ jobs:
         # ingestion PLM/ERP refusee sans identite puis acceptee avec), et
         # restauration de l etat. Le mode strict n est pose QUE sur la base
         # jetable, et le script refuse toute cible non locale avant connexion.
-        run: npm run test:p107:demonstration
+        run: node scripts/executer_avec_erreur_annotee.mjs "P10.7 demonstration stricte" npm run test:p107:demonstration
+
+      - name: P10.7 — le module de signature systeme, eprouve hors ligne
+        # 44 assertions, sans base : jeton valide, MAC modifie, corps modifie
+        # MAC conserve, identite designee changee, expiration depassee ou EGALE,
+        # signature absente, usage du jeton UTILISATEUR rejoue, version inconnue,
+        # serialisation ambigue, MAC en majuscules, cle malformee. La cle est
+        # tiree au hasard a chaque execution : aucune valeur n est en depot.
+        # Verifie dans les deux sens : quatre mutations du module (expiration,
+        # usage, identite, comparaison) font chacune echouer le cas qui la nomme.
+        run: node scripts/executer_avec_erreur_annotee.mjs "P10.7 module signature" npm run test:p107:identite-systeme-module
+
+      - name: P10.7 — l origine des operations systeme est prouvee, pas supposee
+        # 54 assertions sous `tracefab_app` sans SUPERUSER ni BYPASSRLS : les
+        # treize operations REFUSENT sans jeton systeme signe (42501),
+        # l ACCEPTENT avec, et l escalade complete du 05/11 est rejouee — aucune
+        # adhesion ecrite chez le locataire voisin, aucune donnee lue. Rotation
+        # et revocation mesurees.
+        #
+        # La cle est provisionnee par la suite ELLE-MEME, comme le fait deja
+        # `test:p105:jeton` : tiree au hasard a chaque execution, confiee au
+        # script d exploitation par variable d environnement, jamais ecrite dans
+        # les journaux, et jetee avec la base. Aucune commande npm ne nomme
+        # l outil de provisionnement : la politique de routage des suites
+        # destructives l exige, pour qu aucun outil d ecriture d exploitation ne
+        # devienne declenchable automatiquement.
+        run: node scripts/executer_avec_erreur_annotee.mjs "P10.7 identite systeme" npm run test:p107:identite-systeme
+
+      - name: P10.7 — l activation du mode strict ferme reellement, et se refuse a tort
+        # 23 assertions sur une base jetable creee par la suite. Elle mesure
+        # D ABORD le defaut en mode permissif (l operation passe SANS jeton et
+        # ecrit une ligne), PUIS la fermeture, PUIS les refus de l outil (sans
+        # cle active, avec une operation non gardee), PUIS le retour arriere.
+        # Sans la premiere partie, un environnement ou tout est refuse passerait
+        # pour sur.
+        run: node scripts/executer_avec_erreur_annotee.mjs "P10.7 activation stricte" npm run test:p107:activation-stricte
+
+      - name: P10.7 — un SECURITY DEFINER peut appeler le helper qu il emploie
+        # Mesure l etat de la base + controle NEGATIF : le GRANT est retire,
+        # le 42501 doit revenir, puis l etat est retabli.
+        run: node scripts/executer_avec_erreur_annotee.mjs "P10.7 grants helpers definer" npm run test:p107:grants-helpers-definer
+
+      - name: P10.7 — la chaine rejouee depuis une base neuve porte ce GRANT
+        # Deux rejeux complets : sans la migration 20261112120000 le defaut est
+        # reproduit, avec elle il disparait. C est la seule preuve qui distingue
+        # « la base est configuree » de « la migration configure la base ».
+        run: node scripts/executer_avec_erreur_annotee.mjs "P10.7 chaine grants helpers" npm run test:p107:chaine-grants-helpers
+
+      - name: P10.7 — les droits du runtime sont DERIVES du code, pas d une liste
+        # R4 : la sonde d exploitation n est jamais un droit du runtime.
+        # R5 : la verification systeme est accordee parce que api/ l appelle.
+        # R6 : le predicat n est jamais cite par api/ (il ne vit que dans les
+        # corps SECURITY DEFINER). Sans base : lit api/ et les migrations.
+        run: |
+          node --input-type=module -e "
+            import { ecartsSansBase } from './scripts/lib/derivation_droits_runtime.mjs';
+            const { ecarts } = ecartsSansBase();
+            for (const e of ecarts) console.log('  ECHEC ' + e);
+            console.log(ecarts.length === 0
+              ? '  droits du runtime : tous derives du code'
+              : '  ' + ecarts.length + ' droit(s) sans source');
+            process.exit(ecarts.length === 0 ? 0 : 1);
+          "
 
       - name: P10.7 — la sonde de configuration HMAC n expose aucun fragment de cle
         # Chantier C. La sonde lit la cle en memoire et n en publie que la
@@ -1240,7 +1488,7 @@ jobs:
         # cle presente mais malformee sort en 1 (erreur d exploitation), une
         # cle absente en 0 (etat de transition documente). La sonde elle-meme
         # tourne ici sur la cle ABSENTE de la CI, ce qui exerce le chemin reel.
-        run: npm run test:p107:sonde-hmac
+        run: node scripts/executer_avec_erreur_annotee.mjs "P10.7 sonde HMAC" npm run test:p107:sonde-hmac
 
       - name: P10.7 — etat de la configuration HMAC de l environnement de CI
         # Sortie informative et EXPURGEE : la CI n a pas de cle d identite, et
@@ -1248,7 +1496,7 @@ jobs:
         # Non bloquant PARCE QUE l absence est l etat documente, pas une panne ;
         # une cle PRESENTE mais invalide sort en 1 et ferait echouer l etape,
         # ce qui est le comportement voulu. Ce n est pas un `continue-on-error`.
-        run: npm run sonde:p107:hmac --silent -- ci
+        run: node scripts/executer_avec_erreur_annotee.mjs "P10.7 etat config HMAC" npm run sonde:p107:hmac --silent -- ci
 
       - name: P10.5 — la hierarchie des roles, mesuree dans les deux sens
         # Douze assertions : attributs, appartenances directes ET transitives,
@@ -1256,15 +1504,15 @@ jobs:
         # puis un CONTROLE POSITIF (GRANT -> SET ROLE -> lecture -> REVOKE) qui
         # prouve que le refus vient bien de l absence d appartenance et pas d un
         # test qui ne mesure rien.
-        run: npm run test:p105:hierarchie
+        run: node scripts/executer_avec_erreur_annotee.mjs "P10.5 hierarchie des roles" npm run test:p105:hierarchie
 
       - name: P10.5 — la sonde de production ne modifie rien (lecture seule prouvee)
         # Verifie, statiquement et par execution, que la sonde destinee a
         # l operateur n execute que des SELECT : une sonde qui ecrit en
         # production est pire qu'aucune sonde.
-        run: npm run test:p105:sonde
+        run: node scripts/executer_avec_erreur_annotee.mjs "P10.5 sonde production" npm run test:p105:sonde
 
       - name: Aucune base jetable residuelle apres le job
         # Controle SEPARE des suites qu'il controle : une suite qui oublie de se
         # ranger ne peut pas se declarer propre. Il ne detruit rien.
-        run: npm run test:jetables:absence-bases
+        run: node scripts/executer_avec_erreur_annotee.mjs "absence de bases residuelles" npm run test:jetables:absence-bases
