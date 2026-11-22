@@ -120,6 +120,14 @@ jobs:
         # Statique et sans base : sa place est ici, dans le socle.
         run: npm run test:public-dpp-route
 
+      - name: Transport stockage prive — refus SSRF et redirections
+        # `test:private-storage` existait deja et n etait branche nulle part :
+        # le durcissement du transport (credentials dans l URL, HTTP en clair
+        # hors loopback, redirections sur requete signee, timeout) serait donc
+        # livre sans garde. Ce test est statique et sans base : il a sa place
+        # ici. Il est execute AVANT le test historique, par le script lui-meme.
+        run: npm run test:private-storage
+
       - name: Garde-fous de mise en production
         # Barriere d'erreur centrale, caviardage des secrets reellement
         # execute, et contrat de variables d'environnement a jour.
