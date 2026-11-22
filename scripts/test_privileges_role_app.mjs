@@ -34,6 +34,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { execFileSync } from 'node:child_process';
 import { exigeAssistance, preparerAppartenance } from './lib/migrations_assistees.mjs';
+import { exigeBailWorker } from './lib/migrations_worker_temporaire.mjs';
 import pg from 'pg';
 import { requireThrowawayDb } from './lib/require-throwaway-db.mjs';
 import { creerBaseEphemere, verrouillerCluster, filetDeNettoyage } from './lib/ephemeral-db.mjs';
@@ -65,10 +66,16 @@ const MOT_DE_PASSE = process.env.TF_APP_PASSWORD || 'epreuve_locale_jetable';
 
 let assertions = 0;
 let echecs = 0;
+// Nom de la derniere assertion EVALUEE. Sert au `catch` global : sans lui, une
+// exception levee entre deux assertions donne « ECHEC — sans code » et il faut
+// relire tout le fichier pour deviner ou. Mesure du run 44533774940.
+let derniereAssertion = '(aucune)';
+const echecsNoms = [];
 const verifier = (nom, cond, obs) => {
   assertions += 1;
+  derniereAssertion = nom;
   if (cond) console.log(`  ok    ${nom}`);
-  else { echecs += 1; console.log(`  ECHEC ${nom} — observé : ${obs}`); }
+  else { echecs += 1; echecsNoms.push(nom); console.log(`  ECHEC ${nom} — observé : ${obs}`); }
 };
 
 /* --- 0. Régression dans le code de provisioning ---------------------------- */
@@ -293,10 +300,50 @@ try {
       const { revoques } = await preparerAppartenance(mig, d, ownerName);
       if (revoques.length) console.log(`     préparation ${d} : appartenance retirée de ${revoques.join(', ')}`);
     }
+    // SIX MIGRATIONS EXIGENT LE BAIL `tracefab_worker` DANS LEUR TRANSACTION.
+    //
+    // `scripts/migrer_fidelement.mjs` l'accorde depuis la connexion
+    // administrative (`TF_ADMIN_URL`), le verifie, pose
+    // `tracefab.worker_membership_managed = 'true'`, applique la migration, puis
+    // revoque AVANT COMMIT. Ce banc applique les migrations lui-meme — il doit
+    // intercaler ses mesures d'ACL entre deux fichiers — et doit donc reproduire
+    // ce preambule, sinon il ne mesure pas la chaine que le runner execute : il
+    // mesure un etat que le deploiement ne produit jamais.
+    //
+    // Mesure du 2026-11-12 : sans ce preambule, la suite s'arretait sur
+    // `20261028120100_worker_identity_not_forgeable` (P0001
+    // worker_membership_must_be_managed_by_runner) apres 8 assertions vertes.
+    // La liste des six est CLOSE et partagee avec le runner
+    // (`lib/migrations_worker_temporaire.mjs`) : le banc ne peut ni en oublier
+    // une, ni s'en accorder une de plus.
+    //
+    // TOPOLOGIE DE CE BANC : la chaine est appliquee par le PROPRIETAIRE de la
+    // base (`postgres`, superutilisateur), pas par `tracefab_migrator` — ce banc
+    // mesure les ACL du role applicatif, pas l'identite de migration (c'est
+    // `test:p106:rejouabilite-chaine` qui mesure cela, avec admin et migrateur
+    // non-SUPERUSER). Pour un superutilisateur `pg_has_role(..., 'SET')` est
+    // toujours vrai : la seule chose a reproduire ici est donc la DECLARATION du
+    // runner, `tracefab.worker_membership_managed`, posee dans la transaction et
+    // jamais hors d'elle. Le GRANT/REVOKE du bail est mesure par les bancs qui
+    // ont une identite de migration non privilegiee.
+    //
+    // Mesure du 2026-11-12 : sans cette declaration, la suite s'arretait sur
+    // `20261028120100_worker_identity_not_forgeable` (P0001
+    // worker_membership_must_be_managed_by_runner) apres 8 assertions vertes.
+    // La liste des six est CLOSE et partagee avec le runner
+    // (`lib/migrations_worker_temporaire.mjs`) : le banc ne peut ni en oublier
+    // une, ni s'en accorder une de plus.
+    const bailWorker = exigeBailWorker(d);
     await mig.query('BEGIN');
-    try { await mig.query(sql); await mig.query('COMMIT'); }
+    try {
+      if (bailWorker) {
+        await mig.query("SET LOCAL tracefab.worker_membership_managed = 'true'");
+      }
+      await mig.query(sql);
+      await mig.query('COMMIT');
+    }
     catch (e) {
-      await mig.query('ROLLBACK');
+      await mig.query('ROLLBACK').catch(() => {});
       console.log(`  ECHEC migration ${d} : ${e.code} ${String(e.message).split('\n')[0]}`);
       await mig.end();
       sortie = SORTIE_DEFAUT;
@@ -617,8 +664,20 @@ try {
   app = null;
 } catch (e) {
   if (e.message !== 'migration') {
+    // POURQUOI CE MESSAGE EST PLUS LONG QU AVANT (2026-11-19).
+    //
+    // Il n affichait que le code ou la premiere ligne du message. Mesure du run
+    // 44533774940 : « 41/42 assertions vertes » avec, pour tout detail,
+    // « ECHEC — (aucune ligne d erreur explicite) ». Le nom de l assertion
+    // fautive etait donc invisible, et le log tronque par l annotation ne le
+    // rendait pas non plus. Un echec qui ne se nomme pas coute un aller-retour
+    // de diagnostic a chaque fois.
     echecs += 1;
-    console.log(`  ECHEC — ${e.code ?? String(e.message).split('\n')[0]}`);
+    console.log(`  ECHEC — ${e.code ?? 'sans code'} : ${String(e.message).split('\n')[0]}`);
+    console.log(`  derniere assertion evaluee : ${derniereAssertion}`);
+    if (e.detail) console.log(`  detail : ${e.detail}`);
+    if (e.hint) console.log(`  hint   : ${e.hint}`);
+    if (e.where) console.log(`  where  : ${e.where}`);
   }
   sortie = SORTIE_DEFAUT;
 } finally {
@@ -630,5 +689,16 @@ try {
   console.log(`  base éphémère détruite : ${baseEphemere.nom}`);
 }
 
+// POURQUOI CE RECAPITULATIF (2026-11-19).
+//
+// L annotation GitHub ne conserve que les ~30 dernieres lignes du log, et le
+// stockage des logs est inaccessible depuis l environnement d analyse. Un
+// « 41/42 » sans le nom de l assertion fautive est donc indebogable a distance.
+// Ce bloc rejoue les echecs EN FIN de sortie : ils survivent a la troncature,
+// alors qu un echec survenu au milieu du fichier n y survit pas.
+if (echecs > 0) {
+  console.log(`  ECHECS (${echecs}) :`);
+  for (const nom of echecsNoms) console.log(`    - ${nom}`);
+}
 console.log(`\n  ${assertions - echecs}/${assertions} assertions vertes\n`);
 process.exit(echecs > 0 ? SORTIE_DEFAUT : sortie);

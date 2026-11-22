@@ -37,6 +37,7 @@
  *   npm run test:rejeu-migrations
  */
 import fs from 'node:fs';
+import { executerMigrationPglite, preparerWorkerPglite } from './lib/pglite-worker-runner.mjs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -108,7 +109,7 @@ await db.exec(`
     started_at timestamptz NOT NULL DEFAULT now(), applied_steps_count integer NOT NULL DEFAULT 0
   );
 `);
-for (const d of dossiers) await db.exec(lire(d));
+for (const d of dossiers) await executerMigrationPglite(db, d, lire(d));
 console.log(`  ${dossiers.length} migrations appliquees.`);
 
 /* -------------------------------------------------------------------------
@@ -120,16 +121,20 @@ console.log('\n  2. Rejeu de chacune des onze');
 const rejouables = [];
 const cassees = [];
 for (const cible of ECARTS) {
+  let nettoyer = async () => {};
   try {
     await db.exec('BEGIN');
+    nettoyer = await preparerWorkerPglite(db, cible);
     await db.exec(lire(cible));
+    await nettoyer();
     await db.exec('ROLLBACK');
     rejouables.push(cible);
     console.log(`  ok    ${cible.slice(0, 14)}  rejouable`);
   } catch (e) {
-    await db.exec('ROLLBACK');
+    await db.exec('ROLLBACK').catch(() => {});
+    await nettoyer().catch(() => {});
     cassees.push(cible);
-    const msg = String(e.message).split('\n')[0].slice(0, 90);
+    const msg = String(e.message).split('\\n')[0].slice(0, 90);
     console.log(`        ${cible.slice(0, 14)}  CASSE  ${msg}`);
   }
 }

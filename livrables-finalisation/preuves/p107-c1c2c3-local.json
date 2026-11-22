@@ -1,0 +1,135 @@
+{
+  "schema": "tracefab-p107-c1c2c3-local-v1",
+  "horodatage": "2026-11-13T00:58:30.585Z",
+  "cible": "postgresql://***@127.0.0.1:5432/tracefab_runtime",
+  "nature": "complement-local — PAS la preuve runtime (celle-ci exige le processus Vercel deploye)",
+  "resultats": [
+    {
+      "id": "C2.1",
+      "libelle": "la cle est lue dans l environnement du processus et jugee valide",
+      "verdict": "PASS",
+      "detail": "format hexadecimal >= 64 caracteres"
+    },
+    {
+      "id": "C2.2",
+      "libelle": "le jeton utilisateur voit la MEME cle",
+      "verdict": "PASS",
+      "detail": "une seule variable pour les deux usages"
+    },
+    {
+      "id": "C2.3",
+      "libelle": "une cle malformee est un ETAT nomme, pas une exception",
+      "verdict": "PASS",
+      "detail": "invalide"
+    },
+    {
+      "id": "C2.4",
+      "libelle": "une cle vide est « absente », distincte de « invalide »",
+      "verdict": "PASS",
+      "detail": "absente"
+    },
+    {
+      "id": "C2.5",
+      "libelle": "sans cle, la signature systeme rend null (aucun repli)",
+      "verdict": "PASS",
+      "detail": "null"
+    },
+    {
+      "id": "C2.6",
+      "libelle": "la cle restauree est de nouveau valide",
+      "verdict": "PASS",
+      "detail": "retour a valide"
+    },
+    {
+      "id": "C1.1",
+      "libelle": "une identite systeme est signee",
+      "verdict": "PASS",
+      "detail": "jeton produit"
+    },
+    {
+      "id": "C1.2",
+      "libelle": "le jeton porte l usage SYSTEME, pas l usage utilisateur",
+      "verdict": "PASS",
+      "detail": "prefixe de corps"
+    },
+    {
+      "id": "C1.3",
+      "libelle": "la BASE accepte le jeton signe — aller-retour reel",
+      "verdict": "PASS",
+      "detail": "true"
+    },
+    {
+      "id": "C1.4",
+      "libelle": "une signature produite avec une AUTRE cle est refusee",
+      "verdict": "PASS",
+      "detail": "false"
+    },
+    {
+      "id": "C3.1",
+      "libelle": "identite valide + signature valide -> ACCEPTEE",
+      "verdict": "PASS",
+      "detail": "aller-retour"
+    },
+    {
+      "id": "C3.2",
+      "libelle": "corps MODIFIE apres signature -> REFUSE",
+      "verdict": "PASS",
+      "detail": "refus"
+    },
+    {
+      "id": "C3.3",
+      "libelle": "MAC falsifie -> REFUSE",
+      "verdict": "PASS",
+      "detail": "refus"
+    },
+    {
+      "id": "C3.4",
+      "libelle": "MAC en MAJUSCULES -> REFUSE (forme canonique unique)",
+      "verdict": "PASS",
+      "detail": "refus"
+    },
+    {
+      "id": "C3.5",
+      "libelle": "jeton a DEUX points -> REFUSE (serialisation non ambigue)",
+      "verdict": "PASS",
+      "detail": "refus"
+    },
+    {
+      "id": "C3.6",
+      "libelle": "jeton ABSENT (null) -> REFUSE",
+      "verdict": "PASS",
+      "detail": "refus"
+    },
+    {
+      "id": "C3.7",
+      "libelle": "jeton VIDE -> REFUSE",
+      "verdict": "PASS",
+      "detail": "refus"
+    },
+    {
+      "id": "C3.8",
+      "libelle": "jeton EXPIRE (signe il y a 1 h) -> REFUSE",
+      "verdict": "PASS",
+      "detail": "refus"
+    },
+    {
+      "id": "C3.9",
+      "libelle": "jeton a duree de vie d un AN -> REFUSE (plafond 600 s cote base)",
+      "verdict": "PASS",
+      "detail": "refus"
+    },
+    {
+      "id": "C3.10",
+      "libelle": "jeton UTILISATEUR presente comme jeton SYSTEME -> REFUSE",
+      "verdict": "PASS",
+      "detail": "refus"
+    },
+    {
+      "id": "C3.13",
+      "libelle": "aucun fragment de cle dans les resultats",
+      "verdict": "PASS",
+      "detail": "recherche des 16 premiers caracteres des deux cles"
+    }
+  ],
+  "echecs": 0
+}

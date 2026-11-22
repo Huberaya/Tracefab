@@ -2,7 +2,7 @@ import { createClerkClient, verifyToken } from '@clerk/backend';
 import type { VercelRequest } from './vercel-types.js';
 import type { Prisma } from '@prisma/client';
 import { prisma } from './prisma.js';
-import { withTracefabWorkerContext } from './context.js';
+import { withTracefabWorkerContext } from './contexte-systeme.js';
 import { verifiedPrimaryEmail } from './clerk-identity.js';
 
 const clerkSecretKey = process.env.CLERK_SECRET_KEY;

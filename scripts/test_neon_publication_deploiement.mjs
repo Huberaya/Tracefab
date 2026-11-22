@@ -23,6 +23,7 @@
 import pg from 'pg';
 import { creerBaseEphemere, verrouillerCluster } from './lib/ephemeral-db.mjs';
 import { assertRoleApplicatif } from './lib/identite_app.mjs';
+import { appliquerCommeLeRunner, declarerBailWorkerSiRequis } from './lib/appliquer_chaine_comme_le_runner.mjs';
 import { readdirSync, readFileSync, writeFileSync, statSync } from 'node:fs';
 import { createHash, randomUUID } from 'node:crypto';
 import { join, dirname } from 'node:path';
@@ -121,7 +122,7 @@ await preprod.connect();
 // Journal Prisma + application dans l'ordre de `prisma migrate deploy`,
 // SAUF la migration à déployer : on est exactement en production « à 35 ».
 {
-  await preprod.query(`CREATE TABLE IF NOT EXISTS _prisma_migrations (
+  await preprod.query(`CREATE TABLE IF NOT EXISTS public._prisma_migrations (
     id TEXT PRIMARY KEY, checksum TEXT NOT NULL, finished_at TIMESTAMPTZ,
     migration_name TEXT NOT NULL, logs TEXT, rolled_back_at TIMESTAMPTZ,
     started_at TIMESTAMPTZ NOT NULL DEFAULT now(),
@@ -131,9 +132,33 @@ await preprod.connect();
     const sql = readFileSync(join(MIG_DIR, nom, 'migration.sql'), 'utf8');
     const checksum = createHash('sha256').update(readFileSync(join(MIG_DIR, nom, 'migration.sql'))).digest('hex');
     const id = randomUUID();
-    await preprod.query('INSERT INTO _prisma_migrations (id, checksum, migration_name, started_at) VALUES ($1,$2,$3,now())', [id, checksum, nom]);
-    await preprod.query(sql);
-    await preprod.query('UPDATE _prisma_migrations SET finished_at = now(), applied_steps_count = 1 WHERE id = $1', [id]);
+    await preprod.query('INSERT INTO public._prisma_migrations (id, checksum, migration_name, started_at) VALUES ($1,$2,$3,now())', [id, checksum, nom]);
+    // Comme le runner : transaction par migration + declaration du bail worker
+    // pour les six migrations qui l exigent. Sans cela, la preprod de ce banc
+    // s arretait sur `worker_membership_must_be_managed_by_runner` et le
+    // deploiement mesure portait sur un schema incomplet (mesure du 2026-11-12).
+    await preprod.query('BEGIN');
+    try {
+      await declarerBailWorkerSiRequis(preprod, nom);
+      await preprod.query(sql);
+      // PLUSIEURS MIGRATIONS POSENT `SET search_path = ...` AU NIVEAU SESSION, et
+      // `SET` n'est PAS transactionnel : annule par ROLLBACK, il survit au
+      // COMMIT. Le journal `_prisma_migrations` etant cree sans qualification,
+      // toute suite de ce banc apres ces migrations le cherche dans le nouveau
+      // search_path et rend 42P01 (« relation "_prisma_migrations" does not
+      // exist », mesure du 2026-11-12). On le requalifie donc en `public.`
+      // — c'est aussi l'ordre que le runner impose apres chaque fichier
+      // (`SET LOCAL search_path TO public, pg_catalog`).
+      // `SET LOCAL` (et non `SET`) : annule par ROLLBACK, il ne fuit pas hors
+      // de la transaction en cas d'echec.
+      await preprod.query('SET LOCAL search_path TO public, pg_catalog');
+      await preprod.query('UPDATE public._prisma_migrations SET finished_at = now(), applied_steps_count = 1 WHERE id = $1', [id]);
+      await preprod.query('COMMIT');
+      await preprod.query('SET search_path TO public, pg_catalog');
+    } catch (e) {
+      await preprod.query('ROLLBACK').catch(() => {});
+      throw e;
+    }
   }
   ok(`${dirs.length} migrations appliquées, ${MIGRATION} exclue (à déployer)`);
 }
@@ -263,9 +288,9 @@ console.log(`\n  C. déploiement de ${MIGRATION}`);
   const sql = readFileSync(join(MIG_DIR, MIGRATION, 'migration.sql'), 'utf8');
   const checksum = createHash('sha256').update(readFileSync(join(MIG_DIR, MIGRATION, 'migration.sql'))).digest('hex');
   const id = randomUUID();
-  await preprod.query('INSERT INTO _prisma_migrations (id, checksum, migration_name, started_at) VALUES ($1,$2,$3,now())', [id, checksum, MIGRATION]);
+  await preprod.query('INSERT INTO public._prisma_migrations (id, checksum, migration_name, started_at) VALUES ($1,$2,$3,now())', [id, checksum, MIGRATION]);
   await preprod.query(sql);
-  await preprod.query('UPDATE _prisma_migrations SET finished_at = now(), applied_steps_count = 1 WHERE id = $1', [id]);
+  await preprod.query('UPDATE public._prisma_migrations SET finished_at = now(), applied_steps_count = 1 WHERE id = $1', [id]);
   ok('migration appliquée (journal Prisma tenu)');
 }
 
@@ -656,8 +681,18 @@ console.log('\n  I. sauvegarde logique et restauration vérifiée');
   await restore.connect();
   {
     const dirs = readdirSync(MIG_DIR).filter((n) => statSync(join(MIG_DIR, n)).isDirectory()).sort(); // y compris la 36
+    // Comme le runner : transaction par migration + declaration du bail worker
+    // pour les six migrations qui l exigent (module partage avec le runner).
+    // Ce rejeu traverse la CHAINE ENTIERE sur une base neuve, donc ces six
+    // migrations aussi. Sans le preambule, mesure du 2026-11-12 : la chaine
+    // s'arretait sur la 62e, 20261028120100_worker_identity_not_forgeable, en
+    // P0001 « worker_membership_must_be_managed_by_runner » — c'est l'echec de
+    // l'etape 31 du job base-de-donnees (section I de ce banc), et non un
+    // defaut de la chaine : le runner, lui, declare le bail.
     for (const nom of dirs) {
-      await restore.query(readFileSync(join(MIG_DIR, nom, 'migration.sql'), 'utf8'));
+      const fichier = join(MIG_DIR, nom, 'migration.sql');
+      if (!statSync(fichier).isFile()) continue;
+      await appliquerCommeLeRunner(restore, nom, readFileSync(fichier, 'utf8'));
     }
     ok('structure rejouée par la chaîne de migrations complète (1..36)');
   }

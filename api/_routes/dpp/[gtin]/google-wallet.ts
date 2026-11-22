@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '../../../_lib/vercel-types.js';
 import { json, methodNotAllowed } from '../../../_lib/http.js';
-import { resolveDppPassDataByGtin } from '../../../_lib/wallet/dpp-data-resolver.js';
+import { getConfiguredPublicBaseUrl, resolveDppPassDataByGtin } from '../../../_lib/wallet/dpp-data-resolver.js';
 import { generateGoogleWalletPass } from '../../../_lib/wallet/google-wallet-generator.js';
 import { withTracefabPublicContext } from '../../../_lib/context.js';
 
@@ -21,9 +21,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return json(res, 400, { error: 'missing_identifier' });
   }
 
+  const publicBaseUrl = getConfiguredPublicBaseUrl();
+  if (!publicBaseUrl) {
+    const configured = Boolean(process.env.TRACEFAB_PUBLIC_BASE_URL?.trim());
+    return json(res, 503, { error: configured ? 'public_base_url_invalid' : 'public_base_url_not_configured' });
+  }
+
   try {
     const dppData = await withTracefabPublicContext((tx) =>
-      resolveDppPassDataByGtin(tx, gtinOrRef),
+      resolveDppPassDataByGtin(tx, gtinOrRef, publicBaseUrl.origin),
     );
     if (!dppData) {
       return json(res, 404, { error: 'product_passport_not_found' });

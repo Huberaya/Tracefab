@@ -44,6 +44,7 @@ import path from 'node:path';
 import pg from 'pg';
 import { verrouillerCluster } from './lib/ephemeral-db.mjs';
 import { MIGRATIONS_ASSISTEES, preparerAppartenance } from './lib/migrations_assistees.mjs';
+import { MIGRATIONS_AVEC_WORKER_TEMPORAIRE as MIGRATIONS_BAIL_WORKER } from './lib/migrations_worker_temporaire.mjs';
 import { propriétairesInjoignables } from './lib/preflight_proprietaires.mjs';
 import { sslDepuisUrl } from './lib/pg-ssl.mjs';
 
@@ -97,48 +98,19 @@ const migrationsDisque = readdirSync(DOSSIER)
 const empreinte = (fichier) => createHash('sha256').update(readFileSync(fichier)).digest('hex');
 
 // ---------------------------------------------------------------------------
-// Assistance administrative, bornee a une liste fermee.
+// Bootstrap du rôle worker et migrations suivantes.
 //
-// POURQUOI ELLE EXISTE
+// 20261028120100 crée tracefab_worker puis doit accorder à current_user une
+// appartenance SET/INHERIT temporaire (ADMIN FALSE). Avant cette création,
+// l'exécutant ne peut pas s'accorder lui-même ce droit : le runner de rehearsal
+// utilise donc une élévation administrative bornée autour de cette migration,
+// puis vérifie sa révocation avant de poursuivre.
+// Les migrations ultérieures utilisent l'appartenance temporaire dans leur
+// transaction lorsqu'elles doivent endosser tracefab_worker.
 //
-// La migration 20261028120100 cree `tracefab_worker` puis lui transfere la
-// propriete de six fonctions. Sur PostgreSQL 16+, deux impasses mesurees le
-// 30/10/2026 sur un cluster jetable (PG 17.10) :
-//
-//   - role ABSENT : la migration le cree, mais un executant CREATEROLE ne
-//     recoit que l'option ADMIN (set_option = false, mesure). Le `GRANT` de la
-//     migration est saute parce que `pg_has_role(...,'MEMBER')` rend deja vrai,
-//     et le `ALTER FUNCTION ... OWNER TO tracefab_worker` echoue en
-//     « must be able to SET ROLE "tracefab_worker" » ;
-//   - role PRESENT : la branche ELSE joue `ALTER ROLE ... NOSUPERUSER`, et
-//     PostgreSQL 16+ exige SUPERUSER pour changer cet attribut
-//     (« Only roles with the SUPERUSER attribute may change the SUPERUSER
-//     attribute »).
-//
-// Aucune des deux branches n'est donc jouable par un role non superutilisateur
-// sur PostgreSQL 16+. La migration ne peut pas etre reecrite : elle est deja
-// appliquee en production, et changer son fichier changerait son empreinte.
-//
-// Deux autres voies ont ete essayees et mesurées, toutes deux fermees :
-//   - executer la migration par un role administratif distinct : le controle de
-//     propriete de la migration exige `current_user` = proprietaire des
-//     fonctions, donc l'executant doit etre le proprietaire des objets ;
-//   - `SET ROLE` vers le proprietaire depuis un compte superutilisateur : les
-//     controles d'`ALTER ROLE` portent sur `current_user`, qui redevient non
-//     superutilisateur — mesure : trois « permission denied to alter role ».
-//
-// CE QUI EST FAIT ICI, ET CE QUI N'EST PAS FAIT
-//
-// L'elevation est TEMPORAIRE, BORNEE A UNE MIGRATION, TRACEE ET REVOQUEE :
-// le role proprietaire recoit SUPERUSER juste avant cette migration, et le
-// perd juste apres, y compris en cas d'echec. Le role de migration n'est
-// jamais superutilisateur en dehors de cette fenetre, et le script refuse de
-// continuer si la revocation n'est pas constatee.
-//
-// Ce n'est pas la solution preferee : c'est la seule qui reste quand on refuse
-// de reecrire une migration deja appliquee. Elle exige un opt-in explicite
-// (`TF_ALLOW_ELEVATION=oui`) et une connexion administrative (`TF_ADMIN_URL`).
-// Sans les deux, le script REFUSE la migration au lieu de la contourner.
+// Ce runner reste explicitement INTERDIT en Production. Il sert au banc de
+// rehearsal et à ses tests ; la Production doit utiliser un mécanisme Prisma
+// supporté, avec l'identité Neon d'administration prévue, après CI et préflight.
 // ---------------------------------------------------------------------------
 const urlAdmin = (process.env.TF_ADMIN_URL || '').trim();
 const elevationAutorisee = process.env.TF_ALLOW_ELEVATION === 'oui';
@@ -288,19 +260,14 @@ async function revoquerElevation(moment) {
 }
 
 const MIGRATION_WORKER_TERMINALE = '20261108120700_assert_worker_membership_revoked';
-const MIGRATIONS_AVEC_WORKER_TEMPORAIRE = new Set([
-  // Ces migrations appellent une fonction worker depuis leur SQL, ou vérifient
-  // elles-mêmes pg_has_role(..., 'SET'). Le préflight de propriété ne détecte
-  // pas les appels à une fonction existante ni les ALTER OWNER dynamiques.
-  '20261028120200_document_reserved_fields_internal_only',
-  '20261031120000_identite_hmac_liee_au_contexte',
-  // Cette migration remplace des fonctions SECURITY DEFINER possédées par
-  // tracefab_worker ; le migrateur doit pouvoir les endosser pendant sa
-  // transaction, puis perdre l'appartenance avant le COMMIT.
-  '20261105235900_active_tenant_policy_and_worker_closure',
-  '20261108120100_worker_fonctions_systeme_completes',
-  '20261108120200_corrections_p106_ownership_et_appartenance',
-]);
+// Ces migrations testent l'appartenance worker de current_user avant de
+// transférer ou modifier des objets protégés. Un migrateur non membre ne peut
+// pas s'accorder lui-même ce droit : le runner l'accorde depuis la connexion
+// administrative, dans la transaction de la migration, puis le révoque avant
+// COMMIT. La liste est fermée et limitée aux migrations mesurées.
+// Definition UNIQUE, importable par les bancs qui appliquent la chaine comme le
+// runner (voir l'en-tete du module pour la mesure du 2026-11-12).
+const MIGRATIONS_AVEC_WORKER_TEMPORAIRE = new Set(MIGRATIONS_BAIL_WORKER);
 const identifiantSql = (v) => '"' + String(v).replace(/"/g, '""') + '"';
 const gestionRoles = dejaSuperuser ? client : clientAdmin;
 
@@ -321,38 +288,103 @@ if (roleExecutant !== 'tracefab_migrator') {
   }
 }
 
-/** Révoque l'appartenance worker et vérifie l'absence effective. */
+/** Révoque toute appartenance worker du migrateur et de l'application. */
 async function revoquerAppartenanceWorker(moment) {
-  // Toujours nettoyer le rôle courant ET le migrateur nominal : un run précédent
-  // peut avoir été lancé avec une autre identité administrative.
-  const cibles = [...new Set([roleExecutant, 'tracefab_migrator'])];
+  const cibles = [...new Set([roleExecutant, 'tracefab_migrator', 'tracefab_app'])];
   for (const cible of cibles) {
     const etat = (await client.query(
       `SELECT r.rolsuper,
-              pg_catalog.pg_has_role(r.oid, w.oid, 'MEMBER') AS membre
+              CASE WHEN r.rolsuper THEN false
+                   ELSE pg_catalog.pg_has_role(r.oid, w.oid, 'SET') END AS peut_set,
+              CASE WHEN r.rolsuper THEN false
+                   ELSE pg_catalog.pg_has_role(r.oid, w.oid, 'USAGE') END AS peut_utiliser,
+              COALESCE(bool_or(m.admin_option OR m.set_option OR m.inherit_option), false) AS appartenance
          FROM pg_catalog.pg_roles r CROSS JOIN pg_catalog.pg_roles w
-        WHERE r.rolname = $1 AND w.rolname = 'tracefab_worker'`,
+         LEFT JOIN pg_catalog.pg_auth_members m ON m.member = r.oid AND m.roleid = w.oid
+        WHERE r.rolname = $1 AND w.rolname = 'tracefab_worker'
+        GROUP BY r.rolsuper, r.oid, w.oid`,
       [cible],
     )).rows[0];
-    // Un SUPERUSER peut endosser tous les rôles implicitement : ce n'est pas
-    // une appartenance pg_auth_members à révoquer. Le migrator, lui, est
-    // réabaissé avant ce contrôle et doit avoir une appartenance effective false.
-    if (!etat || etat.rolsuper === true || !etat.membre) continue;
+    if (!etat || (!etat.appartenance && !etat.peut_set && !etat.peut_utiliser)) continue;
     if (!gestionRoles) {
       throw new Error(`appartenance tracefab_worker résiduelle pour ${cible}, sans connexion autorisée pour la révoquer (${moment})`);
     }
     await gestionRoles.query(`REVOKE tracefab_worker FROM ${identifiantSql(cible)}`);
     const verif = (await gestionRoles.query(
-      `SELECT pg_catalog.pg_has_role(r.oid, w.oid, 'MEMBER') AS membre
+      `SELECT r.rolsuper,
+              CASE WHEN r.rolsuper THEN false
+                   ELSE pg_catalog.pg_has_role(r.oid, w.oid, 'SET') END AS peut_set,
+              CASE WHEN r.rolsuper THEN false
+                   ELSE pg_catalog.pg_has_role(r.oid, w.oid, 'USAGE') END AS peut_utiliser,
+              EXISTS (
+                SELECT 1 FROM pg_catalog.pg_auth_members m
+                 WHERE m.member = r.oid AND m.roleid = w.oid
+                   AND (m.admin_option OR m.set_option OR m.inherit_option)
+              ) AS grant_residuel
          FROM pg_catalog.pg_roles r CROSS JOIN pg_catalog.pg_roles w
         WHERE r.rolname = $1 AND w.rolname = 'tracefab_worker'`,
       [cible],
     )).rows[0];
-    if (verif?.membre !== false) {
-      throw new Error(`révocation tracefab_worker NON constatée pour ${cible} (${moment})`);
+    if (verif?.peut_set !== false || verif?.peut_utiliser !== false || verif?.grant_residuel !== false) {
+      throw new Error(`révocation worker non constatée pour ${cible} (${moment})`);
     }
-    console.log(`             appartenance worker temporaire révoquée et vérifiée — ${cible} (${moment})`);
+    console.log(`             appartenance worker révoquée et vérifiée — ${cible} (${moment})`);
   }
+}
+
+/** Préprovisionne worker depuis l'administrateur Neon et vérifie ADMIN-only. */
+async function assurerRoleWorker(moment) {
+  if (!clientAdmin || roleExecutant !== 'tracefab_migrator') {
+    throw new Error(`provisionnement worker exige TF_ADMIN_URL et tracefab_migrator (${moment})`);
+  }
+  const admin = (await clientAdmin.query(
+    `SELECT current_user AS nom, r.rolsuper, r.rolcreaterole
+       FROM pg_catalog.pg_roles r WHERE r.rolname = current_user`,
+  )).rows[0];
+  if (!admin || admin.rolsuper || !admin.rolcreaterole || admin.nom === roleExecutant) {
+    throw new Error('session administrative worker invalide : CREATEROLE non-superuser requis');
+  }
+
+  let worker = (await clientAdmin.query(
+    `SELECT rolcanlogin, rolsuper, rolbypassrls, rolcreaterole, rolcreatedb, rolreplication, rolinherit
+       FROM pg_catalog.pg_roles WHERE rolname = 'tracefab_worker'`,
+  )).rows[0];
+  if (!worker) {
+    await clientAdmin.query(
+      'CREATE ROLE tracefab_worker NOLOGIN NOINHERIT NOBYPASSRLS NOSUPERUSER NOCREATEROLE NOCREATEDB NOREPLICATION',
+    );
+    worker = (await clientAdmin.query(
+      `SELECT rolcanlogin, rolsuper, rolbypassrls, rolcreaterole, rolcreatedb, rolreplication, rolinherit
+         FROM pg_catalog.pg_roles WHERE rolname = 'tracefab_worker'`,
+    )).rows[0];
+  }
+  if (!worker || worker.rolcanlogin || worker.rolsuper || worker.rolbypassrls
+      || worker.rolcreaterole || worker.rolcreatedb || worker.rolreplication || worker.rolinherit) {
+    throw new Error('tracefab_worker existe mais ne respecte pas NOLOGIN/NOSUPERUSER/NOBYPASSRLS/NOINHERIT/NOCREATEROLE/NOCREATEDB');
+  }
+
+  const lireBailAdmin = async () => (await clientAdmin.query(
+    `SELECT COALESCE(bool_or(m.admin_option), false) AS admin_option,
+            COALESCE(bool_or(m.set_option OR m.inherit_option), false) AS privileges_actifs
+       FROM pg_catalog.pg_auth_members m
+       JOIN pg_catalog.pg_roles r ON r.oid = m.member
+       JOIN pg_catalog.pg_roles w ON w.oid = m.roleid
+      WHERE r.rolname = $1 AND w.rolname = 'tracefab_worker'`,
+    [admin.nom],
+  )).rows[0];
+  let bail = await lireBailAdmin();
+  if (!bail.admin_option) {
+    throw new Error('la session administrative ne détient pas ADMIN OPTION sur tracefab_worker');
+  }
+  if (bail.privileges_actifs) {
+    await clientAdmin.query(`REVOKE SET OPTION FOR tracefab_worker FROM ${identifiantSql(admin.nom)}`);
+    await clientAdmin.query(`REVOKE INHERIT OPTION FOR tracefab_worker FROM ${identifiantSql(admin.nom)}`);
+    bail = await lireBailAdmin();
+  }
+  if (!bail.admin_option || bail.privileges_actifs) {
+    throw new Error('le privilège administratif worker doit être ADMIN-only, sans SET ni INHERIT');
+  }
+  console.log(`             tracefab_worker préprovisionné/vérifié ; ADMIN-only pour ${admin.nom} (${moment})`);
 }
 
 // Nettoyage systématique au démarrage : toute appartenance résiduelle d'un
@@ -378,10 +410,9 @@ async function terminerSurSignal(signal, code) {
   if (transactionWorkerTemporaireEnCours && clientAdmin) {
     await clientAdmin.query('ROLLBACK').catch(() => {});
     transactionWorkerTemporaireEnCours = false;
-  } else {
-    try { await revoquerAppartenanceWorker(`signal ${signal}`); }
-    catch (e) { console.error(`ECHEC nettoyage signal : ${e.message}`); }
   }
+  try { await revoquerAppartenanceWorker(`signal ${signal}`); }
+  catch (e) { console.error(`ECHEC nettoyage signal : ${e.message}`); }
   await client.end().catch(() => {});
   if (clientAdmin) await clientAdmin.end().catch(() => {});
   await verrou.relacher().catch(() => {});
@@ -482,35 +513,52 @@ for (const nom of enAttente) {
     process.exit(3);
   }
 
-  if (workerTemporaire) console.log(`             worker temporaire transactionnel — ${nom}`);
+  if (workerTemporaire) {
+    try {
+      await assurerRoleWorker(`préparation ${nom}`);
+    } catch (e) {
+      console.error(`REFUS — préprovisionnement worker impossible avant ${nom} : ${e.message}`);
+      await revoquerAppartenanceWorker('échec délégation ADMIN worker').catch((x) => console.error(x.message));
+      await client.end().catch(() => {});
+      if (clientAdmin) await clientAdmin.end().catch(() => {});
+      await verrou.relacher().catch(() => {});
+      process.exit(3);
+    }
+    console.log(`             worker temporaire transactionnel — ${nom}`);
+  }
   const executeur = workerTemporaire ? clientAdmin : client;
   let commitEffectue = false;
+  let roleAdministrateurTemporaire = null;
   try {
     await executeur.query('BEGIN');
     if (workerTemporaire) {
       transactionWorkerTemporaireEnCours = true;
-      await executeur.query('GRANT tracefab_worker TO tracefab_migrator WITH INHERIT TRUE, SET TRUE, ADMIN FALSE');
+      roleAdministrateurTemporaire = (await executeur.query('SELECT current_user AS u')).rows[0]?.u;
+      if (!roleAdministrateurTemporaire || roleAdministrateurTemporaire === roleExecutant) {
+        throw new Error('identité administrative invalide pour le bail migrateur temporaire');
+      }
+      await executeur.query(`GRANT ${identifiantSql(roleExecutant)} TO ${identifiantSql(roleAdministrateurTemporaire)} WITH INHERIT TRUE, SET TRUE, ADMIN FALSE`);
+      // L'administrateur (propriétaire du rôle worker) accorde uniquement
+      // SET/INHERIT au migrateur ; ADMIN reste exclusivement administratif.
+      await executeur.query(`GRANT tracefab_worker TO ${identifiantSql(roleExecutant)} WITH INHERIT TRUE, SET TRUE, ADMIN FALSE`);
       const options = (await executeur.query(
         `SELECT pg_catalog.pg_has_role($1, 'tracefab_worker', 'SET') AS peut_set,
-                (SELECT bool_and(m.inherit_option) FROM pg_catalog.pg_auth_members m
-                  JOIN pg_catalog.pg_roles r ON r.oid = m.roleid
-                  JOIN pg_catalog.pg_roles u ON u.oid = m.member
-                 WHERE r.rolname = 'tracefab_worker' AND u.rolname = $1) AS inherit_option,
-                (SELECT bool_and(m.set_option) FROM pg_catalog.pg_auth_members m
-                  JOIN pg_catalog.pg_roles r ON r.oid = m.roleid
-                  JOIN pg_catalog.pg_roles u ON u.oid = m.member
-                 WHERE r.rolname = 'tracefab_worker' AND u.rolname = $1) AS set_option,
-                (SELECT COALESCE(bool_or(m.admin_option), false) FROM pg_catalog.pg_auth_members m
-                  JOIN pg_catalog.pg_roles r ON r.oid = m.roleid
-                  JOIN pg_catalog.pg_roles u ON u.oid = m.member
-                 WHERE r.rolname = 'tracefab_worker' AND u.rolname = $1) AS admin_option`,
+                pg_catalog.pg_has_role($1, 'tracefab_worker', 'USAGE') AS peut_utiliser,
+                COALESCE(bool_or(m.admin_option), false) AS admin_option,
+                COALESCE(bool_or(m.set_option OR m.inherit_option), false) AS grant_effectif
+           FROM pg_catalog.pg_auth_members m
+           JOIN pg_catalog.pg_roles r ON r.oid = m.roleid
+           JOIN pg_catalog.pg_roles u ON u.oid = m.member
+          WHERE r.rolname = 'tracefab_worker' AND u.rolname = $1
+          GROUP BY u.oid`,
         [roleExecutant],
       )).rows[0];
-      if (options?.peut_set !== true || options?.inherit_option !== true
-          || options?.set_option !== true || options?.admin_option !== false) {
-        throw new Error(`appartenance worker temporaire non conforme : SET=${options?.peut_set}, INHERIT=${options?.inherit_option}, SET_OPTION=${options?.set_option}, ADMIN=${options?.admin_option}`);
+      if (options?.peut_set !== true || options?.peut_utiliser !== true
+          || options?.admin_option !== false || options?.grant_effectif !== true) {
+        throw new Error(`bail SET/INHERIT worker non conforme : SET=${options?.peut_set}, USAGE=${options?.peut_utiliser}, ADMIN=${options?.admin_option}, bail actif=${options?.grant_effectif}`);
       }
       await executeur.query(`SET LOCAL ROLE ${identifiantSql(roleExecutant)}`);
+      await executeur.query("SET LOCAL tracefab.worker_membership_managed = 'true'");
       const ecartsRestants = await propriétairesInjoignables(executeur, roleExecutant, [{ nom, sql }]);
       if (ecartsRestants.length > 0) throw new Error(`préflight worker toujours bloquant : ${ecartsRestants.map((e) => e.fonction).join(', ')}`);
     }
@@ -524,11 +572,42 @@ for (const nom of enAttente) {
     );
     if (workerTemporaire) {
       await executeur.query('RESET ROLE');
-      await executeur.query('REVOKE tracefab_worker FROM tracefab_migrator');
-      const membre = (await executeur.query(
-        `SELECT pg_catalog.pg_has_role('tracefab_migrator', 'tracefab_worker', 'MEMBER') AS membre`,
-      )).rows[0]?.membre;
-      if (membre !== false) throw new Error('révocation worker non constatée avant COMMIT');
+      await executeur.query(`REVOKE tracefab_worker FROM ${identifiantSql(roleExecutant)}`);
+      await executeur.query(`REVOKE ${identifiantSql(roleExecutant)} FROM ${identifiantSql(roleAdministrateurTemporaire)}`);
+      const etatWorker = (await executeur.query(
+        `SELECT pg_catalog.pg_has_role($1, 'tracefab_worker', 'SET') AS peut_set,
+                pg_catalog.pg_has_role($1, 'tracefab_worker', 'USAGE') AS peut_utiliser,
+                EXISTS (
+                  SELECT 1 FROM pg_catalog.pg_auth_members m
+                  JOIN pg_catalog.pg_roles r ON r.oid=m.member
+                  JOIN pg_catalog.pg_roles w ON w.oid=m.roleid
+                  WHERE r.rolname=$1 AND w.rolname='tracefab_worker'
+                    AND (m.admin_option OR m.set_option OR m.inherit_option)
+                ) AS grant_effectif`,
+        [roleExecutant],
+      )).rows[0];
+      if (etatWorker?.peut_set !== false || etatWorker?.peut_utiliser !== false || etatWorker?.grant_effectif !== false) {
+        throw new Error('révocation complète du bail worker non constatée avant COMMIT');
+      }
+      const etatAdministrateur = (await executeur.query(
+        `SELECT r.rolsuper,
+                CASE WHEN r.rolsuper THEN false
+                     ELSE pg_catalog.pg_has_role(r.oid, $2::regrole, 'SET') END AS peut_set,
+                CASE WHEN r.rolsuper THEN false
+                     ELSE pg_catalog.pg_has_role(r.oid, $2::regrole, 'USAGE') END AS peut_utiliser,
+                EXISTS (
+                  SELECT 1 FROM pg_catalog.pg_auth_members m
+                  WHERE m.member = r.oid AND m.roleid = $2::regrole
+                    AND (m.set_option OR m.inherit_option)
+                ) AS grant_effectif
+           FROM pg_catalog.pg_roles r
+          WHERE r.rolname = $1`,
+        [roleAdministrateurTemporaire, roleExecutant],
+      )).rows[0];
+      if (etatAdministrateur?.peut_set !== false || etatAdministrateur?.peut_utiliser !== false
+          || etatAdministrateur?.grant_effectif !== false) {
+        throw new Error('révocation du bail migrateur administratif non constatée avant COMMIT');
+      }
     }
     await executeur.query('COMMIT');
     transactionWorkerTemporaireEnCours = false;

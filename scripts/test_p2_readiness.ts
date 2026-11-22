@@ -87,6 +87,20 @@ try {
     TRACEFAB_NOTIFICATION_ALERT_URL: 'https://alerts.invalid/webhook',
     TRACEFAB_NOTIFICATION_ALERT_TOKEN: 'unit-alert-token',
   });
+
+  // L'alerting est explicitement optionnel dans le runbook Production.
+  // Son absence doit rester visible sans bloquer la readiness fonctionnelle.
+  delete process.env.TRACEFAB_NOTIFICATION_ALERT_URL;
+  delete process.env.TRACEFAB_NOTIFICATION_ALERT_TOKEN;
+  res = response();
+  handler(req as never, res as never);
+  assert.equal(res.statusCode, 200);
+  const sansAlerting = res.payload as { ready: boolean; services: Record<string, { configured: boolean }> };
+  assert.equal(sansAlerting.ready, true);
+  assert.equal(sansAlerting.services.alerting.configured, false);
+  process.env.TRACEFAB_NOTIFICATION_ALERT_URL = 'https://alerts.invalid/webhook';
+  process.env.TRACEFAB_NOTIFICATION_ALERT_TOKEN = 'unit-alert-token';
+
   res = response();
   handler(req as never, res as never);
   assert.equal(res.statusCode, 200);

@@ -113,44 +113,65 @@ console.log('\nC. Les migrations posterieures declarent au registre');
 const dossiers = readdirSync(MIGRATIONS).filter((d) => /^\d{14}_/.test(d)).sort();
 const posterieurs = dossiers.filter((d) => d > MIGRATION_REGISTRE);
 const ajouts = new Map();
+
+// LA REGLE EST UNE EGALITE, PAS UNE INTERDICTION (P10.7, mesure du 05/11).
+//
+// Ce bloc refusait TOUT `GRANT EXECUTE ... TO tracefab_app` posterieur au
+// registre. C'etait un refus par defaut correct, mais il ne distinguait pas
+// deux situations opposees :
+//
+//   - une migration qui accorde EXECUTE SANS declarer le nom au registre : le
+//     droit existe et le registre l'ignore. C'est le contournement vise, et il
+//     doit rester refusé ;
+//   - une migration qui accorde EXECUTE **ET** declare le nom au registre :
+//     c'est un ajout legitime, exprime en deux instructions parce que l'octroi
+//     doit porter sur la signature exacte (la redistribution du registre, elle,
+//     joint sur le nom).
+//
+// La mesure du 05/11 a rendu la distinction necessaire : la verification du
+// jeton systeme `tracefab_identite_systeme_jeton_valide` est appelee par la
+// readiness (donc un droit reel du runtime) et figure au registre ; l'ancienne
+// regle la refusait quand meme, ce qui poussait a retirer un droit dont
+// l'application a besoin — c'est-a-dire a faire passer un test en cassant le
+// produit.
+//
+// On exige donc l'EGALITE : l'ensemble des noms accordes directement est inclus
+// dans l'ensemble des noms declares au registre, et tout ecart est nomme.
 const grantsDirects = [];
+const declares = new Set(nomsSeed);
 for (const dossier of posterieurs) {
   const fichier = path.join(MIGRATIONS, dossier, 'migration.sql');
   if (!existsSync(fichier)) continue;
-  const sql = lire(fichier)
-    .replace(/--[^\n]*/g, '');
+  const sql = lire(fichier).replace(/--[^\n]*/g, '');
   for (const m of sql.matchAll(
     /INSERT INTO public\.tracefab_runtime_function_registry[\s\S]*?;/g,
   )) {
-    for (const row of m[0].matchAll(/\(\s*'([a-z0-9_]+)'\s*,/g)) ajouts.set(row[1], dossier);
+    for (const row of m[0].matchAll(/\(\s*'([a-z0-9_]+)'\s*,/g)) {
+      ajouts.set(row[1], dossier);
+      declares.add(row[1]);
+    }
   }
-  // Un GRANT EXECUTE direct court-circuiterait le registre : on refuse.
   for (const m of sql.matchAll(/GRANT\s+EXECUTE\s+ON\s+FUNCTION\s+([a-z0-9_.]+)[^;]*TO\s+tracefab_app/gi)) {
-    grantsDirects.push(`${dossier}:${m[1]}`);
+    grantsDirects.push({ dossier, nom: m[1].replace(/^public\./, '') });
   }
 }
-// Exception historique bornée : cette migration transfère
-// tracefab_current_user_email au worker et réaffirme EXECUTE pour le runtime.
-// La fonction figure déjà dans les 84 entrées seedées par le registre
-// historique 20261021120000 ; elle n'élargit donc pas le périmètre autorisé.
-// Les autres GRANT directs restent interdits, et le contrôle SQL ci-dessous
-// vérifie qu'aucune fonction hors registre n'est exécutable par tracefab_app.
-const grantsDirectsAutorises = new Set([
-  '20261105235900_active_tenant_policy_and_worker_closure:public.tracefab_current_user_email',
-]);
-const grantsDirectsInterdits = grantsDirects.filter((g) => !grantsDirectsAutorises.has(g));
-const grantsDirectsAutorisesObserves = grantsDirects.filter((g) => grantsDirectsAutorises.has(g));
+const grantsHorsRegistre = grantsDirects.filter((g) => !declares.has(g.nom));
 ok(
-  grantsDirectsInterdits.length === 0,
-  'aucune migration posterieure n accorde EXECUTE directement hors exception historique enregistree',
-  grantsDirectsInterdits.join(', ') || 'aucun',
+  grantsHorsRegistre.length === 0,
+  'chaque GRANT EXECUTE posterieur est declare au registre',
+  grantsHorsRegistre.map((g) => `${g.dossier}:${g.nom}`).join(', ') || 'aucun ecart',
 );
+console.log(`  info      ${ajouts.size} nom(s) ajoute(s) apres le registre, ${grantsDirects.length} GRANT direct(s), tous declares`);
+
+// R6 (derivation_droits_runtime) : le predicat d'identite systeme n'est pas un
+// droit du runtime. Il est appele par les corps SECURITY DEFINER, qui portent les
+// droits de leur proprietaire. S'il apparait ici, c'est qu'on l'a transforme en
+// droit du runtime sans usage.
 ok(
-  grantsDirectsAutorisesObserves.length === 1 && nomsSeed.has('tracefab_current_user_email'),
-  'l exception current_user_email est déjà dans le registre historique (aucun élargissement)',
-  grantsDirectsAutorisesObserves.join(', ') || 'exception absente',
+  !ajouts.has('tracefab_identite_systeme'),
+  'le predicat d identite systeme n est pas declare comme droit du runtime',
+  ajouts.has('tracefab_identite_systeme') ? 'declare' : 'absent, conforme',
 );
-console.log(`  info      ${ajouts.size} nom(s) ajoute(s) apres le registre`);
 
 // --- D. Module et registre concordent --------------------------------------
 console.log('\nD. Le module TypeScript et le registre concordent');
@@ -195,17 +216,49 @@ if (!url) {
   try {
     // 1. Une fonction autorisee doit exister, une seule fois, chez un
     //    proprietaire de confiance.
+    //
+    // LE PROPRIETAIRE DE CONFIANCE N'EST PAS `current_user` — MESURE DU
+    // 2026-11-12. La propriete est decrite par la migration elle-meme
+    // (`20261028120000_runtime_function_registry`, section 3.a) : les fonctions
+    // du registre appartiennent au PROPRIETAIRE DES MIGRATIONS ou a
+    // `tracefab_worker`, et a personne d'autre. Ecrire `current_user` revenait a
+    // faire dependre le controle de l'identite du BANC plutot que de celle du
+    // schema :
+    //
+    //   - en CI, la chaine est appliquee par `tracefab_migrator` (le job passe
+    //     `migrator_url` a `db:deploy:throwaway`), mais les controles tournent
+    //     avec le `DATABASE_URL` du job, `postgres`. `postgres` n'est PAS
+    //     proprietaire d'une seule des 81 fonctions du registre : la propriete
+    //     signalait 81 anomalies inexistantes ;
+    //   - sur un banc applique par `postgres`, la meme requete passe — d'ou un
+    //     faux vert qui ne prouvait rien sur la propriete reelle.
+    //
+    // Le proprietaire des migrations se LIT dans le catalogue : c'est celui de
+    // `tracefab_apply_runtime_function_grants()`, la fonction que la migration
+    // vient de creer dans ce role (et que la migration 3.c cite comme
+    // `proprietaires`). Aucun nom n'est code en dur, et le controle reste
+    // strict : un transfert de propriete vers un role non prevu reste detecte.
     const invalides = await client.query(`
+      with migrations as (
+        select pg_catalog.pg_get_userbyid(p.proowner) as proprietaire
+          from pg_catalog.pg_proc p
+          join pg_catalog.pg_namespace n on n.oid = p.pronamespace
+         where n.nspname = 'public'
+           and p.proname = 'tracefab_apply_runtime_function_grants'
+      ), confiance as (
+        select proprietaire from migrations
+        union select 'tracefab_worker'
+      )
       select r.name,
              count(p.oid) filter (where n.nspname = 'public') as trouvees,
-             coalesce(bool_or(pg_get_userbyid(p.proowner) not in (current_user, 'tracefab_worker'))
+             coalesce(bool_or(pg_get_userbyid(p.proowner) not in (select proprietaire from confiance))
                       filter (where n.nspname = 'public'), false) as proprietaire_suspect
         from public.tracefab_runtime_function_registry r
         left join pg_proc p on p.proname = r.name and p.prokind = 'f'
         left join pg_namespace n on n.oid = p.pronamespace
        group by r.name
       having count(p.oid) filter (where n.nspname = 'public') <> 1
-          or coalesce(bool_or(pg_get_userbyid(p.proowner) not in (current_user, 'tracefab_worker'))
+          or coalesce(bool_or(pg_get_userbyid(p.proowner) not in (select proprietaire from confiance))
                       filter (where n.nspname = 'public'), false)
        order by r.name`);
     ok(
@@ -231,8 +284,30 @@ if (!url) {
     );
 
     // 3. Aucune fonction non autorisee n est executable par le runtime.
+    //
+    // MESURE DU 06/11 — QUATRIEME NATURE DE FONCTION : CELLES D'UNE EXTENSION.
+    //
+    // La requete ne regardait que le nom et l'ACL. Sur une base dont le
+    // proprietaire des objets est un role ordinaire, elle signalait 37 fonctions
+    // `pgcrypto` (`hmac`, `digest`, `gen_random_uuid`…) comme « hors registre ».
+    // Deux constats, mesures sur la meme base :
+    //
+    //   - ces fonctions ne sont pas ecrites par le depot : elles appartiennent a
+    //     une EXTENSION, et c'est l'hebergeur qui l'installe (en Neon, pgcrypto
+    //     est presente avant la premiere migration) ;
+    //   - leur ACL est celle par DEFAUT du schema, posee par PostgreSQL a
+    //     `CREATE EXTENSION` (« PUBLIC peut executer »), pas un GRANT du depot.
+    //     Le depot n'a jamais accorde ce droit et ne peut pas le retirer sans
+    //     `DROP EXTENSION`, ce qui detruirait les donnees chiffrees.
+    //
+    // Les compter comme « droits du runtime » est donc un FAUX POSITIF qui
+    // masque le vrai controle. On les isole par leur appartenance a une
+    // extension (`pg_depend.deptype = 'e'`), et on les COMPTE separement — sans
+    // les ignorer : un chiffre non nul reste affiche, pour que personne ne
+    // confonde « hors perimetre mesure » et « perimetre propre ».
     const horsRegistre = await client.query(`
-      select p.proname
+      select p.proname,
+             exists (select 1 from pg_depend d where d.objid = p.oid and d.deptype = 'e') as extension
         from pg_proc p
         join pg_namespace n on n.oid = p.pronamespace
        where n.nspname = 'public'
@@ -240,11 +315,18 @@ if (!url) {
          and has_function_privilege('tracefab_app', p.oid, 'EXECUTE')
          and p.proname not in (select name from public.tracefab_runtime_function_registry)
        order by 1`);
+    const horsRegistreDepot = horsRegistre.rows.filter((r) => !r.extension).map((r) => r.proname);
+    const horsRegistreExtensions = horsRegistre.rows.filter((r) => r.extension).map((r) => r.proname);
     ok(
-      horsRegistre.rowCount === 0,
-      'aucune fonction executable par le runtime hors registre',
-      horsRegistre.rows.map((r) => r.proname).join(', ') || 'aucune',
+      horsRegistreDepot.length === 0,
+      'aucune fonction du depot executable par le runtime hors registre',
+      horsRegistreDepot.join(', ') || 'aucune',
     );
+    console.log(`  info      ${horsRegistreExtensions.length} fonction(s) d extension executable(s)`);
+    if (horsRegistreExtensions.length > 0) {
+      console.log(`            ${[...new Set(horsRegistreExtensions)].slice(0, 8).join(', ')}… —`
+        + ' ACL par defaut posee par CREATE EXTENSION, hors depot, non retirable sans DROP EXTENSION');
+    }
 
     // 4. Aucune fonction du registre n est ouverte a PUBLIC.
     const publiques = await client.query(`

@@ -13,6 +13,11 @@
  * `tracefab.worker_context`, ecrite avec un POINT, satisfaisait le motif ecrit
  * avec un BLANC SOULIGNE.
  *
+ * Portee : un LIKE sur `v_definition` immediatement issu de
+ * `pg_get_constraintdef(oid)` pour un `conname` determine ne scanne pas un
+ * ensemble d'identifiants. Ce controle ponctuel de DDL est exclu du corpus
+ * global, avec un cas de test dedie ; les scans de politiques restent controles.
+ *
  * CE QUE CE TEST CHERCHE, ET POURQUOI IL NE SIGNALE PAS TOUT
  *
  * Signaler tout motif contenant `_` rendrait le controle inutilisable : la
@@ -82,6 +87,13 @@ const texteTotal = [...corpus.values()].join('\n');
  */
 const MOTIF = /(['"])(%[^'"%]*%)\1/g;
 
+function estVerificationDefinitionContrainte(lignes, index) {
+  const contexte = lignes.slice(Math.max(0, index - 12), index + 1).join('\n');
+  return /\bpg_get_constraintdef\s*\(\s*oid\s*\)\s+INTO\s+v_definition/i.test(contexte)
+    && /\bconname\s*=\s*'[^']+'/i.test(contexte)
+    && /\bv_definition\b/i.test(lignes[index]);
+}
+
 const suspects = [];
 for (const [fichier, texte] of corpus) {
   // Les commentaires SQL sont conserves : un motif cite dans un commentaire
@@ -102,6 +114,7 @@ for (const [fichier, texte] of corpus) {
      * presence d'un mot-cle de requete sur la MEME ligne.
      */
     if (!/\b(SELECT|WHERE|AND|OR|WHEN|qual|with_check|prosrc|pg_get_expr)\b/i.test(sansCommentaire)) return;
+    if (estVerificationDefinitionContrainte(lignes, i)) return;
     for (const m of sansCommentaire.matchAll(MOTIF)) {
       const corps = m[2].slice(1, -1);
       if (!/^[a-z][a-z0-9_]*$/.test(corps)) continue;
@@ -157,6 +170,17 @@ console.log('\nLe detecteur lui-meme');
     juger("WHERE prosrc LIKE '%reviewed_at%'", 'reviewed_at') === 'ignore');
   ok('un motif sans souligne est IGNORE',
     juger("WHERE name LIKE '%owner%'", 'owner') === 'ignore');
+  const controleContrainte = [
+    'SELECT pg_get_constraintdef(oid) INTO v_definition',
+    'FROM pg_constraint',
+    "WHERE conrelid = 'public.t'::regclass",
+    "AND conname = 't_auth_type_check';",
+    "IF v_definition NOT LIKE '%api_key%' THEN",
+  ];
+  ok('un LIKE sur une definition de contrainte ciblee est isole du scan global',
+    estVerificationDefinitionContrainte(controleContrainte, 4));
+  ok('un LIKE sur un scan de politiques reste analyse',
+    !estVerificationDefinitionContrainte(["SELECT qual FROM pg_policies WHERE qual LIKE '%api_key%'"], 0));
 }
 
 // --- 5. Les cas reels deja corriges restent corriges ---------------------
