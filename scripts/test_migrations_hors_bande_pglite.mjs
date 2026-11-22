@@ -47,6 +47,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { executerMigrationPglite } from './lib/pglite-worker-runner.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const MIGRATIONS = path.join(root, 'prisma/migrations');
@@ -273,7 +274,7 @@ let appliqueesD = 0;
 for (const d of dossiers) {
   if (estCible(d)) continue;
   try {
-    await baseD.exec(lire(d));
+    await executerMigrationPglite(baseD, d, lire(d));
     appliqueesD += 1;
   } catch (e) {
     premierEchec = { migration: d, code: e.code, message: String(e.message || e) };
@@ -318,7 +319,7 @@ const INTERCALEES = INTERVALLE.filter((d) => !estCible(d));
 const RESTE = dossiers.filter((d) => d > CIBLES[CIBLES.length - 1][0] && !estCible(d));
 
 const baseA = await nouvelleBase();
-for (const d of PREFIXE) await baseA.exec(lire(d));
+for (const d of PREFIXE) await executerMigrationPglite(baseA, d, lire(d));
 ok(`${PREFIXE.length} migrations de prefixe appliquees : prefixe + cinq + reste = la chaine entiere`,
   PREFIXE.length >= 20 && PREFIXE.length + INTERVALLE.length + RESTE.length === dossiers.length,
   `${PREFIXE.length} + ${INTERVALLE.length} + ${RESTE.length} != ${dossiers.length}`);
@@ -327,10 +328,10 @@ const empreinteA = await empreinte(baseA);
 
 // Chemin « Prisma » : une transaction par fichier.
 const baseB = await nouvelleBase();
-for (const d of PREFIXE) await baseB.exec(lire(d));
+for (const d of PREFIXE) await executerMigrationPglite(baseB, d, lire(d));
 const resultatsB = [];
 for (const [nom] of CIBLES) resultatsB.push([nom, await appliquerEnTransaction(baseB, lire(nom))]);
-for (const d of INTERCALEES) await baseB.exec(lire(d));
+for (const d of INTERCALEES) await executerMigrationPglite(baseB, d, lire(d));
 ok('les cinq passent par le chemin « Prisma » (une transaction par fichier)',
   resultatsB.every(([, r]) => r.ok),
   JSON.stringify(resultatsB.filter(([, r]) => !r.ok).map(([n, r]) => [n, r.message])));
@@ -338,10 +339,10 @@ const empreinteB5 = await empreinte(baseB);
 
 // Chemin « lanceur » : instruction par instruction, autocommit, decoupeur copie.
 const baseC = await nouvelleBase();
-for (const d of PREFIXE) await baseC.exec(lire(d));
+for (const d of PREFIXE) await executerMigrationPglite(baseC, d, lire(d));
 const resultatsC = [];
 for (const [nom] of CIBLES) resultatsC.push([nom, await appliquerCommeLeLanceur(baseC, lire(nom))]);
-for (const d of INTERCALEES) await baseC.exec(lire(d));
+for (const d of INTERCALEES) await executerMigrationPglite(baseC, d, lire(d));
 ok('les cinq passent par le chemin « lanceur » (instruction par instruction)',
   resultatsC.every(([, r]) => r.ok),
   JSON.stringify(resultatsC.filter(([, r]) => !r.ok).map(([n, r]) => [n, r.message])));
@@ -374,8 +375,8 @@ ok('les fonctions SECURITY DEFINER sont comparees avec leur search_path et leur 
 
 // Puis la chaine ENTIERE, pour verifier que la difference de chemin ne se
 // propage pas : apres les cinq, tout le reste est applique de la meme facon.
-for (const d of RESTE) await baseB.exec(lire(d));
-for (const d of RESTE) await baseC.exec(lire(d));
+for (const d of RESTE) await executerMigrationPglite(baseB, d, lire(d));
+for (const d of RESTE) await executerMigrationPglite(baseC, d, lire(d));
 ok(`${RESTE.length} migrations de reste appliquees apres les cinq`, RESTE.length > 0, `${RESTE.length}`);
 const bFin = await empreinte(baseB);
 const cFin = await empreinte(baseC);
@@ -397,8 +398,8 @@ ok(`l intervalle contient ${INTERCALEES.length} migration(s) hors des cinq : ${I
 // intercalee ne cree aucune des douze tables : sa contribution est alors
 // etrangere au sujet, et ne peut pas fabriquer le resultat.
 const baseE = await nouvelleBase();
-for (const d of PREFIXE) await baseE.exec(lire(d));
-for (const d of INTERCALEES) await baseE.exec(lire(d));
+for (const d of PREFIXE) await executerMigrationPglite(baseE, d, lire(d));
+for (const d of INTERCALEES) await executerMigrationPglite(baseE, d, lire(d));
 const empreinteE = await empreinte(baseE);
 ok('la migration intercalee ne cree aucune des douze tables (l ecart mesure vient bien des cinq)',
   objetsDesCinq.every((t) => !empreinteE.tables.has(t)),
@@ -454,7 +455,7 @@ const sqlCassee = `${lire('20261006250000_universal_supplier_passport')}
 SELECT * FROM table_qui_n_existe_pas;`;
 
 const baseAtomique = await nouvelleBase();
-for (const d of PREFIXE) await baseAtomique.exec(lire(d));
+for (const d of PREFIXE) await executerMigrationPglite(baseAtomique, d, lire(d));
 const echecTransaction = await appliquerEnTransaction(baseAtomique, sqlCassee);
 ok('INJECTION : le chemin « Prisma » echoue bien (sinon le test ne prouve rien)',
   echecTransaction.ok === false && echecTransaction.code === '42P01',
@@ -465,7 +466,7 @@ ok('chemin « Prisma » : la transaction annulee ne laisse AUCUNE table',
   fuiteB.rows[0].n === 0, `${fuiteB.rows[0].n}`);
 
 const baseLanceur = await nouvelleBase();
-for (const d of PREFIXE) await baseLanceur.exec(lire(d));
+for (const d of PREFIXE) await executerMigrationPglite(baseLanceur, d, lire(d));
 const echecLanceur = await appliquerCommeLeLanceur(baseLanceur, sqlCassee);
 ok('INJECTION : le chemin « lanceur » echoue aussi', echecLanceur.ok === false,
   `${echecLanceur.code} ${String(echecLanceur.message).slice(0, 90)}`);

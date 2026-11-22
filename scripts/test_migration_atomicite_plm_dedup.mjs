@@ -33,6 +33,7 @@ import { fileURLToPath } from 'node:url';
 import pg from 'pg';
 import { sslDepuisUrl } from './lib/pg-ssl.mjs';
 import { deriverUrl, creerBaseEphemere } from './lib/ephemeral-db.mjs';
+import { appliquerCommeLeRunner } from './lib/appliquer_chaine_comme_le_runner.mjs';
 import { requireThrowawayDb } from './lib/require-throwaway-db.mjs';
 
 const RACINE = dirname(dirname(fileURLToPath(import.meta.url)));
@@ -141,7 +142,11 @@ try {
     if (d === CIBLE) continue;
     const sql = readFileSync(join(MIG_DIR, d, 'migration.sql'), 'utf8');
     if (!sql.trim() || sql.trim() === '-- This is an empty migration.') continue;
-    await client.query(sql);
+    // Comme le runner : transaction par migration + declaration du bail worker
+    // pour les six migrations qui l exigent. Sinon la chaine s arretait AVANT
+    // la migration etudiee et cette suite de mesures d atomicite ne pouvait
+    // pas atteindre son sujet (mesure du 2026-11-12).
+    await appliquerCommeLeRunner(client, d, sql);
   }
   console.log(`  ${dossiers.length - 1} migrations appliquées, ${CIBLE} exclue`);
 

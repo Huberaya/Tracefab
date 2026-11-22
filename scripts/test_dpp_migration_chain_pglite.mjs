@@ -35,6 +35,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { executerMigrationPglite } from './lib/pglite-worker-runner.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const MIGRATIONS = path.join(root, 'prisma/migrations');
@@ -77,7 +78,7 @@ for (const dir of dirs) {
   const file = path.join(MIGRATIONS, dir, 'migration.sql');
   if (!fs.existsSync(file)) continue;
   try {
-    await db.exec(fs.readFileSync(file, 'utf8'));
+    await executerMigrationPglite(db, dir, fs.readFileSync(file, 'utf8'));
     applied += 1;
   } catch (error) {
     failed.push([dir, String(error.message).split('\n')[0]]);

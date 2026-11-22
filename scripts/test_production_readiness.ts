@@ -106,11 +106,24 @@ check(`les ${used.size} variables lues par api/ sont documentees`,
   undocumented.length === 0,
   undocumented.length ? `absentes de ${CONTRACT} : ${undocumented.join(', ')}` : '');
 
+
 /* ------------------------------------- 4. sondes et documents d exploitation */
 
 const readiness = read('api/_routes/internal/p2-readiness.ts');
 check('la readiness distingue configuration et disponibilite',
   readiness.includes("probe === 'live'") && readiness.includes('runLiveProbes'));
+
+// La documentation de `TRACEFAB_PREVIEW_DB_ENDPOINT` disait « préfixe … par ex.
+// ep-xxxx », alors que le code compare l'EGALITE du nom d'hote complet. Une
+// valeur saisie selon la doc echouait donc a la comparaison et produisait un
+// FAIL ressemblant a « mauvaise base ». Une doc qui ne decrit pas le code n'est
+// pas une doc incomplete : c'est une instruction fausse. On verrouille les deux
+// bouts : le code compare bien l'egalite normalisee, et la doc le dit.
+check('la conformite d hote compare l egalite, pas un prefixe',
+  readiness.includes('normaliserHote(hote) === normaliserHote(attendu)'));
+check('la doc de TRACEFAB_PREVIEW_DB_ENDPOINT ne promet pas un prefixe',
+  !/`TRACEFAB_PREVIEW_DB_ENDPOINT`[^\n]*Pr[ée]fixe/.test(contract),
+  'la ligne documente un prefixe alors que le code exige le nom d hote complet');
 check('le mode par defaut reste compatible', readiness.includes('configurationOnly: true'));
 
 const probes = read('api/_lib/readiness-probes.ts');

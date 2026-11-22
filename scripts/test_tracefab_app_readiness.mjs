@@ -35,7 +35,9 @@
  *
  * Toutes les ecritures sont annulees par ROLLBACK. Aucune donnee n'est laissee.
  */
+import { randomBytes } from 'node:crypto';
 import pg from 'pg';
+import { signerJetonSysteme } from './lib/identite_systeme_test.mjs';
 
 const ADMIN_URL = process.env.DATABASE_URL;
 const APP_URL = process.env.TF_RLS_APP_URL;
@@ -170,8 +172,39 @@ try {
   // nu qui ne correspond a aucune route — et l'ancien INSERT nu, lui, doit
   // desormais echouer : c'est le privilege qui a ete retire, pas seulement le
   // drapeau de session.
+  //
+  // P10.7 : ces trois fonctions sont des OPERATIONS SYSTEME. Depuis le 05/11
+  // elles refusent toute origine non prouvee (42501 authentication_required) :
+  // un role applicatif qui les appelle « parce qu'il a le droit EXECUTE » etait
+  // exactement le chemin de l'escalade mesuree. Le test doit donc rejouer le
+  // chemin REEL, qui comporte deux choses : le contexte worker ET un jeton
+  // systeme signe. Poser seulement le GUC decrirait une application qui
+  // n'existe plus.
+  //
+  // La cle est tiree au hasard et provisoire : elle ne sert qu'a signer, elle
+  // est inseree pour la duree de la suite, et elle est retiree a la fin. Le
+  // role applicatif ne peut pas la lire (mesure : 42501), donc la posseder
+  // ici ne retire rien au controle.
+  const cleSysteme = randomBytes(32).toString('hex');
+  const admin = new pg.Client({ connectionString: ADMIN_URL });
+  await admin.connect();
+  let jetonSysteme;
+  try {
+    await admin.query(
+      `INSERT INTO public.tracefab_identity_cles (version, secret, actif)
+       VALUES (97001, decode($1, 'hex'), true)
+       ON CONFLICT (version) DO UPDATE SET secret = EXCLUDED.secret, actif = true`,
+      [cleSysteme]);
+    jetonSysteme = signerJetonSysteme({
+      cle: cleSysteme,
+      expiration: Math.floor(Date.now() / 1000) + 600,
+    });
+  } finally {
+    await admin.end();
+  }
+
   const stamp = Date.now();
-  const ecritureWorker = await dansContexte({}, async (c) => {
+  const ecritureWorker = await dansContexte({ 'tracefab.identity_systeme': jetonSysteme }, async (c) => {
     const u = await c.query(`SELECT id, email FROM tracefab_upsert_clerk_user($1, $2, 'Sonde worker')`,
       [`sonde-worker-${stamp}`, `sonde-worker-${stamp}@sonde.invalid`]);
     const o = await c.query(`SELECT * FROM tracefab_sync_clerk_organization($1, $2, $3, 'brand'::organization_type)`,
@@ -182,8 +215,61 @@ try {
     return { users: u.rowCount, organisations: o.rowCount, adhesions: m.rowCount };
   });
   verifier(ecritureWorker.users === 1 && ecritureWorker.organisations === 1 && ecritureWorker.adhesions === 1,
-    'contexte WORKER : le provisionnement Clerk passe par ses fonctions nommees',
+    'contexte SYSTEME signe : le provisionnement Clerk passe par ses fonctions nommees',
     `users=${ecritureWorker.users} organizations=${ecritureWorker.organisations} memberships=${ecritureWorker.adhesions}`);
+
+  // Controle negatif P10.7, dans la meme suite : SANS jeton systeme, le meme
+  // appel doit etre refuse — MAIS SEULEMENT EN MODE STRICT.
+  //
+  // C'est le point ou une assertion « vraie partout » serait fausse : en mode
+  // permissif (etat d'une base neuve, donc de la CI), la garde laisse
+  // deliberement passer — c'est la transition voulue, et c'est ce que
+  // `docs/security/2026-11-05-p107-identite-systeme.md` § 3 documente. Ecrire
+  // ici `attendu = 42501` sans condition ferait echouer la suite pour une raison
+  // d'environnement, ce qui est exactement le genre de rouge qu'on apprend a
+  // ignorer.
+  //
+  // On mesure donc l'ETAT, puis on exige le comportement qui correspond :
+  // strict -> refus ; permissif -> acceptation EXPLICITE, nommee comme telle, et
+  // renvoyee a la suite qui arme le mode (`test:p107:identite-systeme`).
+  const strict = (await (async () => {
+    const c = new pg.Client({ connectionString: ADMIN_URL });
+    await c.connect();
+    try {
+      return (await c.query(`SELECT systeme_strict FROM public.tracefab_identity_politique WHERE singleton`))
+        .rows[0]?.systeme_strict === true;
+    } finally {
+      await c.end();
+    }
+  })());
+  let sansJeton = null;
+  try {
+    await dansContexte({}, async (c) => {
+      await c.query(`SELECT * FROM tracefab_sync_clerk_organization($1, $2, $3, 'brand'::organization_type)`,
+        [`sonde-sans-jeton-${stamp}`, 'Sans jeton', 'Sans jeton']);
+    });
+    sansJeton = 'acceptee';
+  } catch (e) {
+    sansJeton = e.code || e.message.slice(0, 40);
+  }
+  if (strict) {
+    verifier(sansJeton === '42501',
+      'mode STRICT : sans jeton systeme, la meme operation est refusee (42501 authentication_required)',
+      String(sansJeton));
+  } else {
+    verifier(sansJeton === 'acceptee',
+      'mode PERMISSIF (base neuve) : sans jeton, l operation passe encore — transition assumee, refus mesure par test:p107:identite-systeme',
+      String(sansJeton));
+  }
+
+  // Et la cle est retiree : la suite ne laisse pas de secret derriere elle.
+  const menage = new pg.Client({ connectionString: ADMIN_URL });
+  await menage.connect();
+  try {
+    await menage.query(`DELETE FROM public.tracefab_identity_cles WHERE version = 97001`);
+  } finally {
+    await menage.end();
+  }
 
   // Controle negatif : l'ecriture DIRECTE sur `users` sous le role applicatif
   // doit echouer. Sans lui, on ne saurait pas si le privilege a vraiment ete
