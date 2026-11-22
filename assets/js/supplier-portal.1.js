@@ -15,7 +15,7 @@
         return T.t('portal.' + key, null) || T.t('shared.' + key, key);
       }
 
-      const state = { clerk:null, loading:true, configError:null, user:null, memberships:[], organizations:[], selectedOrganizationId:null, supplier:null, profile:null, requests:[], sites:[], certifications:[], certificationCatalog:[], materials:[], schemaCatalog:[], documents:[], shares:[], dataPoints:[], members:[], memberInvitations:[], canManageMembers:false, dataPointDefinitions:{}, quality:null, caps:[], passport:null, passportRequests:[], massBalance:{ certificates:[], reconciliations:[] }, optionalErrors:[], selectedRequest:null, view:'overview', toast:null, lang:(typeof window !== 'undefined' && window.TF_I18N ? window.TF_I18N.lang : null) || (typeof localStorage !== 'undefined' ? localStorage.getItem('tracefab_lang') : null) || 'en', demo:new URLSearchParams(location.search).has('demo') };
+      const state = { clerk:null, loading:true, configError:null, user:null, memberships:[], organizations:[], selectedOrganizationId:null, supplier:null, profile:null, requests:[], sites:[], certifications:[], certificationCatalog:[], materials:[], schemaCatalog:[], documents:[], shares:[], dataPoints:[], members:[], memberInvitations:[], canManageMembers:false, dataPointDefinitions:{}, quality:null, caps:[], passport:null, passportRequests:[], massBalance:{ certificates:[], reconciliations:[] }, optionalErrors:[], selectedRequest:null, view:'overview', toast:null, toastTimer:null, lang:(typeof window !== 'undefined' && window.TF_I18N ? window.TF_I18N.lang : null) || (typeof localStorage !== 'undefined' ? localStorage.getItem('tracefab_lang') : null) || 'en', demo:new URLSearchParams(location.search).has('demo') };
   // Status chips used to read French in every language because this was a
   // hardcoded map. They now resolve through the catalogue.
   const STATUS_KEYS = {
@@ -59,7 +59,14 @@
       const locale = () => BCP47[state.lang] || 'en-GB';
       const date = (value) => value ? new Intl.DateTimeFormat(locale(), { dateStyle:'medium' }).format(new Date(value)) : '—';
       const moneyless = (value) => Number(value || 0).toLocaleString(locale(), { maximumFractionDigits:0 });
-      function notify(message, isError = false) { state.toast = { message, isError }; render(); setTimeout(() => { state.toast = null; render(); }, 3500); }
+      // Le minuteur du toast est annule avant chaque nouvelle notification. Sans
+      // cela, deux notifications rapprochees laissent vivant le minuteur de la
+      // premiere : il efface le toast de la seconde au bout de 3500 ms, et le
+      // message affiche disparait avant d'avoir ete lu — ou avant que le test
+      // ne l'ait observe. Mesure : test:p1:browser echouait par intermittence
+      // sur la derniere assertion du parcours, la soumission, quand elle suivait
+      // un autre toast de pres.
+      function notify(message, isError = false) { state.toast = { message, isError }; if (state.toastTimer) clearTimeout(state.toastTimer); render(); state.toastTimer = setTimeout(() => { state.toast = null; state.toastTimer = null; render(); }, 3500); }
       async function api(path, options = {}) { const headers = { 'Content-Type':'application/json', ...(options.headers || {}) }; if (!state.demo && state.selectedOrganizationId) headers['X-Tracefab-Organization-Id'] = state.selectedOrganizationId; if (!state.demo && state.clerk?.session) { const token = await state.clerk.session.getToken(); if (token) headers.Authorization = `Bearer ${token}`; } const response = await fetch(path, { ...options, headers }); const payload = await response.json().catch(() => ({})); if (!response.ok) throw new Error(payload.error || `request_failed_${response.status}`); return payload; }
 
       function demoData() {

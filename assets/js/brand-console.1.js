@@ -95,6 +95,7 @@
         catalogImport: { filename: '', content: '', preview: null, job: null, loading: false },
         supplierImport: { filename: '', content: '', preview: null, job: null, delivery: null, loading: false },
         toast: null,
+        toastTimer: null,
         // Demonstration sur opt-in explicite : ?demo=0 ne doit pas basculer
         // la console dans le jeu de demonstration.
         demo: new URLSearchParams(location.search).get('demo') === '1',
@@ -366,10 +367,14 @@
           </nav>`;
       }
 
+      // Meme correctif que dans supplier-portal.1.js : sans annulation du
+      // minuteur precedent, deux notifications rapprochees font disparaitre le
+      // second message au bout de 3500 ms, efface par le minuteur du premier.
       function notify(message, isError = false) {
         state.toast = { message, isError };
+        if (state.toastTimer) clearTimeout(state.toastTimer);
         render();
-        setTimeout(() => { state.toast = null; render(); }, 3500);
+        state.toastTimer = setTimeout(() => { state.toast = null; state.toastTimer = null; render(); }, 3500);
       }
 
       const TENANT_HEADER = 'X-Tracefab-Organization-Id';
