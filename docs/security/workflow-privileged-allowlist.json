@@ -19,14 +19,6 @@
   },
   "//secretUsingWorkflows": "Workflows qui lisent le contexte `secrets`. Un secret lu par un workflow declenche sur `push` de n'importe quelle branche est accessible a tout contributeur ayant le droit d'ecriture : c'est le mecanisme de l'incident 2C.",
   "secretUsingWorkflows": {
-    "vercel-log-search.yml": {
-      "secret": "VERCEL_READONLY_TOKEN",
-      "portee": "job `recherche` uniquement ; exécution limitée à `refs/heads/main` par condition de job ; secret d'environnement `vercel-log-search` avec relecteurs obligatoires ; déclenchement manuel uniquement, aucun déclencheur push",
-      "justification": "Retrouver la ligne de journal qui manque au diagnostic du chantier 5 : l'environnement d'analyse n'a aucun acces reseau a api.vercel.com (HTTP 000 mesure le 2026-10-12), donc la lecture doit partir d'un environnement qui l'a. Aucun autre moyen ne permet d'atteindre Vercel depuis la session d'analyse.",
-      "lecture_seule": "Le script appele n'emet que des GET. Une interception de test hors ligne (npm run test:diagnose-incident) prouve qu'aucune autre methode n'est construite et qu'aucun hote autre que api.vercel.com n'est joint.",
-      "rotation": "Jeton dedie, distinct de tout jeton d'administration, revoque des la ligne recuperee ; l'environnement ne doit pas conserver le secret apres le diagnostic.",
-      "journal": "La sortie est caviardee par le script : jeton, entetes d'autorisation, chaines de connexion, identifiants opaques."
-    },
     "clerk-tenant-journeys.yml": {
       "secret": "CLERK_SECRET_KEY",
       "portee": "job clerk-tenant-journeys uniquement ; workflow_dispatch seulement ; job refuse toute reference autre que refs/heads/main ; environnement tracefab-clerk-test avec relecteur obligatoire",
@@ -34,6 +26,14 @@
       "lecture_seule": "Le script appelle les vrais gestionnaires applicatifs et n'utilise aucune URL Vercel/Neon. Les fixtures SQL sont creees uniquement dans le service PostgreSQL ephemere du runner.",
       "rotation": "Cle d'instance de test uniquement. Ne jamais reutiliser une cle sk_live_ ; conserver le secret dans l'environnement GitHub protege tracefab-clerk-test, jamais dans le depot ou les journaux.",
       "journal": "Le harnais refuse sk_live_ et n'imprime pas la cle. Les resultats affichent uniquement les statuts HTTP, les compteurs et les verdicts de test."
+    },
+    "p107-preuves-runtime.yml": {
+      "secret": "TRACEFAB_RUNTIME_PROBE_TOKEN",
+      "portee": "job \"preuves-runtime\" uniquement ; aucun declencheur planifie ; la sonde n accepte le jeton qu en Preview ET sur une branche de BRANCHES_SONDE_RUNTIME, et le job refuse de continuer si le SHA deploye n est pas exactement celui du commit, ou si la branche n est pas dans la liste gelee ; la Production est fermee par la premiere condition du code (VERCEL_ENV === preview)",
+      "justification": "P10.7 exige des preuves de runtime qui ne peuvent etre obtenues qu en interrogeant le processus Vercel reellement deploye. Un script local, un test CI ou une variable declaree ne prouvent rien : la sonde GET /api/internal/p2/readiness?identity=1 est le seul point d entree qui rende l identite PostgreSQL de la connexion applicative et l aller-retour de signature avec la base.",
+      "lecture_seule": "Le script n emet que des GET de diagnostic. Aucune ecriture, aucune migration, aucun deploiement, aucune modification de donnee : les trois requetes sans jeton prouvent d abord que la route refuse, avant tout appel authentifie.",
+      "rotation": "Jeton opaque dedie a la sonde, identique dans GitHub et dans Vercel Preview. Il ne donne acces a aucune donnee metier et ne peut etre utilise qu en Preview sur une branche autorisee. A revoquer et regenerer apres la campagne P10.7.",
+      "journal": "Le script n affiche jamais le jeton : il ne lit que le FAIT de sa presence. Les en-tetes d authentification ne sont jamais imprimes, et la reponse est filtree avant d etre journalisee. Les artefacts ne contiennent aucun secret ni fragment."
     },
     "p11-preview-p107-migration.yml": {
       "secret": "TRACEFAB_P11_DATABASE_ADMIN_URL",
@@ -51,13 +51,21 @@
       "rotation": "Secret dedie a Preview P11, jamais reutilise pour Production.",
       "journal": "Les scripts ne journalisent ni URL, ni mot de passe, ni cle HMAC ; la connexion admin n est accessible qu apres approbation de l environnement."
     },
-    "p107-preuves-runtime.yml": {
-      "secret": "TRACEFAB_RUNTIME_PROBE_TOKEN",
-      "portee": "job \"preuves-runtime\" uniquement ; aucun declencheur planifie ; la sonde n accepte le jeton qu en Preview ET sur une branche de BRANCHES_SONDE_RUNTIME, et le job refuse de continuer si le SHA deploye n est pas exactement celui du commit, ou si la branche n est pas dans la liste gelee ; la Production est fermee par la premiere condition du code (VERCEL_ENV === preview)",
-      "justification": "P10.7 exige des preuves de runtime qui ne peuvent etre obtenues qu en interrogeant le processus Vercel reellement deploye. Un script local, un test CI ou une variable declaree ne prouvent rien : la sonde GET /api/internal/p2/readiness?identity=1 est le seul point d entree qui rende l identite PostgreSQL de la connexion applicative et l aller-retour de signature avec la base.",
-      "lecture_seule": "Le script n emet que des GET de diagnostic. Aucune ecriture, aucune migration, aucun deploiement, aucune modification de donnee : les trois requetes sans jeton prouvent d abord que la route refuse, avant tout appel authentifie.",
-      "rotation": "Jeton opaque dedie a la sonde, identique dans GitHub et dans Vercel Preview. Il ne donne acces a aucune donnee metier et ne peut etre utilise qu en Preview sur une branche autorisee. A revoquer et regenerer apres la campagne P10.7.",
-      "journal": "Le script n affiche jamais le jeton : il ne lit que le FAIT de sa presence. Les en-tetes d authentification ne sont jamais imprimes, et la reponse est filtree avant d etre journalisee. Les artefacts ne contiennent aucun secret ni fragment."
+    "preview-http-journeys.yml": {
+      "secret": "CLERK_SECRET_KEY (sk_test_), TF_PREVIEW_USER_ALPHA, TF_PREVIEW_USER_BETA, TF_PREVIEW_ORG_ALPHA, TF_PREVIEW_ORG_BETA, VERCEL_AUTOMATION_BYPASS_SECRET",
+      "portee": "job parcours uniquement ; workflow_dispatch ou push uniquement sur arena/647ac97c-tracefab avec opt-in explicite TF_PREVIEW_PUSH_ENABLED=1 ; environnement tracefab-clerk-test avec relecteurs obligatoires et politique de branche ; origine, SHA, hote de stockage et environnement de test attestes par administrateur ; aucune lecture de secret de base de donnees",
+      "justification": "Les parcours HTTP authentifies sur une VERITABLE Preview exigent des identites Clerk de TEST et le secret de bypass Vercel autorise. Les workflows des PR #80/#91 sont lies a d autres branches et a des URLs obsolete ; les executer imposerait une fusion interdite. Ce workflow independant vit sur la branche de la PR #101 et conserve l approbation de l environnement protege.",
+      "lecture_seule": "Aucun acces direct a la base ni service local : requetes HTTP authentifiees vers la Preview, BAPI Clerk de test et URL presignees vers le seul hote de stockage approuve. Les ecritures sur l application sont refusees sans attestation explicite de l administrateur et verification des deux organisations de test preexistantes.",
+      "rotation": "Cles d une instance Clerk de TEST dediee, aucune donnee reelle ; secret de bypass Vercel limite aux deploiements de test et reversible depuis les reglages Vercel sans desactiver la protection de deploiement.",
+      "journal": "Statuts HTTP et chemins generiques, sans secret, cookies ni corps ; preuve JSON expurgee en artefact de courte retention, y compris en cas de pre-vol bloque ; aucune identite ou en-tete de bypass envoyee au stockage."
+    },
+    "vercel-log-search.yml": {
+      "secret": "VERCEL_READONLY_TOKEN",
+      "portee": "job `recherche` uniquement ; exécution limitée à `refs/heads/main` par condition de job ; secret d'environnement `vercel-log-search` avec relecteurs obligatoires ; déclenchement manuel uniquement, aucun déclencheur push",
+      "justification": "Retrouver la ligne de journal qui manque au diagnostic du chantier 5 : l'environnement d'analyse n'a aucun acces reseau a api.vercel.com (HTTP 000 mesure le 2026-10-12), donc la lecture doit partir d'un environnement qui l'a. Aucun autre moyen ne permet d'atteindre Vercel depuis la session d'analyse.",
+      "lecture_seule": "Le script appele n'emet que des GET. Une interception de test hors ligne (npm run test:diagnose-incident) prouve qu'aucune autre methode n'est construite et qu'aucun hote autre que api.vercel.com n'est joint.",
+      "rotation": "Jeton dedie, distinct de tout jeton d'administration, revoque des la ligne recuperee ; l'environnement ne doit pas conserver le secret apres le diagnostic.",
+      "journal": "La sortie est caviardee par le script : jeton, entetes d'autorisation, chaines de connexion, identifiants opaques."
     }
   },
   "//privilegedTriggers": "Declencheurs qui executent du code de branche avec les privileges de la branche de base (`pull_request_target`, `workflow_run`).",
@@ -76,11 +84,11 @@
       "pourquoi": "Le job qui ecrit dans le depot est soumis a un environnement GitHub. Sans regle de protection, un environnement ne protege rien : il faut y declarer des relecteurs obligatoires (Settings > Environments). Le workflow fonctionne sans ; il devient approuve avec.",
       "reglage_attendu": "Settings > Environments > figer-reference-visuelle > Required reviewers : le proprietaire. Branches autorisees : restrictions a definir selon le besoin."
     },
-    "vercel-log-search.yml": {
-      "environnement": "vercel-log-search",
-      "job": "recherche",
-      "pourquoi": "Le workflow ne doit pas lire ce secret sur un push de branche. Le déclenchement est manuel uniquement ; l'environnement avec relecteurs obligatoires doit être vérifié avant toute exécution, faute de quoi le secret pourrait être exposé.",
-      "reglage_attendu": "Settings > Environments > vercel-log-search > Required reviewers : le proprietaire. Le workflow refuse aussi toute référence autre que refs/heads/main. Sans le réglage de relecteurs, la condition de branche ne remplace pas l'approbation de l'environnement."
+    "p107-preuves-runtime.yml": {
+      "environnement": "Preview",
+      "job": "preuves-runtime",
+      "pourquoi": "Le secret de sonde TRACEFAB_RUNTIME_PROBE_TOKEN peut etre stocke au niveau de l environnement GitHub Preview plutot qu au niveau du depot : un secret d environnement n est lisible que par un job qui declare cet environnement. Sans cette declaration, le workflow ne recoit rien meme quand le secret existe.",
+      "reglage_attendu": "Settings > Environments > Preview > Required reviewers : le proprietaire. Branches autorisees : restreindre a release/p107-runtime-production-20261110. Le workflow fonctionne sans ; il devient approuve avec."
     },
     "p11-preview-p107-migration.yml": {
       "environnement": "tracefab-p11-preview",
@@ -94,11 +102,17 @@
       "pourquoi": "Le job applique une politique RLS additive a la seule branche Neon Preview P11 ; l approbation du proprietaire et la restriction de branche sont obligatoires.",
       "reglage_attendu": "Settings > Environments > tracefab-p11-preview > Required reviewers : le proprietaire ; Deployment branches : Selected branches, uniquement arena/b8fe1a44-tracefab. Secret TRACEFAB_P11_DATABASE_ADMIN_URL direct non pooler de Neon Preview P11."
     },
-    "p107-preuves-runtime.yml": {
-      "environnement": "Preview",
-      "job": "preuves-runtime",
-      "pourquoi": "Le secret de sonde TRACEFAB_RUNTIME_PROBE_TOKEN peut etre stocke au niveau de l environnement GitHub Preview plutot qu au niveau du depot : un secret d environnement n est lisible que par un job qui declare cet environnement. Sans cette declaration, le workflow ne recoit rien meme quand le secret existe.",
-      "reglage_attendu": "Settings > Environments > Preview > Required reviewers : le proprietaire. Branches autorisees : restreindre a release/p107-runtime-production-20261110. Le workflow fonctionne sans ; il devient approuve avec."
+    "preview-http-journeys.yml": {
+      "environnement": "tracefab-clerk-test",
+      "job": "parcours",
+      "pourquoi": "Le job lit des secrets de test : relecteurs obligatoires et politique de branche restent en vigueur. Le push est limite a la branche de mission et ne lance le job qu apres opt-in explicite par une variable de depot ADMIN. Tout job saute est NOT RUN.",
+      "reglage_attendu": "Settings > Environments > tracefab-clerk-test > Required reviewers : le proprietaire ; Deployment branches : restreintes aux branches de test autorisees. Ces reglages existent deja et ne doivent pas etre assouplis pour ce workflow."
+    },
+    "vercel-log-search.yml": {
+      "environnement": "vercel-log-search",
+      "job": "recherche",
+      "pourquoi": "Le workflow ne doit pas lire ce secret sur un push de branche. Le déclenchement est manuel uniquement ; l'environnement avec relecteurs obligatoires doit être vérifié avant toute exécution, faute de quoi le secret pourrait être exposé.",
+      "reglage_attendu": "Settings > Environments > vercel-log-search > Required reviewers : le proprietaire. Le workflow refuse aussi toute référence autre que refs/heads/main. Sans le réglage de relecteurs, la condition de branche ne remplace pas l'approbation de l'environnement."
     }
   },
   "//horsPerimetre": "Le workflow `figer-reference-visuelle.yml` porte `contents: write` mais n'existe pas sur la branche de reference : il vit sur `arena/91844ee9-tracefab` (branche de la PR #34). Ce registre ne couvre que les fichiers presents dans l'arbre analyse. Sa neutralisation est preparee dans docs/security/PHASE-1-PIPELINE-GITHUB.md.",

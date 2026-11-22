@@ -296,7 +296,8 @@
     "test:p107:oracle-signature": "node scripts/test_p107_oracle_signature_pglite.mjs",
     "test:generer-cle-identite": "node scripts/test_generer_cle_identite.mjs",
     "test:p107:falsification-c2": "npx tsx scripts/test_p107_falsification_c2.mjs",
-    "test:p1:preview-deployment": "node scripts/test_preview_deployment_selection.mjs"
+    "test:p1:preview-deployment": "node scripts/test_preview_deployment_selection.mjs",
+    "test:preview-journeys:guards": "node scripts/test_preview_journeys_guards.mjs"
   },
   "devDependencies": {
     "@electric-sql/pglite": "^0.5.12",
