@@ -18,7 +18,7 @@ Rappel des contraintes permanentes :
 - **aucun basculement n'est dans une migration** : une chaîne de migrations ne
   peut pas exiger un secret CSPRNG sans casser toute base neuve ou éphémère ;
 - le préflight de propriété **D6** (`scripts/lib/preflight_proprietaires.mjs`) et
-  le préflight d'isolation worker Neon (`npm run db:preflight:worker-neon`) ne
+  le préflight d'isolation worker Neon (`scripts/provisionner_worker_neon.mjs --etat`) ne
   sont **jamais** contournés.
 
 ---
@@ -47,7 +47,7 @@ au relevé en lecture seule de Neon Production :
 | `20261102120000_identite_stricte_email_et_rotation` | `tracefab_current_user_email()` liée à l'identité signée en mode strict, attestations mass-balance sur `tracefab_current_user_id()`, rotation multi-clés actives | Exige le **propriétaire** des 6 fonctions remplacées (préflight D6) |
 | `20261105120000` → `20261106000000` (série `active_tenant_*`) | fermeture RLS et gardes `SECURITY DEFINER` sur le tenant actif (`tracefab_in_active_tenant`) ; `20261105235900` transfère `tracefab_current_user_email()` à `tracefab_worker` | `20261105235900` exige le bail worker temporaire |
 | `20261106130000_identite_systeme_signee` | colonne `systeme_strict = false`, `tracefab_identite_systeme_jeton_valide(text)`, `tracefab_identite_systeme()`, garde d'origine sur les **13** opérations système, sonde `tracefab_sec_probe_identite_systeme()` | Le registre runtime atteint **93** fonctions autorisées (84 + 9 ajouts) |
-| `20261108119900_assert_neon_worker_preflight` | **garde fail-closed Neon** : refuse si `cloud_admin` a laissé un grant `ADMIN OPTION` direct de `tracefab_migrator` sur `tracefab_worker` non isolé sous `tracefab_worker_legacy` | Sur Neon, exécuter `npm run db:preflight:worker-neon` avant la chaîne |
+| `20261108119900_assert_neon_worker_preflight` | **garde fail-closed Neon** : refuse si `cloud_admin` a laissé un grant `ADMIN OPTION` direct de `tracefab_migrator` sur `tracefab_worker` non isolé sous `tracefab_worker_legacy` | Sur Neon, vérifier `--etat` puis exécuter `scripts/provisionner_worker_neon.mjs --appliquer` avant la chaîne |
 | `20261108120100` & `20261108120200` | transfert de `tracefab_sync_clerk_membership` et `tracefab_revoke_clerk_membership` à `tracefab_worker` + droits minimaux `organization_memberships` + nettoyage d'appartenance | Bail worker temporaire dans la transaction |
 | `20261108120700_assert_worker_membership_revoked` | **garde terminale** : échoue fermé si `tracefab_migrator` ou `tracefab_app` est encore membre de `tracefab_worker`, ou si `tracefab_migrator` est `SUPERUSER` | Toute appartenance temporaire doit être révoquée avant cette migration |
 | `20261109170000_p107_expiration_floor` | borne temporelle `floor(extract(epoch FROM now()))::bigint` (plafond exact de 600 s sans arrondi) sur les vérificateurs utilisateur et système | Remplace les deux fonctions de vérification HMAC |
@@ -111,12 +111,15 @@ psql "$TRACEFAB_LECTURE_URL" -X -v ON_ERROR_STOP=1 \
   -f docs/security/2026-11-11-p107-production-registry-preflight.sql
 ```
 
-### 3.3 Préflight d'isolation du rôle worker Neon (lecture seule)
+### 3.3 Préflight d'isolation du rôle worker Neon et de `pgcrypto` (lecture seule)
 
 ```bash
+DATABASE_ADMIN_URL="$DIRECT_NEONDB_OWNER_URL" \
+node scripts/provisionner_roles_db.mjs --verifier
+
 DATABASE_URL="$DIRECT_MIGRATOR_URL" \
 TF_ADMIN_URL="$DIRECT_NEONDB_OWNER_URL" \
-npm run db:preflight:worker-neon
+node scripts/provisionner_worker_neon.mjs --etat
 ```
 
 ### 3.4 Sonde côté runtime
@@ -143,12 +146,12 @@ curl -fsS -H "x-tracefab-worker-secret: $TRACEFAB_NOTIFICATION_WORKER_SECRET" \
 | **P1** | Historique `_prisma_migrations` sain | `b1_historique.en_echec = 0` et `verifier_checksums_migrations.mjs` sans écart | une migration `finished_at IS NULL AND rolled_back_at IS NULL` ou un checksum divergent subsiste |
 | **P2** | Préflight du registre des fonctions | `registered_expected = 84`, `missing_functions = 0`, `overloaded_names = 0`, `wrong_owner_count = 0` | une fonction historique manque, est surchargée ou appartient à un rôle tiers |
 | **P3** | Propriétaires des fonctions remplacées (D6) | `b4_proprietaires` : les 6 fonctions appartiennent au rôle de migration ou à `tracefab_worker` | propriétaire injoignable par l'exécutant (`42501 must be owner of function`) |
-| **P4** | Hygiène `SECURITY DEFINER` | `b5_hygiene.definer_sans_search_path = 0`, `executables_par_public = 0` | une fonction `SECURITY DEFINER` sans `search_path` ou ouverte à `PUBLIC` |
+| **P4** | Hygiène `SECURITY DEFINER` et ACL `PUBLIC` | `b5_hygiene.definer_sans_search_path = 0`, `executables_par_public = 0` (les éventuelles fonctions membres d'extensions plateforme détenues par un superuser externe comme `cloud_admin` sur Neon sont classées séparément dans `extensions_plateforme_publiques` conformément à `#136`) | une fonction `SECURITY DEFINER` sans `search_path`, ou une fonction applicative / `SECURITY DEFINER` ouverte à `PUBLIC` |
 | **P5** | Rôles et worker Neon | `b6_droits_migration.migrator_superuser = false`, `app_membre_worker = false`, `neon_worker_swap_requis = false` | `tracefab_migrator` superuser, `tracefab_app` membre du worker, ou swap `tracefab_worker_legacy` non exécuté |
 | **P6** | Clés hors de portée du runtime | `b8_portee_de_la_cle.app_lit_les_cles = false`, `app_ecrit_les_cles = false` | `tracefab_app` lit ou écrit `tracefab_identity_cles` |
 | **P7** | Identité réelle du runtime | `sonde_p107_runtime.mjs` → `IDENTITE_CONFORME` (`tracefab_app`, `NOSUPERUSER`, `NOBYPASSRLS`, aucune escalade `SET ROLE`) | le runtime tourne encore sous `neondb_owner` ou atteint un rôle privilégié |
 | **P8** | Contexte transactionnel compatible pooler | `contexte_transactionnel.absent_apres = true` | un GUC `set_config(..., true)` survit au `ROLLBACK`/`COMMIT` |
-| **P9** | Extension `pgcrypto` | installée et ses fonctions fermées à `PUBLIC` si exigé, ou `provisionner_roles_db.mjs --dry-run` vert | `pgcrypto` absente sans droit `CREATE` sur la base |
+| **P9** | Extension `pgcrypto` | `provisionner_roles_db.mjs --verifier` vert : soit ACL `PUBLIC` fermées (`modifiable`), soit ACL plateforme Neon classées `managed-external` (`cloud_admin` non endossable, aucun octroi direct à `tracefab_app`, `hmac(bytea,bytea,text)` exécutable par `tracefab_migrator` — PR `#136`) | `pgcrypto` absente sans droit `CREATE`, propriétaire externe non classé, ou octroi direct à `tracefab_app` |
 | **P10** | Sauvegarde et répétition sur branche Neon | instantané PITR noté + répétition complète réussie sur une **branche Neon dédiée** créée depuis l'état courant de Production | absence d'instantané ou répétition sur branche Neon non exécutée |
 
 ---

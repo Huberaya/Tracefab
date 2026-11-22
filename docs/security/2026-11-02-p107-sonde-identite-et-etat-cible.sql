@@ -199,8 +199,11 @@ SELECT p.proname                                        AS fonction,
 
 
 -- ============================================================================
--- B5. HYGIÈNE DES FONCTIONS SECURITY DEFINER
---     ATTENDU : 0 sans `search_path` figé, 0 exécutable par PUBLIC.
+-- B5. HYGIÈNE DES FONCTIONS SECURITY DEFINER ET DES ACL PUBLIC
+--     ATTENDU : 0 sans `search_path` figé, 0 exécutable par PUBLIC hors
+--     fonctions membres d'extension détenues par un superutilisateur externe
+--     non endossable (ex. `pgcrypto` / `uuid-ossp` sous `cloud_admin` sur Neon,
+--     mode `managed-external` classé par `provisionner_roles_db.mjs` — PR #136).
 --     PUBLIC est le grantee OID 0, pas un rôle à inventer. proacl = NULL ne
 --     signifie pas « aucun droit » : il faut alors développer acldefault, qui
 --     donne notamment EXECUTE à PUBLIC pour une fonction nouvellement créée.
@@ -209,16 +212,64 @@ SELECT count(*) FILTER (WHERE p.prosecdef)                                      
        count(*) FILTER (WHERE p.prosecdef AND (p.proconfig IS NULL
                          OR NOT EXISTS (SELECT 1 FROM unnest(p.proconfig) c
                                          WHERE c LIKE 'search_path=%')))                AS definer_sans_search_path,
-       count(*) FILTER (WHERE EXISTS (
-                         SELECT 1
-                           FROM pg_catalog.aclexplode(
-                             COALESCE(p.proacl, pg_catalog.acldefault('f', p.proowner))
-                           ) AS acl
-                          WHERE acl.grantee = 0
-                            AND acl.privilege_type = 'EXECUTE'))                         AS executables_par_public,
+       count(*) FILTER (WHERE p.prokind = 'f'
+                         AND EXISTS (
+                           SELECT 1
+                             FROM pg_catalog.aclexplode(
+                               COALESCE(p.proacl, pg_catalog.acldefault('f', p.proowner))
+                             ) AS acl
+                            WHERE acl.grantee = 0
+                              AND acl.privilege_type = 'EXECUTE'
+                         )
+                         AND (
+                           p.prosecdef
+                           OR NOT EXISTS (
+                             SELECT 1
+                               FROM pg_catalog.pg_depend d
+                               JOIN pg_catalog.pg_extension e ON e.oid = d.refobjid
+                              WHERE d.refclassid = 'pg_catalog.pg_extension'::pg_catalog.regclass
+                                AND d.classid = 'pg_catalog.pg_proc'::pg_catalog.regclass
+                                AND d.deptype = 'e'
+                                AND d.objid = p.oid
+                                AND e.extname IN ('pgcrypto', 'uuid-ossp')
+                                AND r.rolsuper = true
+                                AND NOT (
+                                  p.proowner = (SELECT oid FROM pg_catalog.pg_roles WHERE rolname = current_user)
+                                  OR (SELECT rolsuper FROM pg_catalog.pg_roles WHERE rolname = current_user)
+                                  OR pg_catalog.pg_has_role(current_user, p.proowner, 'SET')
+                                )
+                           )
+                         ))                                                             AS executables_par_public,
+       count(*) FILTER (WHERE p.prokind = 'f'
+                         AND NOT p.prosecdef
+                         AND EXISTS (
+                           SELECT 1
+                             FROM pg_catalog.aclexplode(
+                               COALESCE(p.proacl, pg_catalog.acldefault('f', p.proowner))
+                             ) AS acl
+                            WHERE acl.grantee = 0
+                              AND acl.privilege_type = 'EXECUTE'
+                         )
+                         AND EXISTS (
+                           SELECT 1
+                             FROM pg_catalog.pg_depend d
+                             JOIN pg_catalog.pg_extension e ON e.oid = d.refobjid
+                            WHERE d.refclassid = 'pg_catalog.pg_extension'::pg_catalog.regclass
+                              AND d.classid = 'pg_catalog.pg_proc'::pg_catalog.regclass
+                              AND d.deptype = 'e'
+                              AND d.objid = p.oid
+                              AND e.extname IN ('pgcrypto', 'uuid-ossp')
+                              AND r.rolsuper = true
+                              AND NOT (
+                                p.proowner = (SELECT oid FROM pg_catalog.pg_roles WHERE rolname = current_user)
+                                OR (SELECT rolsuper FROM pg_catalog.pg_roles WHERE rolname = current_user)
+                                OR pg_catalog.pg_has_role(current_user, p.proowner, 'SET')
+                              )
+                         ))                                                             AS extensions_plateforme_publiques,
        count(*) FILTER (WHERE p.prokind = 'f')                                          AS fonctions_publiques
   FROM pg_catalog.pg_proc p
   JOIN pg_catalog.pg_namespace n ON n.oid = p.pronamespace
+  JOIN pg_catalog.pg_roles r ON r.oid = p.proowner
  WHERE n.nspname = 'public';
 
 

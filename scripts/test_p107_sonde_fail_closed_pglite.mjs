@@ -10,6 +10,7 @@
 import process from 'node:process';
 import { readFileSync } from 'node:fs';
 import { PGlite } from '@electric-sql/pglite';
+import { pgcrypto } from '@electric-sql/pglite/contrib/pgcrypto';
 import {
   CHEMIN_SONDE,
   decouperSonde,
@@ -32,8 +33,8 @@ const executer = (db, options = {}) => executerSonde({
   roleRuntime: 'tracefab_app',
 });
 
-async function creerBase({ migrations = true, hmac = true, app = true } = {}) {
-  const db = new PGlite();
+async function creerBase({ migrations = true, hmac = true, app = true, avecPgcrypto = false } = {}) {
+  const db = new PGlite(avecPgcrypto ? { extensions: { pgcrypto } } : undefined);
   await db.waitReady;
   await db.query('CREATE ROLE tracefab_worker NOLOGIN NOSUPERUSER NOBYPASSRLS');
   await db.query('CREATE ROLE tracefab_migrator NOLOGIN NOSUPERUSER NOBYPASSRLS');
@@ -373,6 +374,67 @@ await avecBase({}, async (db) => {
     'S9 grant cloud_admin non isolé sur tracefab_worker déclenche un ARRÊT B6 explicite');
 
   await verifierAbsenceEcriture(db, 'S9 aucune écriture persistée par la sonde');
+});
+
+/* S10 — Alignement Neon managed-external (PR #136) : pgcrypto détenue par un
+ * superutilisateur externe non endossable (cloud_admin) sous neondb_owner
+ * non-superuser est classée dans extensions_plateforme_publiques sans faux
+ * arrêt B5, tandis qu'une fonction applicative ou SECURITY DEFINER ouverte à
+ * PUBLIC déclenche toujours l'arrêt B5. */
+await avecBase({ avecPgcrypto: true }, async (db) => {
+  await db.exec('CREATE ROLE neondb_owner LOGIN NOSUPERUSER NOBYPASSRLS NOCREATEROLE NOCREATEDB');
+  await db.exec('CREATE ROLE cloud_admin NOLOGIN SUPERUSER');
+  await db.exec('GRANT USAGE ON SCHEMA public TO neondb_owner');
+  await db.exec('GRANT SELECT ON ALL TABLES IN SCHEMA public TO neondb_owner');
+  await db.exec('CREATE EXTENSION pgcrypto');
+
+  const { rows: membres } = await db.query(`
+    SELECT p.oid::pg_catalog.regprocedure::text AS sig
+      FROM pg_catalog.pg_depend d
+      JOIN pg_catalog.pg_proc p ON p.oid = d.objid
+      JOIN pg_catalog.pg_extension e ON e.oid = d.refobjid
+     WHERE d.refclassid = 'pg_catalog.pg_extension'::pg_catalog.regclass
+       AND d.classid = 'pg_catalog.pg_proc'::pg_catalog.regclass
+       AND d.deptype = 'e' AND e.extname = 'pgcrypto'`);
+  for (const { sig } of membres) {
+    await db.exec(`ALTER FUNCTION ${sig} OWNER TO cloud_admin`);
+  }
+
+  // Sous un superuser (postgres), les fonctions sont révocables -> executables_par_public > 0
+  const sousSuperuser = await executer(db);
+  ok(sousSuperuser.codeSortie === 1
+      && sousSuperuser.rapport.b5_hygiene?.executables_par_public === membres.length,
+    'S10 sous superuser (autorité REVOKE présente), pgcrypto ouverte à PUBLIC reste un arrêt B5');
+
+  // Sous neondb_owner (NOSUPERUSER, sans appartenance à cloud_admin) -> classée managed-external
+  await db.exec('SET ROLE neondb_owner');
+  let sousNeonOwner;
+  try {
+    sousNeonOwner = await executer(db);
+  } finally {
+    await db.exec('RESET ROLE');
+  }
+  ok(sousNeonOwner.codeSortie === 0
+      && sousNeonOwner.rapport.b5_hygiene?.executables_par_public === 0
+      && sousNeonOwner.rapport.b5_hygiene?.extensions_plateforme_publiques === membres.length,
+    'S10 sous neondb_owner non-superuser, pgcrypto cloud_admin est classée sans faux arrêt B5',
+    `ext=${sousNeonOwner.rapport.b5_hygiene?.extensions_plateforme_publiques}`);
+
+  // Mais une fonction applicative ouverte à PUBLIC reste bloquée sous neondb_owner !
+  await db.exec(`CREATE FUNCTION public.tracefab_fuite_public_temoin() RETURNS int
+    LANGUAGE sql STABLE AS $$ SELECT 42 $$`);
+  await db.exec('SET ROLE neondb_owner');
+  let avecFuiteApp;
+  try {
+    avecFuiteApp = await executer(db);
+  } finally {
+    await db.exec('RESET ROLE');
+  }
+  ok(avecFuiteApp.codeSortie === 1
+      && avecFuiteApp.rapport.b5_hygiene?.executables_par_public === 1
+      && avecFuiteApp.rapport.b5_hygiene?.extensions_plateforme_publiques === membres.length,
+    'S10 une fonction applicative ouverte à PUBLIC déclenche toujours l arrêt B5 sous neondb_owner');
+  await db.exec('DROP FUNCTION public.tracefab_fuite_public_temoin()');
 });
 
 console.log('');

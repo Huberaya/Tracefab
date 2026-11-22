@@ -52,6 +52,8 @@ Exécute et vérifie que tout est vert (code 0) :
 git status --short
 node scripts/matrice_migrations.mjs --verifier
 npm run test:ordre-migrations
+npm run test:provisioning:pgcrypto-policy
+npm run test:provisioning:preflight
 npm run test:p107:sonde-fail-closed
 npm run test:p107:rehearsal-100
 ```
@@ -89,13 +91,13 @@ Crée (ou cible) d'abord une **branche Neon éphémère issue du point courant d
    ```
    Attendu avant migration : `registered_expected = 84`, `missing_functions = 0`, `overloaded_names = 0`, `wrong_owner_count = 0`, `security_definer_public_executor_count = 0`.
 
-4. **Préflight des rôles et de `pgcrypto` / `uuid-ossp`** :
+4. **Préflight des rôles et de `pgcrypto` / `uuid-ossp` (aligné PR `#136`)** :
    ```bash
-   DATABASE_ADMIN_URL="$DIRECT_OWNER_URL" node scripts/provisionner_roles_db.mjs --dry-run
-   DATABASE_URL="$DIRECT_MIGRATOR_URL" TF_ADMIN_URL="$DIRECT_OWNER_URL" npm run db:preflight:worker-neon
+   DATABASE_ADMIN_URL="$DIRECT_OWNER_URL" node scripts/provisionner_roles_db.mjs --verifier
+   DATABASE_URL="$DIRECT_MIGRATOR_URL" TF_ADMIN_URL="$DIRECT_OWNER_URL" node scripts/provisionner_worker_neon.mjs --etat
    ```
-   - Si `tracefab_app` ou `tracefab_migrator` n'existe pas encore ou si `pgcrypto` a encore `EXECUTE` ouvert à `PUBLIC`, exécute sur la branche de répétition `provisionner_roles_db.mjs` avec les gardes requises.
-   - Si `neon_worker_swap_requis = true` (octroi `cloud_admin` sur `tracefab_worker`), exécute `scripts/provisionner_worker_neon.mjs --appliquer` (avec `TF_ALLOW_WORKER_ROLE_SWAP=oui`, `TF_EXPECTED_DATABASE_HOST` et `TF_EXPECTED_DATABASE_NAME`), puis revérifie `--dry-run`.
+   - `provisionner_roles_db.mjs --verifier` classe explicitement `pgcrypto` : soit `modifiable` (ACL `PUBLIC` révocables et fermées), soit `managed-external` sur Neon (fonctions détenues par le superutilisateur externe `cloud_admin`, aucun octroi direct à `tracefab_app`, et `hmac(bytea,bytea,text)` exécutable par `tracefab_migrator`). Si `tracefab_app` ou `tracefab_migrator` n'existe pas encore ou si `pgcrypto` est en mode `modifiable` non durci, exécute sur la branche de répétition `TF_ALLOW_PROVISIONING=oui DATABASE_ADMIN_URL="$DIRECT_OWNER_URL" node scripts/provisionner_roles_db.mjs`.
+   - Si `neon_worker_swap_requis = true` (octroi `cloud_admin` sur `tracefab_worker`), exécute `scripts/provisionner_worker_neon.mjs --appliquer` (avec `TF_ALLOW_WORKER_ROLE_SWAP=oui`, et `TF_ALLOW_PRODUCTION_ROLE_SWAP=oui` uniquement lors de la passe Production), puis revérifie `--etat`.
 
 5. **Préflight D6 des propriétaires de fonctions** :
    Vérifie qu'aucune fonction remplacée par les migrations en attente n'appartient à un rôle que l'exécutant ne peut pas endosser (`neondb_owner` vs `tracefab_migrator`). Si les 56 premières migrations ont été jouées historiquement par `neondb_owner`, assure-toi que le rôle qui exécute `prisma migrate deploy` détient bien la propriété des objets existants (ou transfère proprement la propriété avant `migrate deploy`), tout en respectant `20261108120700` (`NOSUPERUSER` et aucune appartenance worker résiduelle).
@@ -135,7 +137,7 @@ Exécute **tous** les contrôles suivants sur la branche migrée et vérifie cha
    - `codeSortie = 0`, `verdict = "AUCUN_ARRET_DETECTE"`, `lecture_seule_prouvee = "25006"` ;
    - `b1_historique.terminees = 100`, `b1_historique.en_echec = 0` ;
    - `b2_migrations_p105_p106` : **9/9** migrations avec `appliquee = true` et `en_echec = false` ;
-   - `b5_hygiene.definer_sans_search_path = 0` et `executables_par_public = 0` ;
+   - `b5_hygiene.definer_sans_search_path = 0` et `executables_par_public = 0` (les éventuelles fonctions membres d'extensions plateforme détenues par un superuser externe comme `cloud_admin` sur Neon sont comptabilisées à part dans `extensions_plateforme_publiques`, sans faux arrêt, conformément à `#136`) ;
    - `b6_droits_migration` : `migrator_superuser = false`, `migrator_membre_worker = false`, `app_membre_worker = false`, `neon_worker_swap_requis = false` ;
    - `b7_identite` : `mode_identite = "permissif"` et `mode_identite_systeme = "permissif"` (les migrations ne doivent PAS activer le mode strict toutes seules) ;
    - `b8_portee_de_la_cle` :
