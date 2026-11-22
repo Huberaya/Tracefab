@@ -12,7 +12,8 @@
 > | **B — #70** | ✅ **fermée** | sous-ensemble plus faible de `main`, motif mesuré |
 > | **B — #82** | ✅ **fermée** | régression de privilèges sur 3 tables |
 > | **D — #80** | ✅ **fusionnée** | `282862e`, allowlist fusionnée sans perte d'entrée |
-> | C, E, F | ⏸️ en attente | accord de fermeture / choix de base / chantier |
+> | **C — #122→#125** | ✅ **les 4 fermées** | motifs mesurés, détail en §4.1 |
+> | E, F | ⏸️ en attente | choix de base / chantier |
 >
 > Deux PR ont donc été **fusionnées** et deux **fermées**. Le nombre de PR ouvertes est passé de 15 à 10 — une PR neuve, **#138**, est apparue et n'est pas analysée ici.
 >
@@ -192,3 +193,20 @@ C'est le **quatrième cas** de la même famille, après `test:private-storage` (
 **Recommandation :** une PR dédiée, une seule ligne dans le job `Socle`, exactement comme pour #119 et #118. Petite, sûre, et elle ferme la classe de défaut plutôt qu'une instance.
 
 Cela suggère aussi une vérification systématique à faire une fois : **lister tous les `scripts/test_*.mjs` de `main` et vérifier lesquels ne sont appelés par aucun workflow.** Le chiffre serait utile à connaître.
+
+### 4.1 Ce que la mesure du 22/11 a corrigé sur le lot C
+
+Le plan ci-dessus disait « #125 impose `!r.rolbypassrls` (exige BYPASSRLS sur l'admin) sur **les deux** rôles ». Vérification faite, cette formulation était **imprécise pour #122 et #123** : elles ne touchent pas du tout à `BYPASSRLS`.
+
+| PR | Ce qu'elle modifie réellement | Verdict |
+|---|---|---|
+| **#122** | 37 lignes de test (contrôle C4), aucun changement de rôle | **périmée** : le faux runner `.mjs` utilise `require`, et le vrai `migrer_fidelement.mjs` existe désormais dans `main` |
+| **#123** | `CREATE EXTENSION pgcrypto` (déjà couvert par `a24406d`) + alias npm routé | **redondante** : `main` déclare déjà l'outil `SELF_GUARDED` et le vérifie par F3, mesuré vert |
+| **#124** | `BYPASSRLS` sur l'**admin** | **contrat inverse** |
+| **#125** | `BYPASSRLS` sur **les deux** | **contrat inverse**, le plus explicite |
+
+**Sur #122, un détail qui compte :** le contrôle C4 ne peut pas réussir, et le diagnostic a pris quatre étapes. Le faux runner `.mjs` faisait `require('fs')` — indéfini en module ES — donc échouait avant d'écrire sa sentinelle (`status=1`, zéro invocation). Corrigé en `await import('node:fs')`, il rend `status=43` et `invocations=[{"runner":true}]`, mais l'assertion exige `/throwaway_local/` dans la sortie **de l'enfant**, alors que `main` fait imprimer `classe=throwaway_local` **par le wrapper**. Et surtout, `main` a durci la garde du mode fidèle : elle exige désormais `TF_ADMIN_URL` cohérent avec `DATABASE_URL` et `TF_ALLOW_WRITE=oui`. Le test postulait un monde qui n'existe plus.
+
+**Décision assumée :** je n'ai pas réécrit le test pour obtenir 38 ok. Un test de sécurité qui fabrique sa propre réussite ne prouve rien.
+
+**Le besoin résiduel est réel mais faible :** le script npm `db:prepare-ci-migration-roles` n'existe pas dans `main`, qui appelle le script en dur (`ci.yml`, l. 757). Ce n'est pas un gain de sécurité. Si vous y tenez, c'est une PR neuve d'une ligne, sans toucher aux attributs des rôles.
