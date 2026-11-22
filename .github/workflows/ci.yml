@@ -111,6 +111,15 @@ jobs:
         # commentaire tout le handler, sans erreur de compilation.
         run: npm run test:minified-comments
 
+      - name: Contrat HTTP du passeport public — cache et publication
+        # La route publique /api/dpp/[gtin] servait son cache avec
+        # `stale-while-revalidate=300` : un passeport SUSPENDU restait donc
+        # servi jusqu'a cinq minutes apres la suspension. Le contrat fige
+        # desormais la revalidation, et la suite etait jusqu'ici branchee
+        # nulle part — le defaut ne pouvait donc pas etre vu en CI.
+        # Statique et sans base : sa place est ici, dans le socle.
+        run: npm run test:public-dpp-route
+
       - name: Transport stockage prive — refus SSRF et redirections
         # `test:private-storage` existait deja et n etait branche nulle part :
         # le durcissement du transport (credentials dans l URL, HTTP en clair
