@@ -1,5 +1,6 @@
 import type { Prisma } from '@prisma/client';
 import { prisma } from './prisma.js';
+import { cleIdentite, signerIdentite } from './identite-jeton.js';
 import type { VercelRequest } from './vercel-types.js';
 import { requestedTenantId } from './tenant.js';
 
@@ -8,22 +9,32 @@ import { requestedTenantId } from './tenant.js';
  * internal user UUID and email available to PostgreSQL RLS and SECURITY
  * DEFINER functions.
  */
+/**
+ * Execute une operation de synchronisation systeme.
+ *
+ * CE QUE CETTE FONCTION NE FAIT PLUS, ET POURQUOI
+ *
+ * Jusqu'au 27/10/2026, elle posait `set_config('tracefab.worker_context')` et
+ * onze politiques RLS s'ouvraient sur ce drapeau. Le drapeau etait falsifiable :
+ * mesure sur base jetable, `tracefab_app` seul voyait 0 ligne, puis 2 / 2 / 2
+ * (organisations, utilisateurs, adhesions) apres avoir pose le GUC lui-meme.
+ * L'isolation de ces tables ne tenait donc pas a la base mais au code.
+ *
+ * Desormais le privilege ne vient plus d'un etat de session, mais de fonctions
+ * nommees, possedees par l'identite `tracefab_worker` et declarees au registre
+ * runtime (migrations 20261028120000 et 20261028120100). Cette enveloppe reste
+ * le point d'entree unique des operations systeme — les garde-fous
+ * `test_route_context_coverage` et `test_context_integrity` s'appuient dessus —
+ * mais elle n'accorde plus aucun droit par elle-meme.
+ *
+ * Consequence assumee : si une requete ecrite ici lit une table gardee par une
+ * politique worker, elle rendra zero ligne. C'est le comportement voulu — le
+ * silence vaut mieux qu'une fuite — et `test:neon:worker-non-forgeable` le verifie.
+ */
 export async function withTracefabWorkerContext<T>(
   callback: (tx: Prisma.TransactionClient) => Promise<T>,
 ) {
-  return prisma.$transaction(async (tx) => {
-    await tx.$executeRaw`SELECT set_config('tracefab.worker_context', 'true', true)`;
-    try {
-      return await callback(tx);
-    } finally {
-      try {
-        await tx.$executeRaw`SELECT set_config('tracefab.worker_context', 'false', true)`;
-      } catch {
-        // Preserve the original transaction error if PostgreSQL has already
-        // marked the transaction as aborted.
-      }
-    }
-  });
+  return prisma.$transaction(callback);
 }
 
 /**
@@ -94,6 +105,23 @@ export async function withTracefabUserContext<T>(
     // `tracefab_active_organization_id()` la rend en NULL — jamais en repli sur
     // les autres organisations du compte.
     await tx.$executeRaw`SELECT set_config('tracefab.active_organization_id', ${activeOrganizationId ?? ''}, true)`;
+    // Jeton d'identité signé — P10.5.
+    //
+    // Posé APRÈS le locataire actif, parce que l'organisation fait partie du
+    // corps signé : l'ordre inverse signerait une valeur que la base ne
+    // retrouverait pas dans la session, et le jeton serait refusé.
+    //
+    // Si aucune clé n'est configurée, rien n'est posé : la base reste en mode
+    // permissif et se comporte comme avant. Ce n'est pas un repli silencieux
+    // dangereux — c'est le mode de déploiement progressif décrit dans
+    // docs/security/2026-10-31-p105-hmac.md. Le passage en mode strict est une
+    // décision d'exploitation, prise côté base, pas ici.
+    const signe = signerIdentite({
+      userId,
+      organizationId: activeOrganizationId ?? '',
+      cle: cleIdentite(),
+    });
+    await tx.$executeRaw`SELECT set_config('tracefab.identity', ${signe?.jeton ?? ''}, true)`;
     try {
       return await callback(tx);
     } finally {

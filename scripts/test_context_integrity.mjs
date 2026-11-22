@@ -80,5 +80,47 @@ ok(setConfigs.length === 0,
     ? "set_config('tracefab.user_id') n'est appelé que depuis api/_lib/context.ts"
     : `set_config('tracefab.user_id') hors context.ts : ${setConfigs.join(', ')}`);
 
+// L'e-mail Clerk alimente `tracefab.user_email`, qui est la SEULE barriere de
+// la politique `passport_access_select` (migration 20261006250000) : un
+// demandeur externe voit ses propres demandes d'acces par egalite d'e-mail.
+// Mesure du 28/10/2026, base jetable, role `tracefab_app` sans BYPASSRLS :
+//   sans GUC -> 0 ligne ; GUC = e-mail de la victime -> 1 ligne ; autre -> 0.
+// Une adresse non verifiee suffirait donc a lire les demandes d'un tiers.
+const auth = readFileSync(join('api', '_lib', 'auth.ts'), 'utf8');
+const identite = readFileSync(join('api', '_lib', 'clerk-identity.ts'), 'utf8');
+ok(auth.includes('verifiedPrimaryEmail(clerkUser)'),
+  "api/_lib/auth.ts propage l'e-mail via verifiedPrimaryEmail (aucune autre source)");
+ok(!/emailAddresses/.test(auth),
+  "api/_lib/auth.ts ne lit plus lui-meme emailAddresses : un seul chemin d'identite");
+ok(/verification\?\.status\s*!==\s*'verified'/.test(identite),
+  "api/_lib/clerk-identity.ts exige une adresse Clerk verifiee");
+ok(identite.includes('clerk_email_unverified'),
+  "le refus d'une adresse non verifiee porte un motif nomme (clerk_email_unverified)");
+// Le comportement lui-meme est eprouve, cas par cas, par test:clerk-identity :
+// une assertion statique ne prouve pas qu'une adresse non verifiee est refusee.
+
+// P10.7 : toute operation systeme doit signer son origine avant d'appeler
+// une fonction SECURITY DEFINER gardee. Le wrapper historique de context.ts
+// n'ajoute aucun jeton systeme et ne doit plus etre utilise par ces appelants.
+const systemContext = readFileSync(join('api', '_lib', 'contexte-systeme.ts'), 'utf8');
+ok(systemContext.includes('signerIdentiteSysteme({ cle })')
+  && systemContext.includes("set_config('tracefab.identity_systeme'"),
+  'le contexte systeme signe un jeton P10.7 et le pose transactionnellement');
+
+const workerCallers = sources.filter((file) => {
+  const code = readFileSync(file, 'utf8');
+  return /withTracefabWorkerContext\s*\(/.test(code)
+    && !/export\s+async\s+function\s+withTracefabWorkerContext/.test(code);
+});
+const importSystemContext = /import\s*\{\s*withTracefabWorkerContext\s*\}\s*from\s*['"]([^'"]+)['"]/;
+ok(workerCallers.length === 6,
+  '6 appelants systeme attendus, ' + workerCallers.length + ' trouve(s)');
+for (const file of workerCallers) {
+  const code = readFileSync(file, 'utf8');
+  const imported = code.match(importSystemContext)?.[1] ?? '';
+  ok(imported.endsWith('contexte-systeme.js'),
+    file + ' utilise le contexte systeme signe (import observe : ' + (imported || 'absent') + ')');
+}
+
 console.log(`\n  Intégrité du contexte d'identité : ${echecs === 0 ? 'OK' : `${echecs} échec(s)`}.`);
 process.exit(echecs === 0 ? 0 : 1);

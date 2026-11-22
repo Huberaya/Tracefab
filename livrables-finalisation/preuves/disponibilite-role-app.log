@@ -1,0 +1,45 @@
+
+  Disponibilité du rôle applicatif — lecture seule
+
+  hote verifie : 127.0.0.1
+  base         : tracefab_test
+  role cible   : tracefab_app
+  Confirmez l hôte avant de lire la suite : c est le seul moyen
+  de savoir quelle base répond.
+
+  Aucune ecriture : ce script n interroge que le catalogue.
+
+  1. posture du role
+     superuser   : false
+     bypassrls   : false
+     peut se connecter : true
+
+  2. privileges sur 51 tables publiques
+     (exclues : _prisma_migrations, tracefab_identity_cles, tracefab_runtime_function_registry)
+     SELECT  absent sur 0 table(s)
+     INSERT  absent sur  35 table(s) — 35 attendue(s) en lecture seule, 0 inattendue(s)
+     UPDATE  absent sur  35 table(s) — 35 attendue(s) en lecture seule, 0 inattendue(s)
+     DELETE  absent sur  35 table(s) — 35 attendue(s) en lecture seule, 0 inattendue(s)
+     ecriture directe mesuree sur 16 table(s) — la liste declaree en compte 16
+
+  3. RLS sur les tables
+     tables : 53 | RLS active : 53 | forcee : 53
+     politiques : 137
+
+  4. EXECUTE sur 92/92 fonctions de l'allowlist runtime
+     sans EXECUTE sur allowlist : 0
+     SECURITY DEFINER hors allowlist encore executables : 0
+
+  5. USAGE sur 0 sequence(s)
+     sans USAGE : 0
+
+  6. tables fermees par conception (3)
+     _prisma_migrations : presente, SELECT=false INSERT=false UPDATE=false DELETE=false
+     tracefab_identity_cles : presente, SELECT=false INSERT=false UPDATE=false DELETE=false
+     tracefab_runtime_function_registry : presente, SELECT=true (lisible par conception) INSERT=false UPDATE=false DELETE=false
+
+  VERDICT : le role est pret pour la bascule. Rien ne s y oppose
+  cote privileges. Cela ne dispense pas d un test d isolation en
+  ecriture sur une branche enfant : ce script ne verifie que le
+  catalogue, jamais le comportement reel des politiques.
+

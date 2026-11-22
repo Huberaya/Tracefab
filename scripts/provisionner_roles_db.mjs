@@ -1,0 +1,788 @@
+#!/usr/bin/env node
+/**
+ * Provisionnement des rôles PostgreSQL de TraceFab — procédure administrative.
+ *
+ * CE QUE CE SCRIPT SÉPARE, ET POURQUOI
+ *
+ * P10.4 a mesuré trois blocages qui venaient tous du même mélange : un seul
+ * compte servait de runtime, de propriétaire des objets et d'administrateur.
+ *
+ *   B3  `ensureAppRole` réaffirmait les attributs de `tracefab_app` par
+ *       `ALTER ROLE … NOSUPERUSER`. Sur PostgreSQL 16+, changer cet attribut
+ *       exige SUPERUSER (« Only roles with the SUPERUSER attribute may change
+ *       the SUPERUSER attribute », mesuré). Le démarrage de la CI — et donc
+ *       toute vérification — dépendait donc d'un privilège d'administration.
+ *
+ *   B2  la chaîne de migrations crée `tracefab_worker` et lui transfère la
+ *       propriété de six fonctions. Exécutée par un rôle sans CREATEROLE, elle
+ *       échoue ; exécutée par un rôle non superutilisateur sur une base où
+ *       `tracefab_worker` existe déjà, elle échoue aussi sur `ALTER ROLE`.
+ *
+ *   B4  une appartenance accordée « pour dépanner » permet `SET ROLE` vers le
+ *       propriétaire, donc la lecture des deux organisations.
+ *
+ * Ce script est la seule voie qui crée des rôles. Il distingue explicitement :
+ *
+ *   - CRÉATION     (`CREATE ROLE`) : demande CREATEROLE. Idempotent.
+ *   - DURCISSEMENT (`ALTER ROLE … NOSUPERUSER`) : demande SUPERUSER lorsque
+ *     l'attribut doit réellement changer. **Aucune instruction n'est émise
+ *     quand le rôle est déjà conforme** — c'est ce qui permet à la CI et à
+ *     l'application de démarrer sans privilège d'administration.
+ *   - VÉRIFICATION (`--verifier`) : lecture seule, aucune écriture, sortie 0/1.
+ *
+ * CE QU'IL NE FAIT JAMAIS
+ *   - il n'accorde SUPERUSER, BYPASSRLS, CREATEDB ni aucune appartenance à
+ *     `tracefab_app` ;
+ *   - il n'accorde à `tracefab_app` de rôle que… aucun : `tracefab_app` finit
+ *     sans la moindre appartenance, ce que le script vérifie et refuse sinon ;
+ *   - il n'affiche ni mot de passe, ni chaîne de connexion, ni empreinte ;
+ *   - il ne crée pas `tracefab_worker` : c'est la migration 20261028120100 qui
+ *     le crée. La créer ici rendrait cette migration non rejouable par un rôle
+ *     non superutilisateur (branche `ALTER ROLE` — mesuré en P10.4).
+ *
+ * USAGE
+ *   node scripts/provisionner_roles_db.mjs --verifier
+ *   TF_ALLOW_PROVISIONING=oui node scripts/provisionner_roles_db.mjs
+ *   TF_ALLOW_PROVISIONING=oui TF_APP_PASSWORD=… TF_MIGRATOR_PASSWORD=… \
+ *     node scripts/provisionner_roles_db.mjs
+ *
+ *   TF_ALLOW_PROVISIONING=oui TF_CORRIGER_ATTRIBUTS=oui … (correction d'un
+ *     ecart d'attribut par un executant SUPERUSER ; jamais implicite)
+ *
+ * Variables de connexion (toutes optionnelles, aucune n'est affichée) :
+ *   DATABASE_ADMIN_URL  compte capable de créer les rôles (prioritaire)
+ *   DATABASE_URL        sinon
+ *
+ * Sortie : 0 conforme / provisionné · 1 écart · 2 non exécuté · 3 refus.
+ */
+import process from 'node:process';
+import pg from 'pg';
+import { sslDepuisUrl } from './lib/pg-ssl.mjs';
+import {
+  ROLE_APP, ROLE_MIGRATOR, ROLE_WORKER, ATTRIBUTS_ATTENDUS,
+  etatRole, ecartsAttributs, appartenancesDirectes, appartenancesTransitives,
+} from './lib/tracefab_roles.mjs';
+import { verifierAucuneAppartenance } from './lib/tracefab_app_role.mjs';
+import { determinerModePgcrypto } from './lib/pgcrypto_provisioning_policy.mjs';
+
+// Surcharge du nom du rôle applicatif, bornée aux noms `tf_*`.
+//
+// Elle n'existe que pour éprouver PAR EXÉCUTION les refus de ce script (B4, et
+// refus d'un rôle préexistant divergent) sans toucher au rôle de CLUSTER
+// `tracefab_app`, que partagent toutes les suites d'un même job. Même règle et
+// même liste fermée que `prepare_ci_db_role.mjs` (`TF_APP_ROLE_NAME`) : un test
+// ne peut pas viser `postgres` ni un rôle d'exploitation.
+const ROLE_APP_SURCHARGE = process.env.TF_APP_ROLE_NAME || ROLE_APP;
+if (ROLE_APP_SURCHARGE !== ROLE_APP && !/^tf_[a-z0-9_]+$/.test(ROLE_APP_SURCHARGE)) {
+  console.error(`  REFUS — nom de rôle ${ROLE_APP_SURCHARGE} hors liste fermée (${ROLE_APP} ou tf_*).`);
+  process.exit(2);
+}
+
+// `--verifier` et son alias `--dry-run` : mode SANS ECRITURE, verifie par
+// scripts/test_destructive_suite_routing.mjs (politique de routage des suites
+// qui ecrivent en base). Un outil d'exploitation doit pouvoir se constater
+// sans agir.
+const verifierSeulement = process.argv.includes('--verifier') || process.argv.includes('--dry-run');
+// P10.6 — la CORRECTION d'un ecart d'attribut est une decision explicite.
+// Avant, un executant SUPERUSER rabattait l'ecart en silence : un role
+// preexistant etranger voyait ses attributs reecrits par un script de
+// provisionnement. C'est exactement le geste que la garde de conservation
+// interdit (`RolePreexistantRefuse` dans `ensureAppRole` et
+// `prepare_ci_db_role.mjs`). Ici, l'administrateur PEUT corriger — c'est sa
+// commande — mais il doit le dire.
+const corrigerAttributs = process.env.TF_CORRIGER_ATTRIBUTS === 'oui';
+
+// Surcharge réservée aux tests jetables : permet de reproduire le grantor
+// réel (l'exécutant crée son propre rôle migrateur) sans toucher au rôle
+// partagé tracefab_migrator du cluster CI.
+const ROLE_MIGRATOR_EFFECTIF = process.env.TF_MIGRATOR_ROLE_NAME || ROLE_MIGRATOR;
+if (ROLE_MIGRATOR_EFFECTIF !== ROLE_MIGRATOR && !/^tf_[a-z0-9_]+$/.test(ROLE_MIGRATOR_EFFECTIF)) {
+  console.error(`  REFUS — nom de rôle migrateur ${ROLE_MIGRATOR_EFFECTIF} hors liste fermée (${ROLE_MIGRATOR} ou tf_*).`);
+  process.exit(2);
+}
+const url = (process.env.DATABASE_ADMIN_URL || process.env.DATABASE_URL || '').trim();
+if (!url) {
+  console.error('  NON EXECUTE — DATABASE_ADMIN_URL (ou DATABASE_URL) est absente.');
+  process.exit(2);
+}
+if (!verifierSeulement && process.env.TF_ALLOW_PROVISIONING !== 'oui') {
+  console.error('  REFUS — le provisionnement crée des rôles. Relancer avec');
+  console.error('  TF_ALLOW_PROVISIONING=oui, ou en lecture seule avec --verifier.');
+  process.exit(3);
+}
+
+const db = new pg.Client({ connectionString: url, ssl: sslDepuisUrl(url), application_name: 'tracefab-provisionnement-roles' });
+await db.connect();
+
+const identite = (await db.query('SELECT current_user AS r, current_database() AS b')).rows[0];
+const posture = (await db.query(
+  `SELECT rolsuper, rolcreaterole FROM pg_catalog.pg_roles WHERE rolname = current_user`,
+)).rows[0] ?? { rolsuper: false, rolcreaterole: false };
+
+console.log('');
+console.log(`  ${verifierSeulement ? 'Vérification' : 'Provisionnement'} des rôles — ${identite.b}`);
+console.log(`  exécuté par : ${identite.r} (superuser=${posture.rolsuper}, createrole=${posture.rolcreaterole})`);
+console.log('');
+
+let echecs = 0;
+const ok = (cond, libelle, detail = '') => {
+  console.log(`  ${cond ? 'ok   ' : 'ECHEC'} ${libelle}${detail ? ` — ${detail}` : ''}`);
+  if (!cond) echecs += 1;
+};
+
+/**
+ * Crée le rôle, ou constate qu'il est conforme.
+ *
+ * Aucune instruction `ALTER ROLE` n'est émise quand les attributs sont déjà
+ * ceux attendus : c'est la différence entre « provisionner » et « durcir ».
+ * Un durcissement réellement nécessaire est signalé AVANT d'être tenté, avec
+ * l'instruction exacte que l'administrateur doit jouer.
+ */
+async function assurerRole(nom, motDePasse) {
+  // Une surcharge de test (`tf_*`) emprunte les attributs attendus du rôle
+  // applicatif réel : c'est le même contrat, sur un autre nom.
+  const attendus = ATTRIBUTS_ATTENDUS[nom] ?? ATTRIBUTS_ATTENDUS[ROLE_APP];
+  const avant = await etatRole(db, nom);
+  // B4 — fail closed AVANT toute ecriture : une appartenance, meme transitive,
+  // permet `SET ROLE` vers sa cible. On refuse de provisionner au-dessus d'un
+  // etat dangereux plutot que de le laisser en place. Meme garde que
+  // `ensureAppRole` et `prepare_ci_db_role.mjs` : trois chemins, un contrat.
+  // En `--verifier`, on rapporte l'ecart sans lever (le mode ne doit pas sortir
+  // par une exception, il doit rendre un verdict).
+  if (nom === ROLE_APP_SURCHARGE && avant !== null) {
+    try {
+      await verifierAucuneAppartenance(db, ROLE_APP_SURCHARGE);
+    } catch (e) {
+      ok(false, `B4 : ${nom} n a aucune appartenance`, e.message.slice(0, 160));
+      if (!verifierSeulement) return;
+    }
+  }
+  if (avant === null) {
+    if (verifierSeulement) {
+      ok(false, `le rôle ${nom} existe`);
+      return;
+    }
+    const attributs = [
+      attendus.rolcanlogin ? 'LOGIN' : 'NOLOGIN',
+      attendus.rolsuper ? 'SUPERUSER' : 'NOSUPERUSER',
+      attendus.rolbypassrls ? 'BYPASSRLS' : 'NOBYPASSRLS',
+      attendus.rolcreaterole ? 'CREATEROLE' : 'NOCREATEROLE',
+      attendus.rolcreatedb ? 'CREATEDB' : 'NOCREATEDB',
+      attendus.rolinherit ? 'INHERIT' : 'NOINHERIT',
+    ].join(' ');
+    const mdp = motDePasse ? ` PASSWORD ${quote(motDePasse)}` : '';
+    try {
+      await db.query(`CREATE ROLE ${nom} ${attributs}${mdp}`);
+      console.log(`  créé  ${nom} (${attributs})`);
+    } catch (e) {
+      ok(false, `création de ${nom}`, `${e.code || ''} ${e.message.split('\n')[0].slice(0, 90)}`);
+      return;
+    }
+  }
+
+  const etat = await etatRole(db, nom);
+  const ecarts = ecartsAttributs(nom, etat, attendus);
+
+  if (ecarts.length > 0) {
+    // Un écart d'attribut n'est PAS réparable sans le privilège correspondant.
+    // On le dit, on donne l'instruction, et on ne tente rien a l'aveugle.
+    const correction = `ALTER ROLE ${nom} ${Object.entries(attendus)
+      .filter(([k]) => k !== 'rolinherit' && etat && etat[k] !== attendus[k])
+      .map(([k, v]) => `${v ? '' : 'NO'}${k.replace(/^rol/, '').toUpperCase()}`)
+      .join(' ')};`;
+    if (posture.rolsuper && !verifierSeulement && corrigerAttributs) {
+      try {
+        await db.query(correction);
+        console.log(`  durci  ${nom} — un écart d'attribut a été corrigé (exécutant SUPERUSER)`);
+      } catch (e) {
+        ok(false, `durcissement de ${nom}`, `${e.code || ''} ${e.message.split('\n')[0].slice(0, 90)}`);
+      }
+    } else {
+      ok(false, `attributs de ${nom} conformes`, ecarts.join(' ; '));
+      console.error(`         correction requise par un administrateur : ${correction}`);
+      if (posture.rolsuper && !verifierSeulement) {
+        console.error('         (executant SUPERUSER : relancer avec TF_CORRIGER_ATTRIBUTS=oui pour l appliquer ;');
+        console.error('          sans ce drapeau, aucun attribut n est reecrit — un role preexistant n est pas le notre)');
+      }
+      return;
+    }
+  }
+
+  const apres = await etatRole(db, nom);
+  const restants = ecartsAttributs(nom, apres, attendus);
+  ok(restants.length === 0, `attributs de ${nom} conformes`, restants.join(' ; ') || 'aucun écart');
+
+  if (!verifierSeulement && motDePasse && apres) {
+    // Le mot de passe n'est pas un attribut : il ne se déduit pas de l'état.
+    // On ne le (re)pose que si l'appelant en fournit un.
+    try {
+      await db.query(`ALTER ROLE ${nom} PASSWORD ${quote(motDePasse)}`);
+    } catch (e) {
+      // Sur PostgreSQL 16+, changer le mot de passe d'un rôle exige ADMIN sur
+      // ce rôle. Ce n'est pas bloquant : le rôle existe et ses attributs sont
+      // corrects. On le signale sans faire échouer le provisioning.
+      console.log(`  note  mot de passe de ${nom} non modifié (${e.code || ''}) — rôle inchangé`);
+    }
+  }
+}
+
+function quote(s) {
+  return `'${String(s).replace(/'/g, "''")}'`;
+}
+
+function quoteIdent(s) {
+  return `"${String(s).replace(/"/g, '""')}"`;
+}
+
+/**
+ * Les droits de SCHÉMA, que les rôles ne portent pas eux-mêmes.
+ *
+ * Mesuré : sur PostgreSQL 15+, `public` n'accorde plus `CREATE` à `PUBLIC`.
+ * Un `tracefab_migrator` fraîchement créé échoue donc dès la première
+ * migration (« permission denied for schema public », 42501). Sur Neon, c'est
+ * le propriétaire de la base qui porte ce droit ; la séparation des rôles
+ * impose de le donner explicitement au rôle de migration, et à lui seul.
+ *
+ * `tracefab_app` reçoit `USAGE` (il doit résoudre les noms d'objets) et JAMAIS
+ * `CREATE` : il ne crée aucun objet, tout le schéma vient des migrations.
+ */
+/**
+ * Installe les extensions dont la chaine a besoin, ET les remet au role de
+ * migration.
+ *
+ * Deux problemes distincts, mesures le 02/11 :
+ *
+ *   1. `CREATE EXTENSION` exige un privilege que le role de migration n'a pas
+ *      et ne doit pas avoir (42501 « permission denied to create extension
+ *      pgcrypto »). C'est donc une operation ADMINISTRATIVE, faite une fois.
+ *      Sur Neon l'extension est installee par la plateforme : l'appel est un
+ *      no-op, `IF NOT EXISTS` sortant avant tout controle de privilege.
+ *
+ *   2. QUI possede l'extension change ce que la chaine protege. Creee par le
+ *      role d'administration, `pgcrypto` lui appartient ; la migration
+ *      20261028120000 ne revoque l'EXECUTE que sur les fonctions possedees
+ *      par le role qui execute la chaine, donc les 36 fonctions de l'extension
+ *      (`hmac`, `digest`, `gen_random_uuid`…) restaient executables par
+ *      `tracefab_app`, hors registre. Mesure : le registre refusait 36 noms.
+ *      L'extension est donc TRANSFEREE au role de migration, ce qui la fait
+ *      entrer dans le perimetre des revocations.
+ */
+/**
+ * Installe l'extension dont la chaine a besoin, et ferme son EXECUTE a PUBLIC.
+ *
+ * TROIS FAITS MESURES LE 02/11, dans cet ordre.
+ *
+ *   1. `CREATE EXTENSION` exige un privilege que le role de migration n'a pas
+ *      et ne doit pas avoir (42501 « permission denied to create extension
+ *      pgcrypto »). C'est une operation ADMINISTRATIVE, faite une fois. Sur
+ *      Neon l'extension est installee par la plateforme : `IF NOT EXISTS`
+ *      sort avant tout controle de privilege, l'appel est un no-op.
+ *
+ *   2. Une extension appartient a qui l'a creee (`postgres` ici, le role de
+ *      plateforme sur Neon), pas au role de migration. Il n'existe PAS de
+ *      `ALTER EXTENSION ... OWNER TO` (42601). Faire dependre la securite de
+ *      la propriete de l'extension etait donc une fausse piste.
+ *
+ *   3. Ce qui compte vraiment : les fonctions de `pgcrypto` sont livrees avec
+ *      `EXECUTE` a PUBLIC. Tout role en herite — `tracefab_app` compris. Le
+ *      registre runtime refusait pour cette raison 36 fonctions (`hmac`,
+ *      `digest`, `gen_random_uuid`, les 18 `pgp_*`…), hors de son perimetre.
+ *      On ferme donc PUBLIC sur les fonctions de l'extension. Aucune d'elles
+ *      n'est appelee par le runtime : la verification HMAC vit dans une
+ *      fonction SECURITY DEFINER qui appelle `hmac` sous son proprietaire.
+ */
+// Un REVOKE sans autorité peut renvoyer une simple NOTICE et ne rien changer.
+// Lire les ACL réelles, y compris le défaut PUBLIC quand proacl est NULL.
+// Cette vérification est aussi utilisée en --verifier, sans aucune écriture.
+async function verifierPublicPgcrypto(modePgcrypto = 'modifiable') {
+  const { rows } = await db.query(`
+    SELECT p.oid::pg_catalog.regprocedure::text AS signature,
+           pg_catalog.pg_get_userbyid(p.proowner) AS proprietaire,
+           r.rolsuper AS proprietaire_superuser,
+           (p.proowner = (SELECT oid FROM pg_catalog.pg_roles WHERE rolname = current_user)
+             OR (SELECT rolsuper FROM pg_catalog.pg_roles WHERE rolname = current_user)
+             OR pg_catalog.pg_has_role(current_user, p.proowner, 'SET')) AS autorite_revoke,
+           EXISTS (
+             SELECT 1 FROM pg_catalog.aclexplode(
+               COALESCE(p.proacl, pg_catalog.acldefault('f', p.proowner))
+             ) acl WHERE acl.grantee = 0 AND acl.privilege_type = 'EXECUTE'
+           ) AS public_execute,
+           CASE WHEN pg_catalog.to_regrole($1) IS NULL THEN NULL
+             ELSE pg_catalog.has_function_privilege(pg_catalog.to_regrole($1), p.oid, 'EXECUTE')
+           END AS app_execute,
+           CASE WHEN pg_catalog.to_regrole($2) IS NULL THEN NULL
+             ELSE pg_catalog.has_function_privilege(pg_catalog.to_regrole($2), p.oid, 'EXECUTE')
+           END AS migrator_execute,
+           CASE WHEN pg_catalog.to_regrole($1) IS NULL THEN false
+             ELSE EXISTS (
+               SELECT 1 FROM pg_catalog.aclexplode(
+                 COALESCE(p.proacl, pg_catalog.acldefault('f', p.proowner))
+               ) acl
+                WHERE acl.grantee = pg_catalog.to_regrole($1)
+                  AND acl.privilege_type = 'EXECUTE'
+             )
+           END AS app_direct_execute
+      FROM pg_catalog.pg_depend d
+      JOIN pg_catalog.pg_proc p ON p.oid = d.objid
+      JOIN pg_catalog.pg_roles r ON r.oid = p.proowner
+      JOIN pg_catalog.pg_extension e ON e.oid = d.refobjid
+     WHERE d.refclassid = 'pg_catalog.pg_extension'::pg_catalog.regclass
+       AND d.classid = 'pg_catalog.pg_proc'::pg_catalog.regclass
+       AND d.deptype = 'e' AND e.extname = 'pgcrypto'
+     ORDER BY 1`, [ROLE_APP_SURCHARGE, ROLE_MIGRATOR_EFFECTIF]);
+  if (rows.length === 0) {
+    ok(false, 'fonctions membres pgcrypto vérifiables', 'extension ou fonctions absentes');
+    return false;
+  }
+
+  const ouverts = rows.filter((r) => r.public_execute);
+  if (modePgcrypto === 'managed-external') {
+    // Neon expose parfois des fonctions pgcrypto appartenant à cloud_admin
+    // alors que l'extension elle-même appartient à neondb_owner. Le propriétaire
+    // est un superutilisateur géré par la plateforme, non endossable par nous.
+    // Le rapport P10.7 documente cet état comme préexistant : les ACL posées
+    // par CREATE EXTENSION ne sont pas retirables sans détruire l'extension.
+    // On ne prétend donc PAS les avoir fermées et on ne bloque pas les rôles.
+    const tousExternesPlateforme = ouverts.length > 0 && ouverts.every((r) => r.proprietaire_superuser === true && r.autorite_revoke !== true);
+    const droitsAppHorsPublic = rows.filter((r) => r.app_direct_execute === true);
+    ok(tousExternesPlateforme,
+      'ACL pgcrypto de plateforme classées explicitement (résiduel documenté)',
+      tousExternesPlateforme
+        ? `${ouverts.length}/${rows.length} fonctions EXECUTE PUBLIC ; aucun REVOKE prétendu`
+        : 'au moins une fonction publique n’appartient pas à un superutilisateur externe non endossable');
+    ok(droitsAppHorsPublic.length === 0,
+      `${ROLE_APP_SURCHARGE} sans octroi EXECUTE direct hors ACL PUBLIC documentées`,
+      droitsAppHorsPublic.map((r) => r.signature).slice(0, 5).join(', ') || 'aucun');
+    const hmac = rows.find((r) => r.signature.replace(/\s/g, '') === 'hmac(bytea,bytea,text)' || r.signature.replace(/\s/g, '') === 'public.hmac(bytea,bytea,text)');
+    ok(Boolean(hmac), 'fonction hmac présente');
+    ok(hmac?.migrator_execute === true,
+      `${ROLE_MIGRATOR_EFFECTIF} conserve EXECUTE sur hmac via l’ACL de plateforme`,
+      `execute=${hmac?.migrator_execute}`);
+    return tousExternesPlateforme && droitsAppHorsPublic.length === 0
+      && Boolean(hmac) && hmac.migrator_execute === true;
+  }
+
+  const appOuvertes = rows.filter((r) => r.app_execute !== false);
+  ok(ouverts.length === 0, 'EXECUTE de pgcrypto retiré à PUBLIC',
+    ouverts.length ? `${ouverts.length}/${rows.length} encore ouverts` : `${rows.length} fonction(s) vérifiée(s)`);
+  ok(appOuvertes.length === 0, `${ROLE_APP_SURCHARGE} sans EXECUTE sur pgcrypto`,
+    appOuvertes.length ? `${appOuvertes.length}/${rows.length} ouvertes` : `${rows.length} fonction(s) vérifiée(s)`);
+  return ouverts.length === 0 && appOuvertes.length === 0;
+}
+
+/**
+ * Préflight en lecture seule avant toute écriture.
+ * Trois issues explicites :
+ * - install : extension absente mais installable par l'exécutant ;
+ * - modifiable : ACL PUBLIC présentes et propriétaire endossable ;
+ * - managed-external : fonctions détenues par un superutilisateur géré
+ *   (ex. cloud_admin), ACL préexistantes documentées et non modifiables.
+ * Tout autre propriétaire externe entraîne un refus avant CREATE ROLE.
+ */
+async function preflightPgcryptoAvantEcriture() {
+  const { rows: extRows } = await db.query(`
+    SELECT e.extname,
+           pg_catalog.pg_get_userbyid(e.extowner) AS proprietaire_extension
+      FROM pg_catalog.pg_extension e
+     WHERE e.extname = 'pgcrypto'`);
+  if (extRows.length === 0) {
+    const { rows } = await db.query(`
+      SELECT EXISTS (SELECT 1 FROM pg_catalog.pg_available_extensions WHERE name = 'pgcrypto') AS disponible,
+             pg_catalog.has_database_privilege(current_user, current_database(), 'CREATE') AS create_database`);
+    const decision = determinerModePgcrypto({
+      extensionPresente: false,
+      extensionDisponible: rows[0]?.disponible === true,
+      peutInstaller: rows[0]?.create_database === true,
+    });
+    if (decision.mode === 'install') {
+      console.log('  préflight pgcrypto : extension absente, installation autorisée vérifiée.');
+      return decision.mode;
+    }
+    console.error(`  REFUS AVANT ÉCRITURE — ${decision.reason}.`);
+    return null;
+  }
+
+  const { rows } = await db.query(`
+    SELECT p.oid::pg_catalog.regprocedure::text AS signature,
+           pg_catalog.pg_get_userbyid(p.proowner) AS proprietaire,
+           r.rolsuper AS proprietaire_superuser,
+           EXISTS (
+             SELECT 1 FROM pg_catalog.aclexplode(
+               COALESCE(p.proacl, pg_catalog.acldefault('f', p.proowner))
+             ) acl WHERE acl.grantee = 0 AND acl.privilege_type = 'EXECUTE'
+           ) AS public_execute,
+           (
+             p.proowner = (SELECT oid FROM pg_catalog.pg_roles WHERE rolname = current_user)
+             OR (SELECT rolsuper FROM pg_catalog.pg_roles WHERE rolname = current_user)
+             OR pg_catalog.pg_has_role(current_user, p.proowner, 'SET')
+           ) AS autorite_revoke,
+           CASE WHEN pg_catalog.to_regrole($1) IS NULL THEN false
+             ELSE pg_catalog.has_function_privilege(pg_catalog.to_regrole($1), p.oid, 'EXECUTE')
+           END AS migrator_execute,
+           CASE WHEN pg_catalog.to_regrole($2) IS NULL THEN false
+             ELSE EXISTS (
+               SELECT 1 FROM pg_catalog.aclexplode(
+                 COALESCE(p.proacl, pg_catalog.acldefault('f', p.proowner))
+               ) acl
+                WHERE acl.grantee = pg_catalog.to_regrole($2)
+                  AND acl.privilege_type = 'EXECUTE'
+             )
+           END AS app_direct_execute
+      FROM pg_catalog.pg_depend d
+      JOIN pg_catalog.pg_proc p ON p.oid = d.objid
+      JOIN pg_catalog.pg_roles r ON r.oid = p.proowner
+     WHERE d.refclassid = 'pg_catalog.pg_extension'::pg_catalog.regclass
+       AND d.classid = 'pg_catalog.pg_proc'::pg_catalog.regclass
+       AND d.deptype = 'e'
+       AND d.refobjid = (SELECT oid FROM pg_catalog.pg_extension WHERE extname = 'pgcrypto')
+     ORDER BY 1`, [ROLE_MIGRATOR_EFFECTIF, ROLE_APP_SURCHARGE]);
+  const droitsAppDirects = rows.filter((r) => r.app_direct_execute === true);
+  if (droitsAppDirects.length > 0) {
+    console.error(`  REFUS AVANT ÉCRITURE — ${ROLE_APP_SURCHARGE} possède déjà des ACL EXECUTE directes sur pgcrypto : ${droitsAppDirects.slice(0, 5).map((r) => r.signature).join(', ')}.`);
+    return null;
+  }
+
+  const decision = determinerModePgcrypto({
+    extensionPresente: true,
+    fonctions: rows,
+  });
+
+  const hmac = rows.find((r) => r.signature.replace(/\s/g, '') === 'hmac(bytea,bytea,text)'
+    || r.signature.replace(/\s/g, '') === 'public.hmac(bytea,bytea,text)');
+  if (!hmac) {
+    console.error('  REFUS AVANT ÉCRITURE — la fonction hmac(bytea,bytea,text) est absente.');
+    return null;
+  }
+  if (hmac.migrator_execute !== true && hmac.public_execute !== true && hmac.autorite_revoke !== true) {
+    console.error('  REFUS AVANT ÉCRITURE — aucune capacité démontrée pour donner EXECUTE sur hmac au rôle de migration.');
+    return null;
+  }
+
+  if (decision.mode === 'modifiable') {
+    const ouverts = rows.filter((r) => r.public_execute === true).length;
+    console.log(`  préflight pgcrypto : ${rows.length} fonction(s), ${ouverts} EXECUTE PUBLIC modifiable(s).`);
+    return decision.mode;
+  }
+  if (decision.mode === 'managed-external') {
+    const ouverts = rows.filter((r) => r.public_execute === true).length;
+    console.log(`  AVERTISSEMENT — ${ouverts} fonction(s) pgcrypto appartiennent à un superutilisateur géré par la plateforme ; ACL PUBLIC préexistantes documentées, aucune tentative de REVOKE.`);
+    console.log('  Le résiduel est conservé explicitement ; aucune destruction/réinstallation de pgcrypto ni élévation cloud_admin.');
+    return decision.mode;
+  }
+
+  console.error(`  REFUS AVANT ÉCRITURE — ${decision.reason}.`);
+  const sansAutorite = rows.filter((r) => r.public_execute === true && r.autorite_revoke !== true);
+  const detail = sansAutorite.slice(0, 8)
+    .map((r) => `${r.signature} (propriétaire ${r.proprietaire})`).join(', ');
+  if (detail) console.error(`  Fonctions concernées : ${detail}.`);
+  return null;
+}
+
+async function assurerExtensions(modePgcrypto) {
+  for (const ext of ['pgcrypto']) {
+    try {
+      await db.query(`CREATE EXTENSION IF NOT EXISTS ${ext}`);
+      const { rows } = await db.query(
+        `SELECT pg_catalog.pg_get_userbyid(e.extowner) AS proprietaire
+           FROM pg_catalog.pg_extension e WHERE e.extname = $1`, [ext]);
+      console.log(`  ok    extension ${ext} disponible (proprietaire ${rows[0]?.proprietaire}, non transferee)`);
+    } catch (e) {
+      ok(false, `extension ${ext} disponible`, `${e.code || ''} ${e.message.split('\\n')[0].slice(0, 90)}`);
+      continue;
+    }
+
+    if (modePgcrypto === 'managed-external') {
+      console.log('  note  ACL EXECUTE PUBLIC de pgcrypto conservées : fonctions détenues par le superutilisateur géré de la plateforme ; résiduel documenté P10.7.');
+      continue;
+    }
+
+    const membres = (await db.query(
+      `SELECT p.oid::pg_catalog.regprocedure::text AS signature
+         FROM pg_catalog.pg_depend d
+         JOIN pg_catalog.pg_proc p ON p.oid = d.objid
+        WHERE d.refclassid = 'pg_catalog.pg_extension'::pg_catalog.regclass
+          AND d.refobjid = (SELECT oid FROM pg_catalog.pg_extension WHERE extname = $1)
+          AND d.classid = 'pg_catalog.pg_proc'::pg_catalog.regclass
+          AND d.deptype = 'e'`, [ext])).rows.map((r) => r.signature);
+
+    for (const signature of membres) {
+      try {
+        await db.query(`REVOKE EXECUTE ON FUNCTION ${signature} FROM PUBLIC`);
+      } catch (e) {
+        ok(false, `REVOKE EXECUTE sur ${signature}`, `${e.code || ''}`);
+      }
+    }
+    if (!(await verifierPublicPgcrypto('modifiable'))) return;
+  }
+
+  if (modePgcrypto === 'managed-external') {
+    await verifierPublicPgcrypto('managed-external');
+    return;
+  }
+
+  const requises = ['public.hmac(bytea,bytea,text)'];
+  for (const signature of requises) {
+    try {
+      const avant = (await db.query(
+        `SELECT pg_catalog.has_function_privilege($1, $2, 'EXECUTE') AS mig`,
+        [ROLE_MIGRATOR_EFFECTIF, signature])).rows[0];
+      if (avant?.mig !== true) {
+        await db.query(`GRANT EXECUTE ON FUNCTION ${signature} TO ${ROLE_MIGRATOR_EFFECTIF}`);
+      }
+      const { rows } = await db.query(
+        `SELECT pg_catalog.has_function_privilege($1, $2, 'EXECUTE') AS mig,
+                pg_catalog.has_function_privilege($3, $2, 'EXECUTE') AS app`,
+        [ROLE_MIGRATOR_EFFECTIF, signature, ROLE_APP_SURCHARGE]);
+      ok(rows[0].mig === true && rows[0].app === false,
+        `${signature} : EXECUTE accorde a ${ROLE_MIGRATOR_EFFECTIF} seul`,
+        `migrator=${rows[0].mig} app=${rows[0].app}`);
+    } catch (e) {
+      ok(false, `${signature} : EXECUTE pour ${ROLE_MIGRATOR_EFFECTIF}`, `${e.code || ''} ${e.message.split('\\n')[0].slice(0, 70)}`);
+    }
+  }
+}
+
+async function assurerDroitsSchema() {
+  const base = (await db.query('SELECT current_database() AS b')).rows[0].b;
+  const executant = identite.r;
+  const instructions = [
+    `GRANT CONNECT ON DATABASE "${base}" TO ${ROLE_APP_SURCHARGE}, ${ROLE_MIGRATOR_EFFECTIF}`,
+    `GRANT CREATE ON DATABASE "${base}" TO ${ROLE_MIGRATOR_EFFECTIF}`,
+    `GRANT USAGE ON SCHEMA public TO ${ROLE_APP_SURCHARGE}`,
+    `GRANT USAGE, CREATE ON SCHEMA public TO ${ROLE_MIGRATOR_EFFECTIF}`,
+  ];
+  for (const sql of instructions) {
+    try {
+      await db.query(sql);
+    } catch (e) {
+      throw new Error(`droits de schéma refusés (${sql.slice(0, 48)}…) : ${e.code || ''} ${e.message.split('\\n')[0]}`, { cause: e });
+    }
+  }
+
+  // PostgreSQL exige que l'exécutant puisse SET ROLE vers le futur propriétaire.
+  // CREATEROLE permet ici une appartenance strictement temporaire : aucun ADMIN,
+  // aucune inheritance, SET uniquement. Elle est retirée avant COMMIT.
+  // Si GRANT ou ALTER échoue, la transaction entière est annulée : l'appartenance
+  // temporaire ne peut donc pas survivre à un chemin d'erreur.
+  await db.query(
+    `GRANT ${ROLE_MIGRATOR_EFFECTIF} TO ${quoteIdent(executant)} WITH ADMIN FALSE, INHERIT FALSE, SET TRUE`,
+  );
+  const capacite = (await db.query(
+    `SELECT pg_catalog.pg_has_role(current_user, $1, 'SET') AS peut_endosser`,
+    [ROLE_MIGRATOR_EFFECTIF],
+  )).rows[0]?.peut_endosser;
+  if (capacite !== true) {
+    throw new Error(`appartenance temporaire accordée mais SET ROLE vers ${ROLE_MIGRATOR_EFFECTIF} non démontré`);
+  }
+
+  await db.query(`ALTER SCHEMA public OWNER TO ${ROLE_MIGRATOR_EFFECTIF}`);
+  await db.query(`REVOKE ${ROLE_MIGRATOR_EFFECTIF} FROM ${quoteIdent(executant)}`);
+
+  // PostgreSQL 16+ crée automatiquement, via le bootstrap grantor, une
+  // appartenance ADMIN TRUE / INHERIT FALSE / SET FALSE lorsqu'un rôle
+  // CREATEROLE crée un rôle. Ce grant système ne peut pas être révoqué par
+  // l'exécutant. On retire notre grant SET temporaire et on tolère uniquement
+  // ce résiduel documenté, sans capacité SET ni héritage.
+  //
+  // Mesuré sur PostgreSQL 17.12 (CREATE ROLE par un rôle CREATEROLE
+  // non-superuser) : l'appartenance automatique vaut bien
+  // {admin:true, inherit:false, set:false} et `pg_has_role(…, 'SET')` rend
+  // FAUX. Ce résidu est donc réellement inoffensif, et il doit être toléré.
+  //
+  // Ce cas ne l'était pas auparavant : lire `peut_endosser` sans distinguer
+  // SUPERUSER refusait le cas automatique pour un exécutant superutilisateur,
+  // et un superutilisateur a `peut_endosser = vrai` même avec zéro
+  // appartenance. Les deux défauts venaient de la même confusion, et sont
+  // corrigés ensemble ci-dessous.
+  //
+  // POURQUOI `pg_has_role(..., 'SET')` NE SUFFIT PAS À LUI SEUL
+  // ------------------------------------------------------------
+  // `pg_has_role` intègre le privilège SUPERUSER : sur PostgreSQL, un
+  // superutilisateur obtient TOUS les privilèges sur tous les rôles, donc
+  // `pg_has_role(current_user, n_importe_quel_role, 'SET')` vaut vrai pour lui
+  // SANS AUCUNE appartenance. Mesuré sur PostgreSQL 17.12 : exécuté par
+  // `postgres`, `pg_has_role` rend vrai alors que `pg_auth_members` ne contient
+  // aucune ligne pour ce couple.
+  //
+  // Lire `peut_endosser` seul faisait donc échouer le provisionnement pour un
+  // exécutant superutilisateur — exactement le cas de la sonde
+  // `B3.2 bis` (contrôle positif de `TF_CORRIGER_ATTRIBUTS`) et de tout
+  // opérateur qui provisionne avec un compte SUPERUSER. Le ROLLBACK annulait
+  // alors une correction d'attribut pourtant appliquée.
+  //
+  // La propriété à vérifier n'est pas « l'exécutant peut-il endosser ? » mais
+  // « reste-t-il une appartenance qui le lui permette ? ».
+  //
+  // PREUVE PAR EXECUTION, PAS PAR DEDUCTION
+  // ---------------------------------------
+  // Une dispense deduite de `nb_appartenances === 0` supposait que l'appartenance
+  // temporaire était forcement partie : elle laissait passer un cas ou le
+  // `REVOKE` aurait echoue en silence en laissant une appartenance SET ouverte a
+  // un executant SUPERUSER (mesure du 21/11, garde isolee : ce cas etait classe
+  // « conforme » a tort).
+  //
+  // On MESURE donc la capacite reelle, dans l'etat ou l'appartenance est censee
+  // avoir ete retiree : `REVOKE ... ; SET LOCAL ROLE <role>` derriere un SAVEPOINT.
+  // Si l'appartenance est bien partie, le SET LOCAL echoue pour TOUT executant —
+  // superutilisateur excepte, qui peut legitimement endosser par privilege — et on
+  // revient au SAVEPOINT. Si une appartenance subsiste, le SET LOCAL REUSSIT : le
+  // residu est constate, pas suppose.
+  //
+  // `SET LOCAL` est defait par le ROLLBACK vers le SAVEPOINT, et ne peut de toute
+  // facon jamais sortir de la transaction : cet essai ne peut pas laisser de trace.
+  const peutEndosserMaintenant = await (async () => {
+    await db.query('SAVEPOINT tf_sonde_set_role');
+    try {
+      await db.query(`SET LOCAL ROLE ${quoteIdent(ROLE_MIGRATOR_EFFECTIF)}`);
+      await db.query('ROLLBACK TO SAVEPOINT tf_sonde_set_role');
+      return true;
+    } catch {
+      await db.query('ROLLBACK TO SAVEPOINT tf_sonde_set_role');
+      return false;
+    }
+  })();
+
+  const final = (await db.query(
+    `SELECT pg_catalog.pg_has_role(current_user, $1, 'SET') AS peut_endosser,
+            (SELECT rolsuper FROM pg_catalog.pg_roles WHERE rolname = current_user) AS executant_superuser,
+            count(*)::int AS nb_appartenances,
+            COALESCE(bool_and(m.admin_option), false) AS admin_seul,
+            COALESCE(bool_and(NOT m.inherit_option), true) AS sans_inherit,
+            COALESCE(bool_and(NOT m.set_option), true) AS sans_set
+       FROM pg_catalog.pg_auth_members m
+      WHERE m.roleid = pg_catalog.to_regrole($1)
+        AND m.member = pg_catalog.to_regrole(current_user)`,
+    [ROLE_MIGRATOR_EFFECTIF],
+  )).rows[0];
+  const residuelAutomatiqueSûr = final.nb_appartenances === 0
+    || (final.nb_appartenances === 1 && final.admin_seul && final.sans_inherit && final.sans_set);
+  // Un SUPERUSER endosse par PRIVILEGE : son SET LOCAL reussit toujours, sans
+  // qu'aucune appartenance n'existe. Pour lui seul, la preuve par execution ne
+  // peut donc pas conclure, et c'est l'etat declare qui tranche — avec la
+  // tolerance etroite du residu automatique. Pour tout autre executant, la
+  // mesure fait foi : aucune deduction.
+  const capaciteParSuperuserSeul = final.executant_superuser === true;
+  const peutEndosserInjustifie = capaciteParSuperuserSeul
+    ? (final.peut_endosser === true && !residuelAutomatiqueSûr)
+    : peutEndosserMaintenant === true;
+  if (peutEndosserInjustifie || !residuelAutomatiqueSûr) {
+    throw new Error(`appartenance SET temporaire à ${ROLE_MIGRATOR_EFFECTIF} non révoquée ou résiduel ADMIN non conforme`);
+  }
+  if (capaciteParSuperuserSeul && final.peut_endosser && final.nb_appartenances === 0) {
+    // Documenté, jamais silencieux : la capacité vient du privilège SUPERUSER,
+    // pas d'une appartenance. Aucun droit nouveau n'a donc été laissé derrière.
+    console.log(`  note  SET ROLE vers ${ROLE_MIGRATOR_EFFECTIF} disponible par privilège SUPERUSER, hors appartenance — aucune appartenance laissée (${final.nb_appartenances})`);
+  }
+  console.log(capaciteParSuperuserSeul
+    ? `  sonde SET LOCAL ROLE ${ROLE_MIGRATOR_EFFECTIF} : reussie par privilege SUPERUSER — capacite intrinseque, sans appartenance`
+    : `  sonde SET LOCAL ROLE ${ROLE_MIGRATOR_EFFECTIF} : ${peutEndosserMaintenant ? 'REUSSIE — une appartenance subsiste encore' : 'refusee — aucune capacite residuelle'}`);
+
+  const { rows } = await db.query(
+    `SELECT has_schema_privilege($1, 'public', 'CREATE') AS app_create,
+            has_schema_privilege($2, 'public', 'CREATE') AS mig_create,
+            pg_catalog.pg_get_userbyid(n.nspowner) AS schema_owner
+       FROM pg_catalog.pg_namespace n
+      WHERE n.nspname = 'public'`,
+    [ROLE_APP_SURCHARGE, ROLE_MIGRATOR_EFFECTIF],
+  );
+  if (rows[0]?.app_create !== false || rows[0]?.mig_create !== true
+      || rows[0]?.schema_owner !== ROLE_MIGRATOR_EFFECTIF) {
+    throw new Error(`post-contrôle schéma invalide : app_create=${rows[0]?.app_create}, mig_create=${rows[0]?.mig_create}, owner=${rows[0]?.schema_owner}`);
+  }
+  ok(true, 'propriété du schéma transférée avec SET temporaire puis révoqué',
+    `owner=${rows[0].schema_owner}, app_create=false, migrator_create=true, appartenance temporaire absente côté SET/INHERIT ; ADMIN automatique éventuel sans SET/INHERIT`);
+}
+
+if (!verifierSeulement) {
+  // Garde impérative : elle précède CREATE ROLE, ALTER ROLE, CREATE EXTENSION,
+  // REVOKE, GRANT et ALTER SCHEMA. Un échec laisse la base strictement intacte.
+  const modePgcrypto = await preflightPgcryptoAvantEcriture();
+  if (!modePgcrypto) {
+    console.error('  VERDICT : provisionnement refusé avant toute écriture.');
+    await db.end();
+    process.exit(1);
+  }
+  // Toutes les écritures d'administration sont atomiques : un refus tardif
+  // (rôle, ACL, schéma) annule aussi les CREATE ROLE et REVOKE déjà exécutés.
+  // PostgreSQL rend CREATE ROLE, CREATE EXTENSION, GRANT et ALTER SCHEMA
+  // transactionnels ; une déconnexion inattendue provoque également ROLLBACK.
+  await db.query('BEGIN');
+  try {
+  // L'ordre compte : `tracefab_migrator` doit exister avant la chaîne, et
+  // `tracefab_app` aussi (la chaîne lui accorde des privilèges par son nom).
+  await assurerRole(ROLE_APP_SURCHARGE, process.env.TF_APP_PASSWORD);
+  await assurerRole(ROLE_MIGRATOR_EFFECTIF, process.env.TF_MIGRATOR_PASSWORD);
+  if (echecs > 0) throw new Error('préconditions de rôles en échec');
+  await assurerExtensions(modePgcrypto);
+  if (echecs > 0) throw new Error('préconditions pgcrypto en échec');
+  await assurerDroitsSchema();
+  } catch (e) {
+    await db.query('ROLLBACK').catch(() => {});
+    console.error(`  ROLLBACK — provisionnement annulé intégralement : ${e.code || ''} ${e.message.split('\\n')[0]}`);
+    await db.end();
+    process.exit(1);
+  }
+  console.log('  note  tracefab_worker n est PAS créé ici : la migration');
+  console.log('        20261028120100 le crée et lui transfère la propriété de six');
+  console.log('        fonctions. Le créer avant rendrait cette migration inapplicable');
+  console.log('        par un rôle non superutilisateur (mesuré, P10.4).');
+} else {
+  const modePgcrypto = await preflightPgcryptoAvantEcriture();
+  if (modePgcrypto === 'modifiable' || modePgcrypto === 'managed-external') {
+    await verifierPublicPgcrypto(modePgcrypto);
+  } else {
+    ok(false, 'pgcrypto installée et vérifiable', 'extension absente ; mode --verifier ne modifie rien');
+  }
+  for (const nom of [ROLE_APP_SURCHARGE, ROLE_MIGRATOR_EFFECTIF]) {
+    const etat = await etatRole(db, nom);
+    const ecarts = ecartsAttributs(nom, etat);
+    ok(ecarts.length === 0, `attributs de ${nom} conformes`, ecarts.join(' ; ') || 'aucun écart');
+  }
+  const worker = await etatRole(db, 'tracefab_worker');
+  if (worker === null) {
+    console.log('  info  tracefab_worker absent — normal avant la chaîne de migrations.');
+  } else {
+    const ecarts = ecartsAttributs('tracefab_worker', worker);
+    ok(ecarts.length === 0, 'attributs de tracefab_worker conformes', ecarts.join(' ; ') || 'aucun écart');
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Le contrôle qui décide de B4 : `tracefab_app` ne doit hériter de RIEN.
+// On mesure la fermeture transitive, pas seulement les octrois directs :
+// app -> X -> propriétaire est aussi grave que app -> propriétaire.
+// ---------------------------------------------------------------------------
+const directes = await appartenancesDirectes(db, ROLE_APP_SURCHARGE);
+const transitives = await appartenancesTransitives(db, ROLE_APP_SURCHARGE);
+const acceptables = new Set(['pg_read_all_settings', 'pg_read_all_stats', 'pg_stat_scan_tables']);
+const dangereuses = directes.filter((a) => !acceptables.has(a.role_accorde));
+ok(directes.length === 0, `${ROLE_APP_SURCHARGE} n a aucune appartenance directe`,
+  directes.map((a) => `${a.role_accorde}(admin=${a.admin_option},set=${a.set_option})`).join(', ') || 'aucune');
+ok(dangereuses.length === 0, `${ROLE_APP_SURCHARGE} n hérite d aucun rôle privilégié`,
+  dangereuses.map((a) => a.role_accorde).join(', ') || 'aucun');
+ok(transitives.length === 0, `${ROLE_APP_SURCHARGE} n atteint aucun rôle par transitivité`,
+  transitives.map((t) => `${t.atteint}(d=${t.profondeur})`).join(', ') || 'aucune');
+
+const migDirectes = await appartenancesDirectes(db, ROLE_MIGRATOR_EFFECTIF);
+ok(migDirectes.every((a) => a.role_accorde !== ROLE_APP_SURCHARGE), 'tracefab_migrator n est pas membre du rôle applicatif',
+  migDirectes.map((a) => a.role_accorde).join(', ') || 'aucune appartenance');
+
+if (!verifierSeulement) {
+  if (echecs === 0) {
+    await db.query('COMMIT');
+    console.log('  transaction administrative validée atomiquement.');
+  } else {
+    await db.query('ROLLBACK');
+    console.error('  ROLLBACK — toutes les écritures de provisionnement ont été annulées.');
+  }
+}
+
+console.log('');
+if (echecs === 0) {
+  console.log('  VERDICT : rôles conformes — le runtime est séparé du propriétaire.');
+} else {
+  console.log(`  VERDICT : ${echecs} écart(s) — voir les lignes ECHEC ci-dessus.`);
+}
+console.log('');
+await db.end();
+process.exit(echecs === 0 ? 0 : 1);

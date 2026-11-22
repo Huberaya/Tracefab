@@ -224,11 +224,13 @@ const browser = await chromium.launch();
       visible: document.body.innerText.replace(/\s+/g, ' ').trim().length,
       claimsCert: /(DPP\s+(Conforme|Compliant|Konform)|certifi[ée]\s+ESPR|Conforme R[eè]glementation)/i.test(txt),
       langSelect: !!document.querySelector('#dpp-lang-select'),
+      unavailable: document.documentElement.dataset.dppSource === 'unavailable',
     };
   });
-  check('11', 'DPP public non squelettique', pub.chars > 1500, pub.chars + ' car.', '> 1500');
-  check('11', 'Volets du brief couverts', pub.panels.length >= 8,
-    pub.panels.length + '/10 (' + pub.panels.join(',') + ')', '>= 8');
+  check('11', 'DPP public substantiel ou indisponible fail-closed', pub.unavailable || pub.chars > 1500,
+    pub.unavailable ? 'indisponible fail-closed' : pub.chars + ' car.', 'fail-closed ou > 1500');
+  check('11', 'Volets hydrates ou retires en etat indisponible', pub.unavailable || pub.panels.length >= 8,
+    pub.unavailable ? 'indisponible fail-closed' : pub.panels.length + '/10 (' + pub.panels.join(',') + ')', 'fail-closed ou >= 8');
   check('11', 'Aucune revendication de conformite', !pub.claimsCert,
     pub.claimsCert ? 'REVENDICATION TROUVEE' : 'aucune', 'aucune');
   check('11', 'Selecteur de langue present', pub.langSelect, pub.langSelect ? 'oui' : 'non', 'oui');

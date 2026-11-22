@@ -1,0 +1,166 @@
+/**
+ * Faits MESURES sur `_prisma_migrations` et le catalogue de production,
+ * lectures en lecture seule des 28/10.
+ *
+ * Ce fichier ne contient QUE des faits releves : aucun calcul, aucune
+ * conclusion. Il est partage par `matrice_migrations.mjs` (qui compte) et
+ * `plan_reconciliation_migrations.mjs` (qui ordonne), pour qu'une seule source
+ * alimente les deux — un fait corrige ici se propage aux deux.
+ *
+ * Chaque entree est datee et attribuee dans le corps du document de matrice.
+ */
+
+/**
+ * Migrations creees APRES le releve de production du 28/10 : elles n'ont jamais
+ * ete deployees, et ce n'est pas une derive. Les confondre avec les onze ecarts
+ * ferait dire a la matrice qu'elles sont « appliquees » — ce qui serait faux.
+ */
+/**
+ * Borne du DERNIER releve de production : 20261028150000 a ete lue ABSENTE.
+ * Toute migration horodatee APRES cette borne n'existait pas lors du releve,
+ * donc elle n'a pas de ligne `_prisma_migrations` — ce n'est pas une derive,
+ * et la classer « appliquee » serait faux. C'est le defaut que ce fichier
+ * corrige : `matrice` et `plan` la comptaient parmi les appliquees.
+ *
+ * Limite assumee : la regle repose sur l'HORODATAGE. Une migration antidatee
+ * devrait recevoir une entree explicite dans `ECARTS` (compare
+ * `matrice_migrations.mjs`, qui refuse une categorie vide).
+ */
+export const BORNE_RELEVE = '20261028150000';
+
+export const ECARTS = {
+  '20261010120000_publication_explicite': {
+    historique: 'ANNULEE',
+    tentative_annulee_reprise_reussie: true,
+    objet: 'tracefab_product_is_public exige reviewed_at ; products_select_public ; purge des public_slug non revus',
+    effets: ['MESURE', 'une tentative a ete annulee le 16/10 puis une seconde ligne a ete terminee avec applied_steps_count=1 ; la fonction actuelle exige reviewed_at'],
+    suite: 'deja appliquee apres reprise ; ne pas rejouer ni resoudre',
+  },
+  '20261017120000_active_tenant_context': {
+    historique: 'ANNULEE',
+    tentative_annulee_reprise_reussie: true,
+    objet: 'tracefab_active_organization_id, tracefab_in_active_tenant, tracefab_require_active_tenant',
+    effets: ['MESURE', 'une tentative a ete annulee le 18/10 puis une seconde ligne a ete terminee avec applied_steps_count=1 ; les trois fonctions existent en Production'],
+    suite: 'deja appliquee apres reprise ; ne pas rejouer ni resoudre',
+  },
+  '20261021170000_dpp_readiness_truthful_gates': {
+    historique: 'ABSENTE',
+    objet: 'profil DPP renomme, 13 prerequis, tracefab_dpp_requirement_met, tracefab_mark_dpp_ready_to_publish',
+    effets: ['MESURE', 'le profil reste Tracefab textile readiness MVP au lieu de Tracefab textile technical readiness'], 
+    suite: 'sonde, fait 3',
+  },
+  '20261027100000_dpp_quality_gate_requires_assessment': {
+    historique: 'ABSENTE',
+    objet: 'quality.no_open_issues exige une evaluation persistee',
+    effets: ['MESURE', 'tracefab_dpp_requirement_met ne lit pas encore data_quality_scores par product_id'],
+    suite: 'sonde, fait 4',
+  },
+  '20261027130000_dpp_review_preservation_and_publication_coherence': {
+    historique: 'ABSENTE',
+    objet: 'tracefab_suspend_nonconforming_publication, tracefab_compute_dpp_readiness, tracefab_mark_dpp_ready_to_publish',
+    effets: ['MESURE', 'tracefab_suspend_nonconforming_publication est absente'],
+    suite: 'sonde, fait 5',
+  },
+  '20261028120000_runtime_function_registry': {
+    historique: 'ABSENTE',
+    objet: 'table tracefab_runtime_function_registry (RLS + FORCE), tracefab_apply_runtime_function_grants',
+    effets: ['MESURE', 'table lue absente en production le 28/10'],
+    suite: 'prerequis de 20261028120050 puis 20261028120100 ; determine si un deploy passe',
+  },
+  '20261028120050_neon_worker_function_grants': {
+    historique: 'ABSENTE',
+    objet: 'remplacement de tracefab_apply_runtime_function_grants pour assumer temporairement tracefab_worker sur les ACL',
+    effets: ['MESURE', 'tracefab_apply_runtime_function_grants est absente en Production ; migration ajoutée au dépôt après le relevé du 28/10 avec un horodatage antérieur à la borne'], 
+    suite: 'appliquer après 20261028120000 et avant 20261028120100 ; vérifier la capacité SET ROLE sur la cible',
+  },
+  '20261028120100_worker_identity_not_forgeable': {
+    historique: 'ABSENTE',
+    objet: 'role tracefab_worker, 11 politiques reindexees sur current_user',
+    effets: ['MESURE', 'tracefab_worker est absent et aucune politique publique mesurée ne mentionne current_user + tracefab_worker'], 
+    suite: 'deploy apres 20261028120000',
+  },
+  '20261028120200_document_reserved_fields_internal_only': {
+    historique: 'ABSENTE',
+    objet: 'tracefab_mark_document_scanning ; tracefab_app sans INSERT/UPDATE/DELETE sur documents',
+    effets: ['MESURE', 'tracefab_mark_document_scanning est absente et tracefab_app conserve UPDATE sur documents'],
+    suite: 'deploy',
+  },
+  '20261028130000_product_computed_fields_column_scoped': {
+    historique: 'ABSENTE',
+    objet: 'ecriture au niveau COLONNE sur tracefab_products ; le declencheur ne lit plus le GUC',
+    effets: ['MESURE', 'tracefab_app conserve UPDATE au niveau table et peut encore modifier la colonne calculée version'],
+    suite: 'decision separee : pas de deploy global pour ce seul point',
+  },
+  '20261028140000_supplier_invitation_owner_relationship_scope': {
+    historique: 'ABSENTE',
+    objet: 'tracefab_validate_member_invitation_role avec controle d appartenance et de statut',
+    effets: ['MESURE', 'tracefab_validate_member_invitation_role ne contient pas la garde invitation_relationship_organization_mismatch'],
+    suite: 'deploy',
+  },
+  '20261028150000_reconcile_plm_erp_sync_job_policies': {
+    historique: 'ABSENTE',
+    objet: '2 politiques permissives retirees de plm_erp_sync_jobs',
+    effets: ['MESURE', 'la lecture Production du 11/11 trouve exactement les deux politiques canoniques plm_sync_jobs_insert_brand et plm_sync_jobs_select_org'],
+    suite: 'migration idempotente : appliquer pour réconcilier le journal, sans changer les deux politiques canoniques',
+  },
+};
+
+export const CATALOGUE = {
+  '20261010120000_publication_explicite': {
+    catalogue: 'PRESENT MESURE — tracefab_product_is_public exige reviewed_at',
+    statut: 'CONFORME',
+  },
+  '20261017120000_active_tenant_context': {
+    catalogue: 'PRESENT MESURE — les trois fonctions tenant existent en Production',
+    statut: 'CONFORME',
+  },
+  '20261021170000_dpp_readiness_truthful_gates': {
+    catalogue: 'ABSENT MESURE — le profil garde le libellé MVP historique',
+    statut: 'DIVERGENCE',
+  },
+  '20261027100000_dpp_quality_gate_requires_assessment': {
+    catalogue: 'ABSENT MESURE — la fonction ne lit pas les scores persistés par produit',
+    statut: 'DIVERGENCE',
+  },
+  '20261027130000_dpp_review_preservation_and_publication_coherence': {
+    catalogue: 'ABSENT MESURE — tracefab_suspend_nonconforming_publication absente',
+    statut: 'DIVERGENCE',
+  },
+  '20261028120000_runtime_function_registry': {
+    catalogue: 'ABSENT — table tracefab_runtime_function_registry lue absente',
+    statut: 'DIVERGENCE',
+  },
+  '20261028120050_neon_worker_function_grants': {
+    catalogue: 'ABSENT MESURE — tracefab_apply_runtime_function_grants absente',
+    statut: 'DIVERGENCE',
+  },
+  '20261028120100_worker_identity_not_forgeable': {
+    catalogue: 'ABSENT MESURE — rôle tracefab_worker absent et 0 politique sur current_user',
+    statut: 'DIVERGENCE',
+  },
+  '20261028120200_document_reserved_fields_internal_only': {
+    catalogue: 'ABSENT MESURE — fonction interne absente et UPDATE tracefab_app toujours accordé',
+    statut: 'DIVERGENCE',
+  },
+  '20261028130000_product_computed_fields_column_scoped': {
+    catalogue: 'ABSENT MESURE — UPDATE table encore accordé, y compris sur version',
+    statut: 'DIVERGENCE',
+  },
+  '20261028140000_supplier_invitation_owner_relationship_scope': {
+    catalogue: 'ABSENT MESURE — garde relation/statut absente de la fonction',
+    statut: 'DIVERGENCE',
+  },
+  '20261028150000_reconcile_plm_erp_sync_job_policies': {
+    catalogue: 'PRESENT MESURE — deux politiques canoniques exactes ; les deux surnumeraires relevees le 28/10 ne sont plus presentes au 11/11',
+    statut: 'CONFORME',
+  },
+};
+
+export const HORS_BANDE = {
+  '20261006220000_esg_pef_footprint_engine': ['pef_emission_factors', 'product_pef_assessments'],
+  '20261006230000_green_claims_anti_greenwashing_engine': ['green_claims_rules', 'product_green_claims', 'green_claims_audits'],
+  '20261006240000_quality_corrective_action_plans_cap': ['quality_corrective_action_plans', 'quality_cap_messages'],
+  '20261006250000_universal_supplier_passport': ['supplier_universal_passports', 'supplier_passport_access_requests'],
+  '20261006260000_mass_balance_anti_fraud_engine': ['transaction_certificates', 'mass_balance_allocations', 'mass_balance_reconciliations'],
+};
+

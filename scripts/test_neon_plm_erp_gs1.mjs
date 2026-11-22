@@ -1,6 +1,11 @@
 /**
  * Live Neon Database Integration Test: PLM/ERP & GS1 Ingestion Pipeline
  */
+// R11 (30/10) : garde de cible AVANT tout import susceptible de construire un
+// client ou d'ouvrir une connexion. Import placé en PREMIÈRE position : en ESM
+// il s'évalue avant les imports suivants. Aucune écriture sans cible jetable.
+import './lib/garde_import.mjs';
+
 import { PrismaClient } from '@prisma/client';
 import assert from 'node:assert/strict';
 

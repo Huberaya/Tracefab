@@ -11,6 +11,9 @@ function normalize(body: Record<string, unknown>) {
     ? body.dppIdentifierFormat.trim().slice(0, 160) : '';
   const qualityThreshold = Number(body.qualityThreshold);
   if (!dppIdentifierFormat) throw new Error('dpp_identifier_format_required');
+  if (!/^urn:epc:id:sgtin:[A-Za-z0-9.-]+$/.test(dppIdentifierFormat)) {
+    throw new Error('invalid_dpp_identifier_format');
+  }
   if (!Number.isFinite(qualityThreshold) || qualityThreshold < 0 || qualityThreshold > 100) {
     throw new Error('quality_threshold_must_be_between_0_and_100');
   }
@@ -51,7 +54,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (isUnauthorized(error)) return json(res, 401, { error: 'unauthorized' });
     if (isTenantError(error)) return json(res, error.status, { error: error.message });
     const message = error instanceof Error ? error.message : 'internal_error';
-    if (message === 'dpp_identifier_format_required' || message === 'quality_threshold_must_be_between_0_and_100') {
+    if (message === 'dpp_identifier_format_required' || message === 'invalid_dpp_identifier_format' || message === 'quality_threshold_must_be_between_0_and_100') {
       return json(res, 400, { error: message });
     }
     console.error('Organization settings route error:', error);

@@ -29,6 +29,7 @@
 import pg from 'pg';
 import crypto from 'node:crypto';
 import { ensureAppRole } from './lib/tracefab_app_role.mjs';
+import { verrouillerCluster } from './lib/ephemeral-db.mjs';
 
 const URL_PROPRIO = process.env.DATABASE_URL;
 const MOT_DE_PASSE = process.env.TF_APP_PASSWORD;
@@ -53,7 +54,14 @@ await db.connect();
 // Logique partagee avec scripts/bootstrap_app_role.mjs, qui doit etre passe
 // AVANT les migrations sur base vierge. Ici c'est le filet de securite :
 // rejouer le seed sur une base ou le role manquerait encore le pose.
-await ensureAppRole(db, MOT_DE_PASSE);
+// Verrou de CLUSTER : `ensureAppRole` modifie `pg_authid`, partage par toutes
+// les bases du serveur. Meme verrou que les suites.
+const verrou = await verrouillerCluster({ urlProprietaire: URL_PROPRIO });
+try {
+  await ensureAppRole(db, MOT_DE_PASSE);
+} finally {
+  await verrou.relacher();
+}
 
 /* --- 2. deux locataires porteurs de donnees -------------------------------- */
 // Identifiants deterministes : rejouer le script retombe sur les memes lignes.

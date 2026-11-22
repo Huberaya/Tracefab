@@ -60,6 +60,22 @@ export const DPP_STATUS_LABELS: Record<DppReadinessStatus, string> = {
   published: 'Publié',
 };
 
+export const DPP_STANDARD_REQUIREMENT_KEYS = [
+  'product.reference',
+  'product.name',
+  'product.description',
+  'product.category',
+  'product.country_of_manufacture',
+  'product.required_attributes',
+  'composition.complete',
+  'materials.origin_documented',
+  'traceability.graph',
+  'traceability.documented',
+  'quality.no_open_issues',
+  'evidence.product_data',
+  'product.not_draft',
+] as const;
+
 export const DPP_REQUIREMENT_LABELS: Record<string, string> = {
   'product.reference': 'Référence produit (SKU / Réf)',
   'product.name': 'Désignation commerciale',
@@ -142,21 +158,7 @@ export function buildDppSummary(
     : [];
 
   // Standard requirements list
-  const standardKeys = [
-    'product.reference',
-    'product.name',
-    'product.description',
-    'product.category',
-    'product.country_of_manufacture',
-    'product.required_attributes',
-    'composition.complete',
-    'materials.origin_documented',
-    'traceability.graph',
-    'traceability.documented',
-    'quality.no_open_issues',
-    'evidence.product_data',
-    'product.not_draft',
-  ];
+  const standardKeys = DPP_STANDARD_REQUIREMENT_KEYS;
 
   const pillars: Record<DppPillar, DppPillarInfo> = {
     identification: {
@@ -236,10 +238,24 @@ export function buildDppSummary(
 
   const completionScore = totalReqCount > 0 ? Math.round((totalMetCount / totalReqCount) * 100) : 0;
   const rawStatus = (record?.readiness_status || 'not_started') as DppReadinessStatus;
-  const readinessStatus: DppReadinessStatus =
+  // A persisted workflow status is historical. Never present it as current
+  // technical readiness when the active strict profile is incomplete.
+  const validRawStatus: DppReadinessStatus =
     rawStatus === 'data_ready' || rawStatus === 'ready_to_publish' || rawStatus === 'published' || rawStatus === 'review_required' || rawStatus === 'in_progress'
       ? rawStatus
       : 'not_started';
+  const readinessStatus: DppReadinessStatus = completionScore < 100
+    ? (record ? 'in_progress' : 'not_started')
+    : validRawStatus;
+  const derivedMissing = Object.values(pillars)
+    .flatMap((pillar) => pillar.items)
+    .filter((item) => !item.met)
+    .map((item) => ({ key: item.key, label: item.label, blocking: true }));
+  const effectiveBlocking = derivedMissing.map((item) => ({
+    key: item.key,
+    label: item.label,
+    reason: 'active_profile_requirement_not_met',
+  }));
 
   return {
     id: record?.id || null,
@@ -252,9 +268,9 @@ export function buildDppSummary(
     completionScore,
     totalRequirements: totalReqCount,
     metRequirements: totalMetCount,
-    blockingCount: blockingList.length,
-    missingFields: missingList,
-    blockingIssues: blockingList,
+    blockingCount: effectiveBlocking.length,
+    missingFields: derivedMissing,
+    blockingIssues: effectiveBlocking,
     pillars,
     canMarkReadyToPublish: readinessStatus === 'data_ready'
       && totalReqCount > 0

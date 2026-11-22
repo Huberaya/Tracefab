@@ -1,13 +1,29 @@
+// R11 (30/10) : garde de cible AVANT tout import susceptible de construire un
+// client ou d'ouvrir une connexion. Import placé en PREMIÈRE position : en ESM
+// il s'évalue avant les imports suivants. Aucune écriture sans cible jetable.
+import './lib/garde_import.mjs';
+
 import { randomUUID } from 'node:crypto';
-import { PrismaClient } from '@prisma/client';
+import { nomRoleEphemere } from './lib/ephemeral-role.mjs';
+import { createTestPrisma, fermerPrismaDeTest, injectPrismaSingleton } from './lib/test_prisma_client.mjs';
 
 if (!process.env.DATABASE_URL) {
   console.error('DATABASE_URL is required');
   process.exit(2);
 }
 
-const prisma = new PrismaClient();
-const role = `tracefab_adv_test_${process.pid}`;
+// Chantier B (30/10) : ce script construisait `new PrismaClient()` sans
+// `datasourceUrl`, ce qui exige un moteur Prisma NATIF et le rendait
+// inexécutable hors de la CI. `createTestPrisma` est le point d'entrée prévu
+// par le dépôt : moteur standard quand il est disponible (CI), repli
+// moteur WASM + adaptateur `pg` sinon. Les assertions du test sont inchangées ;
+// seule la façon d'obtenir le client l'est.
+const prisma = await createTestPrisma(process.env.DATABASE_URL);
+injectPrismaSingleton(prisma);
+// Nom UNIQUE par execution (et non `_${process.pid}`, reutilisable) et plus
+// aucun `DROP ROLE IF EXISTS` preventif : un role preexistant ne doit jamais
+// etre supprime pour faire passer un test.
+const role = nomRoleEphemere('tf_rls_adv');
 const ownerId = randomUUID();
 const viewerId = randomUUID();
 const otherUserId = randomUUID();
@@ -39,6 +55,12 @@ async function main() {
   await prisma.$executeRawUnsafe(`CREATE ROLE ${role} NOLOGIN`);
   await prisma.$executeRawUnsafe(`GRANT ${role} TO CURRENT_USER`);
   await prisma.$executeRawUnsafe(`GRANT USAGE ON SCHEMA public TO ${role}`);
+  // Depuis la migration 20261021120000, PUBLIC n'a plus EXECUTE sur les
+  // fonctions : sans ce GRANT, le role de sonde s'arrete en 42501 AVANT la RLS
+  // et le test ne mesure plus l'isolation. Mesure du 30/10 : la suite, jamais
+  // branchee en CI, echouait sur `permission denied for function
+  // tracefab_current_user_email`. Meme correctif que test_neon_security.
+  await prisma.$executeRawUnsafe(`GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA public TO ${role}`);
   await prisma.$executeRawUnsafe(`GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO ${role}`);
   await prisma.$executeRawUnsafe(`GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO ${role}`);
 
@@ -144,13 +166,15 @@ try {
     });
   } finally {
     try {
+      await prisma.$executeRawUnsafe(`REVOKE ALL PRIVILEGES ON ALL FUNCTIONS IN SCHEMA public FROM ${role}`);
       await prisma.$executeRawUnsafe(`REVOKE ALL PRIVILEGES ON ALL TABLES IN SCHEMA public FROM ${role}`);
       await prisma.$executeRawUnsafe(`REVOKE ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public FROM ${role}`);
       await prisma.$executeRawUnsafe(`REVOKE ALL PRIVILEGES ON SCHEMA public FROM ${role}`);
       await prisma.$executeRawUnsafe(`REVOKE ${role} FROM CURRENT_USER`);
       await prisma.$executeRawUnsafe(`DROP ROLE IF EXISTS ${role}`);
     } finally {
-      await prisma.$disconnect();
+      // `$disconnect()` seul ne ferme pas le pool pg sur le chemin WASM.
+      await fermerPrismaDeTest(prisma);
     }
   }
 }

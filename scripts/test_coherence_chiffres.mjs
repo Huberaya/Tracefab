@@ -116,7 +116,7 @@ const KPI_CONSOLE = {
   // mesurent : la completude produit, pas une « qualite globale » ; la
   // preparation au DPP, pas des « passeports prets ». La correspondance
   // libelle -> metrique, elle, est inchangee.
-  'Average product completeness': 'qualite',
+  'Structured-field completion': 'qualite',
   'Evidence coverage': 'preuves',
   'Third-party verified data': 'verifies',
   'Fully traceable products': 'tracables',

@@ -5,6 +5,8 @@ type SqlErrorDefinition = {
 
 const DEFINITIONS: Record<string, SqlErrorDefinition> = {
   authentication_required: { status: 401 },
+  // Le locataire actif ne correspond pas a la ressource visee : refus d'autorisation, sans detail sur la ressource.
+  active_tenant_mismatch: { status: 403 },
   brand_admin_role_required: { status: 403 },
   brand_organization_required: { status: 400 },
   valid_supplier_email_required: { status: 400 },
@@ -13,6 +15,17 @@ const DEFINITIONS: Record<string, SqlErrorDefinition> = {
   active_supplier_invitation_exists: { status: 409 },
   invalid_or_expired_invitation: { status: 400 },
   clerk_email_required: { status: 422 },
+  // L'adresse primaire Clerk doit etre verifiee : `tracefab.user_email` est la
+  // seule barriere de la politique `passport_access_select`. 403 : l'identite
+  // est bien etablie, c'est l'autorisation qui manque.
+  clerk_email_unverified: { status: 403 },
+  // Parametres rejetes par les fonctions de provisionnement Clerk
+  // (tracefab_upsert_clerk_user, tracefab_ensure_clerk_user,
+  // tracefab_archive_clerk_organization). 422 : la requete est bien formee mais
+  // l'identite fournie par le fournisseur est inexploitable.
+  clerk_user_id_required: { status: 422 },
+  clerk_email_invalid: { status: 422 },
+  clerk_organization_id_required: { status: 422 },
   invitation_email_mismatch: { status: 403 },
   user_already_member: { status: 409 },
   invitation_not_found: { status: 404 },
@@ -24,12 +37,28 @@ const DEFINITIONS: Record<string, SqlErrorDefinition> = {
   data_point_type_mismatch: { status: 400 },
   owner_role_not_promotable: { status: 403 },
   owner_role_not_invitable: { status: 403 },
+  // Portee de la relation presentee pour une invitation `owner`
+  // (20261028140000_supplier_invitation_owner_relationship_scope). Les trois
+  // codes distinguent trois refus differents : une reference inexistante est une
+  // requete mal formee (400) ; viser une relation d'une autre organisation est
+  // un refus d'autorisation (403) ; une relation terminee ne peut plus porter
+  // d'invitation de proprietaire (409). Sans ces entrees, `sql-errors` refuse
+  // la migration : un code SQL metier sans traduction HTTP sure est un 500 en
+  // puissance.
+  invitation_relationship_not_found: { status: 400 },
+  invitation_relationship_organization_mismatch: { status: 403 },
+  invitation_relationship_ended: { status: 409 },
   membership_identity_immutable: { status: 403 },
   last_owner_membership_required: { status: 409 },
   supplier_not_found: { status: 404 },
   supplier_profile_role_required: { status: 403 },
   supplier_profile_status_does_not_allow_submission: { status: 409 },
   brand_product_role_required: { status: 403 },
+  // P10.2 — garde de ROLE de `tracefab_ingest_plm_erp_payload` : l execution
+  // est reservee au role applicatif. Ce n'est pas un defaut de l appelant mais
+  // une tentative d execution depuis un role qui n'y a pas droit : 403, et le
+  // corps de la reponse ne dit pas QUEL role a ete refuse.
+  ingest_role_not_allowed: { status: 403 },
   brand_product_manager_role_required: { status: 403 },
   product_not_found: { status: 404 },
   product_identifier_not_found: { status: 404 },
@@ -155,6 +184,13 @@ const DEFINITIONS: Record<string, SqlErrorDefinition> = {
   organization_node_reference_required: { status: 400 },
   passport_not_found: { status: 404 },
   passport_not_found_or_private: { status: 404 },
+  // Les fonctions PLM/ERP refusent explicitement toute dérive de leurs politiques
+  // canoniques. 409 signale un conflit avec l'état de schéma attendu sans exposer
+  // le SQL interne ni transformer une garde métier en erreur serveur.
+  plm_erp_sync_jobs_absente: { status: 409 },
+  politique_canonique_insert_absente: { status: 409 },
+  politique_canonique_insert_inattendue: { status: 409 },
+  politique_canonique_select_absente: { status: 409 },
   pef_brand_role_required: { status: 403 },
   pef_product_not_found: { status: 404 },
   platform_organization_not_user_creatable: { status: 403 },
@@ -212,6 +248,53 @@ const DEFINITIONS: Record<string, SqlErrorDefinition> = {
   unsupported_certification_verification_status: { status: 409 },
   verification_method_required: { status: 400 },
   workflow_request_fields_are_not_client_writable: { status: 409 },
+
+
+  // ===========================================================================
+  // Gardes de DÉPLOIEMENT soulevées par les migrations du lot 20261108
+  // ===========================================================================
+  // Ces codes ne décrivent pas une erreur de requête : ils constatent que la
+  // BASE n'est pas dans l'état exigé (rôle absent, RLS non forcée, ACL
+  // résiduelle, droit CREATE non révoqué). En fonctionnement normal ils ne sont
+  // jamais atteints par une route — ils s'exécutent dans un bloc `DO` au moment
+  // de la migration.
+  //
+  // Statut 409, et non 500, par COHÉRENCE avec le précédent du dépôt : les
+  // gardes de migration déjà présentes sont mappées ainsi
+  // (`plm_erp_sync_jobs_absente`, `politique_canonique_insert_absente`).
+  // `scripts/test_sql_business_errors.mjs` refuse un mapping 5xx en expliquant
+  // pourquoi : un 5xx fait lire au client une panne anonyme là où l'état
+  // attendu est identifiable. Si l'un de ces codes remontait un jour par une
+  // route, le client recevrait un refus nommé plutôt qu'une erreur opaque.
+
+
+  // --- Migration 20261108120100 — prérequis du transfert de propriété des fonctions Clerk
+  worker_absent: { status: 409 },
+  worker_ownership_requires_set_role: { status: 409 },
+  worker_ownership_incomplete: { status: 409 },
+  audit_logs_worker_non_append_only: { status: 409 },
+  worker_create_sur_public_non_revoque: { status: 409 },
+
+  // --- Migration 20261108120200 — appartenance worker bornée
+  tracefab_worker_absent: { status: 409 },
+  worker_membership_admin_forbidden: { status: 409 },
+  tracefab_app_member_of_worker: { status: 409 },
+  worker_membership_temporaire_absente_ou_incomplete: { status: 409 },
+
+  // --- Migration 20261108120700 — garde terminale de l'appartenance worker
+  tracefab_migrator_superuser_residuel: { status: 409 },
+  tracefab_migrator_worker_membership_residuelle: { status: 409 },
+
+  // --- Migrations 20261108120300 / 120500 / 120600 — ACL de colonnes et lecture des tables
+  tracefab_app_absent: { status: 409 },
+  acl_colonne_sensible_restante: { status: 409 },
+  lecture_users_non_effective: { status: 409 },
+  users_rls_non_forcee: { status: 409 },
+  users_select_self_absente: { status: 409 },
+  orders_absente: { status: 409 },
+  orders_rls_non_forcee: { status: 409 },
+  orders_select_participant_absente: { status: 409 },
+  lecture_orders_non_effective: { status: 409 },
 };
 
 /**

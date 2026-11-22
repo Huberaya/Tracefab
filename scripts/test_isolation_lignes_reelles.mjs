@@ -32,6 +32,8 @@ import { fileURLToPath } from 'node:url';
 import pg from 'pg';
 import { sslDepuisUrl } from './lib/pg-ssl.mjs';
 import { requireThrowawayDb } from './lib/require-throwaway-db.mjs';
+import { creerBaseEphemere, verrouillerCluster } from './lib/ephemeral-db.mjs';
+import { appliquerCommeLeRunner } from './lib/appliquer_chaine_comme_le_runner.mjs';
 import { TABLES_ECRITURE_DIRECTE } from './lib/tracefab_app_role.mjs';
 
 const RACINE = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -39,7 +41,11 @@ const SORTIE_DEFAUT = 1;
 const SORTIE_PREREQUIS = 2;
 
 const APP_ROLE = 'tracefab_app';
-const BASE_EPHEMERE = 'tracefab_isolation_lignes';
+// Aucun nom de base fixe. Il rendait la suite destructrice pour une base
+// homonyme preexistante : `DROP DATABASE IF EXISTS tracefab_isolation_lignes`
+// s'executait avant tout, sans verification ni preuve de propriete. Mesure du
+// 29/10 sur un cluster jetable : la base homonyme et sa donnee metier ont ete
+// detruites, suite verte. Voir scripts/lib/ephemeral-db.mjs.
 const MOT_DE_PASSE = process.env.TF_APP_PASSWORD || 'epreuve_locale_jetable';
 
 let vertes = 0;
@@ -65,25 +71,43 @@ requireThrowawayDb({
   exitOnFailure: true,
 });
 
-const urlAdmin = process.env.DATABASE_URL;
-const hote = (urlAdmin.match(/@([^/:]+)/) || [])[1] ?? 'illisible';
-const urlMaintenance = urlAdmin.replace(/\/[^/?]+(\?|$)/, '/postgres$1');
+/* --- Base de travail : creee et prouvee par la garde ---------------------- */
 
 const uuid = (graine) => {
   const h = crypto.createHash('sha1').update(`tracefab-isol-${graine}`).digest('hex');
   return `${h.slice(0, 8)}-${h.slice(8, 12)}-4${h.slice(13, 16)}-8${h.slice(17, 20)}-${h.slice(20, 32)}`;
 };
 
-const admin = new pg.Client({ connectionString: urlMaintenance, ssl: sslDepuisUrl(urlMaintenance) });
-await admin.connect();
-await admin.query(`DROP DATABASE IF EXISTS ${BASE_EPHEMERE}`);
-await admin.query(`CREATE DATABASE ${BASE_EPHEMERE}`);
-await admin.end();
+const base = await creerBaseEphemere({
+  urlProprietaire: process.env.DATABASE_URL,
+  prefixe: 'tf_isolation',
+});
 
-const url = urlAdmin.replace(/\/[^/?]+(\?|$)/, `/${BASE_EPHEMERE}$1`);
+// Une session coupee par `DROP DATABASE ... WITH (FORCE)` emet un evenement
+// `error` : non ecoute, il tue le processus et masque la cause reelle.
+const session = (connectionString) => {
+  const c = new pg.Client({ connectionString, ssl: sslDepuisUrl(connectionString) });
+  c.on('error', () => {});
+  return c;
+};
+
+// Declares AVANT le try : le `finally` doit pouvoir fermer les sessions avant
+// de detruire la base, sinon le DROP les coupe et leur 57P01 masque l'erreur.
+let mig = null;
+let app = null;
+let verrou = null;
+
+try {
+
+const url = base.url;
 const urlApp = url.replace(/:\/\/[^@]*@/, `://${APP_ROLE}:${encodeURIComponent(MOT_DE_PASSE)}@`);
 
-console.log(`\n  base éphémère sur ${hote} — ${BASE_EPHEMERE}`);
+// Serialise avec les autres suites du meme cluster : le provisioning du role et
+// la chaine de migrations touchent des objets de CLUSTER (pg_authid, ALTER ROLE).
+verrou = await verrouillerCluster(base);
+
+console.log(`\n  base éphémère unique : ${base.nom} (oid ${base.oid})`);
+console.log(`  même cluster que la maintenance : ${base.identite.systemIdentifier}`);
 
 const boot = () =>
   execFileSync('node', [path.join(RACINE, 'scripts', 'bootstrap_app_role.mjs')], {
@@ -91,7 +115,7 @@ const boot = () =>
     stdio: 'ignore',
   });
 
-const mig = new pg.Client({ connectionString: url, ssl: sslDepuisUrl(url) });
+mig = session(url);
 await mig.connect();
 await mig.query(
   `CREATE TABLE IF NOT EXISTS _prisma_migrations (
@@ -113,8 +137,13 @@ let appliquees = 0;
 for (const d of dossiers) {
   const sql = fs.readFileSync(path.join(RACINE, 'prisma', 'migrations', d, 'migration.sql'), 'utf8');
   if (!sql.trim() || sql.trim() === '-- This is an empty migration.') continue;
+  // Comme le runner : transaction par migration, et declaration du bail worker
+  // quand la migration l'exige. Sans cela, la chaine s'arrete sur
+  // `worker_membership_must_be_managed_by_runner` et tout ce qui suit tombe en
+  // 25P02 — mesure du 2026-11-12, alors que ce banc mesurait deja l'isolation
+  // sur une base incomplete.
   try {
-    await mig.query(sql);
+    await appliquerCommeLeRunner(mig, d, sql);
     appliquees += 1;
   } catch (e) {
     console.log(`    MIGRATION EN ECHEC ${d} — ${e.code} ${String(e.message).split('\n')[0]}`);
@@ -187,12 +216,19 @@ await fix.query(
   `INSERT INTO tracefab_products (id, brand_organization_id, reference, name, status)
    VALUES ($1,$2,'B-002','Brouillon B','draft')`, [prodBBrouillon, B.org]);
 
+// Un produit de A : sert de controle positif d'ecriture, desormais que
+// tracefab_app n'a plus aucun droit d'ecriture sur documents.
+const prodA = uuid('proda-001');
+await fix.query(
+  `INSERT INTO tracefab_products (id, brand_organization_id, reference, name, status, public_slug)
+   VALUES ($1,$2,'A-001','Article A','active','a-001')`, [prodA, A.org]);
+
 await fix.end();
-console.log('  fixture : 2 organisations, 2 utilisateurs, 2 documents, 2 produits (1 publié, 1 brouillon)');
+console.log('  fixture : 2 organisations, 2 utilisateurs, 2 documents, 3 produits (1 par A, 1 publié B, 1 brouillon B)');
 
 /* --- Connexion applicative ------------------------------------------------ */
 
-const app = new pg.Client({ connectionString: urlApp, ssl: sslDepuisUrl(urlApp) });
+app = session(urlApp);
 await app.connect();
 
 const identite = await app.query('SELECT current_user AS u, (SELECT rolbypassrls FROM pg_roles WHERE rolname=current_user) AS b');
@@ -200,11 +236,14 @@ verifier("la connexion est le rôle applicatif", identite.rows[0].u === APP_ROLE
 verifier("le rôle ne contourne pas la RLS", identite.rows[0].b === false, `rolbypassrls=${identite.rows[0].b}`);
 
 /** Pose l'identité d'un utilisateur pour la durée de la transaction. */
-async function enTantQue(userId, fn) {
+async function enTantQue(userId, organizationId, fn) {
   await app.query('BEGIN');
   try {
     if (userId) {
       await app.query(`SELECT set_config('tracefab.user_id', $1, true)`, [userId]);
+    }
+    if (organizationId) {
+      await app.query(`SELECT set_config('tracefab.active_organization_id', $1, true)`, [organizationId]);
     }
     return await fn();
   } finally {
@@ -212,12 +251,35 @@ async function enTantQue(userId, fn) {
   }
 }
 
-/** Renvoie { ok, code, rows } sans lever. */
+/**
+ * Renvoie { ok, code, rows } sans lever.
+ *
+ * Depuis que certains refus sont DURS (42501 « permission denied ») et non plus
+ * « 0 ligne », une erreur avorterait la transaction englobante et ferait
+ * echouer toutes les assertions suivantes en 25P02. Chaque tentative est donc
+ * isolee dans un point de sauvegarde, quand on est bien dans une transaction.
+ */
 async function tente(sql, params = []) {
+  let pointDeSauvegarde = false;
+  try {
+    await app.query('SAVEPOINT tente');
+    pointDeSauvegarde = true;
+  } catch {
+    // Hors transaction : rien a isoler.
+  }
   try {
     const r = await app.query(sql, params);
+    if (pointDeSauvegarde) await app.query('RELEASE SAVEPOINT tente');
     return { ok: true, rows: r.rows, count: r.rowCount };
   } catch (e) {
+    if (pointDeSauvegarde) {
+      try {
+        await app.query('ROLLBACK TO SAVEPOINT tente');
+        await app.query('RELEASE SAVEPOINT tente');
+      } catch {
+        // La transaction est deja perdue : l'erreur d'origine reste la plus utile.
+      }
+    }
     return { ok: false, code: e.code, message: String(e.message).split('\n')[0] };
   }
 }
@@ -226,7 +288,7 @@ async function tente(sql, params = []) {
 
 console.log('\n  A. lecture inter-tenant, sur lignes existantes');
 
-await enTantQue(A.user, async () => {
+await enTantQue(A.user, A.org, async () => {
   const propres = await app.query(`SELECT id FROM documents WHERE id = $1`, [docA]);
   verifier('contrôle positif : A lit son propre document', propres.rowCount === 1, `${propres.rowCount} ligne`);
 
@@ -243,7 +305,7 @@ console.log('\n  B. modification inter-tenant');
 
 // `documents` fait partie des quatre tables où le rôle applicatif a vraiment le
 // droit d'écrire. C'est donc ici que la RLS — et non le privilège — doit agir.
-await enTantQue(A.user, async () => {
+await enTantQue(A.user, A.org, async () => {
   // La colonne modifiée est `original_filename`. Deux versions précédentes
   // écrivaient status puis byte_size, et restaient vertes même RLS désactivée :
   // le déclencheur de la migration initiale lève
@@ -272,17 +334,40 @@ verifier("le document de B est intact après la tentative", apresUpdate === 'pre
 
 console.log('\n  C. suppression inter-tenant');
 
-await enTantQue(A.user, async () => {
+await enTantQue(A.user, A.org, async () => {
   const r = await tente(`DELETE FROM documents WHERE id = $1`, [docB]);
   verifier(
     "A ne peut pas supprimer le document de B",
     !r.ok || r.count === 0,
     r.ok ? `${r.count} ligne supprimée` : `${r.code} ${r.message}`,
   );
-  // Contrôle positif sur la même table : le privilège d'écrire existe bien,
-  // donc le refus ci-dessus vient de la RLS et pas d'une absence de droit.
-  const r2 = await tente(`UPDATE documents SET original_filename = 'renommé-par-a.pdf' WHERE id = $1`, [docA]);
-  verifier("contrôle positif : A peut toucher son propre document", r2.ok && r2.count === 1, r2.ok ? `${r2.count} ligne` : `${r2.code} ${r2.message}`);
+  // Contrôle positif DÉPLACÉ sur tracefab_products. Depuis 20261028120200,
+  // tracefab_app n'a plus aucun droit d'écriture sur documents : le refus
+  // ci-dessus vient donc d'une absence de privilège, pas de la RLS. Un
+  // contrôle positif sur documents serait désormais vert pour la mauvaise
+  // raison ; il faut une table que le runtime écrit encore.
+  const r2 = await tente(`UPDATE tracefab_products SET name = 'renomme-par-a' WHERE id = $1`, [prodA]);
+  verifier("contrôle positif : A peut modifier son propre produit", r2.ok && r2.count === 1, r2.ok ? `${r2.count} ligne` : `${r2.code} ${r2.message}`);
+  const r3 = await tente(`UPDATE tracefab_products SET name = 'infiltre' WHERE id = $1`, [prodBPublie]);
+  verifier("A ne peut pas modifier le produit de B", !r3.ok || r3.count === 0, r3.ok ? `${r3.count} ligne` : `${r3.code} ${r3.message}`);
+
+  // Le document de A n'est pas modifiable non plus : c'est le correctif, et
+  // il doit mordre même sur sa propre ligne.
+  const r4 = await tente(`UPDATE documents SET original_filename = 'renomme-par-a.pdf' WHERE id = $1`, [docA]);
+  verifier(
+    "A n'a aucun droit d'écriture sur documents, même sur son propre document",
+    !r4.ok && r4.code === '42501',
+    r4.ok ? `${r4.count} ligne modifiée` : `${r4.code} ${r4.message}`,
+  );
+  // Le drapeau interne ne rouvre rien : il n'y a plus de privilège à contourner.
+  await app.query(`SELECT set_config('tracefab.internal_document_update', 'true', true)`);
+  const r5 = await tente(`UPDATE documents SET status = 'available' WHERE id = $1`, [docA]);
+  verifier(
+    "poser internal_document_update ne rouvre pas l'écriture des champs réservés",
+    !r5.ok && r5.code === '42501',
+    r5.ok ? `${r5.count} ligne modifiée` : `${r5.code} ${r5.message}`,
+  );
+  await app.query(`SELECT set_config('tracefab.internal_document_update', 'false', true)`);
 });
 
 const docBExiste = await (async () => {
@@ -298,7 +383,7 @@ verifier("le document de B existe toujours", docBExiste === 1, `${docBExiste} li
 
 console.log('\n  D. insertion avec identité ou organisation falsifiée');
 
-await enTantQue(A.user, async () => {
+await enTantQue(A.user, A.org, async () => {
   // A tente d'écrire un document en se déclarant propriétaire l'organisation B.
   const r = await tente(
     `INSERT INTO documents (id, owner_organization_id, storage_bucket, storage_path,
@@ -340,7 +425,7 @@ verifier(
 
 // Le contexte « worker » ne doit pas ouvrir l'écriture inter-tenant : il arme
 // les politiques de l'outbox de notifications, pas celles des documents.
-await enTantQue(A.user, async () => {
+await enTantQue(A.user, A.org, async () => {
   await app.query(`SELECT set_config('tracefab.worker_context', 'true', true)`);
   // La colonne modifiée est `original_filename`. Deux versions précédentes
   // écrivaient status puis byte_size, et restaient vertes même RLS désactivée :
@@ -408,15 +493,19 @@ verifier('aucun DML n est accordé à PUBLIC', pubDml.rows[0].n === 0, `${pubDml
 
 await app.end();
 
-/* --- Verdict --------------------------------------------------------------- */
+} finally {
+  // Ordre : les sessions D'ABORD, la base ENSUITE. Detruire une base dont une
+  // session depend produit un 57P01 qui remplacerait l'erreur d'origine.
+  if (app) await app.end().catch(() => {});
+  if (mig) await mig.end().catch(() => {});
+  // Nettoyage dans un `finally`, et uniquement sur l'OID cree : une assertion
+  // qui leve, une fixture qui echoue ou un client perdu passent tous par ici.
+  await base.fermer();
+  if (verrou) await verrou.relacher();
+  console.log(`  base éphémère détruite : ${base.nom}`);
+}
 
-// Un client pg ne se reconnecte pas après end() : la destruction passe par un
-// client neuf, sinon le verdict est masqué par une erreur de réutilisation.
-const nettoyeur = new pg.Client({ connectionString: urlMaintenance, ssl: sslDepuisUrl(urlMaintenance) });
-await nettoyeur.connect();
-await nettoyeur.query(`DROP DATABASE IF EXISTS ${BASE_EPHEMERE}`);
-await nettoyeur.end();
-console.log('  base éphémère détruite');
+/* --- Verdict --------------------------------------------------------------- */
 
 console.log(`\n  ${vertes}/${vertes + rouges} assertions vertes`);
 if (rouges > 0) {

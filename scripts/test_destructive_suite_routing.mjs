@@ -67,6 +67,42 @@ const DESTRUCTIVE_DB_SUITES = [
   'scripts/test_neon_bulk_operations_chantier8.mjs',
   'scripts/test_routes_tenant_isolation.mjs',   // ecrit users et organization_memberships
   // dans une base jetable ; deuxiemement gardee par TF_ROUTES_TEST_HARNESS=1.
+  // Ecrit une organisation, un produit, des dossiers DPP, des revues et des
+  // publications. Identifiants tires au hasard a chaque execution, parce que
+  // `dpp_lifecycle_events` est append-only : aucun tenant n'est reutilisable.
+  'scripts/test_dpp_review_and_publication.mjs',
+  // --- Chantier des ressources jetables (P8) -------------------------------
+  // Ces quatorze fichiers ont ete ajoutes avec les bibliotheques de ressources
+  // jetables sans que le registre soit mis a jour : la politique les voyait
+  // ecrire en base sans declaration, et `test:db-routing` echouait. Ils sont
+  // desormais declares ICI (donc exiges derriere le lanceur) et cables dans
+  // `package.json` uniquement via `scripts/run-db-suite.mjs` — la section A le
+  // verifie, elle refuse toute invocation directe.
+  //
+  // Aucun n'est exempte : chacun cree, detruit ou verrouille des ressources du
+  // cluster (bases `tf_*`, roles ephemeres, verrou advisory). Plusieurs creent
+  // une base ephemere par execution : le nom porte un identifiant tire au sort.
+  'scripts/test_verrou_cluster.mjs',
+  'scripts/test_concurrence_suites.mjs',
+  'scripts/test_base_ephemere_garde.mjs',
+  'scripts/test_role_ephemere_garde.mjs',
+  'scripts/test_ensure_app_role_garde.mjs',
+  'scripts/test_destruction_verrouillee.mjs',
+  'scripts/test_ressources_fixes_garde.mjs',
+  'scripts/test_reprise_ressources_jetables.mjs',
+  'scripts/test_r4_inscription_base_jetable.mjs',
+  'scripts/test_provisioning_role_app.mjs',
+  'scripts/test_garde_cible_ecriture.mjs',
+  'scripts/test_migration_atomicite_plm_dedup.mjs',
+  // Harnais : execute les suites qu'on lui passe. Sa propre documentation
+  // d'emploi impose le lanceur, et il cree une base ephemere par suite.
+  'scripts/harnais_suites_rls.mjs',
+  // Outils de cycle de vie des ressources jetables, cables eux aussi derriere
+  // le lanceur. `reinitialiser_base_jetable` refuse par ailleurs tout nom hors
+  // liste fermee (`tracefab_test`, `tf_*`) ; `nettoyer_ressources_jetables`
+  // exige `--confirmer` et ne touche qu'aux ressources citees au manifeste.
+  'scripts/reinitialiser_base_jetable.mjs',
+  'scripts/nettoyer_ressources_jetables.mjs',
 ];
 
 /**
@@ -81,13 +117,36 @@ const DESTRUCTIVE_DB_SUITES = [
  * classee destructrice qui n'ecrit plus, ou classee en lecture qui se met a
  * ecrire, fait echouer la politique.
  */
+const P105_DB_SUITES = [
+  // Ecrit une cle HMAC de test (version 99011), la retire, bascule puis
+  // restaure `tracefab_identity_politique.strict`. Committe : ce n'est pas une
+  // suite « rollback only ».
+  'scripts/test_p105_hmac_identite.mjs',
+  // Meme chose, et rejoue l'ingestion PLM/ERP sous le role applicatif : les
+  // transactions d'ingestion sont annulees, la cle de test est reellement
+  // posee puis supprimee. Aucun privilege large n'est accorde.
+  'scripts/test_p105_ingestion_isolation.mjs',
+  // Cree une BASE et un role de sonde dans le cluster, puis les detruit.
+  // C'est la suite la plus destructrice des trois : elle ne doit jamais voir
+  // une cible non classee jetable.
+  'scripts/test_p105_roles_et_migrations.mjs',
+  // Provisionne une cle par le module du script operateur, signe, verifie,
+  // puis retire la cle. Ecrit en base, donc garde.
+  'scripts/test_p105_identite_jeton.ts',
+  // Controle POSITIF de la hierarchie : GRANT d'un role sonde a
+  // `tracefab_app`, `SET ROLE`, mesure, puis REVOKE. Sans ce GRANT, les douze
+  // assertions ne prouveraient rien ; avec lui, la suite modifie temporairement
+  // `pg_auth_members` et doit donc etre gardee.
+  'scripts/verifier_hierarchie_roles.mjs',
+];
+
 const DATA_READING_DB_SUITES = [
   'scripts/test_neon_wallet_chantier9.ts',
   'scripts/test_neon_chantier10_storage.ts',
 ];
 
 /** Toutes les suites qui doivent passer par le lanceur garde. */
-const MUST_ROUTE_THROUGH_WRAPPER = [...DESTRUCTIVE_DB_SUITES, ...DATA_READING_DB_SUITES];
+const MUST_ROUTE_THROUGH_WRAPPER = [...DESTRUCTIVE_DB_SUITES, ...P105_DB_SUITES, ...DATA_READING_DB_SUITES];
 
 /**
  * Suites destructives presentes dans le depot mais rattachees a aucune
@@ -108,6 +167,12 @@ const UNWIRED_DESTRUCTIVE_REGISTER = [
 /** Suites de base en lecture seule : pas de garde necessaire, mais declarees. */
 const READ_ONLY_DB_SUITES = [
   'scripts/audit_neon_readonly.mjs',       // audit de privileges, uniquement des SELECT de catalogue
+  // Diagnostic P10.7 : ouvre une connexion pour IDENTIFIER la base jointe.
+  // Il pose `SET default_transaction_read_only = on` avant toute requete, donc
+  // toute ecriture serait refusee par PostgreSQL, pas seulement omise par
+  // discipline. Il ne lit que des catalogues (pg_class, pg_proc, pg_database)
+  // et des compteurs sur la table des cles — jamais un secret.
+  'scripts/diagnostic_base_preview_p107.mjs',
 ];
 
 /**
@@ -119,6 +184,28 @@ const READ_ONLY_DB_SUITES = [
  */
 const ROLLBACK_ONLY_DB_SUITES = [
   'scripts/test_neon_privileges.mjs',
+  // Execute le vrai moteur de calcul DPP pour mesurer son effet, puis annule
+  // TOUJOURS : la suite verifie ensuite que la base est identique a l'instant
+  // d'avant (compteurs et empreintes) et sort en code 4 sinon.
+  'scripts/simuler_recalcul_dpp.mjs',
+  // Se connecte avec le ROLE APPLICATIF (pas en proprietaire) pour prouver que
+  // le parcours DPP passe malgre l'absence d'ecriture directe, puis annule :
+  // il verifie apres coup que statut, revue et slug sont identiques.
+  'scripts/test_dpp_role_applicatif.mjs',
+  // Ecrit via les six fonctions systeme (provisionnement d utilisateur, sante
+  // de l outbox) DANS une transaction toujours annulee, sous le role
+  // applicatif. Il verifie que les donnees ne survivent pas : c est le prix
+  // pour prouver que l ecriture legitime fonctionne encore.
+  'scripts/test_worker_non_forgeable.mjs',
+  // Postflight P10.7 : cree une organisation sonde, verifie l archivage sous role worker,
+  // puis annule toute la transaction (y compris le SET temporaire du role).
+  'scripts/verification_p107_worker_rls_migration.mjs',
+  // Preuve C4 : se connecte avec le ROLE APPLICATIF pour mesurer l identite
+  // PostgreSQL de la connexion runtime, puis tente un CREATE TABLE qui DOIT
+  // echouer (42501 ou 25006) — c est la preuve que le role ne peut pas creer
+  // d objet. La transaction est ouverte en READ ONLY et toujours annulee ;
+  // la suite echoue si le CREATE reussit.
+  'scripts/preuve_pg_identite_p107.mjs',
 ];
 
 /**
@@ -129,6 +216,41 @@ const ROLLBACK_ONLY_DB_SUITES = [
  */
 const REFUSED_WRITE_PROBE_DB_SUITES = [
   'scripts/test_audit_neon_readonly.mjs',
+  // P10.5 : execute la sonde de production dans une transaction READ ONLY,
+  // puis tente un `CREATE TEMP TABLE` qui DOIT echouer en 25006. L'ecriture
+  // n'est jamais tentee hors de cette transaction, et la suite echoue si le
+  // refus n'est pas observe — la declaration n'est pas un blanc-seing.
+  'scripts/test_p105_sonde_lecture_seule.mjs',
+  // P10.7 : les deux sondes P10.7 — celle du catalogue et celle du runtime —
+  // executent leurs instructions dans une transaction READ ONLY, puis tentent
+  // UNE ecriture qui DOIT echouer en 25006. Si elle passe, le lanceur sort en
+  // 1 et refuse de produire un rapport : la declaration n'est pas un
+  // blanc-seing, elle est verifiee a chaque execution.
+  'scripts/sonde_p107_etat_cible.mjs',
+  'scripts/sonde_p107_runtime.mjs',
+];
+
+/**
+ * Outils d'ecriture qui portent EUX-MEMES la garde de cible, avec arret.
+ *
+ * `db-deploy-throwaway.mjs` applique les migrations : il n'est pas une suite,
+ * donc il ne peut pas etre confie au lanceur de suites. Il appelle pourtant
+ * `requireThrowawayDb({ exitOnFailure: true })` au chargement du module, avant
+ * la premiere instruction qui touche la base — exactement la propriete que le
+ * lanceur apporte aux suites. Le classer « outil d'exploitation » serait faux
+ * (la CI l'invoque), et le router par `run-db-suite.mjs` ferait executer le
+ * deployeur par le lanceur de suites.
+ *
+ * La declaration n'est PAS un blanc-seing : la section F2 relit le source et
+ * exige l'appel a la garde au chargement du module, sans `exitOnFailure: false`
+ * (la garde sort par defaut). Un outil qui perdrait son garde-fou ferait
+ * echouer la politique.
+ */
+const SELF_GUARDED_DB_TOOLS = [
+  'scripts/db-deploy-throwaway.mjs',
+  // Provisionne les rôles uniquement sur le PostgreSQL local jetable de CI ;
+  // la garde commune est exécutée au chargement avant toute connexion.
+  'scripts/prepare_ci_migration_roles.mjs',
 ];
 
 /**
@@ -144,6 +266,39 @@ const REFUSED_WRITE_PROBE_DB_SUITES = [
 const OPERATOR_WRITER_SCRIPTS = [
   'scripts/seed_pilot.ts',                  // amorcage d un environnement pilote
   'scripts/verifier_checksums_migrations.mjs', // realignement des checksums, sur --appliquer uniquement
+  // Harnais de migration sur une base NOMMEE par l'operateur. Ils refusent la
+  // production eux-memes (hote connu ou prefixe), mais ce refus n'est pas la
+  // garde de cible : ils sont donc hors de toute chaine automatique, et chacun
+  // porte un mode sans ecriture (--dry-run ou --etat).
+  'scripts/migrer_fidelement.mjs',
+  // P10.7. Meme situation, et elle merite d'etre nommee : c'est l'outil qui
+  // pose et retire le mode strict de l'identite systeme. Il ne bascule JAMAIS
+  // dans une chaine automatique (aucune commande npm, aucun workflow : une
+  // migration qui exige un secret casserait toute base neuve — mesure du
+  // 05/11). Ce qui le borne, et qui le rend sur :
+  //   - `--verifier` est le seul mode atteignable sans ecriture ;
+  //   - une ecriture exige `TF_ALLOW_WRITE=oui` ET une cible classee JETABLE
+  //     par le classifieur commun : il refuse un environnement qui sert ;
+  //   - il relit sa postcondition dans la meme transaction.
+  // Les suites P10.7 l'invoquent comme processus ENFANT sur la base qu'elles
+  // ont creee et qu'elles detruisent. Un operateur, lui, pose le mode avec
+  // l'outil de deploiement de son environnement.
+  'scripts/activer_identite_systeme_stricte.mjs',
+  // P10.5. Aucune commande npm ni aucun workflow ne les nomme : ils sont
+  // invoques par les suites P10.5 comme processus ENFANT, sur une base que ces
+  // suites ont creee et qu'elles detruisent (voir P105_DB_SUITES). Ce qui les
+  // borne n'est donc pas l'absence d'appel — elle serait une illusion — mais
+  // `TF_ALLOW_PROVISIONING=oui` exige a chaque execution, plus la cible que
+  // l'appelant fournit. Les classer « suites gardees » serait faux : un
+  // operateur doit pouvoir provisionner une branche Neon, que le classifieur
+  // de cible jetable refuse par construction.
+  'scripts/provisionner_roles_db.mjs',
+  'scripts/provisionner_cle_identite.mjs',
+  // Remplacement de role worker Neon : mutation operateur explicite, avec
+  // TF_ALLOW_WORKER_ROLE_SWAP, confirmation de la cible directe et garde Production.
+  'scripts/provisionner_worker_neon.mjs',
+  'scripts/mesure_effet_migrations_dpp.mjs',
+  'scripts/valider_branche_dpp.mjs',
 ];
 
 /**
@@ -159,6 +314,19 @@ const PATTERN_ONLY_FILES = [
   // throwaway. Elle n'ouvre aucune connexion. La suite SQL correspondante
   // est scripts/test_neon_supplier_advanced.mjs.
   'scripts/test_supplier_advanced.mjs',
+  // Lit le catalogue et les migrations. Le motif d ecriture qu il contient est
+  // une EXPRESSION REGULIERE servant a DETECTER les GRANT directs dans les
+  // migrations — il n en execute aucun. Le classer destructif l enverrait
+  // derriere une garde de cible sans rien proteger de plus.
+  'scripts/test_registre_fonctions_runtime.mjs',
+  // P10.2 : meme cas. Les motifs d ecriture qu il contient sont des
+  // EXPRESSIONS REGULIERES qui DETECTENT les GRANT ... TO PUBLIC des scripts et
+  // des migrations — il n en execute aucun. Il lit le catalogue (partie D) et
+  // exige pour cela une cible classee jetable ; il n ecrit jamais. Le classer
+  // destructif le ferait tourner derriere le lanceur pour ne rien proteger de
+  // plus, et priverait `verification` d un controle STATIQUE qui, lui, n a pas
+  // besoin de base.
+  'scripts/test_scripts_migration_obsoletes.mjs',
 ];
 
 const pkg = JSON.parse(readFileSync(join(ROOT, 'package.json'), 'utf8'));
@@ -230,6 +398,7 @@ console.log('\n  C. aucune suite destructive non declaree');
     if (PATTERN_ONLY_FILES.includes(rel)) continue;
     if (ROLLBACK_ONLY_DB_SUITES.includes(rel)) continue;
     if (REFUSED_WRITE_PROBE_DB_SUITES.includes(rel)) continue;
+    if (SELF_GUARDED_DB_TOOLS.includes(rel)) continue;
     // Une suite invoquee uniquement via le lanceur est couverte.
     const invocations = scriptInvocations(rel);
     if (invocations.length > 0 && invocations.every(([, command]) => command.includes(WRAPPER))) continue;
@@ -336,6 +505,60 @@ for (const rel of OPERATOR_WRITER_SCRIPTS) {
     : ko(`${rel} n offre aucun mode sans ecriture`);
 }
 
+console.log('\n  F2. les outils auto-gardes appellent vraiment la garde, avec arret');
+for (const rel of SELF_GUARDED_DB_TOOLS) {
+  if (!existsSync(join(ROOT, rel))) { ko(`outil auto-garde introuvable : ${rel}`); continue; }
+  const corps = readFileSync(join(ROOT, rel), 'utf8');
+  if (!/requireThrowawayDb\s*\(/.test(corps)) {
+    ko(`${rel} est declare auto-garde mais n appelle pas requireThrowawayDb`);
+    continue;
+  }
+  // L'appel doit etre au niveau du module (marge nulle ou deux espaces), pas
+  // dans une fonction qui pourrait ne jamais s executer.
+  const auChargement = /^\s{0,2}(?:const \w+ = )?requireThrowawayDb\s*\(/.test(
+    corps.split('\n').filter((l) => /requireThrowawayDb\s*\(/.test(l) && !/^\s*\*/.test(l)).join('\n'),
+  );
+  // `requireThrowawayDb` sort par defaut (`exitOnFailure = true`) : ce qui
+  // retirerait l arret, c est un `exitOnFailure: false` explicite.
+  const avecArret = !/exitOnFailure\s*:\s*false/.test(corps);
+  auChargement
+    ? ok(`${rel} — garde appelee au chargement du module`)
+    : ko(`${rel} — la garde n est pas appelee au chargement : elle peut ne jamais s executer`);
+  avecArret
+    ? ok(`${rel} — garde sans exitOnFailure desactive`)
+    : ko(`${rel} — exitOnFailure: false : le script continuerait sur une cible refusee`);
+}
+
+console.log('\n  F3. le bootstrap CI reproduit le contrat Neon du migrateur');
+{
+  const rel = 'scripts/prepare_ci_migration_roles.mjs';
+  const source = readFileSync(join(ROOT, rel), 'utf8');
+  const guardAt = source.indexOf('requireThrowawayDb(');
+  const connectAt = source.indexOf('await client.connect()');
+  ok(guardAt >= 0 && connectAt >= 0 && guardAt < connectAt
+    ? `${rel} — garde locale avant toute connexion`
+    : `${rel} — garde absente ou exécutée après connexion`);
+
+  const beginAt = source.indexOf("await client.query('BEGIN')");
+  const extensionAt = source.indexOf('CREATE EXTENSION IF NOT EXISTS pgcrypto');
+  const adminAt = source.indexOf('NOBYPASSRLS NOSUPERUSER NOINHERIT');
+  ok(beginAt >= 0 && extensionAt > beginAt && extensionAt < adminAt
+    ? 'pgcrypto préinstallée par le bootstrap avant les rôles non-superusers'
+    : 'pgcrypto doit être préinstallée avant la prise de rôle migrateur');
+
+  const adminNoBypass = source.includes('CREATEROLE NOCREATEDB NOBYPASSRLS NOSUPERUSER NOINHERIT');
+  const migratorBypass = source.includes('CREATEROLE NOCREATEDB BYPASSRLS NOSUPERUSER INHERIT');
+  ok(adminNoBypass && migratorBypass
+    ? 'admin NOBYPASSRLS et migrateur BYPASSRLS, tous deux NOSUPERUSER'
+    : 'contrat de privilèges admin/migrateur divergent');
+
+  const dbCreate = source.includes('GRANT CREATE ON DATABASE');
+  const schemaOwner = source.includes('ALTER SCHEMA public OWNER TO');
+  ok(dbCreate && schemaOwner
+    ? 'migrateur CREATE sur la base et propriétaire de public, comme Neon'
+    : 'droits CREATE base / propriété public absents du bootstrap');
+}
+ 
 console.log('\n  E. les suites declarees sans ecriture le sont vraiment');
 for (const rel of READ_ONLY_DB_SUITES) {
   if (!existsSync(join(ROOT, rel))) { ok(`${rel} — absent, rien a verifier`); continue; }
@@ -348,11 +571,26 @@ for (const rel of READ_ONLY_DB_SUITES) {
 for (const rel of REFUSED_WRITE_PROBE_DB_SUITES) {
   if (!existsSync(join(ROOT, rel))) { ko(`${rel} — declaree introuvable`); continue; }
   const corps = readFileSync(join(ROOT, rel), 'utf8');
-  const tente = /CREATE TABLE tracefab_readonly_probe/.test(corps);
-  const affirme = /UNE ECRITURE A REUSSI/.test(corps) && /read-only transaction/i.test(corps);
-  if (tente && affirme) ok(`${rel} — sonde d ecriture tentee et refus affirme explicitement`);
-  else if (!tente) ko(`${rel} ne tente aucune ecriture : la declaration est fausse`);
-  else ko(`${rel} tente une ecriture sans affirmer le refus attendu`);
+  // Deux formes sont acceptees, mais aucune n'est declaree sur la seule foi du
+  // CREATE TABLE. L'ancienne forme porte son temoin textuel ; la sonde P10.7
+  // parametree doit prouver son refus par SQLSTATE, distinguer 25P02 et traiter
+  // explicitement une ecriture acceptee comme ECRITURE_VALIDEE.
+  const tenteHistorique = /CREATE TABLE tracefab_readonly_probe/.test(corps);
+  const tenteParametree = /CREATE TABLE public\.\$\{TABLE_CONTROLE\}/.test(corps)
+    && /const TABLE_CONTROLE = 'tracefab_readonly_probe'/.test(corps);
+  const affirmeHistorique = /UNE ECRITURE A REUSSI/.test(corps) && /read-only transaction/i.test(corps);
+  const affirmeParSqlstate = /erreur\.sqlstate === '25006'/.test(corps)
+    && /verdict = 'TENTATIVE_ECRITURE_REFUSEE'/.test(corps)
+    && /erreur\.sqlstate === '25P02'/.test(corps)
+    && /verdict = 'TRANSACTION_ABORTEE'/.test(corps)
+    && /rapport\.verdict = 'ECRITURE_VALIDEE'/.test(corps);
+  if ((tenteHistorique || tenteParametree) && (affirmeHistorique || affirmeParSqlstate)) {
+    ok(`${rel} — sonde d ecriture tentee et refus affirme explicitement`);
+  } else if (!(tenteHistorique || tenteParametree)) {
+    ko(`${rel} ne tente aucune ecriture : la declaration est fausse`);
+  } else {
+    ko(`${rel} tente une ecriture sans affirmer le refus attendu`);
+  }
 }
 for (const rel of ROLLBACK_ONLY_DB_SUITES) {
   if (!existsSync(join(ROOT, rel))) { ko(`${rel} — declaree introuvable`); continue; }

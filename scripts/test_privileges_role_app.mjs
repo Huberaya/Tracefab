@@ -33,8 +33,11 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { execFileSync } from 'node:child_process';
+import { exigeAssistance, preparerAppartenance } from './lib/migrations_assistees.mjs';
+import { exigeBailWorker } from './lib/migrations_worker_temporaire.mjs';
 import pg from 'pg';
 import { requireThrowawayDb } from './lib/require-throwaway-db.mjs';
+import { creerBaseEphemere, verrouillerCluster, filetDeNettoyage } from './lib/ephemeral-db.mjs';
 import { sslDepuisUrl } from './lib/pg-ssl.mjs';
 import { APP_ROLE, TABLES_ECRITURE_DIRECTE } from './lib/tracefab_app_role.mjs';
 import { API_RUNTIME_FUNCTION_NAMES, RLS_POLICY_FUNCTION_NAMES, RUNTIME_FUNCTION_NAMES } from './lib/tracefab_runtime_functions.mjs';
@@ -43,7 +46,11 @@ const SORTIE_DEFAUT = 1;
 const SORTIE_PREREQUIS = 2;
 
 const RACINE = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
-const BASE_EPHEMERE = 'tracefab_privileges_ephemere';
+// Aucun nom de base fixe : `DROP DATABASE IF EXISTS tracefab_privileges_ephemere`
+// s'executait avant tout controle, sur une base qui pouvait preexister. Meme
+// defaut que dans test_isolation_lignes_reelles et test_compteurs_debit, mesure
+// le 29/10 : base homonyme et donnee metier detruites, suite verte.
+// Voir scripts/lib/ephemeral-db.mjs.
 const MOT_DE_PASSE = process.env.TF_APP_PASSWORD || 'epreuve_locale_jetable';
 
 /**
@@ -59,10 +66,16 @@ const MOT_DE_PASSE = process.env.TF_APP_PASSWORD || 'epreuve_locale_jetable';
 
 let assertions = 0;
 let echecs = 0;
+// Nom de la derniere assertion EVALUEE. Sert au `catch` global : sans lui, une
+// exception levee entre deux assertions donne « ECHEC — sans code » et il faut
+// relire tout le fichier pour deviner ou. Mesure du run 44533774940.
+let derniereAssertion = '(aucune)';
+const echecsNoms = [];
 const verifier = (nom, cond, obs) => {
   assertions += 1;
+  derniereAssertion = nom;
   if (cond) console.log(`  ok    ${nom}`);
-  else { echecs += 1; console.log(`  ECHEC ${nom} — observé : ${obs}`); }
+  else { echecs += 1; echecsNoms.push(nom); console.log(`  ECHEC ${nom} — observé : ${obs}`); }
 };
 
 /* --- 0. Régression dans le code de provisioning ---------------------------- */
@@ -86,7 +99,7 @@ verifier(
 );
 verifier(
   'aucun ALTER DEFAULT PRIVILEGES accordant INSERT par défaut',
-  !/ALTER DEFAULT PRIVILEGES[^;]*\bINSERT[^;]*ON TABLES/i.test(sourceRole),
+  !/ALTER DEFAULT PRIVILEGES[^;]*\bGRANT\b[^;]*\bINSERT\b[^;]*ON TABLES/i.test(sourceRole),
   'un ALTER DEFAULT PRIVILEGES ... INSERT ... ON TABLES est présent',
 );
 verifier(
@@ -113,10 +126,31 @@ const allowlistSqlBlock = migrationFunctionAcl.match(/runtime_names text\[\] := 
 const allowlistSqlNames = allowlistSqlBlock
   ? [...allowlistSqlBlock[1].matchAll(/'([a-z0-9_]+)'/g)].map((m) => m[1]).sort()
   : [];
+// La liste figee de 20261021120000 n est plus la source de verite : elle ne
+// peut pas contenir de fonction creee plus tard (la migration verifie que
+// chaque nom existe deja et leve 42883 sinon). Les ajouts passent par le
+// registre runtime (migration 20261028120000), qui recoit un INSERT par
+// migration posterieure. Le perimetre attendu est donc l union des deux.
+const registreAjouts = [];
+for (const dossier of fs.readdirSync(path.join(RACINE, 'prisma', 'migrations')).sort()) {
+  if (dossier <= '20261028120000_runtime_function_registry') continue;
+  const fichier = path.join(RACINE, 'prisma', 'migrations', dossier, 'migration.sql');
+  if (!fs.existsSync(fichier)) continue;
+  const sql = fs.readFileSync(fichier, 'utf8').replace(/--[^\n]*/g, '');
+  for (const bloc of sql.matchAll(/INSERT INTO public\.tracefab_runtime_function_registry[\s\S]*?;/g)) {
+    for (const ligne of bloc[0].matchAll(/\(\s*'([a-z0-9_]+)'\s*,/g)) registreAjouts.push(ligne[1]);
+  }
+}
+const allowlistAttendue = [...new Set([...allowlistSqlNames, ...registreAjouts])].sort();
 verifier(
-  'la liste SQL de migration est synchronisée avec le module runtime',
-  JSON.stringify(allowlistSqlNames) === JSON.stringify([...RUNTIME_FUNCTION_NAMES].sort()),
-  `module=${RUNTIME_FUNCTION_NAMES.length}, migration=${allowlistSqlNames.length}`,
+  'le module runtime est synchronisé avec la liste figée et le registre',
+  JSON.stringify(allowlistAttendue) === JSON.stringify([...RUNTIME_FUNCTION_NAMES].sort()),
+  `module=${RUNTIME_FUNCTION_NAMES.length}, figée=${allowlistSqlNames.length}, registre ajouté=${registreAjouts.length}, attendu=${allowlistAttendue.length}`,
+);
+verifier(
+  'la liste figée garde son périmètre d origine',
+  allowlistSqlNames.length === 84,
+  `figée=${allowlistSqlNames.length}`,
 );
 
 // Ré-extraction indépendante des appels SQL directs de api/. Les commentaires
@@ -176,27 +210,37 @@ requireThrowawayDb({
   exitOnFailure: true,
 });
 
-const hote = (urlAdmin.match(/@([^/:]+)/) || [])[1] ?? 'illisible';
+console.log('\n  2. base éphémère — nom unique, OID retenu, destruction réservée');
 
-// La connexion d'administration vise la base de maintenance `postgres`, pas la
-// base configurée. CREATE DATABASE ne peut pas s'exécuter depuis une base qui
-// n'existe pas encore, et le contrôle doit pouvoir tourner avant tout
-// déploiement : avec urlAdmin tel quel, il mourait en 3D000 invalid_catalog_name
-// dès que la base configurée était absente.
-const urlMaintenance = urlAdmin.replace(/\/[^/?]+(\?|$)/, '/postgres$1');
-const admin = new pg.Client({ connectionString: urlMaintenance, ssl: sslDepuisUrl(urlMaintenance) });
-console.log(`\n  2. base éphémère sur ${hote}`);
+// La base de travail est créée et PROUVÉE par la garde : nom unique par
+// exécution, existence vérifiée avant création, OID conservé, destruction
+// limitée à cet OID. Plus aucun `DROP` inconditionnel.
+const baseEphemere = await creerBaseEphemere({
+  urlProprietaire: urlAdmin,
+  prefixe: 'tf_privileges',
+});
+console.log(`  base : ${baseEphemere.nom} (oid ${baseEphemere.oid}), cluster ${baseEphemere.identite.systemIdentifier}`);
 
-await admin.connect();
-await admin.query(`DROP DATABASE IF EXISTS ${BASE_EPHEMERE}`);
-await admin.query(`CREATE DATABASE ${BASE_EPHEMERE}`);
-
-const urlEphemere = urlAdmin.replace(/\/[^/?]+(\?|$)/, `/${BASE_EPHEMERE}$1`);
+const urlEphemere = baseEphemere.url;
 const urlApp = urlEphemere.replace(/:\/\/[^@]*@/, `://${APP_ROLE}:${encodeURIComponent(MOT_DE_PASSE)}@`);
 
 let sortie = 0;
 let app = null;
+let verrou = null;
+
+// Filet : une erreur fatale entre la creation et le `finally` ne doit pas
+// laisser la base ni le verrou derriere elle.
+filetDeNettoyage(async () => {
+  if (app) await app.end().catch(() => {});
+  if (verrou) await verrou.relacher().catch(() => {});
+  await baseEphemere.fermer().catch(() => {});
+});
+
 try {
+  // Verrou de CLUSTER : le provisioning du role touche `pg_authid`, partage par
+  // toutes les bases du serveur. Meme verrou que les autres suites.
+  verrou = await verrouillerCluster(baseEphemere);
+
   // Le mot de passe repris de l'environnement : dans la CI, TF_APP_PASSWORD est
   // celui qu'emploie TF_RLS_APP_URL. En réutiliser un autre réinitialiserait le
   // mot de passe du rôle pour tout le cluster et casserait les suites suivantes.
@@ -234,20 +278,92 @@ try {
       applied_steps_count INTEGER NOT NULL DEFAULT 0
     )
   `);
+  // Simuler le défaut historique observé sur Neon : les tables futures héritent
+  // par défaut de DML pour tracefab_app et PUBLIC. La migration doit le supprimer.
+  const ownerName = (await mig.query('SELECT current_user AS owner')).rows[0].owner;
+  const quotedOwner = '"' + String(ownerName).replace(/"/g, '""') + '"';
+  await mig.query(`ALTER DEFAULT PRIVILEGES FOR ROLE ${quotedOwner} GRANT INSERT, UPDATE, DELETE ON TABLES TO ${APP_ROLE}`);
+  await mig.query(`ALTER DEFAULT PRIVILEGES FOR ROLE ${quotedOwner} GRANT INSERT, UPDATE, DELETE ON TABLES TO PUBLIC`);
+  await mig.query(`ALTER DEFAULT PRIVILEGES FOR ROLE ${quotedOwner} IN SCHEMA public GRANT INSERT, UPDATE, DELETE ON TABLES TO ${APP_ROLE}`);
+  await mig.query(`ALTER DEFAULT PRIVILEGES FOR ROLE ${quotedOwner} IN SCHEMA public GRANT INSERT, UPDATE, DELETE ON TABLES TO PUBLIC`);
+
   const dossiers = fs.readdirSync(path.join(RACINE, 'prisma', 'migrations'))
     .filter((d) => /^\d{14}_/.test(d)).sort();
   for (const d of dossiers) {
     const sql = fs.readFileSync(path.join(RACINE, 'prisma', 'migrations', d, 'migration.sql'), 'utf8');
+    // P10.6 — la migration assistée n'est rejouable que si l'état
+    // d'appartenance d'avant est rétabli. Sans cette préparation, PostgreSQL
+    // refuse le `REVOKE` de son § 6 bis en 2BP01 dès la deuxième base du même
+    // cluster (mesuré le 02/11). Même helper que `migrer_fidelement.mjs` :
+    // une seule définition de la règle.
+    if (exigeAssistance(d)) {
+      const { revoques } = await preparerAppartenance(mig, d, ownerName);
+      if (revoques.length) console.log(`     préparation ${d} : appartenance retirée de ${revoques.join(', ')}`);
+    }
+    // SIX MIGRATIONS EXIGENT LE BAIL `tracefab_worker` DANS LEUR TRANSACTION.
+    //
+    // `scripts/migrer_fidelement.mjs` l'accorde depuis la connexion
+    // administrative (`TF_ADMIN_URL`), le verifie, pose
+    // `tracefab.worker_membership_managed = 'true'`, applique la migration, puis
+    // revoque AVANT COMMIT. Ce banc applique les migrations lui-meme — il doit
+    // intercaler ses mesures d'ACL entre deux fichiers — et doit donc reproduire
+    // ce preambule, sinon il ne mesure pas la chaine que le runner execute : il
+    // mesure un etat que le deploiement ne produit jamais.
+    //
+    // Mesure du 2026-11-12 : sans ce preambule, la suite s'arretait sur
+    // `20261028120100_worker_identity_not_forgeable` (P0001
+    // worker_membership_must_be_managed_by_runner) apres 8 assertions vertes.
+    // La liste des six est CLOSE et partagee avec le runner
+    // (`lib/migrations_worker_temporaire.mjs`) : le banc ne peut ni en oublier
+    // une, ni s'en accorder une de plus.
+    //
+    // TOPOLOGIE DE CE BANC : la chaine est appliquee par le PROPRIETAIRE de la
+    // base (`postgres`, superutilisateur), pas par `tracefab_migrator` — ce banc
+    // mesure les ACL du role applicatif, pas l'identite de migration (c'est
+    // `test:p106:rejouabilite-chaine` qui mesure cela, avec admin et migrateur
+    // non-SUPERUSER). Pour un superutilisateur `pg_has_role(..., 'SET')` est
+    // toujours vrai : la seule chose a reproduire ici est donc la DECLARATION du
+    // runner, `tracefab.worker_membership_managed`, posee dans la transaction et
+    // jamais hors d'elle. Le GRANT/REVOKE du bail est mesure par les bancs qui
+    // ont une identite de migration non privilegiee.
+    //
+    // Mesure du 2026-11-12 : sans cette declaration, la suite s'arretait sur
+    // `20261028120100_worker_identity_not_forgeable` (P0001
+    // worker_membership_must_be_managed_by_runner) apres 8 assertions vertes.
+    // La liste des six est CLOSE et partagee avec le runner
+    // (`lib/migrations_worker_temporaire.mjs`) : le banc ne peut ni en oublier
+    // une, ni s'en accorder une de plus.
+    const bailWorker = exigeBailWorker(d);
     await mig.query('BEGIN');
-    try { await mig.query(sql); await mig.query('COMMIT'); }
+    try {
+      if (bailWorker) {
+        await mig.query("SET LOCAL tracefab.worker_membership_managed = 'true'");
+      }
+      await mig.query(sql);
+      await mig.query('COMMIT');
+    }
     catch (e) {
-      await mig.query('ROLLBACK');
+      await mig.query('ROLLBACK').catch(() => {});
       console.log(`  ECHEC migration ${d} : ${e.code} ${String(e.message).split('\n')[0]}`);
       await mig.end();
       sortie = SORTIE_DEFAUT;
       throw new Error('migration');
     }
   }
+  const defaultsDml = await mig.query(`
+    SELECT count(*)::int AS n
+    FROM pg_default_acl d
+    CROSS JOIN LATERAL aclexplode(d.defaclacl) a
+    WHERE d.defaclobjtype = 'r'
+      AND (d.defaclnamespace = 0 OR d.defaclnamespace = 'public'::regnamespace)
+      AND a.grantee IN (0, '${APP_ROLE}'::regrole)
+      AND a.privilege_type IN ('INSERT', 'UPDATE', 'DELETE')
+  `);
+  verifier(
+    'les migrations ferment les privilèges DML par défaut pour tracefab_app et PUBLIC',
+    defaultsDml.rows[0]?.n === 0,
+    `${defaultsDml.rows[0]?.n ?? 'inconnu'} privilège(s) DML futur(s) subsistent`,
+  );
   await mig.end();
 
   // Regression: re-running the documented idempotent bootstrap after migrations
@@ -265,6 +381,63 @@ try {
   const identite = await app.query('SELECT current_user AS u, (SELECT rolbypassrls FROM pg_roles WHERE rolname=current_user) AS b');
   verifier('la connexion est bien le rôle applicatif', identite.rows[0].u === APP_ROLE, identite.rows[0].u);
   verifier('le rôle ne contourne pas la RLS', identite.rows[0].b === false, `rolbypassrls=${identite.rows[0].b}`);
+
+  // Les privilèges effectifs incluent les appartenances de rôle, pas seulement
+  // les ACL explicites. Une adhésion indirecte à un rôle administratif invalide
+  // le modèle même si tracefab_app paraît lui-même non privilégié.
+  const rolesElevated = await app.query(`
+    SELECT r.rolname, r.rolsuper, r.rolbypassrls, r.rolcreaterole, r.rolcreatedb
+    FROM pg_roles r
+    WHERE (r.rolsuper OR r.rolbypassrls OR r.rolcreaterole OR r.rolcreatedb)
+      AND pg_has_role(current_user, r.oid, 'MEMBER')
+  `);
+  verifier(
+    'aucun privilège élevé direct ou hérité via les rôles',
+    rolesElevated.rows.length === 0,
+    rolesElevated.rows.map((r) => r.rolname).join(', ') || 'aucun rôle élevé hérité',
+  );
+
+  // Mesurer les droits EFFECTIFS (y compris héritage et PUBLIC) sur chaque
+  // table : une ACL directe absente ne suffit pas à prouver un refus.
+  const effectiveDml = await app.query(`
+    SELECT c.relname AS nom,
+      has_table_privilege(current_user, c.oid, 'INSERT') AS i,
+      has_table_privilege(current_user, c.oid, 'UPDATE') AS u,
+      has_table_privilege(current_user, c.oid, 'DELETE') AS d
+    FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
+    WHERE n.nspname = 'public' AND c.relkind IN ('r', 'p')
+      AND c.relname <> '_prisma_migrations'
+    ORDER BY c.relname
+  `);
+  const allowWrite = new Set(TABLES_ECRITURE_DIRECTE);
+  const unexpectedEffective = effectiveDml.rows.filter((r) =>
+    (r.i || r.u || r.d) && !allowWrite.has(r.nom));
+  verifier(
+    'aucun DML effectif direct, hérité ou PUBLIC hors des tables autorisées',
+    unexpectedEffective.length === 0,
+    unexpectedEffective.map((r) => r.nom).join(', ') || 'aucun DML effectif hors allowlist',
+  );
+
+  // Le catalogue PEF et les règles de green claims sont volontairement publics,
+  // mais uniquement en lecture et sur les entrées actives. Ces deux exceptions
+  // n'ont pas besoin de contexte tenant ; la politique RLS doit le prouver.
+  const referencePolicies = await app.query(`
+    SELECT tablename,
+      bool_or(cmd = 'SELECT' AND 'public' = ANY(roles)
+        AND COALESCE(qual, '') ILIKE '%is_active%'
+        AND COALESCE(qual, '') ILIKE '%true%') AS public_active_select
+    FROM pg_policies
+    WHERE schemaname = 'public'
+      AND tablename IN ('pef_emission_factors', 'green_claims_rules')
+    GROUP BY tablename
+  `);
+  const referencePolicyMap = new Map(referencePolicies.rows.map((r) => [r.tablename, r.public_active_select]));
+  verifier(
+    'PEF et green claims ont une politique SELECT publique active-only',
+    referencePolicyMap.get('pef_emission_factors') === true
+      && referencePolicyMap.get('green_claims_rules') === true,
+    JSON.stringify(Object.fromEntries(referencePolicyMap)),
+  );
 
   // Le confinement ne vient PAS des privilèges de table.
   //
@@ -351,15 +524,46 @@ try {
     JSON.stringify(hm),
   );
 
+  // Les tables FERMÉES par conception, et la raison de chacune. Une liste
+  // d'exceptions est un affaiblissement si elle n'est pas elle-même contrôlée :
+  // chaque nom listé ici est donc affirmé FERMÉ juste après, ce qui rend une
+  // ouverture accidentelle aussi visible qu'une fermeture accidentelle.
+  const FERMEES_PAR_CONCEPTION = new Map([
+    ['_prisma_migrations',
+      "l'historique de migration n'est pas une table applicative"],
+    ['tracefab_identity_cles',
+      "la clé HMAC ne doit être lisible par aucun chemin du runtime (P10.5, R-A1)"],
+  ]);
+
   const lecture = await app.query(`
     SELECT c.relname AS nom, has_table_privilege('${APP_ROLE}', c.oid, 'SELECT') AS s
     FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
-    WHERE n.nspname='public' AND c.relkind='r' AND c.relname <> '_prisma_migrations' ORDER BY 1`);
+    WHERE n.nspname='public' AND c.relkind='r'
+      AND NOT (c.relname = ANY($1::text[])) ORDER BY 1`,
+  [[...FERMEES_PAR_CONCEPTION.keys()]]);
   verifier(
     'la lecture reste disponible sur les tables métier',
     lecture.rows.every((r) => r.s),
-    `${lecture.rows.filter((r) => !r.s).length} table(s) sans SELECT`,
+    `${lecture.rows.filter((r) => !r.s).length} table(s) sans SELECT : `
+      + lecture.rows.filter((r) => !r.s).map((r) => r.nom).join(', '),
   );
+
+  // Le pendant : ce qui est déclaré fermé l'est RÉELLEMENT, sur les cinq
+  // verbes. Une table ajoutée ici par erreur pour faire passer la ligne
+  // ci-dessus serait donc démasquée.
+  for (const [table, raison] of FERMEES_PAR_CONCEPTION) {
+    const d = (await app.query(`
+      SELECT has_table_privilege(current_user, $1, 'SELECT') AS s,
+             has_table_privilege(current_user, $1, 'INSERT') AS i,
+             has_table_privilege(current_user, $1, 'UPDATE') AS u,
+             has_table_privilege(current_user, $1, 'DELETE') AS d,
+             has_table_privilege(current_user, $1, 'TRUNCATE') AS t`, [`public.${table}`])).rows[0];
+    verifier(
+      `${table} reste fermée au runtime — ${raison}`,
+      d && !d.s && !d.i && !d.u && !d.d && !d.t,
+      JSON.stringify(d),
+    );
+  }
 
   /* --- 3. Comportement : ce qui doit échouer, ce qui doit passer ----------- */
 
@@ -460,16 +664,41 @@ try {
   app = null;
 } catch (e) {
   if (e.message !== 'migration') {
+    // POURQUOI CE MESSAGE EST PLUS LONG QU AVANT (2026-11-19).
+    //
+    // Il n affichait que le code ou la premiere ligne du message. Mesure du run
+    // 44533774940 : « 41/42 assertions vertes » avec, pour tout detail,
+    // « ECHEC — (aucune ligne d erreur explicite) ». Le nom de l assertion
+    // fautive etait donc invisible, et le log tronque par l annotation ne le
+    // rendait pas non plus. Un echec qui ne se nomme pas coute un aller-retour
+    // de diagnostic a chaque fois.
     echecs += 1;
-    console.log(`  ECHEC — ${e.code ?? String(e.message).split('\n')[0]}`);
+    console.log(`  ECHEC — ${e.code ?? 'sans code'} : ${String(e.message).split('\n')[0]}`);
+    console.log(`  derniere assertion evaluee : ${derniereAssertion}`);
+    if (e.detail) console.log(`  detail : ${e.detail}`);
+    if (e.hint) console.log(`  hint   : ${e.hint}`);
+    if (e.where) console.log(`  where  : ${e.where}`);
   }
   sortie = SORTIE_DEFAUT;
 } finally {
+  // Le client applicatif d'abord, la base ensuite : détruire une base dont une
+  // session dépend produit un 57P01 qui masquerait l'erreur d'origine.
   if (app) await app.end().catch(() => {});
-  await admin.query(`DROP DATABASE IF EXISTS ${BASE_EPHEMERE}`);
-  await admin.end();
-  console.log('  base éphémère détruite');
+  await baseEphemere.fermer();
+  if (verrou) await verrou.relacher();
+  console.log(`  base éphémère détruite : ${baseEphemere.nom}`);
 }
 
+// POURQUOI CE RECAPITULATIF (2026-11-19).
+//
+// L annotation GitHub ne conserve que les ~30 dernieres lignes du log, et le
+// stockage des logs est inaccessible depuis l environnement d analyse. Un
+// « 41/42 » sans le nom de l assertion fautive est donc indebogable a distance.
+// Ce bloc rejoue les echecs EN FIN de sortie : ils survivent a la troncature,
+// alors qu un echec survenu au milieu du fichier n y survit pas.
+if (echecs > 0) {
+  console.log(`  ECHECS (${echecs}) :`);
+  for (const nom of echecsNoms) console.log(`    - ${nom}`);
+}
 console.log(`\n  ${assertions - echecs}/${assertions} assertions vertes\n`);
 process.exit(echecs > 0 ? SORTIE_DEFAUT : sortie);

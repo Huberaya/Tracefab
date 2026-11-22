@@ -1,5 +1,4 @@
 import { Prisma } from '@prisma/client';
-import { prisma } from '../prisma.js';
 import type { PlmErpSystemType, NormalizedPlmProduct, IngestionJobSummary } from './types.js';
 import { parseCentricPlmPayload } from './parsers/centric-plm.js';
 import { parseLectraKubixPayload } from './parsers/lectra-kubix.js';
@@ -58,7 +57,25 @@ export function normalizePlmErpPayload(systemType: PlmErpSystemType, rawPayload:
   return products;
 }
 
+/**
+ * L'ingestion s'exécute DANS la transaction du contexte authentifié (P10.2).
+ *
+ * POURQUOI CE PARAMÈTRE EXISTE
+ *
+ * `withTracefabUserContext` pose l'identité de l'utilisateur (GUC
+ * `tracefab.user_id`, portée par la SEULE transaction en cours). Cette fonction
+ * appelait auparavant le client Prisma GLOBAL : la
+ * requête partait sur une autre connexion du pool, où `tracefab.user_id` vaut
+ * NULL. Mesure du 30/10 sur base jetable : l'appel réel échoue alors en
+ * `authentication_required`, et la fonction d'ingestion n'est atteignable
+ * qu'en forgeant le GUC — c'est-à-dire par le chemin qu'on veut interdire.
+ *
+ * Le client de transaction est donc OBLIGATOIRE, pas optionnel : un appel qui
+ * l'oublierait ne compilerait pas, plutôt que d'échouer silencieusement à
+ * l'exécution sur une connexion anonyme.
+ */
 export async function ingestPlmErpData(
+  tx: Prisma.TransactionClient,
   organizationId: string,
   systemType: PlmErpSystemType,
   rawPayload: any,
@@ -70,8 +87,8 @@ export async function ingestPlmErpData(
     throw new Error('Aucun produit exploitable trouvé dans le payload d\'ingestion.');
   }
 
-  // Call the atomic stored procedure on Neon
-  const result: any = await prisma.$queryRaw`
+  // Appel atomique, dans la transaction qui porte l'identité authentifiée.
+  const result: any = await tx.$queryRaw`
     SELECT tracefab_ingest_plm_erp_payload(
       ${organizationId}::uuid,
       ${systemType},

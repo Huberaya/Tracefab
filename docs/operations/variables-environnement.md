@@ -25,6 +25,7 @@ Colonne **Criticité** :
 | `TRACEFAB_APP_URL` | bloquante | URL canonique, utilisée dans les e-mails et les liens de passeport | Liens d'invitation cassés |
 | `CLERK_WEBHOOK_SIGNING_SECRET` | bloquante | Signature du webhook Clerk | Les comptes ne se créent plus |
 | `TRACEFAB_AUTHORIZED_PARTIES` | bloquante | Origines autorisées pour les jetons Clerk | Jetons d'une autre origine acceptés |
+| `TRACEFAB_IDENTITY_KEY` | fonctionnelle | Clé HMAC (`hex`, ≥ 64 caractères) qui signe **deux** jetons de la même clé : le jeton d'IDENTITÉ posé dans `tracefab.identity` (P10.5, usage `tracefab_identity`) et le jeton SYSTÈME posé dans `tracefab.identity_systeme` (P10.7, usage `tracefab_system`). La valeur ne sort jamais de la fonction : `GET /api/internal/p2-readiness` n'en publie que la présence et l'état (`identityTokens.configured`, `identitySysteme.mode`) | L'application ne signe plus : la base retombe sur le mode permissif (`tracefab.user_id`) pour l'identité, donc R-A1 reste ouvert. **Pour les opérations système, l'absence de clé est un refus fermé** : `tracefab.identity_systeme` reste vide, les treize opérations système ne peuvent pas être appelées, et le webhook Clerk échoue plutôt que d'écrire sans origine prouvée. Rien n'est cassé pour autant — c'est l'état antérieur, et il est *mesurable* (voir ci-dessous) |
 
 ## Stockage privé — documents, preuves, certificats
 
@@ -106,6 +107,19 @@ La valeur est validée comme URL HTTPS. Le header HTTP `Host` n’est jamais uti
 | `NODE_ENV` | plateforme | Durcit plusieurs contrôles quand sa valeur est `production` |
 | `VERCEL_ENV` | plateforme | Environnement, repris dans chaque remontée d'erreur |
 | `VERCEL_GIT_COMMIT_SHA` | plateforme | Version déployée, reprise dans chaque remontée d'erreur |
+| `VERCEL_GIT_COMMIT_REF` | plateforme | Branche Git du déploiement ; utilisée pour borner la sonde Runtime P11 à sa branche Preview |
+
+### Sonde Runtime Preview P11
+
+| Variable | Criticité | Rôle | Conséquence si absente |
+|---|---|---|---|
+| `TRACEFAB_RUNTIME_PROBE_TOKEN` | secret opérateur · Preview uniquement | Autorise uniquement la lecture diagnostique de l'identité PostgreSQL sur la branche Runtime P11. Ne donne aucun accès worker ni aucune capacité d'écriture. | La sonde Runtime P11 répond 401 ; les autres routes ne sont pas affectées. |
+| `TRACEFAB_PREVIEW_DB_ENDPOINT` | **non secret** · Preview uniquement | **Nom d'hôte COMPLET** de l'endpoint Neon attendu pour l'environnement Preview, sans identifiants ni chemin (par ex. `ep-xxxx-pooler.c-5.eu-central-1.aws.neon.tech`). Ce n'est **pas** un préfixe : le runtime compare l'égalité du nom d'hôte qu'il joint réellement, après normalisation (casse, espaces, point final), et publie `hote_conforme` dans la preuve sans jamais exposer la chaîne de connexion. Le suffixe `-pooler` fait partie de la valeur : l'hôte direct et l'hôte pooler sont deux hôtes distincts. Absent : le champ vaut `null`, jamais un faux PASS. | Aucun impact fonctionnel ; seul le verdict de conformité de l'hôte n'est pas calculé. |
+| `TRACEFAB_PRODUCTION_DB_HOSTS` | **non secret** · Preview uniquement | Liste separee par des virgules des **noms d'hote de PRODUCTION** que la Preview ne doit jamais joindre. Le runtime publie `hote_est_production` et la preuve runtime rend `C5.4` : un hote de Production fait **FAIL**, meme si `TRACEFAB_PREVIEW_DB_ENDPOINT` designe ce meme hote — car une egalite « reel = declare » ne peut pas savoir que la valeur declaree est la mauvaise. L'hote de Production du depot est deja connu en dur ; cette variable sert a en declarer d'autres. Absente : seul l'hote connu est compare. | Aucun impact fonctionnel ; sans elle, la garde reste active sur l'hote de Production connu. |
+
+Ce jeton doit être sensible, limité à la branche Preview Runtime, à forte entropie et
+roté après chaque campagne de mesure. Ne jamais le placer dans un dépôt, un journal
+ou une URL partagée.
 
 ---
 
@@ -129,6 +143,73 @@ de servir.
 > **Une clé présente n'est pas une clé valide.** Le mode par défaut vérifie
 > seulement que les variables existent. Seul `?probe=live` prouve que les
 > services répondent. C'est celui qu'il faut passer avant d'ouvrir le trafic.
+
+### Identité effective du rôle PostgreSQL
+
+La sonde d'identité utilise le même client Prisma que les routes. Elle est réservée
+à l'opérateur et exige le secret de worker dans l'en-tête — ne jamais le placer
+dans l'URL.
+
+```bash
+set -o pipefail
+curl --fail-with-body -sS -H "x-tracefab-worker-secret: $TRACEFAB_NOTIFICATION_WORKER_SECRET" \
+  "$TRACEFAB_APP_URL/api/internal/p2/readiness?identity=1" \
+  | jq -e '.ready == true and .databaseIdentity.measured == true and .databaseIdentity.currentUser == "tracefab_app" and .databaseIdentity.sessionUser == "tracefab_app" and .databaseIdentity.bypassesRls == false and .databaseIdentity.isSuperuser == false'
+```
+
+Résultat attendu : `measured: true`, `currentUser` et `sessionUser` égaux à
+`tracefab_app`, `bypassesRls: false` et `isSuperuser: false`. La route répond
+503 et `ready: false` si la mesure est absente ou si le rôle contourne la RLS.
+Cette sonde est diagnostique : elle ne remplace pas les tests d'isolation
+multi-tenant en CI.
+
+### Origine des opérations système (P10.7)
+
+Les treize opérations système (synchronisation Clerk, outbox de notifications,
+rappels de demandes) ne sont exécutables que par une identité système SIGNÉE,
+posée dans `tracefab.identity_systeme`. Le jeton est produit par l'application
+(`api/_lib/identite-systeme.ts`, usage `tracefab_system`) et vérifié par la base
+avant chaque opération.
+
+**Une clé présente ne prouve pas que la base sait la vérifier.** Une clé absente
+d'un côté, une table de clés vide, une révocation récente : trois causes de panne
+qui produisent le même symptôme (webhook Clerk en 5xx) sans le même diagnostic.
+La readiness fait donc l'ALLER-RETOUR : elle signe un jeton et le fait vérifier
+par PostgreSQL.
+
+```bash
+set -o pipefail
+curl --fail-with-body -sS -H "x-tracefab-worker-secret: $TRACEFAB_NOTIFICATION_WORKER_SECRET" \
+  "$TRACEFAB_APP_URL/api/internal/p2/readiness?identity=1" \
+  | jq -e '.identitySysteme.mode == "signe" and .identitySysteme.verifiee_par_la_base == true'
+```
+
+| Champ | Ce qu'il dit, et ce qu'il ne dit PAS |
+|---|---|
+| `identitySysteme.mode` | `signe` \| `cle_invalide` \| `non_configure`. `cle_invalide` est le seul état qui n'est **pas** une transition : la variable existe mais est inutilisable, aucune opération système ne peut aboutir, et il faut corriger la valeur |
+| `identitySysteme.verifiee_par_la_base` | Mesure, et non déclaration : `true` seulement si la base a accepté un jeton que l'application vient de signer. `null` = **non mesuré** (la sonde n'a pas été demandée, ou la vérification n'a pas pu être tentée) — ce n'est jamais un feu vert |
+| `identitySysteme.verification` | `aller_retour_reussi`, `base_a_refuse`, `verification_non_accordee_au_runtime`, `signature_impossible`, `verification_en_erreur`, `non_sondee`. Distinguer une erreur de mesure d'un refus est ce qui empêche de lire un feu vert là où rien n'a été vérifié |
+
+**Activer le mode strict de l'identité système** est un acte d'exploitation, pas
+une migration (une base neuve n'a pas de clé, donc la chaîne doit s'appliquer
+sans) :
+
+```bash
+# 1. vérifier, en lecture seule, les prérequis sur l'environnement visé
+node scripts/activer_identite_systeme_stricte.mjs --verifier   # DATABASE_URL=…
+
+# 2. basculer (refus code 3 si un prérequis manque : aucune écriture partielle)
+node scripts/activer_identite_systeme_stricte.mjs --activer
+
+# 3. retour arrière, une ligne, immédiat
+node scripts/activer_identite_systeme_stricte.mjs --desactiver
+```
+
+L'outil refuse d'écrire sur une cible qui n'est pas classée jetable : le
+basculement d'un environnement qui sert se fait avec l'outil de déploiement de
+cet environnement, selon l'ordre écrit dans l'en-tête de la migration
+`20261106130000_identite_systeme_signee`. La procédure complète, les mesures et
+les risques résiduels sont dans `docs/security/2026-11-05-p107-identite-systeme.md`.
 
 
 ## Limitation de debit et plafond de lignes

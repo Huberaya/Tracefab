@@ -49,7 +49,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         return json(res, 400, { error: `Invalid systemType. Supported: ${validSystems.join(', ')}` });
       }
 
-      const result = await ingestPlmErpData(targetOrgId, systemType as PlmErpSystemType, payload, integrationId);
+      // `tx` est la transaction ouverte par `withTracefabUserContext` : c'est elle
+      // qui porte `tracefab.user_id`. Passer le client global ferait partir la
+      // requete sur une connexion anonyme (voir ingestor.ts).
+      const result = await ingestPlmErpData(tx, targetOrgId, systemType as PlmErpSystemType, payload, integrationId);
 
       return json(res, 200, result);
     });

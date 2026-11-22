@@ -11,14 +11,15 @@ const other = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbb2';
 // bornage utilisateur.
 const TENANT_A = '11111111-1111-4111-8111-111111111111';
 const TENANT_B = '22222222-2222-4222-8222-222222222222';
+const ACTOR_ID = '33333333-3333-4333-8333-333333333333';
 
 let row: any = { id, brand_organization_id: TENANT_A, reference: 'REAL-1', name: 'Produit réel',
   sku: null, category: null, description: null, product_family: null, color_name: null,
   size_range: [], country_of_design: null, country_of_manufacture: null, weight_grams: null,
-  care_instructions: {}, data_completion: 0, product_identifiers: [], product_materials: [] };
+  care_instructions: {}, data_completion: 0, status: 'draft', product_identifiers: [], product_materials: [] };
 let writes = 0;
 const handler = createProductHandler({
-  requireClerkUser: async () => ({ user: { id: 'user-a', email: 'a@example.test' } }) as any,
+  requireClerkUser: async () => ({ user: { id: ACTOR_ID, email: 'a@example.test' } }) as any,
   withTracefabUserContext: async (_id: any, _email: any, cb: any) => cb({
     organization_memberships: {
       findMany: async () => [{ organization_id: TENANT_A }],
@@ -31,7 +32,39 @@ const handler = createProductHandler({
         return { organization_id: TENANT_A, role: 'admin', organizations: { type: 'brand' } };
       },
     },
-    tracefab_products: { findFirst: async ({ where }: any) => where.id === id && where.brand_organization_id.in.includes(row.brand_organization_id) ? row : null },
+    tracefab_products: {
+      findFirst: async ({ where }: any) => where.id === id && where.brand_organization_id.in.includes(row.brand_organization_id) ? row : null,
+      update: async ({ where, data }: any) => {
+        assert.equal(where.id, id);
+        writes++;
+        Object.assign(row, data);
+        return row;
+      },
+    },
+    audit_logs: {
+      // Deux transitions de cycle de vie sont desormais tracees : l'archivage
+      // et l'ACTIVATION explicite. Chacune doit journaliser son etat avant et
+      // apres, et son acteur ; aucune ne doit passer silencieusement.
+      create: async ({ data }: any) => {
+        assert.equal(data.organization_id, TENANT_A);
+        assert.equal(data.actor_user_id, ACTOR_ID);
+        if (data.action === 'product.archived') {
+          assert.deepEqual(data.after_state, { status: 'archived' });
+          assert.ok(['draft', 'active'].includes(data.before_state.status));
+        } else if (data.action === 'product.restored') {
+          assert.deepEqual(data.before_state, { status: 'archived' });
+          assert.deepEqual(data.after_state, { status: 'draft' });
+        } else if (data.action === 'product.activated') {
+          assert.deepEqual(data.before_state, { status: 'draft' });
+          assert.deepEqual(data.after_state, { status: 'active' });
+          assert.equal(data.metadata.requires_dpp_readiness_review, true);
+        } else {
+          assert.fail(`action d'audit inattendue : ${data.action}`);
+        }
+        writes++;
+        return data;
+      },
+    },
     $queryRaw: async (_strings: any, ...args: any[]) => {
       writes++;
       const keys = ['reference', 'sku', 'name', 'category', 'description', 'product_family', 'color_name', 'size_range', 'country_of_design', 'country_of_manufacture', 'weight_grams', 'care_instructions'];
@@ -116,5 +149,52 @@ assert.throws(() => validateProductPatch({ sizeRange: null } as any, row), Produ
   assert.equal(writes, before);
 }
 
-console.log('PASS product edit HTTP handler + serializer: partial edits, nulls, validation, forbidden key, tenant scope (DB mocked; RLS tested separately).');
+/* ------------------------------------------------------------------------- *
+ * Cycle de vie explicite : `active` n'est plus un statut interdit.
+ *
+ * Defaut corrige : la console creait toujours des brouillons, et aucune
+ * transition ne permettait d'en sortir. La barriere DPP `product.not_draft`
+ * etait donc inatteignable par le parcours nominal. L'activation est
+ * desormais une transition explicite, tracee, non idempotente.
+ * ------------------------------------------------------------------------- */
+{
+  const activated = await request({ status: 'active' });
+  assert.equal(activated.status, 200);
+  assert.equal(activated.payload.product.status, 'active');
+  assert.equal(row.status, 'active');
+}
+{
+  const before = writes;
+  const again = await request({ status: 'active' });
+  assert.equal(again.status, 409);
+  assert.equal(again.payload.error, 'product_already_active');
+  assert.equal(writes, before, 'une activation deja faite ne doit provoquer aucune ecriture');
+}
+{
+  // L'activation ne doit pas etre une porte a sens unique : un produit actif
+  // s'archive, et l'archivage redevient ensuite refuse.
+  const archived = await request({ status: 'archived' });
+  assert.equal(archived.status, 200);
+  assert.equal(archived.payload.product.status, 'archived');
+  const secondArchive = await request({ status: 'archived' });
+  assert.equal(secondArchive.status, 409);
+  assert.equal(secondArchive.payload.error, 'product_not_archivable_from_current_status');
+}
+{
+  // Depuis `archived`, seules la restauration (-> draft) et rien d'autre.
+  const activation = await request({ status: 'active' });
+  assert.equal(activation.status, 409);
+  assert.equal(activation.payload.error, 'product_not_activatable_from_current_status');
+  const restored = await request({ status: 'draft' });
+  assert.equal(restored.status, 200);
+  assert.equal(restored.payload.product.status, 'draft');
+}
+{
+  // Un statut inconnu reste refuse : la liste des transitions est fermee.
+  const invalidStatus = await request({ status: 'published' });
+  assert.equal(invalidStatus.status, 400);
+  assert.equal(invalidStatus.payload.error, 'invalid_product_status_change');
+}
+
+console.log('PASS product edit HTTP handler + serializer: partial edits, nulls, validation, forbidden key, tenant scope, activation explicite et cycle de vie draft↔active↔archived (DB mocked; RLS tested separately).');
 console.log('PASS contexte de locataire actif : absent 400, mal forme 400, autre tenant 404, aucune ecriture dans les trois cas.');

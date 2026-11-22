@@ -1,0 +1,73 @@
+#!/usr/bin/env node
+/**
+ * BANC DE `scripts/inventaire_consommateurs_base.mjs`.
+ *
+ * Le 27/10/2026, la premiere version du script annoncait deux violations :
+ * « 2 clients Prisma » et « un secret de base dans les workflows ». Verifie :
+ * les deux etaient des COMMENTAIRES. Un inventaire qui lit les commentaires
+ * invente des consommateurs ; un inventaire qui ne les lit pas doit quand meme
+ * voir un vrai second client.
+ *
+ * Ce banc verrouille les deux sens :
+ *   - le depot actuel passe les invariants (aucun faux positif residuel) ;
+ *   - le rapport nomme exactement un client Prisma et les trois exceptions Preview P11 declarees ;
+ *   - il declare explicitement ce qu'il ne peut pas verifier.
+ *
+ * Sortie : 0 si tout tient, 1 sinon.
+ */
+import { spawnSync } from 'node:child_process';
+import { readFileSync, rmSync, existsSync } from 'node:fs';
+import { join, dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
+const RAPPORT = join(ROOT, '.inventaire-test.json');
+
+let echecs = 0;
+const verifie = (ok, titre, detail = '') => {
+  if (!ok) echecs += 1;
+  console.log(`  ${ok ? 'ok    ' : 'ECHEC '} ${titre}${detail ? ` — ${detail}` : ''}`);
+};
+
+const r = spawnSync(process.execPath, [join(ROOT, 'scripts', 'inventaire_consommateurs_base.mjs'),
+  '--json', '.inventaire-test.json'], { cwd: ROOT, encoding: 'utf8' });
+const sortie = `${r.stdout || ''}${r.stderr || ''}`;
+
+console.log("\nBanc de l'inventaire des consommateurs\n--------------------------------------");
+verifie(r.status === 0, 'les invariants du depot passent', `code ${r.status}`);
+verifie(/ok\s+un seul client Prisma/.test(sortie), 'un seul client Prisma est reconnu');
+verifie(/ok\s+aucun secret de base hors exception Preview strictement declaree/.test(sortie),
+  'aucun secret de base hors exception Preview strictement declaree');
+
+if (!existsSync(RAPPORT)) {
+  verifie(false, 'le rapport JSON est ecrit');
+} else {
+  const rapport = JSON.parse(readFileSync(RAPPORT, 'utf8'));
+  verifie(Array.isArray(rapport.clients_prisma) && rapport.clients_prisma.length === 1,
+    'le rapport ne liste qu\'un client Prisma', JSON.stringify(rapport.clients_prisma));
+  const workflowsP11 = (rapport.secrets_base_workflows || []).map((entry) => entry.workflow).sort();
+  verifie(Array.isArray(rapport.secrets_base_workflows)
+    && rapport.secrets_base_workflows.length === 2
+    && JSON.stringify(workflowsP11) === JSON.stringify([
+      'p11-preview-p107-migration.yml',
+      'p11-preview-p107-worker-rls.yml',
+    ])
+    && rapport.secrets_base_workflows.every((entry) => entry.secret === 'TRACEFAB_P11_DATABASE_ADMIN_URL'),
+  'les deux secrets de base sont strictement limites aux workflows Preview P11 declares',
+  JSON.stringify(rapport.secrets_base_workflows));
+  verifie(Array.isArray(rapport.secrets_base_non_autorises)
+    && rapport.secrets_base_non_autorises.length === 0,
+  'aucun secret de base hors exception strictement déclarée',
+  JSON.stringify(rapport.secrets_base_non_autorises));
+  verifie(Object.keys(rapport.variables_base).some((v) => /DATABASE_URL/.test(v)),
+    'la variable de connexion est identifiee');
+  verifie(Array.isArray(rapport.non_verifiable) && rapport.non_verifiable.length >= 3,
+    'le rapport declare ce qu\'il ne peut pas verifier', String(rapport.non_verifiable?.length));
+  verifie(Array.isArray(rapport.crons_vercel) && rapport.crons_vercel.length >= 1,
+    'les crons du runtime sont inventories', String(rapport.crons_vercel?.length));
+  verifie(rapport.violations.length === 0, 'aucune violation');
+  rmSync(RAPPORT, { force: true });
+}
+
+console.log(`\n${echecs ? 'ECHEC' : 'OK'} — ${echecs} cas en echec.`);
+process.exit(echecs ? 1 : 0);

@@ -57,8 +57,8 @@ REQUIRED_MARKERS = {
     "dpp/index.html": [
         'data-i18n="dpp.metaTitle"',
         "CIRPASS",
-        'data-i18n="dpp.cirIndex"',
-        "GS1 Digital Link",
+        'data-i18n="dpp.jsonTitle"',
+        'id="dpp-wallet-actions" hidden',
     ],
     "operations/index.html": [
         "<title>Tracefab — Operations</title>",

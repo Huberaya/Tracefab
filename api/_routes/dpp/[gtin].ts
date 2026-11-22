@@ -1,7 +1,7 @@
 import type { VercelRequest, VercelResponse } from '../../_lib/vercel-types.js';
 import { prisma } from '../../_lib/prisma.js';
 import { json, methodNotAllowed } from '../../_lib/http.js';
-import { resolveDppPassData } from '../../_lib/wallet/dpp-data-resolver.js';
+import { getConfiguredPublicBaseUrl, resolveDppPassData } from '../../_lib/wallet/dpp-data-resolver.js';
 import { withTracefabPublicContext } from '../../_lib/context.js';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -14,11 +14,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return json(res, 400, { error: 'missing_identifier' });
   }
 
+  // Origine canonique commune aux routes DPP, QR et Wallet.
+  const publicBaseUrl = getConfiguredPublicBaseUrl();
+  if (!publicBaseUrl) {
+    const configured = Boolean(process.env.TRACEFAB_PUBLIC_BASE_URL?.trim());
+    return json(res, 503, { error: configured ? 'public_base_url_invalid' : 'public_base_url_not_configured' });
+  }
+
   try {
     // Route anonyme : sans contexte public, chaque table tenant rend 0 ligne
     // une fois l'application connectee en tracefab_app.
     const resolved = await withTracefabPublicContext(async (tx) => {
-      const dpp = await resolveDppPassData(tx, gtinOrRef);
+      const dpp = await resolveDppPassData(tx, gtinOrRef, publicBaseUrl.origin);
       if (!dpp) return null;
       // Liste blanche SQL + RLS : aucun detail, acteur, document ou metadata
       // prive ne traverse cette projection anonyme.
@@ -43,7 +50,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
     const { dpp: dppData, history, claims } = resolved;
 
-    res.setHeader('Cache-Control', 'public, max-age=60, stale-while-revalidate=300');
+    res.setHeader('Cache-Control', 'public, max-age=60, must-revalidate');
     return json(res, 200, {
       dpp: dppData,
       history,

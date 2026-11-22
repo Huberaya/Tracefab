@@ -17,6 +17,7 @@ export const API_RUNTIME_FUNCTION_NAMES = Object.freeze([
   'tracefab_add_supply_chain_link',
   'tracefab_allocate_tc_quantity',
   'tracefab_apply_document_ai_verification',
+  'tracefab_archive_clerk_organization',
   'tracefab_audit_product_green_claims',
   'tracefab_bind_schema',
   'tracefab_calculate_product_pef',
@@ -24,6 +25,7 @@ export const API_RUNTIME_FUNCTION_NAMES = Object.freeze([
   'tracefab_can_access_org',
   'tracefab_can_access_shared_subject',
   'tracefab_claim_notification_outbox',
+  'tracefab_clerk_organization_uuid',
   'tracefab_complete_notification_outbox',
   'tracefab_compute_dpp_readiness',
   'tracefab_compute_product_quality',
@@ -35,20 +37,37 @@ export const API_RUNTIME_FUNCTION_NAMES = Object.freeze([
   'tracefab_create_product',
   'tracefab_create_quality_cap',
   'tracefab_create_supply_chain_node',
+  // P10.7 (2026-11-19) — appelee DIRECTEMENT par `api/_lib/readiness-probes.ts`
+  // (sonde C4.6 : le contexte tenant est-il pose et ACCEPTE par la base ?).
+  //
+  // Elle figurait deja dans RLS_POLICY_FUNCTION_NAMES — les politiques l utili-
+  // sent — mais pas ici, parce qu aucun code de `api/` ne l appelait. Depuis que
+  // la sonde le fait, la derivation « appels SQL dans api/ » et cette liste ont
+  // diverge : mesure du run 44542923117, « l allowlist API est exactement
+  // derivee des appels SQL dans api/ » au rouge.
+  //
+  // Oublier cette ligne ne casse pas seulement un test : la fonction entrerait
+  // dans RUNTIME_FUNCTION_NAMES sans que le registre ne lui accorde EXECUTE,
+  // et la sonde echouerait en 42501.
+  'tracefab_current_user_id',
   'tracefab_delete_supply_chain_link',
   'tracefab_delete_supply_chain_node',
   'tracefab_enqueue_due_data_request_reminders',
   'tracefab_enqueue_manual_data_request_reminder',
+  'tracefab_ensure_clerk_user',
   'tracefab_finalize_document_upload',
   'tracefab_get_or_create_supplier_passport',
   'tracefab_get_product_traceability',
   'tracefab_get_public_supplier_passport',
   'tracefab_has_org_role',
+  'tracefab_identite_systeme_jeton_valide',
   'tracefab_in_active_tenant',
   'tracefab_ingest_plm_erp_payload',
   'tracefab_invite_supplier',
   'tracefab_link_dpp_claim_evidence',
+  'tracefab_mark_document_scanning',
   'tracefab_mark_dpp_ready_to_publish',
+  'tracefab_notification_outbox_health',
   'tracefab_public_brand',
   'tracefab_public_dpp_claims',
   'tracefab_reconcile_mass_balance',
@@ -64,6 +83,7 @@ export const API_RUNTIME_FUNCTION_NAMES = Object.freeze([
   'tracefab_revoke_clerk_membership',
   'tracefab_send_data_request',
   'tracefab_set_dpp_publication',
+  'tracefab_soft_delete_clerk_user',
   'tracefab_start_product_revision',
   'tracefab_submit_data_request',
   'tracefab_submit_data_response',
@@ -80,10 +100,12 @@ export const API_RUNTIME_FUNCTION_NAMES = Object.freeze([
   'tracefab_update_supplier_profile',
   'tracefab_update_supply_chain_link',
   'tracefab_update_supply_chain_node',
+  'tracefab_upsert_clerk_user',
   'tracefab_waive_quality_issue',
 ]);
 
 export const RLS_POLICY_FUNCTION_NAMES = Object.freeze([
+  'tracefab_in_active_tenant',
   'tracefab_can_access_document',
   'tracefab_can_access_org',
   'tracefab_can_access_shared_subject',
@@ -99,6 +121,14 @@ export const RLS_POLICY_FUNCTION_NAMES = Object.freeze([
 ]);
 
 export const RUNTIME_FUNCTION_DEPENDENCY_NAMES = Object.freeze([
+  // `tracefab_current_user_id()` (SECURITY INVOKER, donc soumise aux droits de
+  // l'appelant) appelle la verification du jeton d'identite. Le runtime n'appelle
+  // jamais cette fonction directement — il pose `tracefab.identity` — mais il lui
+  // faut l'EXECUTE, sans quoi toute lecture d'identite echoue en 42501.
+  // C'est pourquoi elle est ici et non dans la liste des appels SQL de `api/` :
+  // la derivation qui compare `api/` a la liste figee ne la voit pas, et elle a
+  // raison de ne pas la voir (constate sur CI, 02/11/2026).
+  'tracefab_identity_jeton_utilisateur',
   // tracefab_require_active_tenant is SECURITY INVOKER and calls this
   // context reader; the caller must retain EXECUTE on the transitive helper.
   'tracefab_active_organization_id',

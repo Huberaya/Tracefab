@@ -25,6 +25,7 @@
  *   jamais être exécuté contre une base partagée ou de production.
  */
 import pg from 'pg';
+import { nomRoleEphemere } from './lib/ephemeral-role.mjs';
 
 const URL_ADMIN = process.env.DATABASE_URL;
 const URL_APP = process.env.TF_RLS_APP_URL;
@@ -39,7 +40,11 @@ if (/neon\.tech/.test(URL_ADMIN) || /neon\.tech/.test(URL_APP)) {
   process.exit(2);
 }
 
-const SONDE = 'sonde_bypass_probe';
+// Nom UNIQUE par execution : `DROP ROLE IF EXISTS sonde_bypass_probe` visait un
+// role de CLUSTER preexistant possible, avant tout controle. Un role porte des
+// appartenances et la propriete d'objets : le supprimer « au cas ou » n'est pas
+// un nettoyage. Voir scripts/lib/ephemeral-role.mjs.
+const SONDE = nomRoleEphemere('tf_bypass_probe');
 const MDP = 'sonde_locale_jetable';
 
 let reussites = 0;
@@ -117,8 +122,6 @@ verifier(sansBypass.lus === 0 && sansBypass.modifiees === 0,
 // Le contraste : même contexte, même requêtes, un rôle doté de BYPASSRLS.
 let avecBypass = null;
 try {
-  await admin.query(`DROP OWNED BY ${SONDE}`).catch(() => {});
-  await admin.query(`DROP ROLE IF EXISTS ${SONDE}`);
   await admin.query(
     `CREATE ROLE ${SONDE} LOGIN PASSWORD ${admin.escapeLiteral(MDP)} NOSUPERUSER BYPASSRLS NOCREATEROLE NOCREATEDB`,
   );

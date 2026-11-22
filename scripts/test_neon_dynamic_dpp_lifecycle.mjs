@@ -69,12 +69,38 @@ try {
   const context=async(user,email,fn)=>{await app.query('BEGIN');try{
     await app.query("SELECT set_config('tracefab.user_id',$1,true)",[user]);
     await app.query("SELECT set_config('tracefab.user_email',$1,true)",[email]);
+    // Le contexte applicatif doit toujours nommer le locataire actif :
+    // userA travaille sur A, userB sur B ; le contexte public reste sans tenant.
+    const activeTenant = user === U.userA ? U.orgA : user === U.userB ? U.orgB : '';
+    await app.query("SELECT set_config('tracefab.active_organization_id',$1,true)",[activeTenant]);
     const value=await fn(); await app.query('COMMIT'); return value;
   }catch(e){await app.query('ROLLBACK');throw e;}};
   const publicContext=fn=>context('', '', async()=>{await app.query("SELECT set_config('tracefab.public_context','true',true)");return fn();});
 
   const role=(await app.query("SELECT rolbypassrls,rolsuper FROM pg_roles WHERE rolname=current_user")).rows[0];
   check(!role.rolbypassrls&&!role.rolsuper,'role runtime soumis a RLS');
+
+  // Barriere 20261027120000 : « aucune anomalie ouverte » n'est vrai que si la
+  // qualite a ete evaluee. On eprouve d'abord le refus — sans evaluation, la
+  // revue doit echouer — puis on calcule, comme le ferait la console.
+  let refusSansEvaluation=null;
+  try {
+    await context(U.userA,emailA,()=>app.query(
+      `SELECT * FROM tracefab_mark_dpp_ready_to_publish($1)`,[U.dpp]));
+  } catch (error) { refusSansEvaluation=error.message; }
+  check(refusSansEvaluation==='dpp_publication_requirements_not_met',
+    'revue refusee tant que la qualite n a pas ete evaluee');
+  // La completude produit (7 exigences du moteur qualite) exige un identifiant :
+  // sans lui, le calcul ouvre une anomalie bloquante et la revue reste fermee.
+  await admin.query(`INSERT INTO product_identifiers(id,product_id,identifier_type,identifier_value,is_primary)
+    VALUES($1,$2,'internal','DPP-LIVE-001',true)`,[randomUUID(),U.product]);
+  // Recalcul de completude en ADMIN : l'EXECUTE est retire au role runtime
+  // (migration 20261021120000), ce qui est voulu — c'est un recalcul de
+  // fixture, pas une action de l'utilisateur. La qualite, elle, est calculee
+  // avec le role applicatif : c'est ce que fait la console.
+  await admin.query(`SELECT tracefab_refresh_product_data_readiness($1)`,[U.product]);
+  await context(U.userA,emailA,()=>app.query(
+    `SELECT tracefab_compute_product_quality($1)`,[U.product]));
 
   const reviewed=await context(U.userA,emailA,()=>app.query(
     `SELECT * FROM tracefab_mark_dpp_ready_to_publish($1)`,[U.dpp]));
@@ -91,9 +117,23 @@ try {
   check(replaced.rows[0].status==='replaced'&&replaced.rows[0].replaced_by_id,'ancien identifiant conservé comme remplacé');
   const replacement=(await admin.query('SELECT * FROM dpp_resolvable_identifiers WHERE id=$1',[replaced.rows[0].replaced_by_id])).rows[0];
   check(replacement.public_id===idPublic2&&replacement.status==='active','remplaçant créé atomiquement avec portée identique');
-  let foreignIdentity=false;try{await context(U.userB,emailB,()=>app.query(
-    `SELECT tracefab_create_dpp_identity($1,'dpp-foreign-attempt','model',NULL)`,[U.product]));}catch(e){foreignIdentity=String(e.message).includes('dpp_identity_role_required');}
+  // Le refus peut provenir de la garde métier de la fonction (P0001) ou
+  // directement de la RLS FORCEE (42501). Les deux sont des refus sûrs :
+  // ne pas exiger un texte d'exception unique quand PostgreSQL bloque déjà
+  // l'INSERT avant que la fonction puisse retourner son code métier.
+  let foreignIdentity=false;
+  try {
+    await context(U.userB,emailB,()=>app.query(
+      `SELECT tracefab_create_dpp_identity($1,'dpp-foreign-attempt','model',NULL)`,[U.product]));
+  } catch(e) {
+    foreignIdentity = e.code === '42501'
+      || String(e.message).includes('dpp_identity_role_required')
+      || String(e.message).includes('active_tenant_mismatch');
+  }
   check(foreignIdentity,'autre organisation ne peut créer une identité sur le produit');
+  const foreignIdentityCount = await admin.query(
+    `SELECT count(*)::int AS n FROM dpp_resolvable_identifiers WHERE public_id='dpp-foreign-attempt'`);
+  check(foreignIdentityCount.rows[0].n === 0,'aucune identité étrangère persistée après refus RLS');
 
   const visible=await publicContext(()=>app.query('SELECT id FROM tracefab_products WHERE id=$1',[U.product]));
   check(visible.rowCount===1,'produit publie resolvable en contexte anonyme');
@@ -151,10 +191,17 @@ try {
   let foreignWrite=false;
   try { await context(U.userB,emailB,()=>app.query(
     `SELECT tracefab_add_dpp_event($1,'repair','Tentative externe')`,[U.product]));
-  } catch(e){foreignWrite=String(e.message).includes('dpp_event_role_required');}
+  } catch(e){
+    foreignWrite = e.code === '42501'
+      || String(e.message).includes('dpp_event_role_required')
+      || String(e.message).includes('active_tenant_mismatch');
+  }
   check(foreignWrite,'organisation B ne peut pas ajouter evenement au produit A');
   const foreignRead=await context(U.userB,emailB,()=>app.query('SELECT id FROM dpp_lifecycle_events WHERE product_id=$1',[U.product]));
   check(foreignRead.rowCount===0,'organisation B ne lit aucun evenement prive de A');
+  const foreignEventCount=await admin.query(
+    `SELECT count(*)::int AS n FROM dpp_lifecycle_events WHERE product_id=$1 AND summary='Tentative externe'`,[U.product]);
+  check(foreignEventCount.rows[0].n===0,'aucun evenement etranger persiste apres refus');
 
   let mutationBlocked=false;
   try {await admin.query('UPDATE dpp_lifecycle_events SET summary=$1 WHERE id=$2',['altération',evidenceEvent.id]);}

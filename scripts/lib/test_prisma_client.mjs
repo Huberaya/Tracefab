@@ -42,8 +42,30 @@ export async function createTestPrisma(connectionString) {
   const adapter = new PrismaPg(pool);
   const client = new PrismaClient({ adapter });
   await client.$queryRaw`SELECT 1`;
+  // MESURE DU 30/10 : sur ce chemin, `$disconnect()` ne ferme PAS le pool pg
+  // (une connexion reste ouverte dans `pg_stat_activity`). Une suite qui
+  // detruit ensuite sa base voyait alors ses connexions tuees par
+  // `DROP DATABASE ... WITH (FORCE)` et mourait sur 57P01. On garde donc une
+  // reference non enumerable, pour que `fermerPrismaDeTest` puisse le fermer.
+  Object.defineProperty(client, '$poolPg', { value: pool, enumerable: false });
   console.log('  client Prisma : moteur client WASM + adaptateur pg');
   return client;
+}
+
+/**
+ * Ferme le client ET le pool sous-jacent.
+ *
+ * A utiliser dans toute suite qui detruit la base a la fin : `$disconnect()`
+ * seul laisse le pool pg ouvert sur le chemin WASM.
+ */
+export async function fermerPrismaDeTest(client) {
+  if (!client) return;
+  const pool = client.$poolPg;
+  try {
+    await client.$disconnect();
+  } finally {
+    if (pool) await pool.end();
+  }
 }
 
 /**

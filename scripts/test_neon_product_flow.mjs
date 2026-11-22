@@ -1,13 +1,20 @@
 import { randomUUID } from 'node:crypto';
-import { PrismaClient } from '@prisma/client';
+import { nomRoleEphemere } from './lib/ephemeral-role.mjs';
+// Client partage : engine standard en CI, moteur client WASM + adaptateur pg
+// sur un poste sans acces aux binaires Prisma (voir scripts/lib/test_prisma_client.mjs).
+// Meme URL, donc meme role et meme base : la semantique du test est inchangee.
+import { createTestPrisma } from './lib/test_prisma_client.mjs';
 
 if (!process.env.DATABASE_URL) {
   console.error('DATABASE_URL is required');
   process.exit(2);
 }
 
-const prisma = new PrismaClient();
-const role = `tracefab_product_rls_test_${process.pid}`;
+const prisma = await createTestPrisma(process.env.DATABASE_URL);
+// Nom UNIQUE par execution (et non `_${process.pid}`, reutilisable) et plus
+// aucun `DROP ROLE IF EXISTS` preventif : un role preexistant ne doit jamais
+// etre supprime pour faire passer un test.
+const role = nomRoleEphemere('tf_product_rls');
 const ownerA = randomUUID();
 const viewerA = randomUUID();
 const ownerB = randomUUID();
@@ -20,6 +27,10 @@ async function main() {
   await prisma.$executeRawUnsafe(`CREATE ROLE ${role} NOLOGIN`);
   await prisma.$executeRawUnsafe(`GRANT ${role} TO CURRENT_USER`);
   await prisma.$executeRawUnsafe(`GRANT USAGE ON SCHEMA public TO ${role}`);
+  // Meme perimetre de lecture que le runtime (tracefab_app : SELECT sur les
+  // 51 tables). Sans lui, le role de test s'arrete sur 42501 avant la RLS.
+  await prisma.$executeRawUnsafe(`GRANT SELECT ON ALL TABLES IN SCHEMA public TO ${role}`);
+  await prisma.$executeRawUnsafe(`GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA public TO ${role}`);
 
   await prisma.user.createMany({
     data: [
@@ -42,7 +53,7 @@ async function main() {
     ],
   });
 
-  await inUserContext(ownerA, async (tx) => {
+  await inUserContext(ownerA, orgA, async (tx) => {
     const materialRows = await tx.$queryRaw`
       SELECT * FROM tracefab_create_material(
         ${orgA}::uuid, 'fiber', 'Organic cotton', '{"organic":true}'::jsonb, 'FR'
@@ -87,7 +98,7 @@ async function main() {
     assert(typeof actualProductA === 'string', 'product id missing');
   });
 
-  await inUserContext(ownerB, async (tx) => {
+  await inUserContext(ownerB, orgB, async (tx) => {
     const productRows = await tx.$queryRaw`
       SELECT * FROM tracefab_create_product(${orgB}::uuid, 'TF-PROD-B', 'Product B', 'trousers', 'SKU-B')
     `;
@@ -102,14 +113,10 @@ async function main() {
   await prisma.$transaction(async (tx) => {
     await tx.$executeRawUnsafe(`SET LOCAL ROLE ${role}`);
     await tx.$executeRaw`SELECT set_config('tracefab.user_id', ${viewerA}, true)`;
+    await tx.$executeRaw`SELECT set_config('tracefab.active_organization_id', ${orgA}, true)`;
     const visibleProducts = await tx.$queryRaw`SELECT id FROM tracefab_products ORDER BY reference`;
     assert(visibleProducts.length === 1, 'product RLS leaked another brand');
     assert(visibleProducts[0].id !== productBId, 'product B was visible to brand A viewer');
-
-    const directUpdateCount = await tx.$executeRaw`
-      UPDATE tracefab_products SET name = 'must not write' WHERE id = ${productAId}::uuid
-    `;
-    assert(directUpdateCount === 0, 'viewer could update a product directly');
 
     await expectSqlCode(
       () => tx.$queryRaw`
@@ -122,12 +129,36 @@ async function main() {
     );
   });
 
+  // Ecriture directe refusee : soit par le privilege (42501), soit par la RLS
+  // (0 ligne). L'assertion d'origine ne considerait que la RLS, ce qui suppose
+  // un schema accordant le DML a PUBLIC — revoque depuis. Les deux refus
+  // satisfont la propriete ; une ecriture reussie la viole.
+  let ecritureDirecte;
+  try {
+    const n = await prisma.$transaction(async (tx) => {
+      await tx.$executeRawUnsafe(`SET LOCAL ROLE ${role}`);
+      await tx.$executeRaw`SELECT set_config('tracefab.user_id', ${viewerA}, true)`;
+    await tx.$executeRaw`SELECT set_config('tracefab.active_organization_id', ${orgA}, true)`;
+      return tx.$executeRaw`
+        UPDATE tracefab_products SET name = 'must not write' WHERE id = ${productAId}::uuid
+      `;
+    });
+    ecritureDirecte = { lignes: n };
+  } catch (e) {
+    const m = String(e?.message ?? e);
+    ecritureDirecte = { code: m.match(/Code: `([0-9A-Z]+)`/)?.[1], message: m.split('\n')[0] };
+  }
+  const refusee = ecritureDirecte.lignes === 0 || ecritureDirecte.code === '42501'
+    || /permission denied/.test(String(ecritureDirecte.message ?? ''));
+  assert(refusee, `viewer could update a product directly (${JSON.stringify(ecritureDirecte)})`);
+
   console.log('Neon product integration passed: product data, revision, composition, identifiers and RLS isolation');
 }
 
-async function inUserContext(userId, callback) {
+async function inUserContext(userId, organizationId, callback) {
   return prisma.$transaction(async (tx) => {
     await tx.$executeRaw`SELECT set_config('tracefab.user_id', ${userId}, true)`;
+    await tx.$executeRaw`SELECT set_config('tracefab.active_organization_id', ${organizationId}, true)`;
     return callback(tx);
   });
 }
@@ -154,6 +185,8 @@ try {
     await prisma.user.deleteMany({ where: { id: { in: [ownerA, viewerA, ownerB] } } });
   } finally {
     try {
+      await prisma.$executeRawUnsafe(`REVOKE ALL PRIVILEGES ON ALL TABLES IN SCHEMA public FROM ${role}`);
+      await prisma.$executeRawUnsafe(`REVOKE ALL PRIVILEGES ON ALL FUNCTIONS IN SCHEMA public FROM ${role}`);
       await prisma.$executeRawUnsafe(`REVOKE ${role} FROM CURRENT_USER`);
       await prisma.$executeRawUnsafe(`REVOKE USAGE ON SCHEMA public FROM ${role}`);
       await prisma.$executeRawUnsafe(`DROP ROLE IF EXISTS ${role}`);

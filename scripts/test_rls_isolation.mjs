@@ -39,6 +39,7 @@
  * qu'il est venu corriger.
  */
 import pg from 'pg';
+import { TABLES_SANS_PRIVILEGE_RUNTIME } from './lib/tracefab_app_role.mjs';
 
 const URL_PROPRIO = process.env.DATABASE_URL;
 const URL_APP = process.env.TF_RLS_APP_URL;
@@ -52,6 +53,20 @@ if (!URL_PROPRIO || !URL_APP) {
 
 const REFERENCE = new Set(['pef_emission_factors', 'green_claims_rules', 'tracefab_schema_catalog',
   'dpp_requirement_profiles', 'rate_limit_counters', '_prisma_migrations']);
+
+// Réglages globaux (P10.5, migration 20261031120000) : une seule ligne, aucun
+// identifiant de locataire. Les soumettre a l'epreuve « deux locataires ne
+// voient pas la meme chose » est une erreur de categorie — ils voient
+// legitimement le meme reglage. Ces tables ne sont donc pas balayees ; elles
+// recoivent a la place des assertions qui portent sur ce qu'elles sont
+// vraiment (une ligne, aucun axe locataire, lecture seule pour le runtime).
+const REGLAGES_GLOBAUX = new Set(['tracefab_identity_politique']);
+
+// Tables dont l'ACL refuse TOUT au role applicatif : la protection ne passe
+// pas par une politique mais par l'absence de privilege. Un `42501` y est le
+// resultat attendu ; le confondre avec « erreur de politique » ferait echouer
+// le test sur sa meilleure protection.
+const FERMEES_PAR_CONCEPTION = new Set(TABLES_SANS_PRIVILEGE_RUNTIME);
 
 let echecs = 0;
 const ko = (m) => { console.log(`  ECHEC ${m}`); echecs += 1; };
@@ -90,7 +105,8 @@ const inventaire = (await proprio.query(`
   order by c.relname`)).rows;
 
 // Le registre Prisma est owner-only : ce n'est pas une table applicative à sonder sous RLS.
-const tables = inventaire.map((r) => r.relname).filter((t) => t !== '_prisma_migrations');
+const tables = inventaire.map((r) => r.relname)
+  .filter((t) => t !== '_prisma_migrations' && !REGLAGES_GLOBAUX.has(t) && !FERMEES_PAR_CONCEPTION.has(t));
 const sansRls = inventaire.filter((r) => !r.relrowsecurity && !REFERENCE.has(r.relname)).map((r) => r.relname);
 if (sansRls.length) ko(`${sansRls.length} table(s) de locataire sans ROW LEVEL SECURITY : ${sansRls.join(' · ')}`);
 else ok(`${tables.length} tables inventoriees, toutes les tables de locataire portent la RLS`);
@@ -133,6 +149,60 @@ else ok(`sans contexte arme, aucune table de locataire ne laisse voir une ligne`
 
 if (refCassees.length) { ko(`${refCassees.length} table(s) de reference devenues illisibles — les routes publiques tombent : ${refCassees.join(' · ')}`); }
 else ok(`tables de reference lisibles sans contexte (routes publiques preservees)`);
+
+/* --- B'. les tables fermees par l'ACL ------------------------------------- */
+// On ne se contente pas de les exclure du balayage : on verifie que le refus
+// vient bien d'un manque de privilege (42501) et non d'une politique cassee,
+// qui serait un probleme different et passerait inapercu.
+for (const t of FERMEES_PAR_CONCEPTION) {
+  await app.query('begin');
+  await app.query('savepoint s');
+  let code = null;
+  try {
+    await app.query(`select count(*) from "${t}"`);
+  } catch (e) {
+    code = e.code;
+    await app.query('rollback to savepoint s');
+  }
+  await app.query('rollback');
+  if (code === '42501') ok(`« ${t} » est refusee au runtime par l'ACL (42501), pas par une politique`);
+  else ko(`« ${t} » devrait etre inaccessible au runtime par l'ACL — code observe : ${code ?? 'aucune erreur'}`);
+}
+
+/* --- B''. les reglages globaux : une ligne, aucun axe locataire ----------- */
+for (const t of REGLAGES_GLOBAUX) {
+  const cols = (await proprio.query(
+    `select column_name from information_schema.columns where table_schema = 'public' and table_name = $1`,
+    [t])).rows.map((r) => r.column_name);
+  const axeLocataire = cols.filter((c) => /organization|tenant|brand|org_id/.test(c));
+  const n = (await proprio.query(`select count(*)::int n from "${t}"`)).rows[0].n;
+  const droits = (await proprio.query(
+    `select has_table_privilege('tracefab_app', $1, 'SELECT')  as sel,
+            has_table_privilege('tracefab_app', $1, 'INSERT')  as ins,
+            has_table_privilege('tracefab_app', $1, 'UPDATE')  as upd,
+            has_table_privilege('tracefab_app', $1, 'DELETE')  as del`, [t])).rows[0];
+
+  if (n === 1) ok(`« ${t} » ne porte qu'une ligne — reglage global, pas une donnee`);
+  else ko(`« ${t} » devrait etre un singleton, ${n} ligne(s) trouvee(s)`);
+  if (axeLocataire.length === 0) ok(`« ${t} » n'a aucune colonne de locataire (${cols.join(', ')})`);
+  else ko(`« ${t} » porte des colonnes de locataire : ${axeLocataire.join(', ')}`);
+  if (droits.sel && !droits.ins && !droits.upd && !droits.del) ok(`le runtime n'a que SELECT sur « ${t} » — ecriture impossible par l'ACL`);
+  else ko(`le runtime a des droits d'ecriture sur « ${t} » : insert=${droits.ins} update=${droits.upd} delete=${droits.del}`);
+
+  // Et la tentative d'ecriture reelle, pas seulement le catalogue.
+  await app.query('begin');
+  await app.query('savepoint s');
+  let refus = null;
+  try {
+    await app.query(`update "${t}" set strict = not strict`);
+  } catch (e) {
+    refus = e.code;
+    await app.query('rollback to savepoint s');
+  }
+  await app.query('rollback');
+  if (refus) ok(`le runtime ne peut pas modifier « ${t} » (${refus})`);
+  else ko(`le runtime a pu modifier « ${t} » — la verification d'identite est desarmable depuis le runtime`);
+}
 
 /* --- E. deux locataires ne voient pas la meme chose ----------------------- */
 const duo = (await proprio.query(`

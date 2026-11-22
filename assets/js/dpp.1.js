@@ -36,6 +36,8 @@
       const btnClose = document.getElementById('modal-close');
       const btnExport = document.getElementById('btn-export-jsonld');
 
+      if (!modal || !codeContainer || !btnViewRaw || !btnClose || !btnExport) return;
+
       btnViewRaw.addEventListener('click', () => {
         const jsonContent = readJsonLd();
         try {

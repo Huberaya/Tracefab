@@ -156,6 +156,9 @@ function installApi(page, state) {
       // donnees du tenant precedent serait visible.
       return setTimeout(() => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ products, nextCursor: null }) }), state.delayMs);
     }
+    // Le registre documentaire est charge en arriere-plan au demarrage, borne
+    // au locataire actif comme les autres lectures.
+    if (path === '/api/documents') return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ documents: [] }) });
     if (path === '/api/suppliers') return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ suppliers: [] }) });
     if (path === '/api/materials') return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ materials: [] }) });
     if (path === '/api/data-requests') return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ requests: [] }) });
