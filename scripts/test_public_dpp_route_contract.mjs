@@ -16,7 +16,13 @@ const client = readFileSync('assets/js/dpp.2.js', 'utf8');
 const checks = [
   ['route DPP publique en lecture seule', /req\.method !== 'GET'/.test(route)],
   ['contexte PostgreSQL public explicite', route.includes('withTracefabPublicContext')],
-  ['resolution par la fonction canonique DPP', route.includes('resolveDppPassData(tx, gtinOrRef)')],
+  // La forme exigee portait litteralement sur deux arguments. Depuis, la route
+  // passe un troisieme argument (`publicBaseUrl.origin`) : la resolution reste
+  // canonique, mais l egalite de chaine exacte signalait un faux echec. On
+  // verifie donc l APPEL a la fonction canonique avec l identifiant resolu, pas
+  // le nombre d arguments — figer l arite est ce qui a produit le faux negatif.
+  ['resolution par la fonction canonique DPP',
+    /resolveDppPassData\(\s*tx\s*,\s*gtinOrRef\b/.test(route)],
   ['aucune authentification Clerk sur la lecture publique', !route.includes('requireClerkUser')],
   ['un produit doit porter un public_slug', /public_slug:\s*\{\s*not:\s*null\s*\}/.test(resolver)],
   ['un enregistrement DPP doit etre publie', /readiness_status:\s*'published'/.test(resolver)],
