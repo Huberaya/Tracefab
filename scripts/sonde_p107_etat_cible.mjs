@@ -322,6 +322,7 @@ function construireRapport({ mesures, test, roleRuntime }) {
       definer_total: Number(hygiene.definer_total),
       definer_sans_search_path: Number(hygiene.definer_sans_search_path),
       executables_par_public: Number(hygiene.executables_par_public),
+      extensions_plateforme_publiques: Number(hygiene.extensions_plateforme_publiques ?? 0),
       fonctions_publiques: Number(hygiene.fonctions_publiques),
     } : null,
     b6_droits_migration: droits ? { ...droits } : null,
@@ -408,7 +409,10 @@ function afficherRapport(rapport) {
     console.log(`  propriétaire   : ${p.fonction} → ${p.proprietaire}${p.definer ? ' (SECURITY DEFINER)' : ''}`);
   }
   if (rapport.b5_hygiene) {
-    console.log(`  hygiène        : ${rapport.b5_hygiene.definer_sans_search_path} DEFINER sans search_path · ${rapport.b5_hygiene.executables_par_public} exécutable(s) par PUBLIC`);
+    const extDetail = rapport.b5_hygiene.extensions_plateforme_publiques > 0
+      ? ` (extensions plateforme externes documentées : ${rapport.b5_hygiene.extensions_plateforme_publiques})`
+      : '';
+    console.log(`  hygiène        : ${rapport.b5_hygiene.definer_sans_search_path} DEFINER sans search_path · ${rapport.b5_hygiene.executables_par_public} exécutable(s) par PUBLIC${extDetail}`);
   }
   if (rapport.b7_identite) {
     console.log(`  identité       : utilisateur=${rapport.b7_identite.mode_identite} · système=${rapport.b7_identite.mode_identite_systeme ?? 'ABSENTE'} · ${rapport.b7_identite.cles_actives ?? '?'} clé(s) active(s) sur ${rapport.b7_identite.cles_total ?? '?'}`);

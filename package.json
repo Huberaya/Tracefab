@@ -122,7 +122,6 @@
     "assets:version": "node scripts/build_asset_versions.mjs",
     "db:deploy": "prisma migrate deploy",
     "db:deploy:throwaway": "node scripts/db-deploy-throwaway.mjs",
-    "db:preflight:worker-neon": "node scripts/provisionner_worker_neon.mjs --dry-run",
     "db:status": "prisma migrate status",
     "db:migrations:check": "npx tsx scripts/check_migrations.ts",
     "db:pull": "prisma db pull",
