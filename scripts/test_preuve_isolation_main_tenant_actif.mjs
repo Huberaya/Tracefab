@@ -35,6 +35,25 @@
  *  G. Defense en profondeur : le role applicatif n'a pas le droit d'ecrire dans
  *     `tracefab_products` (les produits passent par des fonctions
  *     SECURITY DEFINER). L'absence de privilege precede la RLS.
+ *
+ * SENSIBILITE — CONTROLE NEGATIF PAR MUTATION
+ *
+ * `TF_MUTATION_SANS_RLS=1` retire la RLS des quatre tables exercees avant les
+ * mesures. Meme motif que `scripts/test_isolation_lignes_reelles.mjs` : une
+ * variable d'environnement, pas du code a commenter — une sensibilite qu'on
+ * annonce sans pouvoir la rejouer est une sensibilite supposee.
+ *
+ *   TF_MUTATION_SANS_RLS=1 npm run test:preuve:isolation-main-tenant-actif
+ *   -> 11 echecs nommes. Sans la variable : 30 controles verts.
+ *
+ * DEUX COMMANDES POINTENT ICI, ET C'EST VOULU
+ *
+ * `test:preuve-isolation:main` est citee par
+ * `docs/security/2026-11-12-S11-consolidation-pr-et-chaine-migrations.md`
+ * (§4.1, §5.3) : la retirer casserait la rejouabilite d'un document date.
+ * `test:preuve:isolation-main-tenant-actif` est l'alias de CI, et celui-la seul
+ * figure dans la boucle : un doublon y ferait tourner deux fois 30 scenarios
+ * pour rien.
  */
 import fs from 'node:fs';
 import path from 'node:path';
@@ -73,6 +92,28 @@ for (const d of dossiers) {
   await executerMigrationPglite(db, d, fs.readFileSync(path.join(MIGRATIONS, d, 'migration.sql'), 'utf8'));
 }
 console.log(`  base jetable : ${dossiers.length} migrations appliquees, role tracefab_app (NOBYPASSRLS)\n`);
+
+/*
+ * CONTROLE NEGATIF PAR MUTATION — meme motif que
+ * `scripts/test_isolation_lignes_reelles.mjs` (variable d'environnement, pas de
+ * code a commenter). Desactiver la RLS DOIT faire echouer cette suite ; si elle
+ * restait verte, c'est qu'elle ne mesurait pas la RLS.
+ *
+ *   TF_MUTATION_SANS_RLS=1 node scripts/test_preuve_isolation_main_tenant_actif.mjs
+ *
+ * Mesures connues, avec leur portee — le chiffre depend de ce qu'on mute, et une
+ * sensibilite annoncee sans portee n'est qu'une supposition :
+ *   - tracefab_products + materials seules : 7 echecs (2026-11-12, suite a 18
+ *     scenarios) ;
+ *   - les quatre tables ci-dessous : 11 echecs (2026-11-22, suite a 30
+ *     scenarios).
+ */
+if (process.env.TF_MUTATION_SANS_RLS === '1') {
+  for (const table of ['tracefab_products', 'materials', 'data_requests', 'tracefab_schema_bindings']) {
+    await db.exec(`ALTER TABLE ${table} DISABLE ROW LEVEL SECURITY`).catch(() => {});
+  }
+  console.log('  MUTATION ACTIVE : RLS retiree sur 4 tables — la suite DOIT echouer\n');
+}
 
 // ---- Fixtures --------------------------------------------------------------
 await db.exec(`
