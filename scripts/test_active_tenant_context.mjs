@@ -213,26 +213,18 @@ check("TenantError porte son statut et reste une Error", () => {
 });
 
 /* ------------------------------------------- armement sur les routes ----- */
-check('withTracefabUserContext recoit le locataire actif (4 arguments) partout hors bootstrap et lot PR #101', () => {
+check('withTracefabUserContext recoit le locataire actif (4 arguments) partout hors des 5 routes de bootstrap', () => {
   const rootDir = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..');
 
-  // 5 routes d'amorcage utilisateur / adhesions (avant le choix d'un locataire).
+  // Seules les 5 routes d'amorcage utilisateur / adhesions (avant le choix
+  // d'un locataire actif) sont autorisees a ouvrir un contexte a 3 arguments.
+  // Aucune exemption temporaire ne subsiste.
   const bootstrapAllowlist = new Set([
     'api/_routes/invitations/accept.ts',
     'api/_routes/me.ts',
     'api/_routes/organizations.ts',
     'api/_routes/supplier/onboarding.ts',
     'api/_routes/supplier/organizations.ts',
-  ]);
-
-  // Exemptions temporaires (Phase 2) : ces 4 routes documentaires du lot A de
-  // #101 (documents/upload-intent.ts utilise deja withTracefabRequestContext)
-  // seront basculees des la fermeture complete de #101.
-  const pr101DeferredAllowlist = new Set([
-    'api/_routes/documents/[documentId]/download.ts',
-    'api/_routes/documents/[documentId]/security-report.ts',
-    'api/_routes/supplier/documents/[documentId]/download.ts',
-    'api/_routes/supplier/documents/upload-intent.ts',
   ]);
 
   const walkTs = (dir) => {
@@ -310,7 +302,7 @@ check('withTracefabUserContext recoit le locataire actif (4 arguments) partout h
         const line = src.slice(0, m.index).split('\n').length;
         if (argCount === 4) {
           armedCalls += 1;
-        } else if (!bootstrapAllowlist.has(rel) && !pr101DeferredAllowlist.has(rel)) {
+        } else if (!bootstrapAllowlist.has(rel)) {
           violations.push(`${rel}:${line} (${argCount} arguments — 4 attendus)`);
         }
       }
@@ -322,7 +314,7 @@ check('withTracefabUserContext recoit le locataire actif (4 arguments) partout h
     0,
     `withTracefabUserContext sans 4e argument activeOrganizationId :\n  - ${violations.join('\n  - ')}`,
   );
-  assert.ok(armedCalls >= 65, `au moins 65 appels armes attendus, observe : ${armedCalls}`);
+  assert.ok(armedCalls >= 69, `au moins 69 appels armes attendus, observe : ${armedCalls}`);
 });
 
 /* ------------------------------------------- helpers metier fail-closed -- */

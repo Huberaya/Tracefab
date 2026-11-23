@@ -246,6 +246,103 @@ attendre(
   'H. tenant fournisseur S arme : les 2 demandes envoyees a S sont visibles cote fournisseur',
 );
 
+// ---- I. Phase 2 : documents, tracefab_can_access_document et tracefab_register_document
+await db.exec('RESET ROLE');
+const DOC_A = '95555555-5555-5555-5555-555555555555';
+const DOC_S = '96666666-6666-6666-6666-666666666666';
+const ITEM_A = '97777777-7777-7777-7777-777777777777';
+const RESP_A = '98888888-8888-8888-8888-888888888888';
+await db.exec(`
+  INSERT INTO documents (
+    id, owner_organization_id, storage_bucket, storage_path,
+    original_filename, content_type, byte_size, kind, status, visibility
+  ) VALUES
+    ('${DOC_A}', '${A}', 'tracefab-private', '${A}/brand-spec.pdf', 'brand-spec.pdf', 'application/pdf', 1024, 'other', 'uploaded', 'private'),
+    ('${DOC_S}', '${S}', 'tracefab-private', '${S}/supplier-cert.pdf', 'supplier-cert.pdf', 'application/pdf', 2048, 'certificate', 'uploaded', 'private');
+  BEGIN;
+  SELECT set_config('tracefab.internal_document_update', 'true', true);
+  UPDATE documents
+     SET status = 'available',
+         sha256 = repeat('a', 64),
+         available_at = now()
+   WHERE id IN ('${DOC_A}', '${DOC_S}');
+  COMMIT;
+  INSERT INTO data_request_items (id, data_request_id, field_key, label, data_type, required)
+    VALUES ('${ITEM_A}', '${REQ_A}', 'gots_cert', 'Certificat GOTS', 'document', true);
+  INSERT INTO data_responses (id, data_request_item_id, value, data_type, status, source_document_id)
+    VALUES ('${RESP_A}', '${ITEM_A}', '{"documentId":"${DOC_S}"}'::jsonb, 'document', 'documented', '${DOC_S}');
+`);
+await db.exec('SET ROLE tracefab_app');
+
+const peutAccederDoc = async (docId) =>
+  (await db.query(`SELECT tracefab_can_access_document('${docId}'::uuid) AS ok`)).rows[0].ok;
+
+attendre(
+  (await scenario(null, () => compter('SELECT count(*)::int AS n FROM documents'))) === 0
+    && (await scenario(null, () => peutAccederDoc(DOC_A))) === false
+    && (await scenario(null, () => peutAccederDoc(DOC_S))) === false,
+  'I. sans tenant actif : 0 document visible et tracefab_can_access_document = FAUX malgre les adhesions A, B et S',
+);
+attendre(
+  (await scenario(A, () => peutAccederDoc(DOC_A))) === true
+    && (await scenario(A, () => peutAccederDoc(DOC_S))) === true
+    && (await scenario(A, () => compter(`SELECT count(*)::int AS n FROM documents WHERE id IN ('${DOC_A}', '${DOC_S}')`))) === 2,
+  'I. tenant marque A arme : acces au document proprietaire DOC_A et au document fournisseur DOC_S transmis sur REQ_A',
+);
+attendre(
+  (await scenario(B, () => peutAccederDoc(DOC_A))) === false
+    && (await scenario(B, () => peutAccederDoc(DOC_S))) === false
+    && (await scenario(B, () => compter(`SELECT count(*)::int AS n FROM documents WHERE id IN ('${DOC_A}', '${DOC_S}')`))) === 0,
+  'I. tenant marque B arme : ni DOC_A ni DOC_S (transmis uniquement a A) ne sont accessibles ou visibles',
+);
+attendre(
+  (await scenario(S, () => peutAccederDoc(DOC_S))) === true
+    && (await scenario(S, () => peutAccederDoc(DOC_A))) === false,
+  'I. tenant fournisseur S arme : acces au document proprietaire DOC_S mais refus de DOC_A',
+);
+
+let refusRegisterSansTenant = false;
+try {
+  await scenario(null, () => db.exec(`
+    SELECT * FROM tracefab_register_document(
+      '${S}'::uuid, '${S}/sans-tenant.pdf', 'sans-tenant.pdf', 'application/pdf',
+      512::bigint, NULL, 'certificate'::document_kind, NULL, '{}'::jsonb
+    )
+  `));
+} catch (e) { refusRegisterSansTenant = /active_tenant_mismatch/i.test(e.message); }
+attendre(
+  refusRegisterSansTenant,
+  'I. tracefab_register_document sans tenant actif -> active_tenant_mismatch (fail-closed)',
+);
+
+let refusRegisterMauvaisTenant = false;
+try {
+  await scenario(A, () => db.exec(`
+    SELECT * FROM tracefab_register_document(
+      '${S}'::uuid, '${S}/mauvais-tenant.pdf', 'mauvais-tenant.pdf', 'application/pdf',
+      512::bigint, NULL, 'certificate'::document_kind, NULL, '{}'::jsonb
+    )
+  `));
+} catch (e) { refusRegisterMauvaisTenant = /active_tenant_mismatch/i.test(e.message); }
+attendre(
+  refusRegisterMauvaisTenant,
+  'I. tracefab_register_document avec tenant A pour proprietaire S -> active_tenant_mismatch',
+);
+
+const docEnregistreS = await scenario(S, async () => {
+  const r = await db.query(`
+    SELECT id FROM tracefab_register_document(
+      '${S}'::uuid, '${S}/upload-intent-ok.pdf', 'upload-intent-ok.pdf', 'application/pdf',
+      512::bigint, NULL, 'certificate'::document_kind, NULL, '{}'::jsonb
+    )
+  `);
+  return r.rows[0]?.id ?? null;
+});
+attendre(
+  typeof docEnregistreS === 'string' && docEnregistreS.length === 36,
+  'I. tracefab_register_document avec tenant fournisseur S arme -> succes',
+);
+
 // ---- D. Controle negatif : sans la RLS, tout est visible -----------------
 await db.exec('RESET ROLE');
 const dProduits = await compter(produits);

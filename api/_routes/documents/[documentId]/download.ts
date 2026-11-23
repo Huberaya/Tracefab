@@ -3,6 +3,7 @@ import { requireClerkUser, isUnauthorized } from '../../../_lib/auth.js';
 import { withTracefabUserContext } from '../../../_lib/context.js';
 import { json, methodNotAllowed } from '../../../_lib/http.js';
 import { sqlBusinessError } from '../../../_lib/sql-errors.js';
+import { isTenantError, requireActiveTenant, requestedTenantId } from '../../../_lib/tenant.js';
 import { DOCUMENT_SELECT, serializeDocument } from '../../../_lib/documents.js';
 import { presignedDownload } from '../../../_lib/storage.js';
 
@@ -15,7 +16,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const documentId = routeDocumentId(req);
     if (!isUuid(documentId)) return json(res, 400, { error: 'invalid_document_id' });
     const { user } = await requireClerkUser(req);
+    const activeOrgId = requestedTenantId(req);
     const result = await withTracefabUserContext(user.id, user.email, async (tx) => {
+      await requireActiveTenant(tx, req, user.id);
       const accessRows = await tx.$queryRaw<Array<{ can_access: boolean }>>`
         SELECT tracefab_can_access_document(${documentId}::uuid) AS can_access
       `;
@@ -27,7 +30,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       });
       if (!document) return null;
       return { document, download: presignedDownload(document.storage_path) };
-    });
+    }, activeOrgId);
     if (!result) return json(res, 404, { error: 'document_not_available' });
     return json(res, 200, { document: serializeDocument(result.document), download: {
       url: result.download.url,
@@ -36,6 +39,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     } });
   } catch (error) {
     if (isUnauthorized(error)) return json(res, 401, { error: 'unauthorized' });
+    if (isTenantError(error)) return json(res, error.status, { error: error.message });
     const businessError = sqlBusinessError(error);
     if (businessError) return json(res, businessError.status, { error: businessError.error });
     if (error instanceof Error && /^private_storage_/.test(error.message)) return json(res, 503, { error: error.message });

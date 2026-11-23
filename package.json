@@ -228,6 +228,7 @@
     "test:plm-sync-jobs-acces": "node scripts/test_plm_sync_jobs_acces.mjs",
     "test:plm-rls-isolation": "node scripts/test_plm_rls_isolation_prouvee.mjs",
     "test:preuve-isolation:main": "node scripts/test_preuve_isolation_main_tenant_actif.mjs",
+    "test:preuve:isolation-main-tenant-actif": "node scripts/test_preuve_isolation_main_tenant_actif.mjs",
     "test:plm-confrontation": "node scripts/test_plm_erp_confrontation_politiques.mjs",
     "test:plm-lecture-seule": "node scripts/test_plm_lecture_seule_sql.mjs",
     "test:plm-migrations-jumelles": "node scripts/test_plm_migrations_correctives_jumelles.mjs",
