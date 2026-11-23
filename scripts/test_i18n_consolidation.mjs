@@ -227,6 +227,47 @@ if (!chromium) {
       if (e.name.startsWith('i18n')) continue;
       const src = readFileSync(join(dossier, e.name), 'utf8');
       for (const m of src.matchAll(/\bbt\(['"]([A-Za-z0-9_]+)['"]\)/g)) appels.add(m[1]);
+      // Cles passees INDIRECTEMENT a bt() par une table de correspondance :
+      //
+      //   const NOMS = { declared: 'dpStatusDeclared', ... };
+      //   function libelle(v) { return NOMS[v] ? bt(NOMS[v]) : v; }
+      //
+      // Le releve ci-dessus ne les voit pas : il ne cherche que des litteraux
+      // en argument. Une table entiere peut donc pointer vers des cles
+      // absentes sans qu'aucun garde ne bronche — c'est l'angle mort qui
+      // rendait le lot D invisible. On releve ici les tables dont les valeurs
+      // sont des identifiants, et seulement celles-la : une table de libelles
+      // en clair (valeur avec espace ou ponctuation) n'est pas concernee.
+      // Cles passees INDIRECTEMENT a bt() par une table de correspondance.
+      //
+      // Le releve des litteraux ci-dessus ne voit pas ce motif :
+      //
+      //   function libelle(valeur, table) { return table[valeur] ? bt(table[valeur]) : ... }
+      //   ... libelle(evenement.event_type, DPP_EVENT_TYPES) ...
+      //
+      // Le nom de la table n'apparait jamais a cote de bt() : c'est le
+      // PARAMETRE qui porte la table. On suit donc la chaine : reperer la
+      // fonction qui fait bt(param[...]), retrouver son parametre, puis les
+      // tables passees a ce rang dans les appels.
+      for (const def of src.matchAll(/function\s+([A-Za-z0-9_]+)\s*\(([^)]*)\)\s*\{([\s\S]*?)\n\s*\}/g)) {
+        const [, , params, corps] = def;
+        const noms = params.split(',').map((x) => x.trim());
+        // quel parametre est indexe puis passe a bt() ?
+        const usage = corps.match(/bt\(\s*([A-Za-z0-9_]+)\s*\[/);
+        if (!usage) continue;
+        const rang = noms.indexOf(usage[1]);
+        if (rang < 0) continue;
+        const fonction = def[1];
+        // les tables effectivement passees a ce rang
+        for (const appel of src.matchAll(new RegExp(`${fonction}\\(([^)]*)\\)`, 'g'))) {
+          const args = appel[1].split(',').map((x) => x.trim());
+          const table = args[rang];
+          if (!table || !/^[A-Z][A-Z0-9_]*$/.test(table)) continue;
+          const bloc = src.match(new RegExp(`const\\s+${table}\\s*=\\s*\\{([\\s\\S]*?)\\n\\s*\\};`));
+          if (!bloc) continue;
+          for (const m of bloc[1].matchAll(/^\s*[A-Za-z0-9_]+\s*:\s*'([A-Za-z][A-Za-z0-9_]*)'/gm)) appels.add(m[1]);
+        }
+      }
     }
   }
 

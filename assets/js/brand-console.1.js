@@ -87,6 +87,9 @@
         dpp: null,
         dppIdentities: null,
         dppIdentitiesError: null,
+        dppEvents: null,
+        dppEventsError: null,
+        dppEventsLoading: false,
         selectedDppProduct: null,
         dppPortfolio: null,
         dppPortfolioLoading: false,
@@ -3953,7 +3956,130 @@
           `}
           ${dppIdentityPanel(p)}
           ${dppPublicationPanel(dpp, p)}
+          ${dppEventsPanel(p)}
         `;
+      }
+
+      /* ---------------------------------------------------------------------
+       * Historique du passeport (lecture)
+       *
+       * La route GET /api/products/:id/dpp/events journalise huit types
+       * d'evenement, quatre sources, six statuts de validation et quatre
+       * portees. Rien n'affichait cet historique : un utilisateur ne pouvait
+       * pas savoir ce qui avait ete publie, suspendu ou retire, ni par qui.
+       *
+       * Ce panneau LIT seulement. La rectification est un acte distinct, qui
+       * ecrit, et qui n'est pas ouvert ici.
+       * ------------------------------------------------------------------- */
+      const DPP_EVENT_TYPES = {
+        passport_created: 'dpEventPassportCreated',
+        data_submitted: 'dpEventDataSubmitted',
+        evidence_added: 'dpEventEvidenceAdded',
+        manufacturing_step: 'dpEventManufacturingStep',
+        data_corrected: 'dpEventDataCorrected',
+        repair: 'dpEventRepair',
+        reuse: 'dpEventReuse',
+        recycling: 'dpEventRecycling',
+      };
+      const DPP_EVENT_SOURCES = {
+        actor_declaration: 'dpSourceActor',
+        document: 'dpSourceDocument',
+        system: 'dpSourceSystem',
+        third_party: 'dpSourceThirdParty',
+      };
+      const DPP_EVENT_STATUSES = {
+        declared: 'dpStatusDeclared',
+        documented: 'dpStatusDocumented',
+        controlled: 'dpStatusControlled',
+        corroborated: 'dpStatusCorroborated',
+        third_party_verified: 'dpStatusThirdPartyVerified',
+        rejected: 'dpStatusRejected',
+      };
+      // Une valeur inconnue n'est PAS traduite a l'aveugle : on rend le code
+      // brut pour que l'ecart se voie, plutot que d'afficher un libelle faux.
+      function libelleEvenement(valeur, table) {
+        return table[valeur] ? bt(table[valeur]) : String(valeur || '—');
+      }
+
+      async function loadDppEvents(productId) {
+        state.dppEventsLoading = true;
+        try {
+          const payload = await api(`/api/products/${encodeURIComponent(productId)}/dpp/events`);
+          state.dppEvents = Array.isArray(payload.events) ? payload.events : [];
+          state.dppEventsError = null;
+        } catch (error) {
+          state.dppEvents = null;
+          state.dppEventsError = error.message || 'dpp_events_unavailable';
+        } finally {
+          state.dppEventsLoading = false;
+        }
+      }
+
+      function dppEventsPanel(product) {
+        if (state.dppEventsLoading && state.dppEvents === null) {
+          return `<div class="card panel" style="margin-top:20px">
+            <div class="panel-head"><div><h2>${bt('dpEventsTitle')}</h2>
+              <p class="meta" style="margin:4px 0 0">${bt('dpEventsIntro')}</p></div></div>
+            <div class="empty"><strong>${esc(bt('dpEventsLoading'))}</strong></div>
+          </div>`;
+        }
+        if (state.dppEventsError) {
+          // Une erreur nomme son code : « indisponible » sans code ne permet
+          // ni de diagnostiquer ni de savoir s'il faut reessayer.
+          return `<div class="card panel" style="margin-top:20px">
+            <div class="panel-head"><div><h2>${bt('dpEventsTitle')}</h2>
+              <p class="meta" style="margin:4px 0 0">${bt('dpEventsIntro')}</p></div></div>
+            <div class="notice notice-error"><code>${esc(state.dppEventsError)}</code></div>
+            <div class="actions" style="margin-top:12px">
+              <button class="btn btn-secondary btn-small" data-action="retry-dpp-events" data-product-id="${esc(product?.id || '')}">${bt('cnRetry')}</button>
+            </div>
+          </div>`;
+        }
+        // `null` = jamais calcule ; `[]` = calcule et vide. Les deux ne disent
+        // pas la meme chose et ne s'affichent pas pareil.
+        if (state.dppEvents === null) {
+          return `<div class="card panel" style="margin-top:20px">
+            <div class="panel-head"><div><h2>${bt('dpEventsTitle')}</h2>
+              <p class="meta" style="margin:4px 0 0">${bt('dpEventsIntro')}</p></div></div>
+            <div class="empty"><strong>${esc(bt('cnNotComputed'))}</strong></div>
+          </div>`;
+        }
+        const evenements = state.dppEvents;
+        const corps = evenements.length
+          ? `<div class="item-list">${evenements.map((evenement) => {
+              const corrige = evenement.corrects_event_id
+                ? `<div class="meta">↳ ${esc(bt('dpEventCorrects'))} <code>${esc(String(evenement.corrects_event_id).slice(0, 8))}</code></div>`
+                : '';
+              const preuves = Array.isArray(evenement.evidence_document_ids) && evenement.evidence_document_ids.length
+                ? `<span class="badge">${evenement.evidence_document_ids.length} ${esc(bt('dpEventEvidenceCount'))}</span>`
+                : '';
+              // Deux dates distinctes : la date METIER de l'evenement et celle
+              // de son enregistrement. Elles peuvent differer, et confondre les
+              // deux ferait passer une saisie tardive pour un fait tardif.
+              const quand = evenement.business_occurred_at && evenement.business_occurred_at !== evenement.recorded_at
+                ? `${date(evenement.business_occurred_at)} <span class="meta">(${esc(bt('dpEventRecorded'))} ${date(evenement.recorded_at)})</span>`
+                : date(evenement.recorded_at);
+              return `<div class="item">
+                <div>
+                  <strong>${esc(libelleEvenement(evenement.event_type, DPP_EVENT_TYPES))}</strong>
+                  <div class="meta">${esc(evenement.summary || '—')}</div>
+                  <div class="meta">${esc(libelleEvenement(evenement.source_kind, DPP_EVENT_SOURCES))} · ${esc(libelleEvenement(evenement.validation_status, DPP_EVENT_STATUSES))} · ${esc(quand)}</div>
+                  ${corrige}
+                </div>
+                <div class="actions" style="gap:8px;align-items:center">${preuves}</div>
+              </div>`;
+            }).join('')}</div>`
+          : `<div class="empty" style="padding:12px 0"><p>${esc(bt('dpEventsNone'))}</p></div>`;
+        return `<div class="card panel" style="margin-top:20px">
+          <div class="panel-head">
+            <div>
+              <h2>${bt('dpEventsTitle')}</h2>
+              <p class="meta" style="margin:4px 0 0">${bt('dpEventsIntro')}</p>
+            </div>
+            <span class="status status-draft">${moneyless(evenements.length)}</span>
+          </div>
+          ${corps}
+        </div>`;
       }
 
       function dppIdentityPanel(product) {
@@ -5377,6 +5503,10 @@
             state.dppIdentities = null;
             state.dppIdentitiesError = error.message || 'dpp_identities_unavailable';
           }
+          // L'historique est aussi une lecture AUXILIAIRE. Il vient APRÈS le
+          // dossier : un historique indisponible ne doit pas retarder l'affichage
+          // de la préparation, et son échec reste local au panneau.
+          await loadDppEvents(productId);
           render();
         } catch (e) {
           notify(e.message, true);
@@ -5509,6 +5639,7 @@
             if (action === 'new-material') { state.modal = 'new-material'; render(); }
             if (action === 'catalog-import') { state.catalogImport = { filename: '', content: '', preview: null, job: null, loading: false }; state.modal = 'catalog-import'; render(); }
             if (action === 'supplier-import') { state.supplierImport = { filename: '', content: '', preview: null, job: null, delivery: null, loading: false }; state.modal = 'supplier-import'; render(); }
+            if (action === 'retry-dpp-events') { await loadDppEvents(el.dataset.productId || state.selectedDppProduct?.id); render(); }
             if (action === 'dpp-back-portfolio') { state.dppScope = 'portfolio'; render(); if (!state.dppPortfolio) await loadDppPortfolio(); }
             if (action === 'dp-resolve') await resolveDppRequirement(el.dataset.dpTarget, el.dataset.dpProduct);
             if (action === 'retry-schema-bindings') await retrySchemaBindings();

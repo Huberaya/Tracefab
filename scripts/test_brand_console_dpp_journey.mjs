@@ -160,6 +160,29 @@ function router(url, options = {}) {
     }
     return jsonResponse(200, { identities: db.identities });
   }
+  if (pathname === `/api/products/${PRODUCT}/dpp/events`) {
+    // Deux evenements, dont un de suspension : c'est ce que la route rend
+    // reellement apres `tracefab_set_dpp_publication(...,'suspend',...)`, qui
+    // journalise `publication_suspended` via tracefab_add_dpp_event.
+    return jsonResponse(200, { events: [
+      {
+        id: 'evt-suspend-1', event_type: 'data_submitted', subject_scope: 'model',
+        subject_reference: null, business_occurred_at: '2026-10-27T09:00:00.000Z',
+        recorded_at: '2026-10-27T09:00:00.000Z', actor_user_id: null,
+        source_kind: 'actor_declaration', validation_status: 'declared',
+        summary: 'Fiche technique soumise', details: {}, public_summary: null,
+        evidence_document_ids: [], corrects_event_id: null,
+      },
+      {
+        id: 'evt-suspend-2', event_type: 'evidence_added', subject_scope: 'model',
+        subject_reference: null, business_occurred_at: '2026-10-28T11:00:00.000Z',
+        recorded_at: '2026-10-28T11:00:00.000Z', actor_user_id: null,
+        source_kind: 'document', validation_status: 'documented',
+        summary: 'Certificat fournisseur rattache', details: {}, public_summary: null,
+        evidence_document_ids: [DOCUMENT], corrects_event_id: null,
+      },
+    ] });
+  }
   if (pathname === `/api/products/${PRODUCT}/dpp/publication`) {
     return jsonResponse(200, {
       dpp: { ...dppBase, readinessStatus: body?.action === 'publish' ? 'published' : 'ready_to_publish', statusLabel: 'Publie' },
@@ -410,6 +433,33 @@ if (publicationForm) {
   check('publication : confirmation demandee', confirmations.some((message) => /publi/i.test(message)));
   check('publication : le slug public est conserve pour le lien', window.tracefabBrandConsole.state.selectedDppProduct?.publicSlug === 'ts001-atelier-test', String(window.tracefabBrandConsole.state.selectedDppProduct?.publicSlug));
 }
+
+/* ----------------------- 5bis. historique du passeport (LECTURE) --------
+ * GET /api/products/:id/dpp/events existait sans aucune vue : on ne pouvait
+ * pas savoir ce qui avait ete fait sur un passeport, ni quand. Ce bloc
+ * verifie que l'historique est LU, RENDU, et que ses libelles sont traduits
+ * plutot que rendus en code brut.
+ */
+// jsdom n'implemente pas innerText : textContent est l'acces correct ici.
+const texteRendu = window.document.body.textContent || '';
+const panneauHistorique = texteRendu.includes('Passport history')
+  || texteRendu.includes('Historique du passeport');
+check('historique : la vue DPP expose un panneau d historique', panneauHistorique);
+check('historique : le GET de la route a bien ete emis',
+  Boolean(calls.find((call) => (call.method || 'GET') === 'GET' && call.url === `/api/products/${PRODUCT}/dpp/events`)));
+// Le libelle vient d'une TABLE de correspondance, donc d'un bt() indirect :
+// si la table pointe vers une cle absente, c'est le code brut qui s'affiche.
+const texte = texteRendu;
+// Le libelle du TYPE vient de la table (`data_submitted` -> cle -> texte).
+// Le resume, lui, est une donnee libre : le verifier ne prouverait rien sur la
+// traduction. On exige donc le libelle du type, et lui seul.
+check('historique : le type d evenement est traduit par sa table',
+  texte.includes('Data submitted') || texte.includes('Donnee transmise'),
+  'le libelle du type est absent : la table ne resout pas');
+check('historique : ni le code brut du type ni celui du statut ne fuitent',
+  !texte.includes('data_submitted') && !texte.includes('evidence_added'), 'code brut rendu a l ecran');
+check('historique : le nombre de preuves est signale',
+  texte.includes('1 evidence file') || texte.includes('1 preuve'));
 
 /* ---------------------- 6. suspension puis retrait de la publication -----
  * `suspend-dpp` et `withdraw-dpp` etaient rendus mais AUCUN parcours ne les
