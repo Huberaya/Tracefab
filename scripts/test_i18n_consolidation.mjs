@@ -196,6 +196,63 @@ if (!chromium) {
   }
 }
 
+/* -- 5. les cles APPELEES existent ----------------------------------------
+ *
+ * Les controles precedents comparent les locales ENTRE ELLES : ils voient une
+ * cle perdue par une seule langue, jamais une cle perdue par les sept. C'est
+ * exactement ce qui s'est produit avec le lot D de la PR #101 : 56 cles de la
+ * portee `console` supprimees, de facon identique dans les sept catalogues, et
+ * ce fichier restait vert.
+ *
+ * Le traducteur des bundles :
+ *
+ *     function bt(key) {
+ *       const T = window.TF_I18N;
+ *       if (!T) return key;
+ *       return T.t('console.' + key, null) || T.t('shared.' + key, key);
+ *     }
+ *
+ * Il cherche dans `console`, puis dans `shared`, et rend la CLE BRUTE si les
+ * deux echouent. Une cle absente ne casse donc rien : elle s'affiche. C'est ce
+ * qui rend le defaut silencieux, et c'est pourquoi il faut le mesurer ici.
+ */
+{
+  const appels = new Set();
+  const dossiers = [join(ROOT, 'assets/js'), join(ROOT, 'assets')];
+  for (const dossier of dossiers) {
+    let entrees = [];
+    try { entrees = readdirSync(dossier, { withFileTypes: true }); } catch { continue; }
+    for (const e of entrees) {
+      if (!e.isFile() || !e.name.endsWith('.js')) continue;
+      if (e.name.startsWith('i18n')) continue;
+      const src = readFileSync(join(dossier, e.name), 'utf8');
+      for (const m of src.matchAll(/\bbt\(['"]([A-Za-z0-9_]+)['"]\)/g)) appels.add(m[1]);
+    }
+  }
+
+  if (appels.size === 0) {
+    fail('aucune cle bt(...) relevee — le releve est casse, pas le catalogue');
+  } else {
+    ok(`cles appelees par les bundles : ${appels.size}`);
+    const introuvables = new Map();
+    const catalogues = { en: EN };
+    for (const lang of FULL) {
+      catalogues[lang] = JSON.parse(readFileSync(join(ROOT, `assets/i18n/${lang}.json`), 'utf8'));
+    }
+    for (const [lang, cat] of Object.entries(catalogues)) {
+      const absentes = [...appels].filter((k) => !(k in (cat.console || {})) && !(k in (cat.shared || {})));
+      if (absentes.length) introuvables.set(lang, absentes);
+    }
+    if (introuvables.size) {
+      const [lang, absentes] = [...introuvables.entries()][0];
+      fail(`${introuvables.size} catalogue(s) afficheraient une cle brute — ${lang}: `
+        + `${absentes.length} introuvable(s), dont ${absentes.slice(0, 4).join(', ')}`);
+    } else {
+      ok('chaque cle appelee existe en console ou shared, dans les sept catalogues');
+    }
+  }
+}
+
 console.log('');
 if (failures) {
   console.error(`Consolidation i18n : ${failures} probleme(s).`);
