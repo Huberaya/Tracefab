@@ -1,12 +1,25 @@
-# Déclenchement manuel de la validation Preview
-# Parcours HTTP sur la Preview de la PR #101. Aucun service local ni mock.
+# Déclenchement MANUEL uniquement — parcours HTTP sur une Preview.
+# Aucun service local ni mock.
 #
-# workflow_dispatch exige que le fichier existe sur la branche par defaut.
-# Comme cette PR ne doit pas etre fusionnee, le push est une voie alternative
-# strictement limitee a la branche de la mission et DESACTIVEE par defaut.
-# Un administrateur doit d'abord definir la variable de depot
-# TF_PREVIEW_PUSH_ENABLED=1. Les relecteurs obligatoires et la politique de
-# branche de l'environnement restent applicables dans les DEUX cas.
+# POURQUOI IL N'Y A PLUS DE DECLENCHEUR `push`
+#
+# Ce workflow a d'abord ete epingle a `arena/647ac97c-tracefab`, la branche de
+# la mission #101, avec un declencheur `push` desactive par defaut derriere la
+# variable de depot TF_PREVIEW_PUSH_ENABLED. C'etait une dette : tant que cette
+# branche existait, l'environnement `tracefab-clerk-test` devait l'autoriser
+# explicitement, et six secrets de test devenaient lisibles par un workflow
+# declenche sur un push de cette branche. Une branche de session finit toujours
+# par devenir orpheline — et alors plus personne ne sait pourquoi elle est
+# autorisee, ni si on peut la retirer sans casser quelque chose.
+#
+# Le fichier vit desormais sur `main`. `workflow_dispatch` y suffit : il exige
+# que le fichier existe sur la branche par defaut, ce qui est maintenant le cas.
+# Aucun push de branche ne peut donc plus atteindre l'environnement protege.
+# Le declencheur `push` a ete SUPPRIME, pas desactive : une voie fermee par une
+# variable peut etre rouverte par une variable.
+#
+# Les relecteurs obligatoires et la politique de branche de l'environnement
+# restent applicables.
 #
 # Les ecritures exigent en plus une attestation explicite de l'administrateur
 # sur la nature TEST du deploiement, de la base, de Clerk, du bucket et de
@@ -16,9 +29,6 @@
 name: Preview HTTP — parcours authentifies reels
 
 on:
-  push:
-    branches:
-      - 'arena/647ac97c-tracefab'
   workflow_dispatch:
     inputs:
       preview_url:
@@ -37,7 +47,11 @@ jobs:
   parcours:
     # Le push ne lance jamais de job privilegié sans opt-in ADMIN explicite.
     # Un job saute est NOT RUN, jamais une preuve de test reussi.
-    if: ${{ github.ref == 'refs/heads/arena/647ac97c-tracefab' && (github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && vars.TF_PREVIEW_PUSH_ENABLED == '1')) }}
+    # Uniquement manuel. La condition refuse explicitement tout autre
+    # evenement, pour que l'ajout d'un declencheur ne puisse pas ouvrir la voie
+    # par inadvertance : un declencheur ajoute sans condition ne suffirait pas
+    # a lancer le job.
+    if: ${{ github.event_name == 'workflow_dispatch' }}
     name: Preview — parcours HTTP authentifies
     runs-on: ubuntu-latest
     timeout-minutes: 35

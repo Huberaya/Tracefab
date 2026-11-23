@@ -299,11 +299,26 @@ function lancer(envSuppl, { retirer = [] } = {}) {
 {
   const workflow = parse(readFileSync(join(HERE, '../.github/workflows/preview-http-journeys.yml'), 'utf8'));
   const job = workflow.jobs?.parcours;
-  verifier(workflow.on?.push?.branches?.length === 1
-    && workflow.on.push.branches[0] === 'arena/647ac97c-tracefab'
-    && String(job?.if).includes("github.ref == 'refs/heads/arena/647ac97c-tracefab'")
-    && String(job?.if).includes("vars.TF_PREVIEW_PUSH_ENABLED == '1'"),
-    'workflow push limite a la branche et desactive sans opt-in admin');
+  // CE CONTRAT A ETE RENVERSE, VOLONTAIREMENT.
+  //
+  // Il exigeait auparavant que le workflow soit epingle a
+  // `arena/647ac97c-tracefab` avec un declencheur push derriere un opt-in. Ce
+  // n'etait pas une garde : c'etait la DETTE elle-meme, verrouillee par un
+  // test. Tant que cette branche vivait, l'environnement protege devait
+  // l'autoriser, et six secrets de test restaient joignables par un push.
+  //
+  // Le contrat verifie desormais l'inverse : AUCUN declencheur autre que
+  // manuel, et AUCUNE epingle de branche. Une seule branche nommee dans ce
+  // fichier suffirait a rouvrir la voie, donc le garde la refuse ou qu'elle
+  // soit.
+  const declencheurs = Object.keys(workflow.on || {});
+  verifier(declencheurs.length === 1 && declencheurs[0] === 'workflow_dispatch',
+    'workflow declenche UNIQUEMENT manuellement — aucun push, aucun planning');
+  verifier(String(job?.if || '').includes("github.event_name == 'workflow_dispatch'"),
+    'le job lui-meme refuse tout evenement autre que manuel');
+  const epingles = [workflow.on, job].map((bloc) => JSON.stringify(bloc || {})).join(' ');
+  verifier(!/arena\/[0-9a-f]{8}-tracefab/.test(epingles),
+    'aucune branche arena/* n est epinglee dans le declencheur ni dans le job');
   verifier(job?.environment === 'tracefab-clerk-test'
     && workflow.permissions?.contents === 'read',
     'workflow conserve l environnement protege et permissions minimales');
