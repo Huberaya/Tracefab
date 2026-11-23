@@ -29,7 +29,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return { document, download: presignedDownload(document.storage_path) };
     });
     if (!result) return json(res, 404, { error: 'document_not_available' });
-    return json(res, 200, { document: serializeDocument(result.document), download: { url: result.download.url, expiresInSeconds: Number(process.env.PRIVATE_STORAGE_PRESIGN_SECONDS || 600) } });
+    return json(res, 200, { document: serializeDocument(result.document), download: {
+      url: result.download.url,
+      ...(Object.keys(result.download.headers).length ? { headers: result.download.headers } : {}),
+      expiresInSeconds: Number(process.env.PRIVATE_STORAGE_PRESIGN_SECONDS || 600),
+    } });
   } catch (error) {
     if (isUnauthorized(error)) return json(res, 401, { error: 'unauthorized' });
     const businessError = sqlBusinessError(error);

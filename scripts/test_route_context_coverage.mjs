@@ -120,6 +120,7 @@ const nonClerkRouteExceptions = new Map([
   ['api/_routes/pef/factors.ts', 'public-reference'],
   ['api/_routes/green-claims/rules.ts', 'public-reference'],
   ['api/_routes/passport/[tokenOrSlug]/request-access.ts', 'security-definer-entrypoint'],
+  ['api/_routes/preview-storage/object.ts', 'capability-preview-only'],
 ]);
 
 const helperSources = {
@@ -190,6 +191,21 @@ for (const route of routePaths) {
     case 'security-definer-entrypoint':
       valid = /requestPassportAccess\s*\(/.test(source)
         && /tracefab_request_passport_access\s*\(/.test(helperSources.passport);
+      break;
+    case 'capability-preview-only':
+      // Cette route n'a PAS de Clerk : elle echange des octets sur une
+      // capacite HMAC a duree courte, emise seulement APRES les controles
+      // Clerk/RLS des routes documentaires. Le contrat verifie est donc
+      // l'absence de trois choses, pas la presence d'une authentification :
+      //   - elle disparait (404) hors du backend de Preview ;
+      //   - elle refuse (403) une capacite absente ou invalide ;
+      //   - elle ne touche la base qu'apres ces deux gardes.
+      // Si l'un des trois disparait, l'exception n'est plus valable et le
+      // garde doit echouer plutot que laisser passer.
+      valid = /usesPreviewPostgresStorage\s*\(/.test(source)
+        && /assertPreviewStorageConfig\s*\(/.test(source)
+        && /verifyPreviewCapability\s*\(/.test(source)
+        && /private_storage_unauthorized/.test(source);
       break;
   }
 

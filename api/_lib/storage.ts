@@ -1,4 +1,5 @@
 import { createHash, createHmac, randomUUID } from 'node:crypto';
+import { previewSignedObject, usesPreviewPostgresStorage } from './preview-storage-policy.js';
 
 const MAX_DOCUMENT_BYTES = 50 * 1024 * 1024;
 const PRIVATE_STORAGE_BUCKET = 'tracefab-private';
@@ -98,8 +99,27 @@ function presigned(method: 'PUT' | 'GET', key: string, contentType?: string): Si
   return { url: url.toString(), headers: contentType ? { 'Content-Type': contentType } : {} };
 }
 
-export function presignedUpload(key: string, contentType: string) { return presigned('PUT', key, contentType); }
-export function presignedDownload(key: string) { return presigned('GET', key); }
+/**
+ * Selection du backend de stockage prive.
+ *
+ * Par defaut `s3` : rien ne change. Le backend `preview-postgres` n'est
+ * atteignable que si `PRIVATE_STORAGE_BACKEND` vaut explicitement cette
+ * valeur, et `previewSignedObject` refuse alors de signer hors d'une Preview
+ * epinglee dont la base est approuvee par empreinte. Un deploiement qui ne
+ * configure rien garde donc exactement le comportement precedent.
+ *
+ * La taille est transmise a l'upload : le stockage PostgreSQL de Preview
+ * l'exige pour refuser un objet trop gros AVANT d'ecrire, sans quoi le refus
+ * arriverait apres consommation de la memoire du serveur.
+ */
+export function presignedUpload(key: string, contentType: string, byteSize?: number) {
+  return usesPreviewPostgresStorage()
+    ? previewSignedObject('PUT', key, contentType, byteSize)
+    : presigned('PUT', key, contentType);
+}
+export function presignedDownload(key: string) {
+  return usesPreviewPostgresStorage() ? previewSignedObject('GET', key) : presigned('GET', key);
+}
 
 async function signedRequest(method: 'HEAD' | 'GET', key: string) {
   const config = storageConfig();
@@ -118,6 +138,12 @@ async function signedRequest(method: 'HEAD' | 'GET', key: string) {
 }
 
 export async function headObject(key: string) {
+  if (usesPreviewPostgresStorage()) {
+    // Import dynamique : le stockage de Preview n'est charge que s'il est
+    // reellement selectionne, pour ne pas alourdir le chemin S3 de production.
+    const { headPreviewObject } = await import('./preview-postgres-store.js');
+    return headPreviewObject(key);
+  }
   const response = await signedRequest('HEAD', key);
   if (!response.ok) throw new Error(response.status === 404 ? 'document_object_not_found' : 'private_storage_head_failed');
   const length = Number(response.headers.get('content-length') || 0);
@@ -162,9 +188,9 @@ export async function scanWithAntivirus(bytes: ArrayBuffer, filename: string, co
     }
     throw new Error('private_storage_antivirus_unavailable');
   }
-  let payload: { clean?: unknown; mimeType?: unknown } | null;
+  let payload: { clean?: unknown; mimeType?: unknown; threat?: unknown } | null;
   try {
-    payload = await response.json() as { clean?: unknown; mimeType?: unknown };
+    payload = await response.json() as { clean?: unknown; mimeType?: unknown; threat?: unknown };
   } catch (error) {
     if (error instanceof Error && (error.name === 'TimeoutError' || error.name === 'AbortError')) {
       throw new Error('private_storage_antivirus_timeout');
@@ -172,5 +198,14 @@ export async function scanWithAntivirus(bytes: ArrayBuffer, filename: string, co
     throw new Error('private_storage_antivirus_invalid_response');
   }
   if (!response.ok || !payload || typeof payload.clean !== 'boolean') throw new Error('private_storage_antivirus_invalid_response');
-  return { clean: payload.clean, mimeType: typeof payload.mimeType === 'string' ? payload.mimeType : null };
+  return {
+    clean: payload.clean,
+    mimeType: typeof payload.mimeType === 'string' ? payload.mimeType : null,
+    // Nom de menace rendu par le scanner externe. BORNE a 120 caracteres : le
+    // nom vient d'un service tiers et finit dans une colonne, un journal et
+    // une reponse HTTP — une valeur de plusieurs Mo y ferait plus de degats
+    // qu'elle n'informe. Absent (`undefined`) reste distinct de vide : le
+    // pipeline affiche « non atteste » plutot que d'inventer un nom.
+    threat: typeof payload.threat === 'string' ? payload.threat.slice(0, 120) : undefined,
+  };
 }

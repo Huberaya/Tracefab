@@ -4,6 +4,7 @@ import { withTracefabUserContext } from '../../../_lib/context.js';
 import { json, methodNotAllowed } from '../../../_lib/http.js';
 import { sqlBusinessError } from '../../../_lib/sql-errors.js';
 import { DOCUMENT_SELECT, serializeDocument } from '../../../_lib/documents.js';
+import { unavailableSecurityAttestations } from '../../../_lib/document-security-report.js';
 
 function routeDocumentId(req: VercelRequest) {
   const value = req.query.documentId;
@@ -36,13 +37,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       });
       if (!doc) return null;
 
-      const meta = (doc.metadata as Record<string, any>) || {};
-      const securityScan = meta.security_scan || {
-        clean: doc.status === 'available',
-        status: doc.status === 'available' ? 'clean' : (doc.status === 'rejected' ? 'quarantined' : 'pending'),
-        engine: 'Tracefab Forensics & ClamAV Engine v2',
-        verifiedAt: doc.available_at || doc.created_at,
-      };
+      // La metadata est fournie par le client et ne constitue jamais une
+      // attestation antivirus. L'etat du document ne prouve pas non plus
+      // quel moteur ni quel chiffrement ont effectivement ete utilises.
+      const attestations = unavailableSecurityAttestations();
 
       return {
         document: serializeDocument(doc),
@@ -50,10 +48,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         integrity: {
           sha256: doc.sha256,
           byteSize: Number(doc.byte_size),
-          isEncryptedAtRest: true,
+          isEncryptedAtRest: attestations.isEncryptedAtRest,
           storageBucket: doc.storage_bucket,
         },
-        antivirus: securityScan,
+        antivirus: attestations.antivirus,
         compliance: {
           isAvailable: doc.status === 'available',
           isQuarantined: doc.status === 'rejected',

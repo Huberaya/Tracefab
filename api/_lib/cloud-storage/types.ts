@@ -19,10 +19,10 @@ export type AntivirusScanResult = {
   sha256: string;
   scannedAt: string;
   details: {
-    fileHeaderValid: boolean;
+    fileHeaderValid: boolean | null;
     suspiciousKeywordsFound: string[];
-    embeddedScriptsFound: boolean;
-    eicarDetected: boolean;
+    embeddedScriptsFound: boolean | null;
+    eicarDetected: boolean | null;
   };
 };
 

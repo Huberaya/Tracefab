@@ -43,7 +43,19 @@ const ACCESS_MODELS = {
   WEBHOOK: { needs: ['verifyClerkWebhook', 'Webhook', 'svix'] },
   // Referentiel sans donnee de locataire : facteurs PEF, catalogues, regles.
   REFERENCE: { needs: [] },
+  // Echange d'octets par CAPACITE signee, sur une Preview explicitement
+  // epinglee. Cette route n'a ni Clerk ni contexte tenant PAR CONSTRUCTION :
+  // elle ne recoit pas de requete utilisateur, elle recoit un jeton HMAC a
+  // duree courte que seules les routes documentaires (Clerk + RLS) ont pu
+  // emettre. Le controle d'acces est donc la capacite elle-meme, et il est
+  // obligatoire : les trois marqueurs ci-dessous sont exiges par le garde,
+  // pas seulement la classe. Une route de ce modele qui perdrait l'un des
+  // trois echouerait, au lieu de passer silencieusement.
+  CAPABILITY: { needs: ['verifyPreviewCapability', 'assertPreviewStorageConfig'] },
 };
+
+/* Routes CAPABILITY : elles doivent en plus disparaitre hors Preview. */
+const CAPABILITY_ROUTES = new Set(['preview-storage/object']);
 
 /* Classement explicite des routes non-TENANT. Tout le reste est TENANT.
  * Chaque entree porte sa justification : une exemption sans raison ecrite est
@@ -76,6 +88,7 @@ const CLASSIFIED = {
   'internal/notification-outbox/reminders': ['WORKER', 'Programme les relances ; declenche par cron.'],
   'internal/notification-outbox/schedule': ['WORKER', 'Planifie la file ; declenche par cron.'],
   'internal/p2/readiness': ['WORKER', 'Diagnostic d infrastructure reserve a l exploitation.'],
+  'preview-storage/object': ['CAPABILITY', 'Echange d octets de TEST par capacite HMAC a duree courte ; emise uniquement par les routes documentaires apres Clerk+RLS, et la route repond 404 hors du stockage de Preview.'],
 };
 
 /* Exemptions au repli multi-organisations.

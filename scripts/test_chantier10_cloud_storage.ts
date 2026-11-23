@@ -8,15 +8,27 @@ console.log('=== TEST SUITE CHANTIER 10: CLOUD STORAGE & FORENSIC ANTIVIRUS ===\
 // 1. Antivirus & Heuristic Forensics Tests
 console.log('[TEST 1] Testing Forensic Antivirus Scanner with Clean & Threat Files...');
 {
-  // 1.1 Clean PDF Document
+  // 1.1 PDF sans signature connue — l'heuristique NE CERTIFIE PAS qu'il est sain.
+  //
+  // Le comportement a change volontairement, et l'ancienne assertion
+  // (`clean === true`) affirmait le contraire de ce qu'un antivirus doit
+  // dire. Une heuristique qui n'a rien trouve n'a rien prouve : elle ne peut
+  // pas remplacer un verdict d'antivirus. Elle est donc tenue de rendre
+  // `clean: false` / `status: 'error'`, et le pipeline d'upload doit exiger en
+  // plus le verdict du scanner externe (`runAntivirusPipeline`).
+  //
+  // Ce qui reste verifie ici, et que la correction ne doit pas casser : aucune
+  // fausse alerte n'est levee sur un fichier sans signature connue.
   const cleanPdf = Buffer.from('%PDF-1.7\n1 0 obj\n<< /Type /Catalog >>\nendobj\ntrailer\n<< /Root 1 0 R >>\n%%EOF');
   const cleanResult = analyzeDocumentBytes(cleanPdf, 'gots-cert.pdf', 'application/pdf');
-  assert.equal(cleanResult.clean, true, 'Clean PDF must be marked clean');
-  assert.equal(cleanResult.status, 'clean');
-  assert.equal(cleanResult.details.fileHeaderValid, true);
-  assert.equal(cleanResult.details.eicarDetected, false);
-  assert.equal(cleanResult.details.embeddedScriptsFound, false);
-  console.log('✓ Clean PDF document verified and passed');
+  assert.equal(cleanResult.clean, false, 'Une heuristique sans alerte ne peut pas certifier un fichier sain');
+  assert.equal(cleanResult.status, 'error');
+  assert.equal(cleanResult.threatName, 'antivirus_verdict_unavailable');
+  assert.equal(cleanResult.engine, 'Tracefab heuristics (not an antivirus)');
+  assert.equal(cleanResult.details.fileHeaderValid, true, 'Aucune fausse alerte de en-tete');
+  assert.equal(cleanResult.details.eicarDetected, false, 'Aucune fausse alerte EICAR');
+  assert.equal(cleanResult.details.embeddedScriptsFound, false, 'Aucune fausse alerte de script');
+  console.log('✓ PDF sans signature : aucune fausse alerte, et aucun verdict fabrique');
 
   // 1.2 EICAR AntiVirus Test Signature
   const eicarFile = Buffer.from('X5O!P%@AP[4\\PZX54(P^)7CC)7}$EICAR-STANDARD-ANTIVIRUS-TEST-FILE!$H+H*');
