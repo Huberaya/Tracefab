@@ -218,6 +218,11 @@ if (!chromium) {
  */
 {
   const appels = new Set();
+  // Compteur du relevé par parametre. Sans lui, casser ce relevé le ramenait
+  // silencieusement a 1059 cles et le fichier restait VERT : un garde qu'on
+  // peut desactiver sans bruit ne garde rien. On exige donc qu'il ait
+  // effectivement trouve des cles.
+  let clesParParametre = 0;
   const dossiers = [join(ROOT, 'assets/js'), join(ROOT, 'assets')];
   for (const dossier of dossiers) {
     let entrees = [];
@@ -227,6 +232,67 @@ if (!chromium) {
       if (e.name.startsWith('i18n')) continue;
       const src = readFileSync(join(dossier, e.name), 'utf8');
       for (const m of src.matchAll(/\bbt\(['"]([A-Za-z0-9_]+)['"]\)/g)) appels.add(m[1]);
+      // Cles passees INDIRECTEMENT a bt() par un PARAMETRE.
+      //
+      //   const select = (champ, cleTout, options) => `...
+      //       <option value="">${esc(bt(cleTout))}</option>...`;
+      //   ... ${select('category', 'pdAllCategories', options)} ...
+      //
+      // Meme angle mort que les tables, autre motif : le litteral n'est pas
+      // dans l'appel a bt(), il est chez l'APPELANT. On reperait les tables,
+      // pas les parametres. Resultat mesure : trois cles `pdAll*` supprimees
+      // des sept catalogues laissaient ce fichier VERT, alors que la console
+      // affichait `pdAllCategories` en clair dans le filtre.
+      //
+      // On suit donc : toute fonction qui fait bt(parametre) -> le rang de ce
+      // parametre -> les litteraux passes a ce rang par ses appelants.
+      for (const motif of [
+        /function\s+([A-Za-z0-9_]+)\s*\(([^)]*)\)\s*\{/g,
+        /const\s+([A-Za-z0-9_]+)\s*=\s*\(([^)]*)\)\s*=>/g,
+        /(?:const|let|var)\s+([A-Za-z0-9_]+)\s*=\s*function\s*\(([^)]*)\)/g,
+      ]) {
+        for (const fn of src.matchAll(motif)) {
+          const nom = fn[1];
+          const params = fn[2].split(',').map((x) => x.trim());
+          // corps de la fonction : jusqu'a la fin du bloc, en comptant les accolades
+          let i = fn.index + fn[0].length;
+          let profondeur = 1;
+          const debut = i;
+          while (i < src.length && profondeur > 0) {
+            const c = src[i];
+            if (c === '{') profondeur += 1;
+            else if (c === '}') profondeur -= 1;
+            i += 1;
+          }
+          const corps = src.slice(debut, i);
+          for (const usage of corps.matchAll(/\bbt\(\s*([A-Za-z0-9_]+)\s*\)/g)) {
+            const rang = params.indexOf(usage[1]);
+            if (rang < 0) continue;
+            // les litteraux passes a ce rang par les appelants
+            for (const appel of src.matchAll(new RegExp(`(?<![A-Za-z0-9_])${nom}\\(`, 'g'))) {
+              let j = appel.index + appel[0].length;
+              let prof = 1;
+              let arg = '';
+              const args = [];
+              while (j < src.length && prof > 0) {
+                const c = src[j];
+                if ('([{'.includes(c)) prof += 1;
+                else if (')]}'.includes(c)) {
+                  prof -= 1;
+                  if (prof === 0) break;
+                }
+                if (c === ',' && prof === 1) { args.push(arg); arg = ''; }
+                else arg += c;
+                j += 1;
+              }
+              args.push(arg);
+              const valeur = args[rang];
+              if (!valeur) continue;
+              for (const lit of valeur.matchAll(/'([A-Za-z][A-Za-z0-9_]*)'/g)) { appels.add(lit[1]); clesParParametre += 1; }
+            }
+          }
+        }
+      }
       // Cles passees INDIRECTEMENT a bt() par une table de correspondance :
       //
       //   const NOMS = { declared: 'dpStatusDeclared', ... };
@@ -269,6 +335,15 @@ if (!chromium) {
         }
       }
     }
+  }
+
+  // Seuil : aujourd'hui 15 cles ne sont atteignables QUE par ce motif
+  // (`pdAll*`, `qc*`, `pagerPrev/Next`, `journeyStructured*`). Zero signifie
+  // que le releve est casse, pas que le catalogue est propre.
+  if (clesParParametre === 0) {
+    fail('releve par parametre inoperant : 0 cle trouvee par ce motif — le releve est casse, pas le catalogue');
+  } else {
+    ok(`cles atteintes par un parametre : ${clesParParametre}`);
   }
 
   if (appels.size === 0) {
