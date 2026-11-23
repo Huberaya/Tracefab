@@ -503,104 +503,149 @@ check('historique : le nombre de preuves est signale',
  * deux proprietes que la base impose et qu'on ne peut pas simuler :
  * `correctsEventId` doit designer l'entree cible, et deux envois du meme
  * formulaire ne doivent pas produire deux corrections (cle d'idempotence).
+ *
+ * Structure : AUCUN controle n'est conditionne par la presence d'un element.
+ * Une version precedente imbriquait 20 controles sous `if (boutonCorriger)` :
+ * quand le bouton disparaissait, le denominateur passait de 75 a 55 et la
+ * suite affichait « 54/55 » — un pourcentage flatteur sur un chemin qui
+ * n'existait plus. Un controle qui ne s'execute pas n'est pas un controle
+ * reussi : ici il echoue, et le compte reste fixe.
  */
 const boutonCorriger = window.document.querySelector('[data-action="correct-dpp-event"]');
 check('rectification : chaque entree de l historique propose « corriger »', Boolean(boutonCorriger));
 
+const idCible = boutonCorriger ? boutonCorriger.dataset.eventId : null;
+check('rectification : le bouton porte l identifiant de l entree visee', Boolean(idCible), String(idCible));
+
+// Ouverture : si le bouton manque, on ne peut pas ouvrir, et TOUT ce qui suit
+// doit echouer plutot que de disparaitre du decompte.
 if (boutonCorriger) {
-  const idCible = boutonCorriger.dataset.eventId;
-  check('rectification : le bouton porte l identifiant de l entree visee', Boolean(idCible), String(idCible));
   boutonCorriger.dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
   await flush(10);
-  const formCorrection = window.document.getElementById('dpp-event-correction-form');
-  check('rectification : le formulaire de correction s ouvre', Boolean(formCorrection));
-  check('rectification : l append-only est explique, pas suppose',
-    Boolean(formCorrection) && /never rewritten|no se reescribe|ne se reecrit|not rewritten/i.test(formCorrection.textContent || ''),
-    formCorrection ? (formCorrection.textContent || '').slice(0, 160) : 'aucun formulaire');
-  if (formCorrection) {
-    // 1. Un resume vide doit etre refuse AVANT tout appel reseau : la route le
-    //    rejetterait, et un aller-retour perdu fait ressaisir l'utilisateur.
-    const avant = calls.filter((call) => call.method === 'POST' && call.url === `/api/products/${PRODUCT}/dpp/events`).length;
-    submit('#dpp-event-correction-form');
-    await flush(8);
-    const apresVide = calls.filter((call) => call.method === 'POST' && call.url === `/api/products/${PRODUCT}/dpp/events`).length;
-    check('rectification : un resume vide ne part pas sur le reseau', apresVide === avant, `${avant} -> ${apresVide}`);
-
-    setValue('#dpp-event-correction-form input[name="summary"]',
-      'Correction : la donnee du 29/10 portait sur le lot TS-001 et non le modele.');
-    setValue('#dpp-event-correction-form select[name="subjectScope"]', 'batch');
-    submit('#dpp-event-correction-form');
-    await flush(14);
-    const postCorrection = last((call) => call.method === 'POST' && call.url === `/api/products/${PRODUCT}/dpp/events`);
-    check('rectification : POST emis sur la route des evenements', Boolean(postCorrection));
-    check('rectification : le type est data_corrected', Boolean(postCorrection) && postCorrection.body?.eventType === 'data_corrected',
-      postCorrection ? JSON.stringify(postCorrection.body) : 'aucun');
-    check('rectification : correctsEventId designe l entree visee',
-      Boolean(postCorrection) && String(postCorrection.body?.correctsEventId) === String(idCible),
-      postCorrection ? `${postCorrection.body?.correctsEventId} vs ${idCible}` : 'aucun');
-    check('rectification : une cle d idempotence est transmise',
-      Boolean(postCorrection) && typeof postCorrection.body?.idempotencyKey === 'string' && postCorrection.body.idempotencyKey.length >= 8,
-      postCorrection ? String(postCorrection.body?.idempotencyKey) : 'aucune');
-    check('rectification : la portee choisie est transmise',
-      Boolean(postCorrection) && postCorrection.body?.subjectScope === 'batch',
-      postCorrection ? String(postCorrection.body?.subjectScope) : 'aucune');
-
-    // 2. L'evenement corrige reste visible : on ne remplace pas, on ajoute.
-    await flush(8);
-    const texteApres = window.document.body.textContent || '';
-    check('rectification : l entree d origine reste dans l historique',
-      texteApres.includes('Data submitted') || texteApres.includes('Donnee transmise'));
-    check('rectification : la correction apparait dans l historique',
-      (texteApres.includes('Data corrected') || texteApres.includes('Donnee corrigee')),
-      'la ligne de correction est absente du panneau');
-    check('rectification : la modale se referme apres succes',
-      !window.document.getElementById('dpp-event-correction-form'));
-
-    // 3. La cle d'idempotence ne sert QUE si un envoi echoue : on force un 403
-    //    sur un envoi, on verifie que le formulaire reste ouvert AVEC la
-    //    saisie, que l'erreur est traduite, puis on rejoue : la cle doit etre
-    //    identique. Une cle regeneree a chaque clic produirait deux
-    //    corrections pour un seul geste utilisateur.
-    const bouton2 = window.document.querySelector('[data-action="correct-dpp-event"]');
-    check('rectification : une entree reste corrigeable apres un succes', Boolean(bouton2));
-    if (bouton2) {
-      bouton2.dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
-      await flush(10);
-      const formEchec = window.document.getElementById('dpp-event-correction-form');
-      check('rectification : la modale se rouvre sur une entree', Boolean(formEchec));
-      if (formEchec) {
-        const saisie = 'Correction dont le premier envoi echoue.';
-        setValue('#dpp-event-correction-form input[name="summary"]', saisie);
-        db.failNextEventsPost = true;
-        submit('#dpp-event-correction-form');
-        await flush(12);
-
-        const apresEchec = window.document.getElementById('dpp-event-correction-form');
-        check('rectification : un echec serveur ne ferme pas le formulaire', Boolean(apresEchec));
-        check('rectification : la saisie survit a l echec',
-          Boolean(apresEchec) && apresEchec.querySelector('input[name="summary"]')?.value === saisie,
-          apresEchec ? String(apresEchec.querySelector('input[name="summary"]')?.value) : 'formulaire ferme');
-        check('rectification : le role insuffisant est explique, pas recopie en code',
-          Boolean(apresEchec) && !/dpp_event_role_required/.test(apresEchec.textContent || '')
-            && /role/i.test(apresEchec.textContent || ''),
-          apresEchec ? (apresEchec.textContent || '').slice(0, 200) : 'formulaire ferme');
-
-        const postsAvant = calls.filter((call) => call.method === 'POST' && call.url === `/api/products/${PRODUCT}/dpp/events`).length;
-        submit('#dpp-event-correction-form');
-        await flush(14);
-        const posts = calls.filter((call) => call.method === 'POST' && call.url === `/api/products/${PRODUCT}/dpp/events`);
-        check('rectification : le reessai emet bien un second envoi', posts.length === postsAvant + 1, `${postsAvant} -> ${posts.length}`);
-        const echecPost = posts[postsAvant - 1];
-        const rejeuPost = posts[postsAvant];
-        check('rectification : le rejeu conserve la meme cle d idempotence',
-          Boolean(echecPost) && Boolean(rejeuPost) && echecPost.body?.idempotencyKey === rejeuPost.body?.idempotencyKey,
-          echecPost && rejeuPost ? `${echecPost.body?.idempotencyKey} / ${rejeuPost.body?.idempotencyKey}` : 'envois manquants');
-        check('rectification : le rejeu reussit et ferme la modale',
-          !window.document.getElementById('dpp-event-correction-form'));
-      }
-    }
-  }
 }
+const formCorrection = window.document.getElementById('dpp-event-correction-form');
+check('rectification : le formulaire de correction s ouvre', Boolean(formCorrection));
+check('rectification : l append-only est explique, pas suppose',
+  /never rewritten|no se reescribe|ne se reecrit|not rewritten/i.test(formCorrection?.textContent || ''),
+  formCorrection ? (formCorrection.textContent || '').slice(0, 160) : 'aucun formulaire');
+
+// Submit sans formulaire = pas d'exception qui tue la suite. Le helper n'emet
+// AUCUN controle : sinon le denominateur grandit quand un element manque, et
+// « 65/77 » fait passer une panne pour un detail. Le compte doit rester fixe ;
+// c'est aux controles qui suivent de constater l'absence.
+function submitCorrection() {
+  const form = window.document.getElementById('dpp-event-correction-form');
+  if (!form) return false;
+  form.dispatchEvent(new window.Event('submit', { bubbles: true, cancelable: true }));
+  return true;
+}
+const controlesAvantRectification = results.length;
+
+// 1. Un resume vide doit etre refuse AVANT tout appel reseau : la route le
+//    rejetterait, et un aller-retour perdu fait ressaisir l'utilisateur.
+const avant = calls.filter((call) => call.method === 'POST' && call.url === `/api/products/${PRODUCT}/dpp/events`).length;
+submitCorrection();
+await flush(8);
+const apresVide = calls.filter((call) => call.method === 'POST' && call.url === `/api/products/${PRODUCT}/dpp/events`).length;
+check('rectification : un resume vide ne part pas sur le reseau', apresVide === avant, `${avant} -> ${apresVide}`);
+
+// 2. Envoi nominal.
+if (window.document.getElementById('dpp-event-correction-form')) {
+  setValue('#dpp-event-correction-form input[name="summary"]',
+    'Correction : la donnee du 29/10 portait sur le lot TS-001 et non le modele.');
+  setValue('#dpp-event-correction-form select[name="subjectScope"]', 'batch');
+}
+submitCorrection();
+await flush(14);
+const postCorrection = last((call) => call.method === 'POST' && call.url === `/api/products/${PRODUCT}/dpp/events`);
+check('rectification : POST emis sur la route des evenements', Boolean(postCorrection));
+check('rectification : le type est data_corrected', postCorrection?.body?.eventType === 'data_corrected',
+  postCorrection ? JSON.stringify(postCorrection.body) : 'aucun');
+check('rectification : correctsEventId designe l entree visee',
+  Boolean(postCorrection) && Boolean(idCible) && String(postCorrection.body?.correctsEventId) === String(idCible),
+  postCorrection ? `${postCorrection.body?.correctsEventId} vs ${idCible}` : 'aucun');
+check('rectification : une cle d idempotence est transmise',
+  typeof postCorrection?.body?.idempotencyKey === 'string' && postCorrection.body.idempotencyKey.length >= 8,
+  postCorrection ? String(postCorrection.body?.idempotencyKey) : 'aucune');
+check('rectification : la portee choisie est transmise', postCorrection?.body?.subjectScope === 'batch',
+  postCorrection ? String(postCorrection.body?.subjectScope) : 'aucune');
+
+// 3. L'evenement corrige reste visible : on ne remplace pas, on ajoute.
+await flush(8);
+const texteApres = window.document.body.textContent || '';
+check('rectification : l entree d origine reste dans l historique',
+  texteApres.includes('Data submitted') || texteApres.includes('Donnee transmise'));
+check('rectification : la correction apparait dans l historique',
+  texteApres.includes('Data corrected') || texteApres.includes('Donnee corrigee'),
+  'la ligne de correction est absente du panneau');
+// L'etat, pas seulement le rendu : la modale ne s'affiche deja plus quand
+// `dppEventCorrection` est vide, meme si `state.modal` est reste ouvert. Ne
+// verifier que l'absence du formulaire laissait passer un `state.modal` non
+// efface — la prochaine ouverture de modale aurait alors un etat fantome.
+check('rectification : la modale se referme apres succes (etat efface)',
+  !window.document.getElementById('dpp-event-correction-form')
+    && window.tracefabBrandConsole.state.modal === null
+    && window.tracefabBrandConsole.state.dppEventCorrection === null,
+  `modal=${String(window.tracefabBrandConsole.state.modal)} correction=${String(
+    window.tracefabBrandConsole.state.dppEventCorrection && 'presente')}`);
+// Le toast est le SEUL retour que l'utilisateur voit une fois la modale fermee.
+// Sans ce controle, retirer `notify(...)` laissait la suite entierement verte.
+check('rectification : la confirmation est signalee a l utilisateur',
+  /Correction recorded|Correction enregistree|Correction vastgelegd|Berichtigung erfasst|Rettifica registrata|Rectificacion registrada|Retificacao registada/i
+    .test(window.document.body.textContent || ''),
+  'aucun message de confirmation apres succes');
+
+// 4. La cle d'idempotence ne sert QUE si un envoi echoue : on force un 403 sur
+//    un envoi, on verifie que le formulaire reste ouvert AVEC la saisie, que
+//    l'erreur est traduite, puis on rejoue : la cle doit etre identique. Une
+//    cle regeneree a chaque clic produirait deux corrections pour un seul
+//    geste utilisateur.
+const bouton2 = window.document.querySelector('[data-action="correct-dpp-event"]');
+check('rectification : une entree reste corrigeable apres un succes', Boolean(bouton2));
+if (bouton2) {
+  bouton2.dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
+  await flush(10);
+}
+const formEchec = window.document.getElementById('dpp-event-correction-form');
+check('rectification : la modale se rouvre sur une entree', Boolean(formEchec));
+const saisie = 'Correction dont le premier envoi echoue.';
+if (formEchec) {
+  setValue('#dpp-event-correction-form input[name="summary"]', saisie);
+  db.failNextEventsPost = true;
+}
+submitCorrection();
+await flush(12);
+
+const apresEchec = window.document.getElementById('dpp-event-correction-form');
+check('rectification : un echec serveur ne ferme pas le formulaire', Boolean(apresEchec));
+check('rectification : la saisie survit a l echec',
+  apresEchec?.querySelector('input[name="summary"]')?.value === saisie,
+  apresEchec ? String(apresEchec.querySelector('input[name="summary"]')?.value) : 'formulaire ferme');
+check('rectification : le role insuffisant est explique, pas recopie en code',
+  Boolean(apresEchec) && !/dpp_event_role_required/.test(apresEchec.textContent || '')
+    && /role/i.test(apresEchec.textContent || ''),
+  apresEchec ? (apresEchec.textContent || '').slice(0, 200) : 'formulaire ferme');
+
+const postsAvant = calls.filter((call) => call.method === 'POST' && call.url === `/api/products/${PRODUCT}/dpp/events`).length;
+submitCorrection();
+await flush(14);
+const posts = calls.filter((call) => call.method === 'POST' && call.url === `/api/products/${PRODUCT}/dpp/events`);
+check('rectification : le reessai emet bien un second envoi', posts.length === postsAvant + 1, `${postsAvant} -> ${posts.length}`);
+const echecPost = posts[postsAvant - 1];
+const rejeuPost = posts[postsAvant];
+check('rectification : le rejeu conserve la meme cle d idempotence',
+  Boolean(echecPost) && Boolean(rejeuPost) && echecPost.body?.idempotencyKey === rejeuPost.body?.idempotencyKey,
+  echecPost && rejeuPost ? `${echecPost.body?.idempotencyKey} / ${rejeuPost.body?.idempotencyKey}` : 'envois manquants');
+check('rectification : le rejeu reussit et ferme la modale',
+  !window.document.getElementById('dpp-event-correction-form'));
+// Garde du garde : les controles de ce bloc ne sont conditionnes par AUCUN
+// element. Si ce nombre change, c'est qu'un `if` a reapparu autour d'un
+// controle — et un chemin absent se serait mis a passer pour un chemin
+// verifie. Mesure : avant reecriture, retirer le bouton faisait tomber le
+// decompte de 75 a 55 et la suite affichait « 54/55 », verte a 98 %.
+const controlesRectification = results.length - controlesAvantRectification;
+check('rectification : aucun controle du bloc n est conditionne par un element',
+  controlesRectification === 18, `${controlesRectification} controles executes`);
 
 /* ---------------------- 6. suspension puis retrait de la publication -----
  * `suspend-dpp` et `withdraw-dpp` etaient rendus mais AUCUN parcours ne les
