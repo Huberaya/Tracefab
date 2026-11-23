@@ -155,6 +155,14 @@ const MUST_ROUTE_THROUGH_WRAPPER = [...DESTRUCTIVE_DB_SUITES, ...P105_DB_SUITES,
  * Aucune n'est executable par `npm test`, `npm run build` ni par la CI.
  */
 const UNWIRED_DESTRUCTIVE_REGISTER = [
+  // Cree un schema et une table de stockage dans une base de TEST, et purge
+  // des objets. Il ne passe PAS par require-throwaway-db : son garde est
+  // `assertPreviewDatabaseTarget` (Preview epinglee + empreinte de base
+  // approuvee + TF_PREVIEW_STORAGE_TEST_ONLY=1). Il n'est cable a aucune
+  // commande npm et n'est jamais appele par un workflow : c'est un geste
+  // d'operateur, jamais une etape de CI. Declare ici pour qu'il ne puisse pas
+  // etre oublie.
+  'scripts/provision_preview_storage.ts',
   'scripts/test_neon_chantier7_mass_balance.mjs',
   'scripts/test_neon_document_ai.mjs',
   'scripts/test_neon_green_claims.mjs',
