@@ -301,6 +301,7 @@
     "test:p1:preview-deployment": "node scripts/test_preview_deployment_selection.mjs",
     "test:preview-journeys:guards": "node scripts/test_preview_journeys_guards.mjs",
     "test:preview-harness": "node scripts/test_preview_journeys_guards.mjs",
+    "test:mission-ui:states": "node scripts/test_mission_ui_real_states.mjs",
     "test:preview-storage-guards": "tsx scripts/test_preview_storage_guards.ts",
     "test:neon:mission-functional": "node scripts/run-db-suite.mjs scripts/test_mission_functional_dpp.mjs",
     "test:neon:preview-postgres-storage": "node scripts/run-db-suite.mjs scripts/test_neon_preview_storage.mjs"
