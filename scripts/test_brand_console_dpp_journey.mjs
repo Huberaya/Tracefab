@@ -411,6 +411,52 @@ if (publicationForm) {
   check('publication : le slug public est conserve pour le lien', window.tracefabBrandConsole.state.selectedDppProduct?.publicSlug === 'ts001-atelier-test', String(window.tracefabBrandConsole.state.selectedDppProduct?.publicSlug));
 }
 
+/* ---------------------- 6. suspension puis retrait de la publication -----
+ * `suspend-dpp` et `withdraw-dpp` etaient rendus mais AUCUN parcours ne les
+ * exercait : retirer le bouton, ou changer l'action transmise, laissait la
+ * suite verte.
+ *
+ * ATTENTION au domaine : `tracefab_set_dpp_publication` ramene les DEUX actions
+ * au meme etat (`ready_to_publish`, `public_slug` efface). Elles ne different
+ * que par l'evenement de cycle de vie journalise. Le panneau ne propose donc
+ * « retirer » que depuis un etat PUBLIE. Le scenario reel est :
+ * publier -> suspendre -> republier -> retirer.
+ */
+const suspendButton = window.document.querySelector('[data-action="suspend-dpp"]');
+check('publication : la suspension est proposee une fois publie', Boolean(suspendButton));
+if (suspendButton) {
+  click('[data-action="suspend-dpp"]');
+  await flush(12);
+  const post = last((call) => call.method === 'POST' && call.url === `/api/products/${PRODUCT}/dpp/publication`);
+  check('suspension : POST emis', Boolean(post));
+  check('suspension : action exacte transmise', Boolean(post) && post.body?.action === 'suspend', post ? JSON.stringify(post.body) : 'aucun');
+  check('suspension : confirmation demandee avant l acte', confirmations.some((message) => /suspend/i.test(message)));
+  check('suspension : le slug public cesse d etre revendique', !window.tracefabBrandConsole.state.selectedDppProduct?.publicSlug, String(window.tracefabBrandConsole.state.selectedDppProduct?.publicSlug));
+}
+
+// Apres suspension le dossier redevient publiable : on republie pour pouvoir
+// exercer le retrait, qui n'a de sens que depuis un etat publie.
+await flush(6);
+const republicationForm = window.document.getElementById('dpp-publication-form');
+check('suspension : le dossier redevient publiable', Boolean(republicationForm));
+if (republicationForm) {
+  setValue('#dpp-publication-form input[name="publicSlug"]', 'ts001-atelier-test');
+  submit('#dpp-publication-form');
+  await flush(12);
+}
+
+const withdrawButton = window.document.querySelector('[data-action="withdraw-dpp"]');
+check('publication : le retrait est propose une fois republie', Boolean(withdrawButton));
+if (withdrawButton) {
+  click('[data-action="withdraw-dpp"]');
+  await flush(12);
+  const post = last((call) => call.method === 'POST' && call.url === `/api/products/${PRODUCT}/dpp/publication`);
+  check('retrait : POST emis', Boolean(post));
+  check('retrait : action exacte transmise', Boolean(post) && post.body?.action === 'withdraw', post ? JSON.stringify(post.body) : 'aucun');
+  check('retrait : confirmation demandee avant l acte', confirmations.some((message) => /retir|withdraw/i.test(message)));
+  check('retrait : le slug public cesse d etre revendique', !window.tracefabBrandConsole.state.selectedDppProduct?.publicSlug, String(window.tracefabBrandConsole.state.selectedDppProduct?.publicSlug));
+}
+
 /* ------------------------------------------------------------- conclusion */
 check('aucune erreur JavaScript pendant le parcours', errors.length === 0, errors.join(' | '));
 
