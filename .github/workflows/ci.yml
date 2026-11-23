@@ -441,7 +441,14 @@ jobs:
         # tenant, positif avec tenant, negatif croise (l union des adhesions ne
         # suffit plus), WITH CHECK dans les deux sens, documents (`tracefab_can_access_document`
         # et `tracefab_register_document`), et controle negatif.
-        # Sa sensibilite est prouvee par mutation : RLS retiree => 7 echecs.
+        # Sa sensibilite est prouvee par mutation, et le chiffre depend de ce
+        # qu on mute — c est pourquoi il est donne avec sa portee :
+        #   - RLS retiree sur tracefab_products + materials : 7 echecs
+        #     (mesure du 2026-11-12, alors que la suite comptait 18 scenarios) ;
+        #   - RLS retiree en plus sur data_requests et tracefab_schema_bindings :
+        #     11 echecs (mesure du 2026-11-22, suite a 30 scenarios).
+        # Rejouer, sans rien commenter :
+        #   TF_MUTATION_SANS_RLS=1 node scripts/test_preuve_isolation_main_tenant_actif.mjs
         # Elle est independante de Neon : elle ne remplace pas les suites
         # `test:neon:*`, qui restent exigeantes sur un vrai PostgreSQL.
         run: npm run test:preuve:isolation-main-tenant-actif
