@@ -115,7 +115,11 @@ try {
 
   await check('depot : formulaire reel, aucun faux succes', async () => {
     mode = 'ok';
-    await page.locator('[data-action="open-upload-document"]').click();
+    // L'action canonique est `upload-document` : c'est celle que porte le
+    // bouton dans main, et celle que documente test:brand-console:dpp-journey.
+    // #101 employait `open-upload-document` ; le routeur accepte encore cet
+    // alias, mais le harnais doit viser l'action reellement rendue.
+    await page.locator('[data-action="upload-document"]').click();
     await page.locator('#upload-document-form').waitFor();
     await page.locator('#upload-document-form input[type="file"]').setInputFiles({
       name: 'mission-certificate.pdf', mimeType: 'application/pdf', buffer: Buffer.from('%PDF-1.4 mission'),
