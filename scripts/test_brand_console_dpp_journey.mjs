@@ -93,7 +93,7 @@ const dppBase = {
 const calls = [];
 // Etat mutable : les routes renvoient ce que la base contiendrait apres
 // l'ecriture. Un stub figé masquerait precisement les bugs de rafraichissement.
-const db = { identities: [], dpp: { ...null }, readiness: 'data_ready', slug: null };
+const db = { identities: [], dpp: { ...null }, readiness: 'data_ready', slug: null, events: [] };
 const jsonResponse = (status, payload) => ({
   ok: status >= 200 && status < 300,
   status,
@@ -160,11 +160,45 @@ function router(url, options = {}) {
     }
     return jsonResponse(200, { identities: db.identities });
   }
+  if (pathname === `/api/products/${PRODUCT}/dpp/events` && method === 'POST') {
+    // Le POST doit respecter les deux contraintes de la table :
+    //   CHECK (event_type <> 'data_corrected' OR corrects_event_id IS NOT NULL)
+    //   CHECK (business_occurred_at IS NULL OR business_occurred_at <= recorded_at + 5 min)
+    // On les reproduit ici : un harnais permissif laisserait passer un corps
+    // que Postgres refuserait, et le test mentirait sur ce qui fonctionne.
+    // Echec force : permet d'eprouver le rejeu d'une cle d'idempotence, qui
+    // n'a de sens QUE si le premier envoi a echoue et laisse le formulaire
+    // ouvert. Sans ce controle, le chemin « echec puis reessai » n'est jamais
+    // parcouru et une cle regeneree a chaque clic passerait inapercue.
+    if (db.failNextEventsPost) {
+      db.failNextEventsPost = false;
+      return jsonResponse(403, { error: 'dpp_event_role_required' });
+    }
+    if (body?.eventType === 'data_corrected' && !body?.correctsEventId) {
+      return jsonResponse(400, { error: 'invalid_event_type' });
+    }
+    if (!body?.summary) return jsonResponse(400, { error: 'invalid_summary' });
+    if (body?.businessOccurredAt && new Date(body.businessOccurredAt).getTime() > Date.now() + 5 * 60 * 1000) {
+      return jsonResponse(400, { error: 'business_occurred_at_in_future' });
+    }
+    const evenement = {
+      id: 'evt-correction-1', event_type: 'data_corrected', subject_scope: body?.subjectScope || 'model',
+      subject_reference: null, business_occurred_at: body?.businessOccurredAt || '2026-10-29T09:00:00.000Z',
+      recorded_at: '2026-10-29T09:00:00.000Z', actor_user_id: null,
+      source_kind: body?.sourceKind || 'actor_declaration', validation_status: body?.validationStatus || 'declared',
+      summary: body?.summary, details: {}, public_summary: null,
+      evidence_document_ids: [], corrects_event_id: body?.correctsEventId,
+    };
+    db.events = [evenement, ...(db.events || [])];
+    return jsonResponse(201, { event: evenement });
+  }
   if (pathname === `/api/products/${PRODUCT}/dpp/events`) {
     // Deux evenements, dont un de suspension : c'est ce que la route rend
     // reellement apres `tracefab_set_dpp_publication(...,'suspend',...)`, qui
-    // journalise `publication_suspended` via tracefab_add_dpp_event.
-    return jsonResponse(200, { events: [
+    // journalise `publication_suspended` via tracefab_add_dpp_event. Les
+    // corrections ajoutees par POST sont places en tete, comme la route les
+    // rend (ORDER BY recorded_at DESC).
+    return jsonResponse(200, { events: [...(db.events || []), 
       {
         id: 'evt-suspend-1', event_type: 'data_submitted', subject_scope: 'model',
         subject_reference: null, business_occurred_at: '2026-10-27T09:00:00.000Z',
@@ -460,6 +494,113 @@ check('historique : ni le code brut du type ni celui du statut ne fuitent',
   !texte.includes('data_submitted') && !texte.includes('evidence_added'), 'code brut rendu a l ecran');
 check('historique : le nombre de preuves est signale',
   texte.includes('1 evidence file') || texte.includes('1 preuve'));
+
+/* ------------------ 5ter. historique : RECTIFICATION d une entree --------
+ * Une erreur saisie dans l'historique ne pouvait pas etre corrigee depuis la
+ * console. Or la table est append-only (trigger `dpp_events_no_update_delete`)
+ * : la seule correction possible est un NOUVEL evenement `data_corrected`
+ * rattache a celui qu'il corrige. Ce bloc exerce ce chemin, et verifie les
+ * deux proprietes que la base impose et qu'on ne peut pas simuler :
+ * `correctsEventId` doit designer l'entree cible, et deux envois du meme
+ * formulaire ne doivent pas produire deux corrections (cle d'idempotence).
+ */
+const boutonCorriger = window.document.querySelector('[data-action="correct-dpp-event"]');
+check('rectification : chaque entree de l historique propose « corriger »', Boolean(boutonCorriger));
+
+if (boutonCorriger) {
+  const idCible = boutonCorriger.dataset.eventId;
+  check('rectification : le bouton porte l identifiant de l entree visee', Boolean(idCible), String(idCible));
+  boutonCorriger.dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
+  await flush(10);
+  const formCorrection = window.document.getElementById('dpp-event-correction-form');
+  check('rectification : le formulaire de correction s ouvre', Boolean(formCorrection));
+  check('rectification : l append-only est explique, pas suppose',
+    Boolean(formCorrection) && /never rewritten|no se reescribe|ne se reecrit|not rewritten/i.test(formCorrection.textContent || ''),
+    formCorrection ? (formCorrection.textContent || '').slice(0, 160) : 'aucun formulaire');
+  if (formCorrection) {
+    // 1. Un resume vide doit etre refuse AVANT tout appel reseau : la route le
+    //    rejetterait, et un aller-retour perdu fait ressaisir l'utilisateur.
+    const avant = calls.filter((call) => call.method === 'POST' && call.url === `/api/products/${PRODUCT}/dpp/events`).length;
+    submit('#dpp-event-correction-form');
+    await flush(8);
+    const apresVide = calls.filter((call) => call.method === 'POST' && call.url === `/api/products/${PRODUCT}/dpp/events`).length;
+    check('rectification : un resume vide ne part pas sur le reseau', apresVide === avant, `${avant} -> ${apresVide}`);
+
+    setValue('#dpp-event-correction-form input[name="summary"]',
+      'Correction : la donnee du 29/10 portait sur le lot TS-001 et non le modele.');
+    setValue('#dpp-event-correction-form select[name="subjectScope"]', 'batch');
+    submit('#dpp-event-correction-form');
+    await flush(14);
+    const postCorrection = last((call) => call.method === 'POST' && call.url === `/api/products/${PRODUCT}/dpp/events`);
+    check('rectification : POST emis sur la route des evenements', Boolean(postCorrection));
+    check('rectification : le type est data_corrected', Boolean(postCorrection) && postCorrection.body?.eventType === 'data_corrected',
+      postCorrection ? JSON.stringify(postCorrection.body) : 'aucun');
+    check('rectification : correctsEventId designe l entree visee',
+      Boolean(postCorrection) && String(postCorrection.body?.correctsEventId) === String(idCible),
+      postCorrection ? `${postCorrection.body?.correctsEventId} vs ${idCible}` : 'aucun');
+    check('rectification : une cle d idempotence est transmise',
+      Boolean(postCorrection) && typeof postCorrection.body?.idempotencyKey === 'string' && postCorrection.body.idempotencyKey.length >= 8,
+      postCorrection ? String(postCorrection.body?.idempotencyKey) : 'aucune');
+    check('rectification : la portee choisie est transmise',
+      Boolean(postCorrection) && postCorrection.body?.subjectScope === 'batch',
+      postCorrection ? String(postCorrection.body?.subjectScope) : 'aucune');
+
+    // 2. L'evenement corrige reste visible : on ne remplace pas, on ajoute.
+    await flush(8);
+    const texteApres = window.document.body.textContent || '';
+    check('rectification : l entree d origine reste dans l historique',
+      texteApres.includes('Data submitted') || texteApres.includes('Donnee transmise'));
+    check('rectification : la correction apparait dans l historique',
+      (texteApres.includes('Data corrected') || texteApres.includes('Donnee corrigee')),
+      'la ligne de correction est absente du panneau');
+    check('rectification : la modale se referme apres succes',
+      !window.document.getElementById('dpp-event-correction-form'));
+
+    // 3. La cle d'idempotence ne sert QUE si un envoi echoue : on force un 403
+    //    sur un envoi, on verifie que le formulaire reste ouvert AVEC la
+    //    saisie, que l'erreur est traduite, puis on rejoue : la cle doit etre
+    //    identique. Une cle regeneree a chaque clic produirait deux
+    //    corrections pour un seul geste utilisateur.
+    const bouton2 = window.document.querySelector('[data-action="correct-dpp-event"]');
+    check('rectification : une entree reste corrigeable apres un succes', Boolean(bouton2));
+    if (bouton2) {
+      bouton2.dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
+      await flush(10);
+      const formEchec = window.document.getElementById('dpp-event-correction-form');
+      check('rectification : la modale se rouvre sur une entree', Boolean(formEchec));
+      if (formEchec) {
+        const saisie = 'Correction dont le premier envoi echoue.';
+        setValue('#dpp-event-correction-form input[name="summary"]', saisie);
+        db.failNextEventsPost = true;
+        submit('#dpp-event-correction-form');
+        await flush(12);
+
+        const apresEchec = window.document.getElementById('dpp-event-correction-form');
+        check('rectification : un echec serveur ne ferme pas le formulaire', Boolean(apresEchec));
+        check('rectification : la saisie survit a l echec',
+          Boolean(apresEchec) && apresEchec.querySelector('input[name="summary"]')?.value === saisie,
+          apresEchec ? String(apresEchec.querySelector('input[name="summary"]')?.value) : 'formulaire ferme');
+        check('rectification : le role insuffisant est explique, pas recopie en code',
+          Boolean(apresEchec) && !/dpp_event_role_required/.test(apresEchec.textContent || '')
+            && /role/i.test(apresEchec.textContent || ''),
+          apresEchec ? (apresEchec.textContent || '').slice(0, 200) : 'formulaire ferme');
+
+        const postsAvant = calls.filter((call) => call.method === 'POST' && call.url === `/api/products/${PRODUCT}/dpp/events`).length;
+        submit('#dpp-event-correction-form');
+        await flush(14);
+        const posts = calls.filter((call) => call.method === 'POST' && call.url === `/api/products/${PRODUCT}/dpp/events`);
+        check('rectification : le reessai emet bien un second envoi', posts.length === postsAvant + 1, `${postsAvant} -> ${posts.length}`);
+        const echecPost = posts[postsAvant - 1];
+        const rejeuPost = posts[postsAvant];
+        check('rectification : le rejeu conserve la meme cle d idempotence',
+          Boolean(echecPost) && Boolean(rejeuPost) && echecPost.body?.idempotencyKey === rejeuPost.body?.idempotencyKey,
+          echecPost && rejeuPost ? `${echecPost.body?.idempotencyKey} / ${rejeuPost.body?.idempotencyKey}` : 'envois manquants');
+        check('rectification : le rejeu reussit et ferme la modale',
+          !window.document.getElementById('dpp-event-correction-form'));
+      }
+    }
+  }
+}
 
 /* ---------------------- 6. suspension puis retrait de la publication -----
  * `suspend-dpp` et `withdraw-dpp` etaient rendus mais AUCUN parcours ne les

@@ -90,6 +90,7 @@
         dppEvents: null,
         dppEventsError: null,
         dppEventsLoading: false,
+        dppEventCorrection: null,
         selectedDppProduct: null,
         dppPortfolio: null,
         dppPortfolioLoading: false,
@@ -3987,6 +3988,12 @@
         system: 'dpSourceSystem',
         third_party: 'dpSourceThirdParty',
       };
+      const DPP_EVENT_SCOPES = {
+        model: 'dpScopeModel',
+        variant: 'dpScopeVariant',
+        batch: 'dpScopeBatch',
+        unit: 'dpScopeUnit',
+      };
       const DPP_EVENT_STATUSES = {
         declared: 'dpStatusDeclared',
         documented: 'dpStatusDocumented',
@@ -3999,6 +4006,108 @@
       // brut pour que l'ecart se voie, plutot que d'afficher un libelle faux.
       function libelleEvenement(valeur, table) {
         return table[valeur] ? bt(table[valeur]) : String(valeur || '—');
+      }
+
+      // Codes d'erreur de la route `dpp/events` -> message lisible. Sans cette
+      // table, l'utilisateur lit `dpp_event_role_required` dans sa propre
+      // console : il ne sait ni ce qui a echoue, ni ce qu'il peut y faire. On
+      // ne traduit que des codes NOMMES ; un code inconnu garde son texte brut
+      // plutot que d'etre masque derriere un message generique qui mentirait.
+      const DPP_EVENT_ERRORS = {
+        dpp_event_role_required: 'dpEventCorrectionErrRole',
+        dpp_verification_role_required: 'dpEventCorrectionErrVerificationRole',
+        invalid_event_type: 'dpEventCorrectionErrEventType',
+        invalid_summary: 'dpEventCorrectionErrSummary',
+        invalid_event_metadata: 'dpEventCorrectionErrMetadata',
+        invalid_evidence_document_ids: 'dpEventCorrectionErrEvidence',
+        invalid_corrects_event_id: 'dpEventCorrectionErrTarget',
+        invalid_business_occurred_at: 'dpEventCorrectionErrOccurredAt',
+        business_occurred_at_in_future: 'dpEventCorrectionErrOccurredAtFuture',
+        product_not_found: 'dpEventCorrectionErrProduct',
+      };
+
+      function messageErreurEvenement(code) {
+        const cle = DPP_EVENT_ERRORS[code];
+        return cle ? bt(cle) : String(code);
+      }
+
+      function ouvrirCorrectionEvenement(evenementId) {
+        const cible = (state.dppEvents || []).find((e) => String(e.id) === String(evenementId)) || null;
+        state.dppEventCorrection = {
+          correctsEventId: String(evenementId),
+          targetSummary: cible ? cible.summary || '' : '',
+          summary: '',
+          businessOccurredAt: '',
+          subjectScope: cible?.subject_scope && DPP_EVENT_SCOPES[cible.subject_scope] ? cible.subject_scope : 'model',
+          // Cle d'idempotence FIXE pour cette ouverture du formulaire : deux
+          // clics sur « Envoyer » rejouent la meme cle, et la contrainte
+          // UNIQUE(owner_organization_id, idempotency_key) transforme le second
+          // en no-op (ON CONFLICT DO NOTHING). Sans elle, deux clics creent
+          // deux corrections, et une correction en double est un mensonge de
+          // plus dans l'historique.
+          idempotencyKey: `corr-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`,
+          loading: false,
+          error: null,
+        };
+        state.modal = 'dpp-event-correction';
+        render();
+      }
+
+      async function submitDppEventCorrection(form) {
+        const c = state.dppEventCorrection;
+        const product = state.selectedDppProduct;
+        if (!c || !product) return;
+        const donnees = new FormData(form);
+        const summary = String(donnees.get('summary') || '').trim();
+        const occurredAt = String(donnees.get('businessOccurredAt') || '').trim();
+        const scope = String(donnees.get('subjectScope') || 'model');
+        const echec = (message) => {
+          c.error = message;
+          c.loading = false;
+          render();
+        };
+        // Le resume est obligatoire : la route rejette `invalid_summary`, et un
+        // formulaire qui laisse partir une requete deja refusee fait perdre le
+        // texte saisi par l'utilisateur.
+        if (!summary) return echec(messageErreurEvenement('invalid_summary'));
+        c.summary = summary;
+        c.businessOccurredAt = occurredAt;
+        c.subjectScope = scope;
+        const corps = {
+          eventType: 'data_corrected',
+          summary,
+          correctsEventId: c.correctsEventId,
+          subjectScope: scope,
+          idempotencyKey: c.idempotencyKey,
+        };
+        if (occurredAt) {
+          // La base refuse une date metier posterieure de plus de 5 minutes a
+          // l'enregistrement (CHECK sur la table). On refuse plus tot, avec un
+          // message qui dit quoi corriger, plutot que de laisser Postgres
+          // renvoyer une erreur de contrainte incomprehensible.
+          const quand = new Date(occurredAt);
+          if (Number.isNaN(quand.getTime())) return echec(messageErreurEvenement('invalid_business_occurred_at'));
+          if (quand.getTime() > Date.now() + 5 * 60 * 1000) return echec(messageErreurEvenement('business_occurred_at_in_future'));
+          corps.businessOccurredAt = quand.toISOString();
+        }
+        c.loading = true;
+        c.error = null;
+        render();
+        try {
+          await api(`/api/products/${encodeURIComponent(product.id)}/dpp/events`, {
+            method: 'POST',
+            body: JSON.stringify(corps),
+          });
+          state.modal = null;
+          state.dppEventCorrection = null;
+          await loadDppEvents(product.id);
+          notify(bt('dpEventCorrectionToast'));
+          render();
+        } catch (error) {
+          // Aucune correction silencieuse : l'erreur reste dans la modale, avec
+          // sa saisie intacte et sa cle d'idempotence inchangee.
+          echec(messageErreurEvenement(error.message || 'dpp_event_correction_failed'));
+        }
       }
 
       async function loadDppEvents(productId) {
@@ -4066,7 +4175,9 @@
                   <div class="meta">${esc(libelleEvenement(evenement.source_kind, DPP_EVENT_SOURCES))} · ${esc(libelleEvenement(evenement.validation_status, DPP_EVENT_STATUSES))} · ${esc(quand)}</div>
                   ${corrige}
                 </div>
-                <div class="actions" style="gap:8px;align-items:center">${preuves}</div>
+                <div class="actions" style="gap:8px;align-items:center">${preuves}
+                  <button class="btn btn-secondary btn-small" data-action="correct-dpp-event" data-event-id="${esc(evenement.id)}">${esc(bt('dpEventCorrectionOpen'))}</button>
+                </div>
               </div>`;
             }).join('')}</div>`
           : `<div class="empty" style="padding:12px 0"><p>${esc(bt('dpEventsNone'))}</p></div>`;
@@ -4434,6 +4545,29 @@
                    <p class="meta" style="margin-top:14px">${esc(v.trust?.note || bt('dpPreviewDemoNote'))}</p>
                    <p class="meta">${esc(bt('dpNotCertification'))}</p>`;
           return `<div class="modal-backdrop"><div class="modal" style="max-width:820px"><div class="modal-head"><div><div class="eyebrow">${esc(bt('dpEyebrow'))}</div><h2>${esc(bt('dpPreviewTitle'))}</h2></div><button class="close" data-action="close-modal">×</button></div>${corps}<div class="form-actions"><button type="button" class="btn btn-secondary" data-action="close-modal">${esc(bt('mdClose'))}</button></div></div></div>`;
+        }
+        if (type === 'dpp-event-correction') {
+          const c = state.dppEventCorrection;
+          if (!c) return '';
+          // `data_corrected` EXIGE un `corrects_event_id` : la base refuse
+          // l'insertion sinon (CHECK sur la table). Le champ est donc
+          // obligatoire, pas decoratif.
+          const erreur = c.error
+            ? `<div class="notice notice-error" role="alert">${esc(c.error)}</div>`
+            : '';
+          return `<div class="modal-backdrop"><div class="modal" style="max-width:720px"><div class="modal-head"><div><div class="eyebrow">${esc(bt('dpEventCorrectionEyebrow'))}</div><h2>${esc(bt('dpEventCorrectionTitle'))}</h2></div><button class="close" data-action="close-modal">×</button></div>
+            <form id="dpp-event-correction-form">
+              ${erreur}
+              <div class="notice" style="margin-bottom:14px"><strong>${esc(bt('dpEventCorrectionAppendOnly'))}</strong> — ${esc(bt('dpEventCorrectionAppendOnlyHint'))}</div>
+              <div class="form-grid">
+                <div class="field-full"><div class="meta">${esc(bt('dpEventCorrectionTarget'))}</div><strong>${esc(c.targetSummary || c.correctsEventId)}</strong><div class="meta"><code>${esc(String(c.correctsEventId).slice(0, 8))}</code></div></div>
+                <label class="field-full">${esc(bt('dpEventCorrectionSummary'))}<input class="input" name="summary" required maxlength="500" value="${esc(c.summary || '')}"><span class="meta">${esc(bt('dpEventCorrectionSummaryHelp'))}</span></label>
+                <label>${esc(bt('dpEventCorrectionOccurredAt'))}<input class="input" type="datetime-local" name="businessOccurredAt" value="${esc(c.businessOccurredAt || '')}"><span class="meta">${esc(bt('dpEventCorrectionOccurredAtHelp'))}</span></label>
+                <label>${esc(bt('dpEventCorrectionScope'))}<select class="select" name="subjectScope">${['model','variant','batch','unit'].map((valeur) => `<option value="${valeur}" ${c.subjectScope === valeur ? 'selected' : ''}>${esc(libelleEvenement(valeur, DPP_EVENT_SCOPES))}</option>`).join('')}</select></label>
+              </div>
+              <div class="form-actions"><button type="button" class="btn btn-secondary" data-action="close-modal">${esc(bt('mdCancel'))}</button><button type="submit" class="btn btn-primary" ${c.loading ? 'disabled' : ''}>${esc(c.loading ? bt('dpEventCorrectionSending') : bt('dpEventCorrectionCta'))}</button></div>
+            </form>
+          </div></div>`;
         }
         if (type === 'inspect-material') {
           const m = state.inspectedMaterial;
@@ -5639,6 +5773,7 @@
             if (action === 'new-material') { state.modal = 'new-material'; render(); }
             if (action === 'catalog-import') { state.catalogImport = { filename: '', content: '', preview: null, job: null, loading: false }; state.modal = 'catalog-import'; render(); }
             if (action === 'supplier-import') { state.supplierImport = { filename: '', content: '', preview: null, job: null, delivery: null, loading: false }; state.modal = 'supplier-import'; render(); }
+            if (action === 'correct-dpp-event') ouvrirCorrectionEvenement(el.dataset.eventId);
             if (action === 'retry-dpp-events') { await loadDppEvents(el.dataset.productId || state.selectedDppProduct?.id); render(); }
             if (action === 'dpp-back-portfolio') { state.dppScope = 'portfolio'; render(); if (!state.dppPortfolio) await loadDppPortfolio(); }
             if (action === 'dp-resolve') await resolveDppRequirement(el.dataset.dpTarget, el.dataset.dpProduct);
@@ -5774,6 +5909,7 @@
         document.getElementById('catalog-import-content')?.addEventListener('input', (event) => { state.catalogImport.content = event.currentTarget.value; state.catalogImport.preview = null; });
         document.getElementById('supplier-import-file')?.addEventListener('change', async (event) => { const file = event.currentTarget.files?.[0]; if (!file) return; state.supplierImport.filename = file.name; state.supplierImport.content = await file.text(); state.supplierImport.preview = null; render(); });
         document.getElementById('supplier-import-content')?.addEventListener('input', (event) => { state.supplierImport.content = event.currentTarget.value; state.supplierImport.preview = null; });
+        document.getElementById('dpp-event-correction-form')?.addEventListener('submit', (e) => { e.preventDefault(); submitDppEventCorrection(e.currentTarget); });
         document.getElementById('dpp-publication-form')?.addEventListener('submit', (e) => { e.preventDefault(); publishDppPublic(e.currentTarget).catch((err) => notify(err.message, true)); });
         document.getElementById('dpp-identity-form')?.addEventListener('submit', (e) => { e.preventDefault(); createDppIdentity(e.currentTarget).catch((err) => notify(err.message, true)); });
         document.getElementById('upload-document-form')?.addEventListener('submit', (e) => { e.preventDefault(); uploadDocument(e.currentTarget).catch((err) => notify(err.message, true)); });
