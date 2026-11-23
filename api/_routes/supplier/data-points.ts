@@ -11,8 +11,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'GET' && req.method !== 'POST') return methodNotAllowed(res, ['GET', 'POST']);
   try {
     const { user } = await requireClerkUser(req);
+    const activeOrgId = requestedOrganizationId(req);
     const result = await withTracefabUserContext(user.id, user.email, async (tx) => {
-      const supplier = await currentSupplier(tx, user.id, requestedOrganizationId(req));
+      const supplier = await currentSupplier(tx, user.id, activeOrgId);
       if (!supplier) return null;
       if (req.method === 'GET') {
         const dataKey = Array.isArray(req.query.dataKey) ? req.query.dataKey[0] : req.query.dataKey;
@@ -58,7 +59,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         select: DATA_POINT_SELECT,
       });
       return { point };
-    });
+    }, activeOrgId);
     if (!result) return json(res, 404, { error: 'supplier_organization_not_found' });
     if ('points' in result) return json(res, 200, { dataPoints: result.points!.map(serializeDataPoint), definitions: DATA_POINT_DEFINITIONS });
     return json(res, 201, { dataPoint: serializeDataPoint(result.point) });

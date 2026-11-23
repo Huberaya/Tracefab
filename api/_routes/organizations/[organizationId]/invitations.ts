@@ -89,7 +89,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         invitation: row,
         brandName: brand?.display_name || brand?.legal_name || 'A Tracefab organization',
       };
-    });
+    }, organizationId);
 
     const invitation = transactionResult.invitation;
     const delivery = await sendSupplierInvitationEmail({

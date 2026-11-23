@@ -20,7 +20,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const csvContent = await withTracefabUserContext(user.id, user.email, async (tx) => {
       return await exportSuppliersCsv(tx, brandOrganizationId);
-    });
+    }, brandOrganizationId);
 
     const dateStr = new Date().toISOString().slice(0, 10);
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');

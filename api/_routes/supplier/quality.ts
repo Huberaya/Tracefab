@@ -12,9 +12,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'GET' && req.method !== 'POST') return methodNotAllowed(res, ['GET', 'POST']);
   try {
     const { user } = await requireClerkUser(req);
+    const activeOrgId = requestedOrganizationId(req);
     const body = req.method === 'POST' ? await readJsonBody<QualityBody>(req) : {};
     const result = await withTracefabUserContext(user.id, user.email, async (tx) => {
-      const supplier = await currentSupplier(tx, user.id, requestedOrganizationId(req));
+      const supplier = await currentSupplier(tx, user.id, activeOrgId);
       if (!supplier) return null;
       if (req.method === 'POST') {
         const calculationVersion = typeof body.calculationVersion === 'string' && body.calculationVersion.trim().length <= 120
@@ -23,13 +24,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         await tx.$queryRaw`SELECT * FROM tracefab_compute_supplier_quality(${supplier.id}::uuid, ${calculationVersion})`;
       }
       return qualityBundle(tx, { supplierId: supplier.id }, true);
-    });
+    }, activeOrgId);
     if (!result) return json(res, 404, { error: 'supplier_profile_not_found' });
     return json(res, 200, { score: serializeQualityScore(result.score), issues: result.issues.map(serializeQualityIssue) });
   } catch (error) {
     if (isUnauthorized(error)) return json(res, 401, { error: 'unauthorized' });
     const businessError = sqlBusinessError(error);
     if (businessError) return json(res, businessError.status, { error: businessError.error });
+    if (error instanceof Error && /^invalid_/.test(error.message)) return json(res, 400, { error: error.message });
     if (error instanceof Error && error.message === 'missing_clerk_secret_key') return json(res, 503, { error: 'clerk_not_configured' });
     console.error(`${req.method} /api/supplier/quality failed`, error);
     return json(res, 500, { error: 'internal_server_error' });

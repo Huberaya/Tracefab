@@ -3,6 +3,7 @@ import { requireClerkUser, isUnauthorized } from '../../../_lib/auth.js';
 import { withTracefabUserContext } from '../../../_lib/context.js';
 import { json, methodNotAllowed, readJsonBody } from '../../../_lib/http.js';
 import { sqlBusinessError } from '../../../_lib/sql-errors.js';
+import { isTenantError, requireActiveTenant, requestedTenantId } from '../../../_lib/tenant.js';
 import { isUuid, optionalString } from '../../../_lib/data-requests.js';
 import {
   accessibleSupplier,
@@ -29,6 +30,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const calculationVersion = optionalString(body.calculationVersion, 'calculation_version', 120) || 'supplier_quality_v1';
 
     const result = await withTracefabUserContext(user.id, user.email, async (tx) => {
+      await requireActiveTenant(tx, req, user.id);
       const supplier = await accessibleSupplier(tx, supplierId);
       if (!supplier) return null;
       if (req.method === 'POST') {
@@ -41,7 +43,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
       const bundle = await qualityBundle(tx, { supplierId }, supplier.isOwner);
       return bundle;
-    });
+    }, requestedTenantId(req));
 
     if (!result) return json(res, 404, { error: 'supplier_not_found' });
     return json(res, 200, {
@@ -50,6 +52,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     });
   } catch (error) {
     if (isUnauthorized(error)) return json(res, 401, { error: 'unauthorized' });
+    if (isTenantError(error)) return json(res, error.status, { error: error.message });
     const businessError = sqlBusinessError(error);
     if (businessError) return json(res, businessError.status, { error: businessError.error });
     if (error instanceof Error && /^invalid_/.test(error.message)) return json(res, 400, { error: error.message });

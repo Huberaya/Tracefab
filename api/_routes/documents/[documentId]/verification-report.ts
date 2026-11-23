@@ -4,6 +4,7 @@ import { requireClerkUser, isUnauthorized } from '../../../_lib/auth.js';
 import { withTracefabUserContext } from '../../../_lib/context.js';
 import { json, methodNotAllowed } from '../../../_lib/http.js';
 import { sqlBusinessError } from '../../../_lib/sql-errors.js';
+import { isTenantError, requireActiveTenant, requestedTenantId } from '../../../_lib/tenant.js';
 
 function routeDocumentId(req: VercelRequest) {
   const value = req.query.documentId;
@@ -24,6 +25,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const { user } = await requireClerkUser(req);
 
     const report = await withTracefabUserContext(user.id, user.email, async (tx) => {
+      await requireActiveTenant(tx, req, user.id);
       // 1. Verify access to document
       const docRows = await tx.$queryRaw<Array<{
         id: string;
@@ -95,13 +97,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         certifications,
         latestAiStatus: (doc.metadata?.ai_status as string) || (verifications[0]?.status ?? 'unverified'),
       };
-    });
+    }, requestedTenantId(req));
 
     if (!report) return json(res, 404, { error: 'document_not_found' });
 
     return json(res, 200, { report });
   } catch (error) {
     if (isUnauthorized(error)) return json(res, 401, { error: 'unauthorized' });
+    if (isTenantError(error)) return json(res, error.status, { error: error.message });
     const businessError = sqlBusinessError(error);
     if (businessError) return json(res, businessError.status, { error: businessError.error });
     if (error instanceof Error && error.message === 'missing_clerk_secret_key') return json(res, 503, { error: 'clerk_not_configured' });

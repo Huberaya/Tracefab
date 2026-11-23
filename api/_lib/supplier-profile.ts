@@ -79,15 +79,15 @@ export async function currentSupplier(
   userId: string,
   organizationId?: string | null,
 ) {
+  if (!organizationId) return null;
   const membership = await tx.organization_memberships.findFirst({
     where: {
       user_id: userId,
       status: 'active',
-      ...(organizationId ? { organization_id: organizationId } : {}),
+      organization_id: organizationId,
       organizations: { type: 'supplier' },
     },
     select: { organization_id: true },
-    orderBy: { created_at: 'asc' },
   });
   if (!membership) return null;
   return tx.suppliers.findUnique({

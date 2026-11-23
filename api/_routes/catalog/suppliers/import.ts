@@ -6,6 +6,7 @@ import { withTracefabUserContext } from '../../../_lib/context.js';
 import { isUuid } from '../../../_lib/products.js';
 import { json, methodNotAllowed, readJsonBody } from '../../../_lib/http.js';
 import { sqlBusinessError } from '../../../_lib/sql-errors.js';
+import { requestedTenantId } from '../../../_lib/tenant.js';
 import { manualInvitationFallbackAllowed, sendSupplierInvitationEmail } from '../../../_lib/email.js';
 import { CATALOG_IMPORT_MAX_BYTES } from '../../../_lib/catalog-importer.js';
 import { SUPPLIER_IMPORT_MAX_ROWS, validateSupplierCsv, type SupplierImportIssue, type SupplierImportRow } from '../../../_lib/supplier-importer.js';
@@ -88,6 +89,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const sourceIdempotencyKey = idempotencyKey(body.idempotencyKey);
     const sourceSha256 = createHash('sha256').update(body.csvContent, 'utf8').digest('hex');
     const validation = validateSupplierCsv(body.csvContent);
+
+    const activeOrgId = requestedTenantId(req) ?? body.brandOrganizationId!;
+    if (activeOrgId !== body.brandOrganizationId) {
+      return json(res, 403, { error: 'brand_organization_access_denied' });
+    }
 
     const result = await withTracefabUserContext(user.id, user.email, async (tx) => {
       const memberships = await tx.organization_memberships.findMany({
@@ -186,7 +192,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           ${JSON.stringify({ sourceSha256, filename: sourceFilename, totalRows, acceptedRows, rejectedRows })}::jsonb)
       `;
       return { job: jobPayload(updated[0] ?? job), deliveries, brandName };
-    });
+    }, activeOrgId);
 
     if (!result) return json(res, 403, { error: 'brand_organization_access_denied' });
     if ('preview' in result) return json(res, 200, result.preview);

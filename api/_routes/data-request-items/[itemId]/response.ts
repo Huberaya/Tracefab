@@ -3,6 +3,7 @@ import { requireClerkUser, isUnauthorized } from '../../../_lib/auth.js';
 import { withTracefabUserContext } from '../../../_lib/context.js';
 import { json, methodNotAllowed, readJsonBody } from '../../../_lib/http.js';
 import { sqlBusinessError } from '../../../_lib/sql-errors.js';
+import { isTenantError, requireActiveTenant, requestedTenantId } from '../../../_lib/tenant.js';
 import { isUuid } from '../../../_lib/data-requests.js';
 import { validateResponseValue } from '../../../_lib/questionnaires.js';
 
@@ -69,6 +70,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (body.sourceDocumentId && !sourceDocumentId) return json(res, 400, { error: 'invalid_source_document_id' });
 
     const response = await withTracefabUserContext(user.id, user.email, async (tx) => {
+      await requireActiveTenant(tx, req, user.id, { types: ['supplier'] });
       const item = await tx.data_request_items.findUnique({
         where: { id: itemId },
         select: { data_request_id: true, data_type: true, validation_rules: true },
@@ -92,10 +94,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       `;
       if (!rows[0]) throw new Error('data_response_creation_failed');
       return rows[0];
-    });
+    }, requestedTenantId(req));
     return json(res, 201, { response: serializeResponse(response) });
   } catch (error) {
     if (isUnauthorized(error)) return json(res, 401, { error: 'unauthorized' });
+    if (isTenantError(error)) return json(res, error.status, { error: error.message });
     const businessError = sqlBusinessError(error);
     if (businessError) return json(res, businessError.status, { error: businessError.error });
     if (error instanceof Error && (error.message === 'data_request_item_not_found' || error.message === 'data_response_creation_failed')) {

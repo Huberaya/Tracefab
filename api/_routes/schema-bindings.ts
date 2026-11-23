@@ -6,6 +6,7 @@ import { isUuid } from '../_lib/data-requests.js';
 import { json, methodNotAllowed, readJsonBody } from '../_lib/http.js';
 import { getSchema } from '../_lib/schema-catalog.js';
 import { sqlBusinessError } from '../_lib/sql-errors.js';
+import { isTenantError, requireActiveTenant, requestedTenantId } from '../_lib/tenant.js';
 
 type SubjectType = 'product' | 'material' | 'supplier' | 'data_request';
 type SchemaBinding = {
@@ -58,18 +59,21 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           : type === 'supplier'
             ? Prisma.sql`supplier_id = ${id}::uuid`
             : Prisma.sql`data_request_id = ${id}::uuid`;
-      const bindings = await withTracefabUserContext(user.id, user.email, async (tx) => tx.$queryRaw<SchemaBinding[]>`
-        SELECT id, schema_key AS "schemaKey", schema_version AS "schemaVersion",
-          CASE WHEN product_id IS NOT NULL THEN 'product'
-               WHEN material_id IS NOT NULL THEN 'material'
-               WHEN supplier_id IS NOT NULL THEN 'supplier'
-               ELSE 'data_request' END AS "subjectType",
-          COALESCE(product_id, material_id, supplier_id, data_request_id) AS "subjectId",
-          bound_by AS "boundBy", created_at AS "createdAt"
-        FROM tracefab_schema_bindings
-        WHERE ${subjectClause}
-        ORDER BY created_at DESC
-      `);
+      const bindings = await withTracefabUserContext(user.id, user.email, async (tx) => {
+        await requireActiveTenant(tx, req, user.id);
+        return tx.$queryRaw<SchemaBinding[]>`
+          SELECT id, schema_key AS "schemaKey", schema_version AS "schemaVersion",
+            CASE WHEN product_id IS NOT NULL THEN 'product'
+                 WHEN material_id IS NOT NULL THEN 'material'
+                 WHEN supplier_id IS NOT NULL THEN 'supplier'
+                 ELSE 'data_request' END AS "subjectType",
+            COALESCE(product_id, material_id, supplier_id, data_request_id) AS "subjectId",
+            bound_by AS "boundBy", created_at AS "createdAt"
+          FROM tracefab_schema_bindings
+          WHERE ${subjectClause}
+          ORDER BY created_at DESC
+        `;
+      }, requestedTenantId(req));
       // La reponse DOIT passer par json(). Renvoyer le tableau nu (le code
       // historique) ne produit AUCUNE ecriture sur res : le routeur central
       // ignore la valeur de retour des gestionnaires, la fonction serverless
@@ -90,6 +94,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (!schema || !schema.subjectTypes.includes(type)) return json(res, 400, { error: 'schema_not_allowed_for_subject' });
 
     const binding = await withTracefabUserContext(user.id, user.email, async (tx) => {
+      await requireActiveTenant(tx, req, user.id);
       const rows = await tx.$queryRaw<SchemaBinding[]>`
         SELECT id, schema_key AS "schemaKey", schema_version AS "schemaVersion",
           CASE WHEN product_id IS NOT NULL THEN 'product'
@@ -101,11 +106,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         FROM tracefab_bind_schema(${schemaKey}, ${schemaVersion}, ${type}, ${body.subjectId}::uuid)
       `;
       return rows[0] ?? null;
-    });
+    }, requestedTenantId(req));
     if (!binding) throw new Error('schema_binding_failed');
     return json(res, 201, { binding: serializeBinding(binding) });
   } catch (error) {
     if (isUnauthorized(error)) return json(res, 401, { error: 'unauthorized' });
+    if (isTenantError(error)) return json(res, error.status, { error: error.message });
     const businessError = sqlBusinessError(error);
     if (businessError) return json(res, businessError.status, { error: businessError.error });
     if (error instanceof Error && /^invalid_/.test(error.message)) return json(res, 400, { error: error.message });

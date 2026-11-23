@@ -3,6 +3,7 @@ import { requireClerkUser, isUnauthorized } from '../../../../_lib/auth.js';
 import { withTracefabUserContext } from '../../../../_lib/context.js';
 import { json, methodNotAllowed, readJsonBody } from '../../../../_lib/http.js';
 import { sqlBusinessError } from '../../../../_lib/sql-errors.js';
+import { isTenantError, requireActiveTenant, requestedTenantId } from '../../../../_lib/tenant.js';
 import { isUuid } from '../../../../_lib/data-requests.js';
 import { allocateTcQuantity } from '../../../../_lib/mass-balance/mass-balance-manager.js';
 
@@ -39,6 +40,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     const allocation = await withTracefabUserContext(user.id, user.email, async (tx) => {
+      await requireActiveTenant(tx, req, user.id, { types: ['brand'] });
       return await allocateTcQuantity(tx, {
         tcId,
         productId,
@@ -47,7 +49,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         orderId,
         notes,
       });
-    });
+    }, requestedTenantId(req));
 
     return json(res, 201, {
       message: 'tc_quantity_allocated',
@@ -56,6 +58,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   } catch (err: unknown) {
     if (isUnauthorized(err)) {
       return json(res, 401, { error: 'unauthorized' });
+    }
+    if (isTenantError(err)) {
+      return json(res, err.status, { error: err.message });
     }
     const sqlError = sqlBusinessError(err);
     if (sqlError) {

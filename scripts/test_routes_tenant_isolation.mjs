@@ -283,7 +283,7 @@ function reponse() {
   return res;
 }
 
-function requete({ url, methode = 'GET', jeton, corps }) {
+function requete({ url, methode = 'GET', jeton, corps, organisationId }) {
   const [, chemin, interro] = url.match(/^([^?]*)(?:\?(.*))?$/) || [];
   const query = {};
   for (const paire of (interro || '').split('&').filter(Boolean)) {
@@ -299,6 +299,7 @@ function requete({ url, methode = 'GET', jeton, corps }) {
       host: 'tracefab.test',
       'user-agent': 'epreuve-isolation-locale',
       ...(jeton ? { authorization: `Bearer ${jeton}` } : {}),
+      ...(organisationId ? { 'x-tracefab-organization-id': organisationId } : {}),
     },
     socket: { remoteAddress: '203.0.113.10' },
     on() {},
@@ -368,6 +369,7 @@ await base.query(
     url: '/api/products',
     methode: 'POST',
     jeton: jetons.alpha.jwt,
+    organisationId: ORG.beta,
     corps: { brandOrganizationId: ORG.beta, reference: 'HARNAIS-001', name: 'Article refuse' },
   });
   verifier(
@@ -380,8 +382,8 @@ await base.query(
 
 // A4 — isolation entre deux organisations.
 {
-  const alpha = await appeler({ url: '/api/products', jeton: jetons.alpha.jwt });
-  const beta = await appeler({ url: '/api/products', jeton: jetons.beta.jwt });
+  const alpha = await appeler({ url: '/api/products', jeton: jetons.alpha.jwt, organisationId: ORG.alpha });
+  const beta = await appeler({ url: '/api/products', jeton: jetons.beta.jwt, organisationId: ORG.beta });
   const idsAlpha = new Set((alpha.corps?.products || []).map((p) => p?.brandOrganizationId ?? p?.brand_organization_id));
   const idsBeta = new Set((beta.corps?.products || []).map((p) => p?.brandOrganizationId ?? p?.brand_organization_id));
   const intersection = [...idsAlpha].filter((id) => idsBeta.has(id));
@@ -395,21 +397,33 @@ await base.query(
     `alpha=${[...idsAlpha].length} org(s) beta=${[...idsBeta].length} org(s) intersection=${intersection.length}`,
   );
 
-  const cibleBeta = await appeler({ url: `/api/products?organizationId=${ORG.beta}`, jeton: jetons.alpha.jwt });
-  const produitsVus = Array.isArray(cibleBeta.corps?.products) ? cibleBeta.corps.products.length : -1;
+  // Un compte multi-organisations (alpha est viewer de Beta) ne doit JAMAIS
+  // voir de produits sans nommer son locataire actif : le repli precedent sur
+  // toutes les adhesions du compte etait la cause de l'incident du 2026-10-17.
+  const sansLocataire = await appeler({ url: '/api/products', jeton: jetons.alpha.jwt });
   verifier(
-    'A4b fuite ? — jeton alpha, GET /api/products?organizationId=<Beta>',
-    '200 avec une liste VIDE (jamais un produit de Beta)',
-    cibleBeta.statut === 200 && produitsVus === 0,
-    `statut=${cibleBeta.statut} produits=${produitsVus}`,
+    'A4b refus sans locataire actif — jeton alpha, GET /api/products sans X-Tracefab-Organization-Id',
+    '400 organization_id_required',
+    sansLocataire.statut === 400 && sansLocataire.corps?.error === 'organization_id_required',
+    `statut=${sansLocataire.statut} erreur=${sansLocataire.corps?.error}`,
   );
 
-  const fournisseurs = await appeler({ url: '/api/suppliers', jeton: jetons.alpha.jwt });
+  // Et si un compte mono-organisation (beta) demande explicitement l'autre
+  // organisation (Alpha), requireActiveTenant refuse par 404 sans fuiter.
+  const cibleEtrangere = await appeler({ url: `/api/products?organizationId=${ORG.alpha}`, jeton: jetons.beta.jwt });
+  verifier(
+    'A4c refus locataire etranger — jeton beta, GET /api/products?organizationId=<Alpha>',
+    '404 organization_not_found',
+    cibleEtrangere.statut === 404 && cibleEtrangere.corps?.error === 'organization_not_found',
+    `statut=${cibleEtrangere.statut} erreur=${cibleEtrangere.corps?.error}`,
+  );
+
+  const fournisseurs = await appeler({ url: '/api/suppliers', jeton: jetons.alpha.jwt, organisationId: ORG.alpha });
   const organisationsFournisseurs = Array.isArray(fournisseurs.corps?.suppliers)
     ? [...new Set(fournisseurs.corps.suppliers.map((s) => s?.organizationId ?? s?.organization_id))]
     : null;
   verifier(
-    'A4c isolation fournisseurs — jeton alpha, GET /api/suppliers',
+    'A4d isolation fournisseurs — jeton alpha (locataire Alpha), GET /api/suppliers',
     '200, aucun fournisseur de Beta',
     fournisseurs.statut === 200 && Array.isArray(organisationsFournisseurs)
       && organisationsFournisseurs.length > 0 && !organisationsFournisseurs.includes(ORG.beta),

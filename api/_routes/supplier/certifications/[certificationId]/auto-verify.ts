@@ -29,10 +29,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (!isUuid(certificationId)) return json(res, 400, { error: 'invalid_certification_id' });
 
     const { user } = await requireClerkUser(req);
+    const activeOrgId = requestedOrganizationId(req);
     const body: { referenceDate?: string } = await readJsonBody<{ referenceDate?: string }>(req).catch(() => ({}));
 
     const result = await withTracefabUserContext(user.id, user.email, async (tx) => {
-      const supplier = await currentSupplier(tx, user.id, requestedOrganizationId(req));
+      const supplier = await currentSupplier(tx, user.id, activeOrgId);
       if (!supplier) return null;
 
       const cert = await tx.certifications.findFirst({
@@ -98,7 +99,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         certification: updatedCert,
         decision,
       };
-    });
+    }, activeOrgId);
 
     if (!result) return json(res, 404, { error: 'supplier_profile_not_found' });
     if ('certNotFound' in result) return json(res, 404, { error: 'certification_not_found' });
@@ -114,6 +115,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (isUnauthorized(error)) return json(res, 401, { error: 'unauthorized' });
     const businessError = sqlBusinessError(error);
     if (businessError) return json(res, businessError.status, { error: businessError.error });
+    if (error instanceof Error && /^invalid_/.test(error.message)) return json(res, 400, { error: error.message });
     if (error instanceof Error && error.message === 'missing_clerk_secret_key') return json(res, 503, { error: 'clerk_not_configured' });
     console.error('POST /api/supplier/certifications/:id/auto-verify failed', error);
     return json(res, 500, { error: 'internal_server_error' });

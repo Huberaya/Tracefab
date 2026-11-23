@@ -16,9 +16,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const documentId = routeDocumentId(req);
     if (!isUuid(documentId)) return json(res, 400, { error: 'invalid_document_id' });
     const { user } = await requireClerkUser(req);
+    const activeOrgId = requestedOrganizationId(req);
     const supplier = await withTracefabUserContext(user.id, user.email, (tx) =>
-      currentSupplier(tx, user.id, requestedOrganizationId(req)),
-    );
+      currentSupplier(tx, user.id, activeOrgId),
+    activeOrgId);
     if (!supplier) return json(res, 404, { error: 'document_not_found' });
 
     const result = await runDocumentScanFlow(user, documentId, supplier.organization_id);
@@ -33,6 +34,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const businessError = sqlBusinessError(error);
     if (businessError) return json(res, businessError.status, { error: businessError.error });
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') return json(res, 409, { error: 'document_conflict' });
+    if (error instanceof Error && /^invalid_/.test(error.message)) return json(res, 400, { error: error.message });
     if (error instanceof Error && /^document_/.test(error.message)) return json(res, 400, { error: error.message });
     if (error instanceof Error && /^private_storage_/.test(error.message)) return json(res, 503, { error: error.message });
     if (error instanceof Error && error.message === 'missing_clerk_secret_key') return json(res, 503, { error: 'clerk_not_configured' });

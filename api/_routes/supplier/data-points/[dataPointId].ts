@@ -16,8 +16,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const dataPointId = routeDataPointId(req);
     if (!isUuid(dataPointId)) return json(res, 400, { error: 'invalid_data_point_id' });
     const { user } = await requireClerkUser(req);
+    const activeOrgId = requestedOrganizationId(req);
     const result = await withTracefabUserContext(user.id, user.email, async (tx) => {
-      const supplier = await currentSupplier(tx, user.id, requestedOrganizationId(req));
+      const supplier = await currentSupplier(tx, user.id, activeOrgId);
       if (!supplier) return null;
       const current = await tx.data_points.findFirst({
         where: { id: dataPointId, owner_organization_id: supplier.organization_id, OR: [{ supplier_id: supplier.id }, { supplier_sites: { supplier_id: supplier.id } }] },
@@ -69,7 +70,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         select: DATA_POINT_SELECT,
       });
       return point;
-    });
+    }, activeOrgId);
     if (!result) return json(res, 404, { error: 'data_point_not_found' });
     return json(res, 200, { dataPoint: serializeDataPoint(result) });
   } catch (error) {

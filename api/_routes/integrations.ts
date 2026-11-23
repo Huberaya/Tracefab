@@ -3,7 +3,7 @@ import { requireClerkUser, isUnauthorized } from '../_lib/auth.js';
 import { withTracefabUserContext } from '../_lib/context.js';
 import { json, methodNotAllowed, readJsonBody } from '../_lib/http.js';
 import { sqlBusinessError } from '../_lib/sql-errors.js';
-import { activeBrandOrganizationIds } from '../_lib/products.js';
+import { isTenantError, requireActiveTenant, requestedTenantId } from '../_lib/tenant.js';
 
 interface IntegrationBody {
   systemType?: string;
@@ -18,12 +18,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const { user } = await requireClerkUser(req);
 
     return await withTracefabUserContext(user.id, user.email, async (tx) => {
-      const brandOrgIds = await activeBrandOrganizationIds(tx, user.id);
-      const activeOrgId = (req.query.organizationId as string) || brandOrgIds[0];
-
-      if (!activeOrgId || !brandOrgIds.includes(activeOrgId)) {
-        return json(res, 403, { error: 'brand_product_role_required' });
-      }
+      const tenant = await requireActiveTenant(tx, req, user.id, {
+        types: ['brand'],
+        roles: ['owner', 'admin', 'manager', 'contributor'],
+      });
+      const activeOrgId = tenant.organizationId;
 
       if (req.method === 'GET') {
         const integrations = await tx.plm_erp_integrations.findMany({
@@ -82,9 +81,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
 
       return methodNotAllowed(res, ['GET', 'POST']);
-    });
+    }, requestedTenantId(req));
   } catch (error: unknown) {
     if (isUnauthorized(error)) return json(res, 401, { error: 'unauthorized' });
+    if (isTenantError(error)) return json(res, error.status, { error: error.message });
     const businessError = sqlBusinessError(error);
     if (businessError) {
       return json(res, businessError.status, { error: businessError.error });

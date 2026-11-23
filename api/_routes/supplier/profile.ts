@@ -18,8 +18,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   try {
     const { user } = await requireClerkUser(req);
+    const activeOrgId = requestedOrganizationId(req);
     const result = await withTracefabUserContext(user.id, user.email, async (tx) => {
-      const current = await currentSupplier(tx, user.id, requestedOrganizationId(req));
+      const current = await currentSupplier(tx, user.id, activeOrgId);
       if (!current) return null;
       if (req.method === 'GET') return { current };
 
@@ -39,7 +40,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         )
       `;
       return { current: rows[0] ?? null };
-    });
+    }, activeOrgId);
 
     if (!result?.current) return json(res, 404, { error: 'supplier_profile_not_found' });
     return json(res, 200, {

@@ -6,6 +6,7 @@ import { withTracefabUserContext } from '../../../_lib/context.js';
 import { activeBrandOrganizationIds, isUuid } from '../../../_lib/products.js';
 import { json, methodNotAllowed, readJsonBody } from '../../../_lib/http.js';
 import { sqlBusinessError } from '../../../_lib/sql-errors.js';
+import { requestedTenantId } from '../../../_lib/tenant.js';
 import {
   CATALOG_IMPORT_MAX_BYTES,
   CATALOG_IMPORT_MAX_ROWS,
@@ -97,6 +98,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const idempotencyKey = cleanIdempotencyKey(body.idempotencyKey);
     const sourceSha256 = createHash('sha256').update(body.csvContent, 'utf8').digest('hex');
     const validation = validateCatalogProductCsv(body.csvContent);
+
+    const activeOrgId = requestedTenantId(req) ?? body.brandOrganizationId!;
+    if (activeOrgId !== body.brandOrganizationId) {
+      return json(res, 403, { error: 'brand_organization_access_denied' });
+    }
 
     const result = await withTracefabUserContext(user.id, user.email, async (tx) => {
       const organizationIds = await activeBrandOrganizationIds(tx, user.id);
@@ -194,7 +200,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         )
       `;
       return { job: jobPayload(updated[0] ?? job) };
-    });
+    }, activeOrgId);
 
     if (!result) return json(res, 403, { error: 'brand_organization_access_denied' });
     if ('preview' in result) return json(res, 200, result.preview);

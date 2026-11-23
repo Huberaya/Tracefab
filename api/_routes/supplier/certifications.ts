@@ -18,8 +18,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'GET' && req.method !== 'POST') return methodNotAllowed(res, ['GET', 'POST']);
   try {
     const { user } = await requireClerkUser(req);
+    const activeOrgId = requestedOrganizationId(req);
     const result = await withTracefabUserContext(user.id, user.email, async (tx) => {
-      const supplier = await currentSupplier(tx, user.id, requestedOrganizationId(req));
+      const supplier = await currentSupplier(tx, user.id, activeOrgId);
       if (!supplier) return null;
       if (req.method === 'GET') {
         const certifications = await tx.certifications.findMany({
@@ -56,7 +57,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         )
       `;
       return { certification: rows[0] ?? null };
-    });
+    }, activeOrgId);
     if (!result) return json(res, 404, { error: 'supplier_profile_not_found' });
     if ('certifications' in result) return json(res, 200, { certifications: result.certifications!.map(serializeSupplierCertification) });
     if (!result.certification) return json(res, 500, { error: 'certification_creation_failed' });

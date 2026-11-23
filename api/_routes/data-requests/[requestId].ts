@@ -108,8 +108,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const request = await withTracefabUserContext(user.id, user.email, (tx) =>
       scope === 'supplier'
         ? accessibleSupplierRequest(tx, user.id, requestId, DETAIL_SELECT, organizationId)
-        : accessibleRequest(tx, user.id, requestId, DETAIL_SELECT),
-    );
+        : accessibleRequest(tx, user.id, requestId, DETAIL_SELECT, organizationId),
+    organizationId);
     if (!request) return json(res, 404, { error: 'data_request_not_found' });
     return json(res, 200, serializeDetail(request));
   } catch (error) {

@@ -22,8 +22,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const siteId = routeSiteId(req);
     if (!isUuid(siteId)) return json(res, 400, { error: 'invalid_site_id' });
     const { user } = await requireClerkUser(req);
+    const activeOrgId = requestedOrganizationId(req);
     const result = await withTracefabUserContext(user.id, user.email, async (tx) => {
-      const supplier = await currentSupplier(tx, user.id, requestedOrganizationId(req));
+      const supplier = await currentSupplier(tx, user.id, activeOrgId);
       if (!supplier) return null;
       const current = await tx.supplier_sites.findFirst({ where: { id: siteId, supplier_id: supplier.id }, select: SUPPLIER_SITE_SELECT });
       if (!current) return null;
@@ -45,7 +46,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         select: SUPPLIER_SITE_SELECT,
       });
       return site;
-    });
+    }, activeOrgId);
     if (!result) return json(res, 404, { error: 'supplier_site_not_found' });
     return json(res, 200, { site: serializeSupplierSite(result) });
   } catch (error) {
