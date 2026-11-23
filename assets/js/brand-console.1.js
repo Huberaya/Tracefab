@@ -71,13 +71,13 @@
         // null = aucune source chargee (on ne peut pas compter) ; [] = source
         // chargee et vide. La distinction porte tout l'ecran.
         documents: null,
-        // Erreur du registre documentaire : un echec ne doit pas se lire
-        // comme « aucun document ». null = charge (ou jamais demande).
+        documentsLoading: false,
         documentsError: null,
-        // Identites publiques du passeport (dpp_resolvable_identifiers).
-        // null = non charge, [] = charge et vide.
-        dppIdentities: null,
-        dppIdentitiesError: null,
+        documentUpload: { loading: false, error: null, success: null },
+        dppPreview: null,
+        dppPreviewLoading: false,
+        dppPreviewError: null,
+        dppPreviewProductId: null,
         certifications: null,
         pefAssessment: null,
         greenClaimsAudit: null,
@@ -85,6 +85,8 @@
         massBalance: null,
         selectedSupplyChainProduct: null,
         dpp: null,
+        dppIdentities: null,
+        dppIdentitiesError: null,
         selectedDppProduct: null,
         dppPortfolio: null,
         dppPortfolioLoading: false,
@@ -95,7 +97,6 @@
         catalogImport: { filename: '', content: '', preview: null, job: null, loading: false },
         supplierImport: { filename: '', content: '', preview: null, job: null, delivery: null, loading: false },
         toast: null,
-        toastTimer: null,
         // Demonstration sur opt-in explicite : ?demo=0 ne doit pas basculer
         // la console dans le jeu de demonstration.
         demo: new URLSearchParams(location.search).get('demo') === '1',
@@ -367,14 +368,10 @@
           </nav>`;
       }
 
-      // Meme correctif que dans supplier-portal.1.js : sans annulation du
-      // minuteur precedent, deux notifications rapprochees font disparaitre le
-      // second message au bout de 3500 ms, efface par le minuteur du premier.
       function notify(message, isError = false) {
         state.toast = { message, isError };
-        if (state.toastTimer) clearTimeout(state.toastTimer);
         render();
-        state.toastTimer = setTimeout(() => { state.toast = null; state.toastTimer = null; render(); }, 3500);
+        setTimeout(() => { state.toast = null; render(); }, 3500);
       }
 
       const TENANT_HEADER = 'X-Tracefab-Organization-Id';
@@ -1191,10 +1188,10 @@
         // les rend comme n'importe quelle liste : hors demonstration, la meme
         // vue part de state.documents, vide tant qu'aucune route ne l'alimente.
         state.documents = [
-          { id: 'demo-doc-1', category: 'transfer', title: 'GOTS 2026 Transaction Certificate', type: 'TC GOTS', issuer: 'Control Union Certifications', supplier: 'Filature de Haute-Vienne', issuedAt: '2026-01-14', expiresAt: '2027-01-14', status: 'available' },
-          { id: 'demo-doc-2', category: 'lab', title: 'ZDHC MRSL Level 3 Laboratory Report', type: 'ZDHC Test', issuer: 'SGS Textile Testing Services', supplier: 'EcoDye Aquitaine', issuedAt: '2026-03-02', expiresAt: '2027-03-02', status: 'available' },
-          { id: 'demo-doc-3', category: 'social', title: 'SMETA 4-Pillar Social Audit (Grade A)', type: 'SMETA Audit', issuer: 'Intertek Ethical Services', supplier: 'Assembly & Tailoring Workshop', issuedAt: '2025-11-10', expiresAt: '2026-11-10', status: 'available' },
-          { id: 'demo-doc-4', category: 'product', title: 'OEKO-TEX Standard 100 Certificate', type: 'OEKO-TEX', issuer: 'CITEVE Portugal', supplier: 'Portugal Textile Mill', issuedAt: '2026-02-18', expiresAt: '2027-02-18', status: 'available' },
+          { id: 'demo-doc-1', category: 'transfer', title: 'GOTS 2026 Transaction Certificate', type: 'TC GOTS', issuer: 'Control Union Certifications', supplier: 'Filature de Haute-Vienne', issuedAt: '2026-01-14', expiresAt: '2027-01-14', status: 'sealed' },
+          { id: 'demo-doc-2', category: 'lab', title: 'ZDHC MRSL Level 3 Laboratory Report', type: 'ZDHC Test', issuer: 'SGS Textile Testing Services', supplier: 'EcoDye Aquitaine', issuedAt: '2026-03-02', expiresAt: '2027-03-02', status: 'sealed' },
+          { id: 'demo-doc-3', category: 'social', title: 'SMETA 4-Pillar Social Audit (Grade A)', type: 'SMETA Audit', issuer: 'Intertek Ethical Services', supplier: 'Assembly & Tailoring Workshop', issuedAt: '2025-11-10', expiresAt: '2026-11-10', status: 'sealed' },
+          { id: 'demo-doc-4', category: 'product', title: 'OEKO-TEX Standard 100 Certificate', type: 'OEKO-TEX', issuer: 'CITEVE Portugal', supplier: 'Portugal Textile Mill', issuedAt: '2026-02-18', expiresAt: '2027-02-18', status: 'sealed' },
         ];
 
         // Preparation DPP : 88%, coherent avec le KPI de la vue d'ensemble.
@@ -1478,20 +1475,6 @@
           // les autres et ne masque jamais l'application entière. Le tenant
           // capturé empêche une réponse tardive de repeupler le tenant suivant.
           const enrichmentOrganizationId = state.activeOrganizationId;
-          // Registre documentaire : charge en arriere-plan, mais RE-RENDU sur
-          // les vues qui l'utilisent (documents, fiche produit, tracabilite),
-          // sinon les selects « document source » resteraient vides.
-          api('/api/documents').then((payload) => {
-            if (state.activeOrganizationId !== enrichmentOrganizationId) return;
-            state.documents = normalizeDocuments(payload.documents);
-            state.documentsError = null;
-            if (['documents', 'productDetail', 'supplyChain'].includes(state.view)) render();
-          }).catch((error) => {
-            if (state.activeOrganizationId !== enrichmentOrganizationId) return;
-            state.documents = null;
-            state.documentsError = error.message || 'documents_unavailable';
-            if (state.view === 'documents') render();
-          });
           api('/api/questionnaires').then((payload) => {
             if (state.activeOrganizationId !== enrichmentOrganizationId) return;
             state.questionnaires = payload.questionnaires || [];
@@ -2043,107 +2026,188 @@
       // coordonnees — affichee sans passer par le jeu de demonstration.
       // Historique disponible dans git.
 
-      
-      /* ---------------------------------------------------------------------
-       * Registre documentaire et documents sources
+      /* ------------------------------------------------------------------
+       * Preuves documentaires REELLES et apercu DPP brouillon PRIVE.
        *
-       * Deux barrieres DPP exigent une PREUVE rattachee et non une simple
-       * declaration : `traceability.documented` (un document par noeud de
-       * chaine) et `evidence.product_data` (un point de donnee adosse a un
-       * document disponible). L'API acceptait deja `sourceDocumentId` a
-       * l'ecriture ; aucune vue ne pouvait le renseigner. C'est ce trou que
-       * comble ce bloc — pas un affaiblissement des barrieres.
-       * ------------------------------------------------------------------- */
-      function normalizeDocuments(list) {
-        // Forme unique pour la vue Documents ET pour les selects. Les champs
-        // absents restent nuls : la vue affiche un tiret, jamais une valeur
-        // inventee.
-        return (Array.isArray(list) ? list : []).map((document) => ({
-          id: document.id,
-          title: document.originalFilename || document.id,
-          type: document.kind || null,
-          issuer: null,
-          supplier: null,
-          issuedAt: document.createdAt || null,
-          expiresAt: document.expiresAt || null,
-          status: document.status || null,
-          sha256: document.sha256 || null,
-          contentType: document.contentType || null,
-          byteSize: document.byteSize === undefined ? null : document.byteSize,
-        }));
-      }
-
-      // Documents rattachables : le registre doit etre charge ET le document
-      // disponible (un document en analyse ou rejete ne prouve rien).
-      function attachableDocuments() {
-        if (!Array.isArray(state.documents)) return [];
-        return state.documents.filter((document) => document.status === 'available');
-      }
-
-      function documentOptions(selectedId = '') {
-        const documents = attachableDocuments();
-        if (!Array.isArray(state.documents)) {
-          return `<option value="">${esc(bt('docNotListed'))}</option>`;
-        }
-        const none = `<option value="">${esc(bt('docNone'))}</option>`;
-        return none + documents.map((document) => `<option value="${esc(document.id)}" ${document.id === selectedId ? 'selected' : ''}>${esc(document.title)}${document.type ? ` · ${esc(document.type)}` : ''}</option>`).join('');
+       * Avant : state.documents n'etait alimente que par le jeu de demo,
+       * l'upload et la verification etaient desactives, et « Preview DPP »
+       * ouvrait l'URL publique /dpp/?gtin=... qui exige un passeport publie.
+       * Desormais : GET /api/documents (tenant scope), upload-intent + PUT
+       * signe + scan, decision humaine avec motif, et un apercu prive qui
+       * relit les donnees persistees SANS publier.
+       * ------------------------------------------------------------------ */
+      function normaliserDocument(d) {
+        const metadata = d.metadata && typeof d.metadata === 'object' ? d.metadata : {};
+        const categorie = metadata.category || (d.kind === 'certificate' ? 'transfer'
+          : d.kind === 'audit_report' ? 'social' : d.kind === 'technical_spec' ? 'lab' : 'product');
+        return {
+          id: d.id,
+          title: d.originalFilename || d.title || '—',
+          type: d.contentType || d.kind || d.type || '—',
+          issuer: metadata.issuer || '—',
+          supplier: metadata.supplier || '—',
+          issuedAt: d.createdAt || null,
+          expiresAt: d.expiresAt || null,
+          category: categorie,
+          status: d.status || 'uploaded',
+          validation: d.validation || null,
+          raw: d,
+        };
       }
 
       async function loadDocuments() {
-        if (state.demo) { render(); return; }
+        if (state.demo) return; // le jeu de demonstration reste explicite
+        state.documentsLoading = true;
+        state.documentsError = null;
+        render();
         try {
           const payload = await api('/api/documents');
-          state.documents = normalizeDocuments(payload.documents);
-          state.documentsError = null;
+          state.documents = (payload.documents || []).map(normaliserDocument);
         } catch (error) {
           state.documents = null;
           state.documentsError = error.message || 'documents_unavailable';
+        } finally {
+          state.documentsLoading = false;
+          render();
         }
-        render();
       }
 
       async function uploadDocument(form) {
-        const input = form.querySelector('input[name="file"]');
-        const file = input && input.files ? input.files[0] : null;
-        if (!file) throw new Error(bt('docFileRequired'));
-        // Le type MIME annonce par le navigateur est vide pour certains
-        // fichiers locaux : l'API n'accepte que pdf/png/jpeg/txt, on deduit
-        // donc l'extension quand le type est absent, et on refuse le reste
-        // au lieu d'annoncer un PDF qui n'en est pas un.
-        const ALLOWED = { pdf: 'application/pdf', png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', txt: 'text/plain' };
-        const byExtension = ALLOWED[String(file.name || '').split('.').pop().toLowerCase()] || null;
-        const contentType = ALLOWED[String(file.type || '').split('/').pop()] || (file.type === 'application/pdf' ? 'application/pdf' : byExtension);
-        if (!contentType) throw new Error('document_content_type_not_allowed');
-        const kind = form.querySelector('select[name="kind"]')?.value || 'other';
-        const expiresAt = form.querySelector('input[name="expiresAt"]')?.value || null;
-        const intent = await api('/api/documents/upload-intent', {
-          method: 'POST',
-          body: JSON.stringify({
-            originalFilename: file.name,
-            contentType,
-            byteSize: file.size,
-            kind,
-            expiresAt,
-          }),
-        });
-        // Depot direct vers le stockage prive : l'URL presignee porte sa
-        // propre autorisation, aucun jeton Clerk n'y est joint.
-        const put = await fetch(intent.upload.url, {
-          method: intent.upload.method || 'PUT',
-          headers: intent.upload.headers || {},
-          body: file,
-        });
-        if (!put.ok) throw new Error(`document_upload_failed_${put.status}`);
-        // Le scan est OBLIGATOIRE : sans verdict antivirus le document reste
-        // `scanning` et ne sera jamais rattachable comme preuve. Un echec de
-        // scan n'est pas silencieux : il remonte a l'utilisateur.
-        await api(`/api/documents/${encodeURIComponent(intent.document.id)}/scan`, { method: 'POST', body: '{}' });
-        state.modal = null;
-        await loadDocuments();
-        notify(bt('docUploaded'));
+        const file = form.querySelector('input[type="file"]')?.files?.[0];
+        if (!file) return;
+        const maxBytes = 50 * 1024 * 1024;
+        const allowed = ['application/pdf', 'image/png', 'image/jpeg', 'text/plain'];
+        state.documentUpload.loading = true;
+        state.documentUpload.error = null;
+        state.documentUpload.success = null;
+        render();
+        try {
+          if (!allowed.includes(file.type)) throw new Error('document_content_type_not_allowed');
+          if (file.size <= 0 || file.size > maxBytes) throw new Error('document_size_limit_exceeded');
+          const productId = String(form.querySelector('select[name="productId"]')?.value || '').trim();
+          const kind = String(form.querySelector('select[name="kind"]')?.value || 'other');
+          const metadata = { source: 'brand_console' };
+          if (productId) metadata.productId = productId;
+          const intent = await api(`/api/documents/upload-intent${productId ? `?organizationId=${encodeURIComponent(state.activeOrganizationId || '')}` : ''}`, {
+            method: 'POST',
+            body: JSON.stringify({
+              originalFilename: file.name,
+              contentType: file.type,
+              byteSize: file.size,
+              kind,
+              metadata,
+            }),
+          });
+          if (!intent.upload?.url) throw new Error('private_storage_unavailable');
+          const uploadTarget = new URL(intent.upload.url, location.href);
+          let uploadHeaders = intent.upload.headers || { 'Content-Type': file.type };
+          const capability = uploadHeaders['X-Tracefab-Preview-Capability'];
+          if (capability !== undefined) {
+            if (uploadTarget.origin !== location.origin || uploadTarget.pathname !== '/api/preview-storage/object'
+                || uploadTarget.search || uploadTarget.hash || (intent.upload.method || 'PUT') !== 'PUT'
+                || typeof capability !== 'string' || !/^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]{43}$/.test(capability)
+                || uploadHeaders['Content-Type'] !== 'application/octet-stream') throw new Error('private_storage_unavailable');
+            uploadHeaders = { 'Content-Type': 'application/octet-stream', 'X-Tracefab-Preview-Capability': capability };
+          }
+          const put = await fetch(uploadTarget.href, {
+            method: intent.upload.method || 'PUT',
+            headers: uploadHeaders,
+            body: file,
+            redirect: 'error',
+          });
+          if (!put.ok) throw new Error(`document_upload_failed_${put.status}`);
+          // Le scan peut echouer (antivirus/stockage indisponible) : le document
+          // reste alors « uploaded/scanning », jamais presente comme verifie.
+          try {
+            await api(`/api/documents/${encodeURIComponent(intent.document.id)}/scan`, { method: 'POST' });
+          } catch (scanError) {
+            state.documentUpload.error = bt('dcScanPending').replace('{code}', esc(scanError.message));
+          }
+          state.documentUpload.success = bt('dcUploadSuccess');
+          state.modal = null;
+          await loadDocuments();
+        } catch (error) {
+          state.documentUpload.error = error.message || 'document_upload_failed';
+        } finally {
+          state.documentUpload.loading = false;
+          render();
+        }
       }
 
-      function documentsConsoleView() {
+      async function scanDocument(id) {
+        try {
+          await api(`/api/documents/${encodeURIComponent(id)}/scan`, { method: 'POST' });
+          notify(bt('dcScanDone'));
+          await loadDocuments();
+        } catch (error) { notify(error.message, true); }
+      }
+
+      async function reviewDocument(id, decision, reason) {
+        try {
+          await api(`/api/documents/${encodeURIComponent(id)}/validation`, {
+            method: 'POST', body: JSON.stringify({ decision, reason }),
+          });
+          notify(bt('dcReviewSaved'));
+          await loadDocuments();
+        } catch (error) { notify(error.message, true); }
+      }
+
+      async function downloadDocument(id) {
+        try {
+          const result = await api(`/api/documents/${encodeURIComponent(id)}/download`);
+          if (!result.download?.url) throw new Error('document_download_unavailable');
+          if (result.download.headers) {
+            // Preview PostgreSQL : capacite dans l'en-tete, jamais dans l'URL.
+            // Ne pas transmettre l'en-tete a une origine ou un chemin tiers.
+            const target = new URL(result.download.url, location.href);
+            const capability = result.download.headers['X-Tracefab-Preview-Capability'];
+            if (target.origin !== location.origin || target.pathname !== '/api/preview-storage/object'
+                || target.search || target.hash || typeof capability !== 'string'
+                || !/^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]{43}$/.test(capability)) throw new Error('document_download_unavailable');
+            const response = await fetch(target.href, {
+              headers: { 'X-Tracefab-Preview-Capability': capability }, credentials: 'same-origin', redirect: 'error',
+            });
+            if (!response.ok) throw new Error('document_download_unavailable');
+            const objectUrl = URL.createObjectURL(await response.blob());
+            const link = document.createElement('a');
+            link.href = objectUrl; link.download = result.document?.originalFilename || 'document';
+            document.body.appendChild(link); link.click(); link.remove();
+            setTimeout(() => URL.revokeObjectURL(objectUrl), 60000);
+          } else {
+            window.open(result.download.url, '_blank', 'noopener');
+          }
+        } catch (error) { notify(error.message, true); }
+      }
+
+      async function loadDppPreview(productId) {
+        state.dppPreviewProductId = productId;
+        state.dppPreview = null;
+        state.dppPreviewError = null;
+        state.modal = 'dpp-preview';
+        if (state.demo) {
+          state.dppPreview = {
+            preview: true, private: true, published: false, state: 'draft',
+            product: state.selectedProductDetail?.product || state.selectedDppProduct,
+            dossier: state.dpp, identifiers: [], composition: [], dataPoints: [], documents: [],
+            trust: { note: bt('dpPreviewDemoNote') },
+          };
+          render();
+          return;
+        }
+        state.dppPreviewLoading = true;
+        render();
+        try {
+          const payload = await api(`/api/products/${encodeURIComponent(productId)}/dpp/preview`);
+          state.dppPreview = payload;
+        } catch (error) {
+          state.dppPreviewError = error.message || 'dpp_preview_unavailable';
+        } finally {
+          state.dppPreviewLoading = false;
+          render();
+        }
+      }
+
+            function documentsConsoleView() {
         // La vue ne raconte plus une bibliotheque qui n'existe pas : elle
         // compte et rend state.documents. Aucune route ne liste les documents
         // d'une organisation : hors demonstration, docs vaut null et l'ecran
@@ -2151,26 +2215,30 @@
         const evidenceKnownEmpty = state.overviewInsights?.evidenceCoverage === 0
           && Number(state.overviewInsights?.missingEvidenceCount || 0) > 0;
         const docs = Array.isArray(state.documents) ? state.documents : (evidenceKnownEmpty ? [] : null);
-        // Compteurs FACTUELS. Les quatre cartes precedentes comptaient des
-        // categories (« certificats de transfert », « rapports de laboratoire »,
-        // « audits sociaux », « dossiers produit ») que le modele de donnees ne
-        // porte pas : `normalizeDocuments` ne produit aucun `category`, donc les
-        // quatre affichaient 0 meme avec un registre rempli. On compte ici ce
-        // que le registre sait vraiment : etat de disponibilite et expiration.
-        const compte = (predicat) => docs ? docs.filter(predicat).length : null;
-        const aujourdhui = new Date().toISOString().slice(0, 10);
-        const estExpire = (d) => Boolean(d.expiresAt) && String(d.expiresAt).slice(0, 10) < aujourdhui;
-        const lignes = docs === null ? `
+        const compte = (categorie) => docs ? docs.filter((d) => d.category === categorie).length : null;
+        const decisionLabel = (v) => v ? `${esc(v.status)}${v.reason ? ` · ${esc(v.reason)}` : ''}` : esc(bt('dcNoDecision'));
+        const lignes = state.documentsError ? `
+          <tr><td colspan="8" class="empty"><strong>${esc(bt('dcLoadError'))}</strong><p class="meta"><code>${esc(state.documentsError)}</code></p><button class="btn btn-secondary btn-small" data-action="retry-documents">${esc(bt('cnRetry'))}</button></td></tr>`
+          : state.documentsLoading ? `
+          <tr><td colspan="8" class="empty"><strong>${esc(bt('dcLoading'))}</strong></td></tr>`
+          : docs === null ? `
           <tr><td colspan="8" class="empty">${esc(bt('cnNotComputed'))}</td></tr>` : (docs.length ? docs.map((d) => `
           <tr>
-            <td><strong>${esc(d.title)}</strong></td>
+            <td><strong>${esc(d.title)}</strong>${d.validation ? `<div class="meta">${decisionLabel(d.validation)}</div>` : ''}</td>
             <td><span class="badge badge-verified">${esc(d.type || '—')}</span></td>
             <td>${esc(d.issuer || '—')}</td>
             <td>${esc(d.supplier || '—')}</td>
             <td>${d.issuedAt ? date(d.issuedAt) : '—'}</td>
             <td>${d.expiresAt ? date(d.expiresAt) : '—'}</td>
-            <td><span class="status status-${esc(d.status === 'available' ? 'approved' : 'draft')}">${esc(statusLabel(d.status))}</span></td>
-            <td style="text-align:right"><button class="btn btn-secondary btn-small" disabled title="${esc(bt('journeyFeatureUnavailable'))}">${bt('evVerify')}</button></td>
+            <td><span class="status status-${esc(d.status)}">${d.status === 'sealed' ? esc(bt('evSealed')) : esc(statusLabel(d.status))}</span></td>
+            <td style="text-align:right">
+              <div class="actions" style="justify-content:flex-end;gap:6px;flex-wrap:wrap">
+                ${d.status !== 'available' ? `<button class="btn btn-secondary btn-small" data-action="scan-document" data-document-id="${esc(d.id)}">${esc(bt('dcScan'))}</button>` : ''}
+                ${d.status === 'available' ? `<button class="btn btn-secondary btn-small" data-action="download-document" data-document-id="${esc(d.id)}">${esc(bt('dcDownload'))}</button>` : ''}
+                ${d.status === 'available' ? `<button class="btn btn-secondary btn-small" data-action="review-document" data-document-id="${esc(d.id)}" data-decision="accepted">${esc(bt('dcAccept'))}</button>
+                <button class="btn btn-secondary btn-small" data-action="review-document" data-document-id="${esc(d.id)}" data-decision="rejected">${esc(bt('dcReject'))}</button>` : ''}
+              </div>
+            </td>
           </tr>`).join('') : `
           <tr><td colspan="8" class="empty">${esc(bt('journeyNoDocumentSource'))}</td></tr>`);
 
@@ -2181,8 +2249,8 @@
             <p>${esc(bt('cnEvIntro'))}</p>
           </div>
           <div class="actions">
-            <button class="btn btn-secondary" disabled title="${esc(bt('journeyFeatureUnavailable'))}">${bt('evDownload')}</button>
-            <button class="btn btn-primary" data-action="upload-document">${bt('evUpload')}</button>
+            <button class="btn btn-secondary" data-action="retry-documents">${bt('dcReload')}</button>
+            <button class="btn btn-primary" data-action="open-upload-document" ${estDemo() ? `disabled title="${esc(bt('demoUnavailable'))}"` : ''}>${bt('evUpload')}</button>
           </div>
         </div>
 
@@ -2198,29 +2266,28 @@
 
           <div class="eq-score-strip eq-score-strip--four" style="margin-top:16px;">
             <div class="eq-score-card">
-              <div class="eq-score-label">${bt('docAvailableLabel')}</div>
-              <div class="eq-score-num">${mesure(compte((d) => d.status === 'available'))}</div>
-              <div class="eq-score-desc">${bt('docAvailableDesc')}</div>
+              <div class="eq-score-label">${bt('evTransCerts')}</div>
+              <div class="eq-score-num">${mesure(compte('transfer'))}</div>
+              <div class="eq-score-desc">${bt('evMassBalance')}</div>
             </div>
             <div class="eq-score-card">
-              <div class="eq-score-label">${bt('docScanningLabel')}</div>
-              <div class="eq-score-num">${mesure(compte((d) => d.status === 'uploaded' || d.status === 'scanning'))}</div>
-              <div class="eq-score-desc">${bt('docScanningDesc')}</div>
+              <div class="eq-score-label">${bt('evLabReports')}</div>
+              <div class="eq-score-num">${mesure(compte('lab'))}</div>
+              <div class="eq-score-desc">${bt('evRsl')}</div>
             </div>
             <div class="eq-score-card">
-              <div class="eq-score-label">${bt('docExpiredLabel')}</div>
-              <div class="eq-score-num">${mesure(compte(estExpire))}</div>
-              <div class="eq-score-desc">${bt('docExpiredDesc')}</div>
+              <div class="eq-score-label">${bt('evSocialAudits')}</div>
+              <div class="eq-score-num">${mesure(compte('social'))}</div>
+              <div class="eq-score-desc">${bt('evHumanRights')}</div>
             </div>
             <div class="eq-score-card">
-              <div class="eq-score-label">${bt('docRejectedLabel')}</div>
-              <div class="eq-score-num">${mesure(compte((d) => d.status === 'rejected'))}</div>
-              <div class="eq-score-desc">${bt('docRejectedDesc')}</div>
+              <div class="eq-score-label">${bt('evProdRecords')}</div>
+              <div class="eq-score-num">${mesure(compte('product'))}</div>
+              <div class="eq-score-desc">${bt('evDelivery')}</div>
             </div>
           </div>
         </div>
 
-        ${state.documentsError ? `<div class="notice notice-error"><strong>${esc(bt('docLoadFailed'))}</strong> <code>${esc(state.documentsError)}</code> <button class="btn btn-secondary btn-small" data-action="reload-documents">${bt('cnRetry')}</button></div>` : ''}
         <div class="card panel">
           <div class="panel-head">
             <h2>${bt('journeyLoadedDocuments')} (${docs === null ? esc(bt('cnNotComputed')) : moneyless(docs.length)})</h2>
@@ -2727,11 +2794,11 @@
           <div class="actions">
             <button class="btn btn-secondary" data-action="product-supply-chain-from-detail">${bt('pxTraceGraph')}</button>
             <button class="btn btn-secondary" data-action="product-dpp-from-detail">${bt('pxPrepareDpp')}</button>
-            <button class="btn btn-secondary" ${dppIdentifier ? `data-tf-act="open" data-tf-arg="/dpp/?gtin=${encodeURIComponent(dppIdentifier)}"` : `disabled title="${esc(bt('journeyResolvableIdRequired'))}"`}>📋 ${bt('journeyPreviewDpp')}</button>
+            <button class="btn btn-secondary" data-action="open-dpp-preview" data-preview-product-id="${esc(p.id)}" title="${esc(bt('dpPreviewPrivateBanner'))}">📋 ${bt('journeyPreviewDpp')}</button>
               <button class="btn btn-secondary" data-tf-act="open" data-tf-arg="/product-intelligence/">${bt('pxOpenIntel')}</button>
             <button class="btn btn-primary" data-action="product-new-request" data-product-id="${esc(p.id)}" ${suppliers().length ? '' : `disabled title="${esc(bt('journeySupplierRequired'))}"`}>${bt('pxNewEvidenceReq')}</button>
             ${p.status === 'draft' ? `<button class="btn btn-secondary" data-action="activate-product" data-product-id="${esc(p.id)}">${bt('pxActivate')}</button>` : ''}
-            ${['draft', 'active'].includes(p.status) ? `<button class="btn btn-secondary" data-action="archive-product" data-product-id="${esc(p.id)}">${bt('pxArchiveProduct')}</button>` : ''}
+            ${p.status === 'draft' ? `<button class="btn btn-secondary" data-action="archive-product" data-product-id="${esc(p.id)}">${bt('pxArchiveProduct')}</button>` : ''}
           </div>
         </div>
 
@@ -2856,7 +2923,6 @@
             <form id="product-data-point-form" class="form-grid" style="margin-top:18px">
               <label>${bt('pxDataPointKey')}<select class="select" name="dataKey" required>${Object.entries(state.productDataPointDefinitions || {}).map(([key, definition]) => `<option value="${esc(key)}" data-type="${esc(definition.dataType)}">${esc(key)} · ${esc(definition.dataType)}</option>`).join('')}</select></label>
               <label>${bt('pxDeclaredValue')}<input class="input" name="value" required maxlength="10000" placeholder="${esc(bt('pxDeclaredValuePlaceholder'))}"></label>
-              <label class="field-full">${bt('docSource')}<select class="select" name="sourceDocumentId">${documentOptions()}</select></label>
               <p class="field-full meta">${bt('pxNoEvidenceWarning')}</p>
               <div class="form-actions field-full"><button class="btn btn-primary btn-small" type="submit" ${Object.keys(state.productDataPointDefinitions || {}).length ? '' : 'disabled'}>${bt('pxAddDeclaredDataPoint')}</button></div>
             </form>
@@ -3780,6 +3846,7 @@
               <button class="btn btn-secondary" data-action="dpp-back-portfolio">${bt('dpBackToPortfolio')}</button>
               <button class="btn btn-secondary" data-action="select-dpp-product">${bt('scChangeProduct')}</button>
               <button class="btn btn-secondary" data-action="compute-dpp">${bt('dpRecalculate')}</button>
+              <button class="btn btn-secondary" data-action="open-dpp-preview" data-preview-product-id="${esc(p.id)}">📋 ${bt('dpPreviewTitle')}</button>
               ${dpp.canMarkReadyToPublish ? '<button class="btn btn-primary" data-action="publish-dpp">✓ ' + bt('dpValidateCta') + '</button>' : ''}
             </div>
           </div>
@@ -3858,16 +3925,6 @@
         `;
       }
 
-
-      /* Passeport public : deux actes distincts, tous deux explicites.
-       *
-       * L'identite resolvable (public_id) rend le passeport ATTEIGNABLE par un
-       * QR ; la publication le rend LISIBLE. Les deux routes existaient deja
-       * cote API (`/dpp/identities`, `/dpp/publication`) sans aucune vue : le
-       * parcours marque s'arretait donc a « pret a publier », sans moyen de
-       * franchir le dernier pas. Ces panneaux n'abaissent aucune barriere :
-       * ils n'apparaissent actifs que dans l'etat attendu.
-       */
       function dppIdentityPanel(product) {
         const identities = state.dppIdentities;
         const etat = state.dppIdentitiesError
@@ -3934,6 +3991,66 @@
           </div>
           ${corps}
         </div>`;
+      }
+
+      async function activateProduct() {
+        // Sortir du brouillon conditionne la barriere DPP `product.not_draft`.
+        // L'acte est explicite, confirme, et ne vaut ni validation de donnees
+        // ni autorisation de publication : le dossier doit encore passer les
+        // treize exigences puis la revue.
+        const product = state.selectedProductDetail?.product;
+        if (!product || product.status !== 'draft') return;
+        if (!window.confirm(bt('pxActivateConfirm'))) return;
+        if (state.demo) {
+          product.status = 'active';
+          notify(bt('demoUnavailable'));
+          render();
+          return;
+        }
+        const detail = await api(`/api/products/${encodeURIComponent(product.id)}`, {
+          method: 'PATCH',
+          body: JSON.stringify({ status: 'active' }),
+        });
+        state.selectedProductDetail = detail;
+        state.selectedProduct = detail.product;
+        await sync();
+        notify(bt('pxActivateToast'));
+        render();
+      }
+
+      async function createDppIdentity(form) {
+        const product = state.selectedDppProduct;
+        if (!product) return;
+        const data = Object.fromEntries(new FormData(form));
+        const body = {
+          publicId: String(data.publicId || '').trim().toLowerCase(),
+          granularity: String(data.granularity || 'model'),
+          qualifier: String(data.qualifier || '').trim() || null,
+        };
+        if (state.demo) { notify(bt('demoUnavailable')); return; }
+        await api(`/api/products/${encodeURIComponent(product.id)}/dpp/identities`, {
+          method: 'POST',
+          body: JSON.stringify(body),
+        });
+        const identities = await api(`/api/products/${encodeURIComponent(product.id)}/dpp/identities`);
+        state.dppIdentities = identities.identities || [];
+        notify(bt('dpIdentityToast'));
+        render();
+      }
+
+      async function changeDppPublication(action) {
+        const product = state.selectedDppProduct;
+        if (!product) return;
+        if (!window.confirm(bt(action === 'suspend' ? 'dpPublicationConfirmSuspend' : 'dpPublicationConfirmWithdraw'))) return;
+        const res = await api(`/api/products/${encodeURIComponent(product.id)}/dpp/publication`, {
+          method: 'POST',
+          body: JSON.stringify({ action }),
+        });
+        state.dpp = res.dpp;
+        if (state.selectedDppProduct) state.selectedDppProduct.publicSlug = null;
+        state.dppPortfolio = null;
+        notify(bt(action === 'suspend' ? 'dpPublicationToastSuspended' : 'dpPublicationToastWithdrawn'));
+        render();
       }
 
       function renderPillarCard(pillar, defaultIcon, defaultTitle) {
@@ -4106,13 +4223,50 @@
       }
 
       function modal(type) {
+        if (type === 'upload-document') {
+          const produits = state.products.map((x) => `<option value="${esc(x.id)}">${esc(x.reference)} — ${esc(x.name)}</option>`).join('');
+          return `<div class="modal-backdrop"><div class="modal"><div class="modal-head"><div><div class="eyebrow">${esc(bt('evVault'))}</div><h2>${esc(bt('dcUploadTitle'))}</h2></div><button class="close" data-action="close-modal">×</button></div>
+            <p class="meta">${esc(bt('dcUploadHint'))}</p>
+            ${state.documentUpload.error ? `<div class="notice notice-error"><code>${esc(state.documentUpload.error)}</code></div>` : ''}
+            ${state.documentUpload.success ? `<div class="notice">${esc(state.documentUpload.success)}</div>` : ''}
+            <form id="upload-document-form">
+              <label class="field-full">${esc(bt('dcFile'))}<input class="input" type="file" name="file" accept=".pdf,.png,.jpg,.jpeg,.txt,application/pdf,image/png,image/jpeg,text/plain" required></label>
+              <label>${esc(bt('dcKind'))}<select class="select" name="kind"><option value="certificate">${esc(bt('dcKindCertificate'))}</option><option value="technical_spec">${esc(bt('dcKindTechnical'))}</option><option value="origin_proof">${esc(bt('dcKindOrigin'))}</option><option value="audit_report">${esc(bt('dcKindAudit'))}</option><option value="other">${esc(bt('dcKindOther'))}</option></select></label>
+              <label>${esc(bt('dcLinkProduct'))}<select class="select" name="productId"><option value="">${esc(bt('dcNoProduct'))}</option>${produits}</select></label>
+              <p class="field-full meta">${esc(bt('dcPrivateNote'))}</p>
+              <div class="form-actions field-full"><button type="button" class="btn btn-secondary" data-action="close-modal">${esc(bt('mdCancel'))}</button><button type="submit" class="btn btn-primary" ${state.documentUpload.loading ? 'disabled' : ''}>${esc(state.documentUpload.loading ? bt('dcUploading') : bt('dcUploadCta'))}</button></div>
+            </form></div></div>`;
+        }
+        if (type === 'dpp-preview') {
+          const v = state.dppPreview;
+          const dossier = v?.dossier || {};
+          const champs = (dossier.missingFields || []);
+          const corps = state.dppPreviewLoading
+            ? `<div class="empty"><strong>${esc(bt('dcLoading'))}</strong></div>`
+            : state.dppPreviewError
+              ? `<div class="empty"><strong>${esc(bt('dpPreviewError'))}</strong><p class="meta"><code>${esc(state.dppPreviewError)}</code></p><button class="btn btn-secondary btn-small" data-action="retry-dpp-preview">${esc(bt('cnRetry'))}</button></div>`
+              : !v
+                ? `<div class="empty"><strong>${esc(bt('dcLoading'))}</strong></div>`
+                : `<div class="notice" style="margin-bottom:14px"><strong>${esc(bt('dpPreviewPrivateBanner'))}</strong> — ${esc(v.state || 'draft')}${v.published ? ` · ${esc(bt('dpPreviewPublished'))}` : ''}</div>
+                   <div class="item-list">
+                     <div class="item"><div><strong>${esc(v.product?.name || '—')}</strong><div class="meta">${esc(v.product?.reference || '—')} · v${esc(v.product?.version || '—')} · ${esc(v.product?.status || '—')}</div></div><span class="badge">${esc(v.product?.category || '—')}</span></div>
+                     <div class="item"><div><strong>${esc(bt('dpPreviewIdentifiers'))}</strong><div class="meta">${(v.identifiers || []).length ? v.identifiers.map((i) => `${esc(i.type)}: ${esc(i.value)}`).join(' · ') : esc(bt('cnNone'))}</div></div></div>
+                     <div class="item"><div><strong>${esc(bt('dpPreviewComposition'))}</strong><div class="meta">${(v.composition || []).length ? v.composition.map((c) => `${esc(c.material || '—')} ${esc(c.percentage || '—')}%`).join(' · ') : esc(bt('cnNone'))}</div></div></div>
+                     <div class="item"><div><strong>${esc(bt('dpPreviewDataPoints'))}</strong><div class="meta">${(v.dataPoints || []).length ? v.dataPoints.map((d) => `${esc(d.key)}: ${esc(JSON.stringify(d.value))} (${esc(d.status)})`).join(' · ') : esc(bt('cnNone'))}</div></div></div>
+                     <div class="item"><div><strong>${esc(bt('dpPreviewDocuments'))}</strong><div class="meta">${(v.documents || []).length ? v.documents.map((d) => `${esc(d.filename)} (${esc(d.status)})`).join(' · ') : esc(bt('cnNone'))}</div></div></div>
+                   </div>
+                   <div class="panel-head" style="margin-top:18px"><h2>${esc(bt('dpRemainingReqs'))} (${champs.length})</h2><span class="status status-changes_requested">${esc(dossier.blockingCount || 0)} ${esc(bt('dpBlocking'))}</span></div>
+                   ${champs.length ? `<div class="item-list">${champs.map((m) => `<div class="item"><div><strong>${esc(bt(m.labelKey || m.key) || m.key)}</strong><p class="meta"><code>${esc(m.key)}</code> · ${m.blocking ? esc(bt('dpBlocking')) : esc(bt('dpRecommended'))}</p></div></div>`).join('')}</div>` : `<p class="meta">${esc(bt('dpNoGaps'))}</p>`}
+                   <p class="meta" style="margin-top:14px">${esc(v.trust?.note || bt('dpPreviewDemoNote'))}</p>
+                   <p class="meta">${esc(bt('dpNotCertification'))}</p>`;
+          return `<div class="modal-backdrop"><div class="modal" style="max-width:820px"><div class="modal-head"><div><div class="eyebrow">${esc(bt('dpEyebrow'))}</div><h2>${esc(bt('dpPreviewTitle'))}</h2></div><button class="close" data-action="close-modal">×</button></div>${corps}<div class="form-actions"><button type="button" class="btn btn-secondary" data-action="close-modal">${esc(bt('mdClose'))}</button></div></div></div>`;
+        }
         if (type === 'inspect-material') {
           const m = state.inspectedMaterial;
           if (!m) return '';
           return `<div class="modal-backdrop"><div class="modal"><div class="modal-head"><div><div class="eyebrow">${bt('mtTitle')}</div><h2>${esc(m.name)}</h2></div><button class="close" data-action="close-modal">×</button></div><div class="item-list"><div class="item"><span>${bt('mtType')}</span><strong>${esc(m.materialType || bt('cnUnknown'))}</strong></div><div class="item"><span>${bt('mtOrigin')}</span><strong>${esc(m.originCountryCode || bt('cnCountryUnknown'))}</strong></div><div class="item"><span>${bt('journeyTrustLevel')}</span><strong>${bt('journeyDeclaredNotVerified')}</strong></div><div class="item"><span>${bt('journeyCreatedAt')}</span><strong>${date(m.createdAt)}</strong></div><div class="item"><span>${bt('journeyUpdatedAt')}</span><strong>${date(m.updatedAt)}</strong></div></div><div class="notice" style="margin-top:16px">${bt('journeyMaterialInspectionNotice')}</div><div class="form-actions"><button class="btn btn-secondary" data-action="close-modal">${bt('mdClose')}</button></div></div></div>`;
         }
         if (type === 'new-product') return `<div class="modal-backdrop"><div class="modal"><div class="modal-head"><div><div class="eyebrow">Catalogue</div><h2>${bt('mdNewProduct')}</h2></div><button class="close" data-action="close-modal">×</button></div>${state.reuseSourceProduct ? `<div class="notice">${esc(bt('paReuseNotice'))}</div>` : ''}<form id="product-form"><div class="form-grid"><label>${bt('mdReference')}<input class="input" name="reference" required placeholder="TF-ESS-001"></label><label>${bt('mdName')}<input class="input" name="name" required value="${esc(state.reuseSourceProduct?.name || '')}" placeholder="Cotton Essential"></label><label>${bt('pdCategory')}<input class="input" name="category" value="${esc(state.reuseSourceProduct?.category || '')}" placeholder="T-shirt"></label><label>SKU<input class="input" name="sku" value="" placeholder="SKU-001"></label></div><div class="form-actions"><button type="button" class="btn btn-secondary" data-action="close-modal">${bt('mdCancel')}</button><button class="btn btn-primary">${bt('mdCreateProduct')}</button></div></form></div></div>`;
-        if (type === 'upload-document') return `<div class="modal-backdrop"><div class="modal"><div class="modal-head"><div><div class="eyebrow">${bt('evVault')}</div><h2>${bt('evUpload')}</h2></div><button class="close" data-action="close-modal">×</button></div><form id="upload-document-form"><div class="form-grid"><label class="field-full">${bt('docFile')}<input class="input" type="file" name="file" accept="application/pdf,image/png,image/jpeg,text/plain" required></label><label>${bt('docKind')}<select class="select" name="kind"><option value="certificate">certificate</option><option value="technical_spec">technical_spec</option><option value="origin_proof">origin_proof</option><option value="audit_report">audit_report</option><option value="invoice">invoice</option><option value="other" selected>other</option></select></label><label>${bt('docExpires')}<input class="input" type="date" name="expiresAt"></label></div><div class="form-actions"><button type="button" class="btn btn-secondary" data-action="close-modal">${bt('mdCancel')}</button><button type="submit" class="btn btn-primary">${bt('docUploadGo')}</button></div></form></div></div>`;
         if (type === 'new-material') return `<div class="modal-backdrop"><div class="modal"><div class="modal-head"><div><div class="eyebrow">${bt('mtTitle')}</div><h2>${bt('mtAdd')}</h2></div><button class="close" data-action="close-modal">×</button></div><form id="create-material-form"><div class="form-grid"><label class="field-full">${bt('mtName')}<input class="input" name="name" required maxlength="240"></label><label>${bt('mtType')}<input class="input" name="materialType" required maxlength="120" placeholder="other"></label><label>${bt('mtOrigin')}<input class="input" name="originCountryCode" maxlength="2" pattern="[A-Za-z]{2}" placeholder="${bt('cnUnknown')}"></label><p class="field-full meta">${bt('cnMaterialNoClaim')}</p></div><div class="form-actions"><button type="button" class="btn btn-secondary" data-action="close-modal">${bt('mdCancel')}</button><button type="submit" class="btn btn-primary">${bt('mtAdd')}</button></div></form></div></div>`;
         if (type === 'supplier-import') return `<div class="modal-backdrop"><div class="modal"><div class="modal-head"><div><div class="eyebrow">${bt('mdSupplierOnboarding')}</div><h2>${bt('mdBulkInvite')}</h2></div><button class="close" data-action="close-modal">×</button></div><p>${bt('mdRequiredColumns')} <code>email</code>, <code>legalName</code>${bt('mdInviteNote')}</p><label class="field-full">${bt('mdCsvFile')}<input class="input" id="supplier-import-file" type="file" accept=".csv,.tsv,text/csv,text/tab-separated-values"></label><label class="field-full" style="margin-top:12px">${bt('mdOrPasteCsv')}<textarea class="textarea" id="supplier-import-content" rows="8" placeholder="email,legalName,displayName,countryCode\ncontact@example.com,Example Textiles,Example,PT">${esc(state.supplierImport.content)}</textarea></label><div class="form-actions"><button type="button" class="btn btn-secondary" data-action="preview-supplier-import">${bt('mdPreview')}</button><button type="button" class="btn btn-primary" data-action="commit-supplier-import" ${state.supplierImport.preview?.acceptedRows > 0 ? '' : 'disabled'}>${bt('mdCreateValidInvites')}</button></div>${supplierImportPreview()}</div></div>`;
         if (type === 'catalog-import') return `<div class="modal-backdrop"><div class="modal"><div class="modal-head"><div><div class="eyebrow">${bt('pdEyebrow')}</div><h2>${bt('mdImportCatalogue')}</h2></div><button class="close" data-action="close-modal">×</button></div><p>${bt('mdImportNote')}</p><div class="notice" style="margin:14px 0">${bt('mdRequiredColumns')} <code>reference</code>, <code>name</code>${bt('mdExtraColumnsNote')}</div><label class="field-full">${bt('mdCsvFile')}<input class="input" id="catalog-import-file" type="file" accept=".csv,.tsv,text/csv,text/tab-separated-values"></label><label class="field-full" style="margin-top:12px">${bt('mdOrPasteCsv')}<textarea class="textarea" id="catalog-import-content" rows="8" placeholder="reference,name,category,sku\nAT-NEW-001,Sample product,T-shirt,SKU-001">${esc(state.catalogImport.content)}</textarea></label><div class="form-actions"><button type="button" class="btn btn-secondary" data-action="preview-catalog-import">${bt('mdPreview')}</button><button type="button" class="btn btn-primary" data-action="commit-catalog-import" ${state.catalogImport.preview?.acceptedRows > 0 ? '' : 'disabled'}>${bt('mdImportValidRows')}</button></div>${catalogImportPreview()}</div></div>`;
@@ -4120,7 +4274,7 @@
         if (type === 'register-tc') return `<div class="modal-backdrop"><div class="modal"><div class="modal-head"><div><div class="eyebrow">${bt('journeyTransactionCertificates')}</div><h2>${bt('journeyRegisterTc')}</h2></div><button class="close" data-action="close-modal">×</button></div><div class="notice">${bt('journeyTcControlWarning')}</div><form id="register-tc-form"><div class="form-grid"><label>${bt('certColNumber')}<input class="input" name="tcNumber" required></label><label>${bt('certColStandard')}<input class="input" name="standard" required></label><label>${bt('certColIssuer')}<input class="input" name="issuerName" required></label><label>${bt('mtName')}<input class="input" name="certifiedMaterialName" required></label><label>${bt('journeyCertified')} (kg)<input class="input" name="totalCertifiedWeightKg" type="number" step="0.001" min="0.001" required></label><label>${bt('dueDate')}<input class="input" name="expiryDate" type="date"></label><label>${bt('journeySeller')}<select class="select" name="sellerOrganizationId" required><option value="${esc(state.activeOrganizationId)}">${esc(currentBrand()?.display_name || currentBrand()?.legal_name || '—')}</option>${suppliers().map((supplier) => `<option value="${esc(supplier.organization_id)}">${esc(supplier.organizations?.display_name || supplier.organizations?.legal_name || supplier.organization_id)}</option>`).join('')}</select></label><label>${bt('journeyBuyer')}<select class="select" name="buyerOrganizationId" required>${suppliers().map((supplier) => `<option value="${esc(supplier.organization_id)}">${esc(supplier.organizations?.display_name || supplier.organizations?.legal_name || supplier.organization_id)}</option>`).join('')}<option value="${esc(state.activeOrganizationId)}">${esc(currentBrand()?.display_name || currentBrand()?.legal_name || '—')}</option></select></label></div><div class="form-actions"><button type="button" class="btn btn-secondary" data-action="close-modal">${bt('mdCancel')}</button><button class="btn btn-primary" ${suppliers().length ? '' : 'disabled'}>${bt('journeyRegisterDeclaredTc')}</button></div></form></div></div>`;
         if (type === 'new-questionnaire') return `<div class="modal-backdrop"><div class="modal"><div class="modal-head"><div><div class="eyebrow">Form Studio</div><h2>${bt('mdCreateAuditProtocol')}</h2></div><button class="close" data-action="close-modal">×</button></div><p class="notice" role="note">${esc(bt('qbDemoOnlyNotice'))}</p><form id="questionnaire-builder-form"><div class="form-grid"><label class="field-full">${bt('mdQuestionnaireTitle')}<input class="input" name="title" required placeholder="${bt('mdPhAuditTitle')}"></label><label>${bt('mdUniqueSlug')}<input class="input" name="key" required placeholder="ex: dyeing-water-effluents"></label><label>${bt('mdEsgCategory')}<select class="select" name="category"><option value="Chemistry &amp; Effluents">${bt('mdCatChemistry')}</option><option value="${esc(bt('cnGrpMaterials'))}">${bt('mdCatMaterials')}</option><option value="${esc(bt('cnGrpSocial'))}">${bt('mdCatSocial')}</option><option value="Empreinte Carbone">${bt('mdCatCarbon')}</option></select></label><label class="field-full">${bt('mdAuditDescription')}<textarea class="textarea" name="description" rows="3" required placeholder="${bt('mdPhAuditDesc')}"></textarea></label><label>${bt('mdFirstFieldType')}<select class="select" name="firstFieldType"><option value="document_proof">${bt('mdFieldDocProof')}</option><option value="composition_table">${bt('mdFieldComposition')}</option><option value="facility_select">${bt('mdFieldSitePicker')}</option></select></label><label>${bt('mdRequiredField')}<select class="select" name="required"><option value="true">${bt('mdYesBlocking')}</option><option value="false">${bt('mdOptional')}</option></select></label></div><div class="form-actions"><button type="button" class="btn btn-secondary" data-action="close-modal">${bt('mdCancel')}</button><button type="submit" class="btn btn-primary">${esc(bt('qbCreate'))}</button></div></form></div></div>`;
         if (type === 'new-request') return `<div class="modal-backdrop"><div class="modal"><div class="modal-head"><div><div class="eyebrow">${bt('mdCollection')}</div><h2>${bt('mdNewDataRequest')}</h2></div><button class="close" data-action="close-modal">×</button></div><form id="request-form"><div class="form-grid"><label class="field-full">${bt('mdTitle')}<input class="input" name="title" required placeholder="${bt('mdPhRequestTitle')}"></label><label>${bt('sxSupplier')}<select class="select" name="supplierOrganizationId" required>${suppliers().map((m) => `<option value="${esc(m.organization_id)}" ${state.modalSupplierId === m.organization_id ? 'selected' : ''}>${esc(m.organizations.display_name || m.organizations.legal_name)}</option>`).join('')}</select></label><label>Questionnaire<select class="select" name="questionnaireKey" required>${state.questionnaires.map((q) => `<option value="${esc(q.key)}" data-version="${esc(q.version)}">${esc(q.title)} · v${esc(q.version)}</option>`).join('')}</select></label><label class="field-full">${bt('mdLinkedProduct')}<select class="select" name="productId"><option value="">${bt('mdNoLinkedProduct')}</option>${state.products.map((p) => `<option value="${esc(p.id)}" ${state.modalProductId === p.id ? 'selected' : ''}>${esc(p.reference)} — ${esc(p.name)}</option>`).join('')}</select></label><label>${bt('mdDueDate')}<input class="input" name="dueAt" type="date"></label><label>${bt('mdBrandOrg')}<select class="select" name="brandOrganizationId" required>${brands().map((m) => `<option value="${esc(m.organization_id)}" ${m.organization_id === state.activeOrganizationId ? 'selected' : ''}>${esc(m.organizations.display_name || m.organizations.legal_name)}</option>`).join('')}</select></label></div><div class="form-actions"><button type="button" class="btn btn-secondary" data-action="close-modal">${bt('mdCancel')}</button><button class="btn btn-primary">${bt('mdCreateAndPrepare')}</button></div></form></div></div>`;
-        if (type === 'new-chain-node') return `<div class="modal-backdrop"><div class="modal"><div class="modal-head"><div><div class="eyebrow">Supply Chain</div><h2>${bt('mdAddNode')}</h2></div><button class="close" data-action="close-modal">×</button></div><form id="chain-node-form"><div class="form-grid"><label class="field-full">${bt('mdNodeLabel')}<input class="input" name="label" required placeholder="${bt('mdPhNodeLabel')}"></label><label>${bt('mdNodeType')}<select class="select" name="nodeType" required><option value="process">${bt('mdProcessTransform')}</option><option value="material">${bt('mdRawMaterial')}</option><option value="organization">${bt('mdPartnerOrg')}</option></select></label><label>${bt('mdTextileProcess')}<select class="select" name="processCode"><option value="other" selected>${bt('mdOtherDeclared')}</option><option value="ginning">${bt('mdGinning')}</option><option value="spinning">${bt('mdSpinning')}</option><option value="weaving">${bt('mdWeaving')}</option><option value="knitting">${bt('mdKnitting')}</option><option value="dyeing">${bt('mdDyeing')}</option><option value="finishing">${bt('mdFinishing')}</option><option value="cutting">${bt('mdCutting')}</option><option value="sewing">${bt('mdSewing')}</option><option value="assembly">${bt('mdAssembly')}</option><option value="packaging">${bt('mdPackaging')}</option></select><span class="meta">${esc(bt('mdProcessOnlyForProcess'))}</span></label><label class="field-full">${bt('mdLinkedMaterial')}<select class="select" name="materialId"><option value="">${bt('mdNone')}</option>${state.materials.map((m) => `<option value="${esc(m.id)}">${esc(m.name)}</option>`).join('')}</select></label><label class="field-full">${bt('mdSupplierOrg')}<select class="select" name="organizationId"><option value="">${bt('mdNone')}</option>${suppliers().map((m) => `<option value="${esc(m.organization_id)}">${esc(m.organizations.display_name || m.organizations.legal_name)}</option>`).join('')}</select></label><label class="field-full">${bt('docSource')}<select class="select" name="sourceDocumentId">${documentOptions()}</select><span class="meta">${esc(bt('dpNodeDocumentHelp'))}</span></label></div><div class="form-actions"><button type="button" class="btn btn-secondary" data-action="close-modal">${bt('mdCancel')}</button><button type="submit" class="btn btn-primary">${bt('mdAddNodeCta')}</button></div></form></div></div>`;
+        if (type === 'new-chain-node') return `<div class="modal-backdrop"><div class="modal"><div class="modal-head"><div><div class="eyebrow">Supply Chain</div><h2>${bt('mdAddNode')}</h2></div><button class="close" data-action="close-modal">×</button></div><form id="chain-node-form"><div class="form-grid"><label class="field-full">${bt('mdNodeLabel')}<input class="input" name="label" required placeholder="${bt('mdPhNodeLabel')}"></label><label>${bt('mdNodeType')}<select class="select" name="nodeType" required><option value="process">${bt('mdProcessTransform')}</option><option value="material">${bt('mdRawMaterial')}</option><option value="organization">${bt('mdPartnerOrg')}</option></select></label><label>${bt('mdTextileProcess')}<select class="select" name="processCode" required><option value="other" selected>${bt('mdOtherDeclared')}</option><option value="ginning">${bt('mdGinning')}</option><option value="spinning">${bt('mdSpinning')}</option><option value="weaving">${bt('mdWeaving')}</option><option value="knitting">${bt('mdKnitting')}</option><option value="dyeing">${bt('mdDyeing')}</option><option value="finishing">${bt('mdFinishing')}</option><option value="cutting">${bt('mdCutting')}</option><option value="sewing">${bt('mdSewing')}</option><option value="assembly">${bt('mdAssembly')}</option><option value="packaging">${bt('mdPackaging')}</option></select></label><label class="field-full">${bt('mdLinkedMaterial')}<select class="select" name="materialId"><option value="">${bt('mdNone')}</option>${state.materials.map((m) => `<option value="${esc(m.id)}">${esc(m.name)}</option>`).join('')}</select></label><label class="field-full">${bt('mdSupplierOrg')}<select class="select" name="organizationId"><option value="">${bt('mdNone')}</option>${suppliers().map((m) => `<option value="${esc(m.organization_id)}">${esc(m.organizations.display_name || m.organizations.legal_name)}</option>`).join('')}</select></label></div><div class="form-actions"><button type="button" class="btn btn-secondary" data-action="close-modal">${bt('mdCancel')}</button><button type="submit" class="btn btn-primary">${bt('mdAddNodeCta')}</button></div></form></div></div>`;
         if (type === 'new-chain-link') return `<div class="modal-backdrop"><div class="modal"><div class="modal-head"><div><div class="eyebrow">Supply Chain</div><h2>${bt('mdLinkTwoSteps')}</h2></div><button class="close" data-action="close-modal">×</button></div><form id="chain-link-form"><div class="form-grid"><label class="field-full">${bt('mdSourceStep')}<select class="select" name="sourceNodeId" required>${(state.supplyChain?.graph?.nodes || []).map((n) => `<option value="${esc(n.id)}">${esc(n.label)} (${esc(n.node_type)})</option>`).join('')}</select></label><label class="field-full">${bt('mdTargetStep')}<select class="select" name="targetNodeId" required>${(state.supplyChain?.graph?.nodes || []).map((n, index) => `<option value="${esc(n.id)}" ${index === 1 ? 'selected' : ''}>${esc(n.label)} (${esc(n.node_type)})</option>`).join('')}</select></label><label>${bt('mdRelationType')}<select class="select" name="linkType" required><option value="next_step">${bt('mdRelNextStep')}</option><option value="transformed_at">${bt('mdRelTransformedAt')}</option><option value="manufactured_at">${bt('mdRelManufacturedAt')}</option><option value="sourced_from">${bt('mdRelSourcedFrom')}</option><option value="contains">${bt('mdRelContains')}</option></select></label><label>${bt('mdSequenceOrder')}<input class="input" name="sequenceNumber" type="number" min="1" step="1" placeholder="1"></label></div><div class="form-actions"><button type="button" class="btn btn-secondary" data-action="close-modal">${bt('mdCancel')}</button><button class="btn btn-primary">${bt('mdCreateLink')}</button></div></form></div></div>`;
         if (type === 'create-cap') return `<div class="modal-backdrop"><div class="modal"><div class="modal-head"><div><div class="eyebrow">${bt('mdQualityCap')}</div><h2>${bt('mdCreateCap')}</h2></div><button class="close" data-action="close-modal">×</button></div><form id="create-cap-form"><div class="form-grid"><label>${bt('mdQualityIssue')}<input class="input" name="issueId" required placeholder="${bt('mdPhIssueUuid')}"></label><label>${bt('mdSupplierOrganisation')}<input class="input" name="supplierOrganizationId" required placeholder="${bt('mdPhSupplierUuid')}"></label><label class="field-full">${bt('mdTitle')}<input class="input" name="title" required></label><label class="field-full">Instructions<textarea class="textarea" name="instructions" rows="4" required></textarea></label></div><div class="form-actions"><button class="btn btn-primary">${bt('mdCreateCapCta')}</button></div></form></div></div>`;
         if (type === 'review-cap') return `<div class="modal-backdrop"><div class="modal"><div class="modal-head"><div><div class="eyebrow">${bt('mdQualityCap')}</div><h2>${bt('mdReviewCap')}</h2></div><button class="close" data-action="close-modal">×</button></div><form id="review-cap-form"><label>CAP<input class="input" name="capId" required placeholder="${bt('mdPhCapUuid')}"></label><label>Verdict<select class="select" name="verdict"><option value="approved">${bt('mdApprove')}</option><option value="rejected">${bt('mdRequestRework')}</option></select></label><label>Notes<textarea class="textarea" name="reviewNotes" rows="4" required></textarea></label><div class="form-actions"><button class="btn btn-primary">${bt('mdSaveReview')}</button></div></form></div></div>`;
@@ -4398,14 +4552,7 @@
         }
         await api(`/api/products/${encodeURIComponent(productId)}/data-points`, {
           method: 'POST',
-          body: JSON.stringify({
-            dataKey: data.dataKey,
-            dataType,
-            value,
-            // Document source facultatif mais DECISIF : sans lui le point
-            // reste `declared` et ne satisfait pas `evidence.product_data`.
-            sourceDocumentId: String(data.sourceDocumentId || '').trim() || null,
-          }),
+          body: JSON.stringify({ dataKey: data.dataKey, dataType, value }),
         });
         const [detail] = await Promise.all([
           api(`/api/products/${encodeURIComponent(productId)}`),
@@ -4489,30 +4636,6 @@
         }
         state.view = 'products';
         notify(bt('pxArchiveSuccess'));
-        render();
-      }
-      async function activateProduct() {
-        // Sortir du brouillon conditionne la barriere DPP `product.not_draft`.
-        // L'acte est explicite, confirme, et ne vaut ni validation de donnees
-        // ni autorisation de publication : le dossier doit encore passer les
-        // treize exigences puis la revue.
-        const product = state.selectedProductDetail?.product;
-        if (!product || product.status !== 'draft') return;
-        if (!window.confirm(bt('pxActivateConfirm'))) return;
-        if (state.demo) {
-          product.status = 'active';
-          notify(bt('demoUnavailable'));
-          render();
-          return;
-        }
-        const detail = await api(`/api/products/${encodeURIComponent(product.id)}`, {
-          method: 'PATCH',
-          body: JSON.stringify({ status: 'active' }),
-        });
-        state.selectedProductDetail = detail;
-        state.selectedProduct = detail.product;
-        await sync();
-        notify(bt('pxActivateToast'));
         render();
       }
       async function reviseProduct() { if (!state.selectedProductDetail?.product) return; if (state.demo) { state.selectedProductDetail.product.version = Number(state.selectedProductDetail.product.version || 1) + 1; notify(bt('cnNRevisionDemo')); render(); return; } const result = await api(`/api/products/${encodeURIComponent(state.selectedProductDetail.product.id)}/revision`, { method: 'POST' }); state.selectedProductDetail.product = result.product; await sync(); notify(bt('cnNRevisionCreated')); render(); }
@@ -4895,28 +5018,12 @@
       async function addChainNode(form) {
         if (!state.selectedSupplyChainProduct) return;
         const data = Object.fromEntries(new FormData(form));
-        const nodeType = String(data.nodeType || '').trim();
-        // Un noeud porte EXACTEMENT une reference semantique (voir
-        // `api/_lib/supply-chain.ts`). Le formulaire proposait les trois champs
-        // a la fois : choisir un materiau tout en laissant le code de procede
-        // par defaut envoyait deux references et l'API repondait
-        // `invalid_node_reference`. On n'envoie donc que celle du type retenu.
-        const reference = nodeType === 'material'
-          ? String(data.materialId || '').trim()
-          : nodeType === 'organization'
-            ? String(data.organizationId || '').trim()
-            : String(data.processCode || '').trim();
-        if (!reference) throw new Error('node_reference_required');
         const body = {
           label: data.label,
-          nodeType,
-          processCode: nodeType === 'process' ? reference : null,
-          materialId: nodeType === 'material' ? reference : null,
-          organizationId: nodeType === 'organization' ? reference : null,
-          // Le noeud declare sans document n'est jamais `documented` : il ne
-          // satisfait donc pas `traceability.documented`. Le champ etant
-          // facultatif a l'ecriture, l'absence reste possible et visible.
-          sourceDocumentId: data.sourceDocumentId || null,
+          nodeType: data.nodeType,
+          processCode: data.processCode || null,
+          materialId: data.materialId || null,
+          organizationId: data.organizationId || null,
         };
         if (state.demo) {
           const newNode = { id: `node-${Date.now()}`, node_type: body.nodeType, label: body.label, process_code: body.processCode, status: 'declared' };
@@ -5270,64 +5377,6 @@
         }
       }
 
-
-      /* Actes de publication : jamais automatiques, toujours confirmes.
-       * `publish-review` (revue interne) et `publication` (mise en ligne) sont
-       * deux operations distinctes ; les confondre exposerait au public un
-       * dossier que personne n'a relu.
-       */
-      async function createDppIdentity(form) {
-        const product = state.selectedDppProduct;
-        if (!product) return;
-        const data = Object.fromEntries(new FormData(form));
-        const body = {
-          publicId: String(data.publicId || '').trim().toLowerCase(),
-          granularity: String(data.granularity || 'model'),
-          qualifier: String(data.qualifier || '').trim() || null,
-        };
-        if (state.demo) { notify(bt('demoUnavailable')); return; }
-        await api(`/api/products/${encodeURIComponent(product.id)}/dpp/identities`, {
-          method: 'POST',
-          body: JSON.stringify(body),
-        });
-        const identities = await api(`/api/products/${encodeURIComponent(product.id)}/dpp/identities`);
-        state.dppIdentities = identities.identities || [];
-        notify(bt('dpIdentityToast'));
-        render();
-      }
-
-      async function publishDppPublic(form) {
-        const product = state.selectedDppProduct;
-        if (!product) return;
-        const publicSlug = String(new FormData(form).get('publicSlug') || '').trim().toLowerCase();
-        if (!/^[a-z0-9][a-z0-9-]{2,79}$/.test(publicSlug)) throw new Error('invalid_public_slug');
-        if (!window.confirm(bt('dpPublicationConfirm'))) return;
-        const res = await api(`/api/products/${encodeURIComponent(product.id)}/dpp/publication`, {
-          method: 'POST',
-          body: JSON.stringify({ action: 'publish', publicSlug }),
-        });
-        state.dpp = res.dpp;
-        if (state.selectedDppProduct) state.selectedDppProduct.publicSlug = res.publication?.publicSlug || publicSlug;
-        state.dppPortfolio = null;
-        notify(bt('dpPublicationToastPublished'));
-        render();
-      }
-
-      async function changeDppPublication(action) {
-        const product = state.selectedDppProduct;
-        if (!product) return;
-        if (!window.confirm(bt(action === 'suspend' ? 'dpPublicationConfirmSuspend' : 'dpPublicationConfirmWithdraw'))) return;
-        const res = await api(`/api/products/${encodeURIComponent(product.id)}/dpp/publication`, {
-          method: 'POST',
-          body: JSON.stringify({ action }),
-        });
-        state.dpp = res.dpp;
-        if (state.selectedDppProduct) state.selectedDppProduct.publicSlug = null;
-        state.dppPortfolio = null;
-        notify(bt(action === 'suspend' ? 'dpPublicationToastSuspended' : 'dpPublicationToastWithdrawn'));
-        render();
-      }
-
       async function submitCapConsoleForm(form, kind) {
         const data = Object.fromEntries(new FormData(form));
         if (!state.demo) {
@@ -5388,6 +5437,7 @@
           // Les ecrans qualite et tracabilite ont besoin d'un produit : on
           // charge celui qui est affiche au lieu de laisser « non calculé »
           // alors qu'une route peut repondre.
+          if (state.view === 'documents' && !state.demo && !Array.isArray(state.documents) && !state.documentsLoading) loadDocuments();
           if (state.view === 'quality' && !state.quality) {
             const candidat = state.selectedProduct || state.products[0];
             if (candidat) loadQuality(candidat.id);
@@ -5400,6 +5450,9 @@
         document.querySelectorAll('[data-action]').forEach((el) => el.addEventListener('click', async (event) => {
           const action = el.dataset.action;
           try {
+            if (action === 'activate-product') await activateProduct();
+            if (action === 'suspend-dpp') await changeDppPublication('suspend');
+            if (action === 'withdraw-dpp') await changeDppPublication('withdraw');
             if (action === 'new-product') { state.reuseSourceProduct = null; state.modal = 'new-product'; render(); }
             if (action === 'load-archives') await loadArchivedProducts();
             if (action === 'new-material') { state.modal = 'new-material'; render(); }
@@ -5440,12 +5493,22 @@
               if (greenForm) await auditGreenClaims(greenForm);
             }
             if (action === 'compute-dpp') await computeDpp();
+            if (action === 'open-upload-document') { state.documentUpload = { loading: false, error: null, success: null }; state.modal = 'upload-document'; render(); }
+            if (action === 'retry-documents') await loadDocuments();
+            if (action === 'scan-document') await scanDocument(el.dataset.documentId);
+            if (action === 'download-document') await downloadDocument(el.dataset.documentId);
+            if (action === 'review-document') {
+              const decision = el.dataset.decision;
+              const reason = decision === 'rejected'
+                ? window.prompt(bt('dcRejectReason'))
+                : window.prompt(bt('dcAcceptReason')) || '';
+              if (reason === null) return;
+              if (decision === 'rejected' && reason.trim().length < 3) { notify(bt('dcRejectReasonRequired'), true); return; }
+              await reviewDocument(el.dataset.documentId, decision, reason.trim());
+            }
+            if (action === 'open-dpp-preview') await loadDppPreview(el.dataset.previewProductId || state.selectedDppProduct?.id);
+            if (action === 'retry-dpp-preview') await loadDppPreview(state.dppPreviewProductId);
             if (action === 'publish-dpp') await publishDpp();
-            if (action === 'activate-product') await activateProduct();
-            if (action === 'upload-document') { state.modal = 'upload-document'; render(); }
-            if (action === 'reload-documents') await loadDocuments();
-            if (action === 'suspend-dpp') await changeDppPublication('suspend');
-            if (action === 'withdraw-dpp') await changeDppPublication('withdraw');
             if (action === 'generate-baseline-chain') await generateBaselineChain();
             if (action === 'new-chain-node') { state.modal = 'new-chain-node'; render(); }
             if (action === 'new-chain-link') { state.modal = 'new-chain-link'; render(); }
@@ -5471,16 +5534,7 @@
         document.querySelectorAll('[data-request-id]').forEach((el) => el.addEventListener('click', (event) => { event.stopPropagation(); openRequest(el.dataset.requestId); }));
         document.querySelectorAll('[data-quality-product]').forEach((el) => el.addEventListener('click', () => loadQuality(el.dataset.qualityProduct)));
         document.querySelectorAll('[data-dpp-product]').forEach((el) => el.addEventListener('click', () => loadDpp(el.dataset.dppProduct)));
-        // `[data-product-id]` est le marqueur des LIGNES de catalogue : il ouvre
-        // la fiche. Un bouton d'action porte aussi l'identifiant pour que son
-        // gestionnaire sache sur quoi agir ; l'inclure ici declarait DEUX
-        // gestionnaires sur le meme clic. Activer un produit declenchait donc
-        // son activation, puis un rechargement immediat de la fiche qui
-        // reecrivait le statut affiche avec la valeur d'avant l'ecriture.
-        document.querySelectorAll('[data-product-id]').forEach((el) => {
-          if (el.dataset.action) return;
-          el.addEventListener('click', (event) => { event.stopPropagation(); openProduct(el.dataset.productId); });
-        });
+        document.querySelectorAll('[data-product-id]').forEach((el) => el.addEventListener('click', (event) => { event.stopPropagation(); openProduct(el.dataset.productId); }));
         document.querySelectorAll('[data-supplier-id-view]').forEach((el) => el.addEventListener('click', (event) => { event.stopPropagation(); openSupplier(el.dataset.supplierIdView); }));
         document.querySelectorAll('[data-review-response]').forEach((el) => el.addEventListener('click', () => reviewResponse(el.dataset.reviewResponse, el.dataset.reviewStatus).catch((error) => notify(error.message, true))));
         document.querySelectorAll('[data-delete-chain-link]').forEach((el) => el.addEventListener('click', (e) => { e.stopPropagation(); deleteChainLink(el.dataset.deleteChainLink); }));
@@ -5527,6 +5581,8 @@
         document.getElementById('catalog-import-content')?.addEventListener('input', (event) => { state.catalogImport.content = event.currentTarget.value; state.catalogImport.preview = null; });
         document.getElementById('supplier-import-file')?.addEventListener('change', async (event) => { const file = event.currentTarget.files?.[0]; if (!file) return; state.supplierImport.filename = file.name; state.supplierImport.content = await file.text(); state.supplierImport.preview = null; render(); });
         document.getElementById('supplier-import-content')?.addEventListener('input', (event) => { state.supplierImport.content = event.currentTarget.value; state.supplierImport.preview = null; });
+        document.getElementById('dpp-identity-form')?.addEventListener('submit', (e) => { e.preventDefault(); createDppIdentity(e.currentTarget).catch((err) => notify(err.message, true)); });
+        document.getElementById('upload-document-form')?.addEventListener('submit', (e) => { e.preventDefault(); uploadDocument(e.currentTarget).catch((err) => notify(err.message, true)); });
         document.getElementById('product-form')?.addEventListener('submit', (e) => { e.preventDefault(); createProduct(e.currentTarget).catch((err) => notify(err.message, true)); });
         document.getElementById('create-material-form')?.addEventListener('submit', (e) => { e.preventDefault(); createMaterial(e.currentTarget).catch((err) => notify(err.message, true)); });
         document.getElementById('create-cap-form')?.addEventListener('submit', (e) => { e.preventDefault(); submitCapConsoleForm(e.currentTarget, 'create').catch((err) => notify(err.message, true)); });
@@ -5534,9 +5590,6 @@
         document.getElementById('cap-message-form')?.addEventListener('submit', (e) => { e.preventDefault(); submitCapConsoleForm(e.currentTarget, 'message').catch((err) => notify(err.message, true)); });
         document.getElementById('product-detail-form')?.addEventListener('submit', (e) => { e.preventDefault(); saveProduct(e.currentTarget).catch((err) => notify(err.message, true)); });
         document.getElementById('product-data-point-form')?.addEventListener('submit', (e) => { e.preventDefault(); createProductDataPoint(e.currentTarget).catch((err) => notify(err.message, true)); });
-        document.getElementById('upload-document-form')?.addEventListener('submit', (e) => { e.preventDefault(); uploadDocument(e.currentTarget).catch((err) => notify(err.message, true)); });
-        document.getElementById('dpp-identity-form')?.addEventListener('submit', (e) => { e.preventDefault(); createDppIdentity(e.currentTarget).catch((err) => notify(err.message, true)); });
-        document.getElementById('dpp-publication-form')?.addEventListener('submit', (e) => { e.preventDefault(); publishDppPublic(e.currentTarget).catch((err) => notify(err.message, true)); });
         document.getElementById('schema-binding-form')?.addEventListener('submit', (e) => { e.preventDefault(); saveSchemaBinding(e.currentTarget).catch((err) => notify(err.message, true)); });
         document.getElementById('material-form')?.addEventListener('submit', (e) => { e.preventDefault(); saveMaterial(e.currentTarget).catch((err) => notify(err.message, true)); });
         document.querySelectorAll('.material-edit-form').forEach((form) => form.addEventListener('submit', (e) => { e.preventDefault(); saveMaterial(e.currentTarget).catch((err) => notify(err.message, true)); }));
@@ -5621,28 +5674,6 @@
           } finally {
             clearTimeout(timeout);
           }
-        }
-        // `/api/config` normally remains the source of truth. If every
-        // serverless attempt fails, use the checked-in PUBLIC Clerk bootstrap
-        // only. This contains no secret and prevents a regional function/edge
-        // incident from making sign-in impossible while the Clerk proxy itself
-        // is healthy.
-        try {
-          const fallbackResponse = await fetch('/assets/config/clerk.json', {
-            headers: { Accept: 'application/json' },
-            cache: 'no-cache',
-          });
-          const fallback = await fallbackResponse.json().catch(() => ({}));
-          if (fallbackResponse.ok
-            && typeof fallback.publishableKey === 'string'
-            && fallback.publishableKey.startsWith('pk_live_')
-            && fallback.proxyUrl === 'https://tracefab.vercel.app/__clerk') {
-            console.warn('[tracefab] /api/config unavailable; using public static Clerk bootstrap');
-            return fallback;
-          }
-        } catch {
-          // Preserve the original API error: it is more actionable than a
-          // secondary static-asset failure.
         }
         throw lastError;
       }

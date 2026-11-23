@@ -663,7 +663,17 @@ GRS Recycled Cotton; 15%; fiber; ES; GRS; IDFL-4412; LOT-REC-2026-11" required s
           notify(t('spNEvidenceAddedDemo')); render(); return;
         }
         const intent = await api('/api/supplier/documents/upload-intent', { method:'POST', body:JSON.stringify(body) });
-        const upload = await fetch(intent.upload.url, { method:'PUT', headers:intent.upload.headers || {}, body:file });
+        const uploadTarget = new URL(intent.upload.url, location.href);
+        let uploadHeaders = intent.upload.headers || {};
+        const capability = uploadHeaders['X-Tracefab-Preview-Capability'];
+        if (capability !== undefined) {
+          if (uploadTarget.origin !== location.origin || uploadTarget.pathname !== '/api/preview-storage/object'
+              || uploadTarget.search || uploadTarget.hash || (intent.upload.method || 'PUT') !== 'PUT'
+              || typeof capability !== 'string' || !/^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]{43}$/.test(capability)
+              || uploadHeaders['Content-Type'] !== 'application/octet-stream') throw new Error('private_storage_unavailable');
+          uploadHeaders = { 'Content-Type':'application/octet-stream', 'X-Tracefab-Preview-Capability':capability };
+        }
+        const upload = await fetch(uploadTarget.href, { method:'PUT', headers:uploadHeaders, body:file, redirect:'error' });
         if (!upload.ok) throw new Error('private_storage_upload_failed');
         await api(intent.next.scan, { method:'POST', body:'{}' });
         await refreshDocuments();
@@ -672,6 +682,22 @@ GRS Recycled Cotton; 15%; fiber; ES; GRS; IDFL-4412; LOT-REC-2026-11" required s
       async function downloadDocument(id) {
         if (state.demo) { notify(t('spNTempDownloadDemo')); return; }
         const result = await api(`/api/supplier/documents/${encodeURIComponent(id)}/download`);
+        if (!result.download?.url) throw new Error('document_download_unavailable');
+        if (result.download.headers) {
+          const target = new URL(result.download.url, location.href);
+          const capability = result.download.headers['X-Tracefab-Preview-Capability'];
+          if (target.origin !== location.origin || target.pathname !== '/api/preview-storage/object'
+              || target.search || target.hash || typeof capability !== 'string'
+              || !/^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]{43}$/.test(capability)) throw new Error('document_download_unavailable');
+          const capHeaders = { 'X-Tracefab-Preview-Capability':capability };
+          if (result.download.headers['Content-Type']) capHeaders['Content-Type'] = result.download.headers['Content-Type'];
+          const res = await fetch(target.href, { method:'GET', headers:capHeaders, redirect:'error' });
+          if (!res.ok) throw new Error('document_download_unavailable');
+          const url = URL.createObjectURL(await res.blob());
+          const a = document.createElement('a'); a.href = url; a.download = ''; a.click();
+          setTimeout(() => URL.revokeObjectURL(url), 10000);
+          return;
+        }
         window.open(result.download.url, '_blank', 'noopener,noreferrer');
       }
 
