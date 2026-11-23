@@ -14,8 +14,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     const { user } = await requireClerkUser(req);
     const body = documentMetadata(await readJsonBody<Record<string, unknown>>(req));
+    const activeOrgId = requestedOrganizationId(req);
     const result = await withTracefabUserContext(user.id, user.email, async (tx) => {
-      const supplier = await currentSupplier(tx, user.id, requestedOrganizationId(req));
+      const supplier = await currentSupplier(tx, user.id, activeOrgId);
       if (!supplier) return null;
 
       // Enforce organization storage quota
@@ -38,7 +39,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const document = rows[0];
       if (!document) throw new Error('document_registration_failed');
       return { document, upload: presignedUpload(storagePath, body.contentType, body.byteSize) };
-    });
+    }, activeOrgId);
     if (!result) return json(res, 404, { error: 'supplier_profile_not_found' });
     return json(res, 201, {
       document: serializeDocument(result.document),
