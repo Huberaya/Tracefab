@@ -4,6 +4,7 @@ import { requireClerkUser, isUnauthorized } from '../../../../_lib/auth.js';
 import { withTracefabUserContext } from '../../../../_lib/context.js';
 import { json, methodNotAllowed, readJsonBody } from '../../../../_lib/http.js';
 import { sqlBusinessError } from '../../../../_lib/sql-errors.js';
+import { isTenantError, requireActiveTenant, requestedTenantId } from '../../../../_lib/tenant.js';
 import { accessibleRequest, isUuid } from '../../../../_lib/data-requests.js';
 import { getQuestionnaire, questionnaireItemRows } from '../../../../_lib/questionnaires.js';
 
@@ -63,11 +64,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const body = await readJsonBody<TemplateBody>(req);
 
     const result = await withTracefabUserContext(user.id, user.email, async (tx) => {
+      const tenant = await requireActiveTenant(tx, req, user.id, { types: ['brand'] });
       const request = await accessibleRequest(tx, user.id, requestId, {
         id: true,
         questionnaire_key: true,
         questionnaire_version: true,
-      });
+      }, tenant.organizationId);
       if (!request) return null;
 
       const template = getQuestionnaire(
@@ -101,7 +103,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         orderBy: { sort_order: 'asc' },
       });
       return { template, items };
-    });
+    }, requestedTenantId(req));
 
     if (!result) return json(res, 404, { error: 'data_request_not_found' });
     return json(res, 201, {
@@ -113,6 +115,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     });
   } catch (error) {
     if (isUnauthorized(error)) return json(res, 401, { error: 'unauthorized' });
+    if (isTenantError(error)) return json(res, error.status, { error: error.message });
     const businessError = sqlBusinessError(error);
     if (businessError) return json(res, businessError.status, { error: businessError.error });
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {

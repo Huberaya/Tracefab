@@ -4,6 +4,7 @@ import { requireClerkUser, isUnauthorized } from '../../../_lib/auth.js';
 import { withTracefabUserContext } from '../../../_lib/context.js';
 import { json, methodNotAllowed, readJsonBody } from '../../../_lib/http.js';
 import { sqlBusinessError } from '../../../_lib/sql-errors.js';
+import { isTenantError, requireActiveTenant, requestedTenantId } from '../../../_lib/tenant.js';
 import {
   profileMutationValues,
   serializeSupplierProfile,
@@ -27,6 +28,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const { user } = await requireClerkUser(req);
     const result = await withTracefabUserContext(user.id, user.email, async (tx) => {
+      await requireActiveTenant(tx, req, user.id);
       const current = await tx.suppliers.findUnique({ where: { id: supplierId }, select: SUPPLIER_PROFILE_SELECT });
       if (!current) return null;
       if (req.method === 'GET') return current;
@@ -47,12 +49,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         )
       `;
       return rows[0] ?? null;
-    });
+    }, requestedTenantId(req));
 
     if (!result) return json(res, 404, { error: 'supplier_not_found' });
     return json(res, 200, { profile: serializeSupplierProfile(result) });
   } catch (error) {
     if (isUnauthorized(error)) return json(res, 401, { error: 'unauthorized' });
+    if (isTenantError(error)) return json(res, error.status, { error: error.message });
     const businessError = sqlBusinessError(error);
     if (businessError) return json(res, businessError.status, { error: businessError.error });
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {

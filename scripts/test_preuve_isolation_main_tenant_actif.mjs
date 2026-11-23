@@ -191,6 +191,61 @@ try {
 attendre(sansPrivilege,
   'G. le role applicatif N A PAS le droit d ecrire dans tracefab_products (SECURITY DEFINER obligatoire)');
 
+// ---- H. Chaine Chantier 1A : demandes de donnees et liaisons de schemas ---
+await db.exec('RESET ROLE');
+const SUP_ID = '66666666-6666-6666-6666-666666666666';
+const REL_A = '81111111-1111-1111-1111-111111111111';
+const REL_B = '82222222-2222-2222-2222-222222222222';
+const REQ_A = '91111111-1111-1111-1111-111111111111';
+const REQ_B = '92222222-2222-2222-2222-222222222222';
+await db.exec(`
+  INSERT INTO suppliers (id, organization_id)
+    VALUES ('${SUP_ID}', '${S}');
+  INSERT INTO brand_supplier_relationships (id, brand_organization_id, supplier_organization_id, status)
+    VALUES
+      ('${REL_A}', '${A}', '${S}', 'active'),
+      ('${REL_B}', '${B}', '${S}', 'active');
+  INSERT INTO data_requests (id, brand_organization_id, supplier_organization_id, relationship_id, title, questionnaire_key, questionnaire_version, status)
+    VALUES
+      ('${REQ_A}', '${A}', '${S}', '${REL_A}', 'Demande Marque A', 'supplier.onboarding', '1.0.0', 'sent'),
+      ('${REQ_B}', '${B}', '${S}', '${REL_B}', 'Demande Marque B', 'supplier.onboarding', '1.0.0', 'sent');
+  INSERT INTO tracefab_schema_catalog (schema_key, schema_version, title, subject_types)
+    VALUES ('product.core.test', '1.0.0', 'Product Core Test', ARRAY['product'])
+    ON CONFLICT (schema_key, schema_version) DO NOTHING;
+  INSERT INTO tracefab_schema_bindings (id, schema_key, schema_version, product_id)
+    VALUES
+      ('93333333-3333-3333-3333-333333333333', 'product.core.test', '1.0.0', '${P_A}'),
+      ('94444444-4444-4444-4444-444444444444', 'product.core.test', '1.0.0', '${P_B}');
+`);
+await db.exec('SET ROLE tracefab_app');
+
+attendre(
+  (await scenario(null, () => compter('SELECT count(*)::int AS n FROM tracefab_schema_bindings'))) === 0,
+  'H. sans tenant actif : 0 liaison de schema visible malgre les adhesions A et B',
+);
+attendre(
+  (await scenario(A, () => compter(`SELECT count(*)::int AS n FROM tracefab_schema_bindings WHERE product_id = '${P_A}'`))) === 1
+    && (await scenario(A, () => compter(`SELECT count(*)::int AS n FROM tracefab_schema_bindings WHERE product_id = '${P_B}'`))) === 0,
+  'H. tenant A arme : seule la liaison de schema du produit A est visible (B invisible)',
+);
+attendre(
+  (await scenario(B, () => compter(`SELECT count(*)::int AS n FROM tracefab_schema_bindings WHERE product_id = '${P_B}'`))) === 1,
+  'H. tenant B arme : la liaison de schema du produit B redevient visible',
+);
+attendre(
+  (await scenario(null, () => compter('SELECT count(*)::int AS n FROM data_requests'))) === 0,
+  'H. sans tenant actif : 0 demande de donnees visible malgre les adhesions A, B et S',
+);
+attendre(
+  (await scenario(A, () => compter(`SELECT count(*)::int AS n FROM data_requests WHERE id = '${REQ_A}'`))) === 1
+    && (await scenario(A, () => compter(`SELECT count(*)::int AS n FROM data_requests WHERE id = '${REQ_B}'`))) === 0,
+  'H. tenant A arme : seule la demande de Marque A est visible (demande de Marque B invisible)',
+);
+attendre(
+  (await scenario(S, () => compter('SELECT count(*)::int AS n FROM data_requests'))) === 2,
+  'H. tenant fournisseur S arme : les 2 demandes envoyees a S sont visibles cote fournisseur',
+);
+
 // ---- D. Controle negatif : sans la RLS, tout est visible -----------------
 await db.exec('RESET ROLE');
 const dProduits = await compter(produits);

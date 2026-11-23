@@ -4,6 +4,7 @@ import { requireClerkUser, isUnauthorized } from '../../../_lib/auth.js';
 import { withTracefabUserContext } from '../../../_lib/context.js';
 import { json, methodNotAllowed, readJsonBody } from '../../../_lib/http.js';
 import { sqlBusinessError } from '../../../_lib/sql-errors.js';
+import { isTenantError, requireActiveTenant, requestedTenantId } from '../../../_lib/tenant.js';
 import { accessibleRequest, isUuid, jsonObject, requiredString } from '../../../_lib/data-requests.js';
 
 type ItemBody = {
@@ -69,7 +70,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const { user } = await requireClerkUser(req);
 
     const result = await withTracefabUserContext(user.id, user.email, async (tx) => {
-      const request = await accessibleRequest(tx, user.id, requestId, { id: true });
+      const tenant = await requireActiveTenant(tx, req, user.id);
+      const request = await accessibleRequest(tx, user.id, requestId, { id: true }, tenant.organizationId);
       if (!request) return null;
 
       if (req.method === 'GET') {
@@ -109,7 +111,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         )
       `;
       return { item: rows[0] };
-    });
+    }, requestedTenantId(req));
 
     if (!result) return json(res, 404, { error: 'data_request_not_found' });
     if ('items' in result) return json(res, 200, { items: result.items!.map(serializeItem) });
@@ -117,6 +119,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return json(res, 201, { item: serializeItem(result.item) });
   } catch (error) {
     if (isUnauthorized(error)) return json(res, 401, { error: 'unauthorized' });
+    if (isTenantError(error)) return json(res, error.status, { error: error.message });
     const businessError = sqlBusinessError(error);
     if (businessError) return json(res, businessError.status, { error: businessError.error });
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {

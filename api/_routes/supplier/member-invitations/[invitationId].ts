@@ -62,7 +62,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         invitationToken,
         organizationName: organization?.display_name || organization?.legal_name || 'Tracefab supplier organization',
       };
-    });
+    }, organizationId);
 
     if (!result) return json(res, 404, { error: 'invitation_not_found' });
     if (result.action === 'revoked') return json(res, 200, { invitation: { id: result.invitation.id }, status: 'revoked' });

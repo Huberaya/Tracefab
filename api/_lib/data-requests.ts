@@ -61,17 +61,19 @@ export async function accessibleRequest<T extends Prisma.data_requestsSelect = t
   userId: string,
   requestId: string,
   select: T = REQUEST_SELECT as T,
+  organizationId?: string | null,
 ): Promise<Prisma.data_requestsGetPayload<{ select: T }> | null> {
+  if (!organizationId) return null;
   const organizationIds = await activeOrganizationIds(tx, userId);
-  if (organizationIds.length === 0) return null;
+  if (!organizationIds.includes(organizationId)) return null;
 
   return tx.data_requests.findFirst({
     where: {
       id: requestId,
       OR: [
-        { brand_organization_id: { in: organizationIds } },
+        { brand_organization_id: organizationId },
         {
-          supplier_organization_id: { in: organizationIds },
+          supplier_organization_id: organizationId,
           status: { not: 'draft' },
         },
       ],
@@ -87,6 +89,7 @@ export async function accessibleSupplierRequest<T extends Prisma.data_requestsSe
   select: T = REQUEST_SELECT as T,
   organizationId?: string | null,
 ): Promise<Prisma.data_requestsGetPayload<{ select: T }> | null> {
+  if (!organizationId) return null;
   const organizationIds = await activeSupplierOrganizationIds(tx, userId, organizationId);
   if (organizationIds.length === 0) return null;
 

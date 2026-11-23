@@ -3,6 +3,7 @@ import { requireClerkUser, isUnauthorized } from '../../../../_lib/auth.js';
 import { withTracefabUserContext } from '../../../../_lib/context.js';
 import { json, methodNotAllowed, readJsonBody } from '../../../../_lib/http.js';
 import { sqlBusinessError } from '../../../../_lib/sql-errors.js';
+import { isTenantError, requireActiveTenant, requestedTenantId } from '../../../../_lib/tenant.js';
 import { isUuid } from '../../../../_lib/data-requests.js';
 import { submitQualityRemediation } from '../../../../_lib/quality-cap/cap-manager.js';
 
@@ -36,6 +37,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     const updatedCap = await withTracefabUserContext(user.id, user.email, async (tx) => {
+      await requireActiveTenant(tx, req, user.id, { types: ['supplier'] });
       return await submitQualityRemediation(
         tx,
         capId,
@@ -43,7 +45,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         supportingDocumentId,
         message
       );
-    });
+    }, requestedTenantId(req));
 
     return json(res, 200, {
       message: 'remediation_submitted',
@@ -52,6 +54,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   } catch (err: unknown) {
     if (isUnauthorized(err)) {
       return json(res, 401, { error: 'unauthorized' });
+    }
+    if (isTenantError(err)) {
+      return json(res, err.status, { error: err.message });
     }
     const sqlError = sqlBusinessError(err);
     if (sqlError) {

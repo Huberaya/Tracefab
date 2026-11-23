@@ -80,7 +80,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const result = await withTracefabUserContext(user.id, user.email, async (tx) => {
       return await bulkImportProducts(tx, brandOrganizationId, rows, user.id);
-    });
+    }, brandOrganizationId);
 
     return json(res, 200, {
       message: 'bulk_product_import_completed',

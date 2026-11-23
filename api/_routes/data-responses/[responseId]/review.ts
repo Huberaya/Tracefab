@@ -3,6 +3,7 @@ import { requireClerkUser, isUnauthorized } from '../../../_lib/auth.js';
 import { withTracefabUserContext } from '../../../_lib/context.js';
 import { json, methodNotAllowed, readJsonBody } from '../../../_lib/http.js';
 import { sqlBusinessError } from '../../../_lib/sql-errors.js';
+import { isTenantError, requireActiveTenant, requestedTenantId } from '../../../_lib/tenant.js';
 import { isUuid, optionalString } from '../../../_lib/data-requests.js';
 import { DATA_POINT_SELECT, serializeDataPoint } from '../../../_lib/data-points.js';
 import { QUALITY_SCORE_SELECT, serializeQualityScore } from '../../../_lib/quality.js';
@@ -67,6 +68,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const reviewComment = optionalString(body.reviewComment, 'review_comment', 4000);
 
     const result = await withTracefabUserContext(user.id, user.email, async (tx) => {
+      await requireActiveTenant(tx, req, user.id, { types: ['brand'] });
       const rows = await tx.$queryRaw<ResponseRow[]>`
         SELECT *
         FROM tracefab_review_data_response(
@@ -125,7 +127,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         dataPoint,
         qualityScore,
       };
-    });
+    }, requestedTenantId(req));
 
     return json(res, 200, {
       response: serializeResponse(result.response),
@@ -136,6 +138,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     });
   } catch (error) {
     if (isUnauthorized(error)) return json(res, 401, { error: 'unauthorized' });
+    if (isTenantError(error)) return json(res, error.status, { error: error.message });
     const businessError = sqlBusinessError(error);
     if (businessError) return json(res, businessError.status, { error: businessError.error });
     if (error instanceof Error && /^invalid_/.test(error.message)) return json(res, 400, { error: error.message });

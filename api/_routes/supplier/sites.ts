@@ -14,8 +14,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   try {
     const { user } = await requireClerkUser(req);
+    const activeOrgId = requestedOrganizationId(req);
     const result = await withTracefabUserContext(user.id, user.email, async (tx) => {
-      const supplier = await currentSupplier(tx, user.id, requestedOrganizationId(req));
+      const supplier = await currentSupplier(tx, user.id, activeOrgId);
       if (!supplier) return null;
       if (req.method === 'GET') {
         const sites = await tx.supplier_sites.findMany({
@@ -44,7 +45,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         select: SUPPLIER_SITE_SELECT,
       });
       return { site };
-    });
+    }, activeOrgId);
 
     if (!result) return json(res, 404, { error: 'supplier_profile_not_found' });
     if ('sites' in result) return json(res, 200, { sites: result.sites!.map(serializeSupplierSite) });

@@ -3,6 +3,7 @@ import { requireClerkUser, isUnauthorized } from '../../../../_lib/auth.js';
 import { withTracefabUserContext } from '../../../../_lib/context.js';
 import { json, methodNotAllowed, readJsonBody } from '../../../../_lib/http.js';
 import { sqlBusinessError } from '../../../../_lib/sql-errors.js';
+import { isTenantError, requireActiveTenant, requestedTenantId } from '../../../../_lib/tenant.js';
 import { isUuid } from '../../../../_lib/data-requests.js';
 
 function routeCapId(req: VercelRequest) {
@@ -35,26 +36,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
 
       const created = await withTracefabUserContext(user.id, user.email, async (tx) => {
+        const tenant = await requireActiveTenant(tx, req, user.id);
         const cap = await tx.quality_corrective_action_plans.findUnique({
           where: { id: capId },
         });
 
         if (!cap) return null;
 
-        // Determine user's role on this CAP
-        const memberships = await tx.organization_memberships.findMany({
-          where: { user_id: user.id, status: 'active' },
-          select: { organization_id: true },
-        });
-        const orgIds = memberships.map((m) => m.organization_id);
-
         let senderOrgId = '';
         let senderRole: 'brand' | 'supplier' = 'brand';
 
-        if (orgIds.includes(cap.brand_organization_id)) {
+        if (tenant.organizationId === cap.brand_organization_id) {
           senderOrgId = cap.brand_organization_id;
           senderRole = 'brand';
-        } else if (orgIds.includes(cap.supplier_organization_id)) {
+        } else if (tenant.organizationId === cap.supplier_organization_id) {
           senderOrgId = cap.supplier_organization_id;
           senderRole = 'supplier';
         } else {
@@ -75,7 +70,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             documents: { select: { id: true, original_filename: true } },
           },
         });
-      });
+      }, requestedTenantId(req));
 
       if (!created) {
         return json(res, 404, { error: 'cap_not_found' });
@@ -86,6 +81,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     // GET messages
     const result = await withTracefabUserContext(user.id, user.email, async (tx) => {
+      await requireActiveTenant(tx, req, user.id);
       const messages = await tx.quality_cap_messages.findMany({
         where: { cap_id: capId },
         include: {
@@ -96,12 +92,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       });
 
       return messages;
-    });
+    }, requestedTenantId(req));
 
     return json(res, 200, { messages: result, count: result.length });
   } catch (err: unknown) {
     if (isUnauthorized(err)) {
       return json(res, 401, { error: 'unauthorized' });
+    }
+    if (isTenantError(err)) {
+      return json(res, err.status, { error: err.message });
     }
     const sqlError = sqlBusinessError(err);
     if (sqlError) {

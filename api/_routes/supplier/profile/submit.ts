@@ -11,14 +11,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   try {
     const { user } = await requireClerkUser(req);
+    const activeOrgId = requestedOrganizationId(req);
     const profile = await withTracefabUserContext(user.id, user.email, async (tx) => {
-      const current = await currentSupplier(tx, user.id, requestedOrganizationId(req));
+      const current = await currentSupplier(tx, user.id, activeOrgId);
       if (!current) return null;
       const rows = await tx.$queryRaw<typeof current[]>`
         SELECT * FROM tracefab_submit_supplier_profile(${current.id}::uuid)
       `;
       return rows[0] ?? null;
-    });
+    }, activeOrgId);
 
     if (!profile) return json(res, 404, { error: 'supplier_profile_not_found' });
     return json(res, 200, {
@@ -32,6 +33,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
       return json(res, 409, { error: 'supplier_profile_conflict' });
     }
+    if (error instanceof Error && /^invalid_/.test(error.message)) return json(res, 400, { error: error.message });
     if (error instanceof Error && error.message === 'missing_clerk_secret_key') {
       return json(res, 503, { error: 'clerk_not_configured' });
     }

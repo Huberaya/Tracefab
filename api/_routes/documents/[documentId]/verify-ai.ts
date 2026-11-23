@@ -4,6 +4,7 @@ import { requireClerkUser, isUnauthorized } from '../../../_lib/auth.js';
 import { withTracefabUserContext } from '../../../_lib/context.js';
 import { json, methodNotAllowed, readJsonBody } from '../../../_lib/http.js';
 import { sqlBusinessError } from '../../../_lib/sql-errors.js';
+import { isTenantError, requireActiveTenant, requestedTenantId } from '../../../_lib/tenant.js';
 import { extractDocumentAi, verifyDocumentWithAi } from '../../../_lib/document-ai.js';
 
 function routeDocumentId(req: VercelRequest) {
@@ -32,6 +33,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const body: VerifyAiBody = await readJsonBody<VerifyAiBody>(req).catch(() => ({}));
 
     const result = await withTracefabUserContext(user.id, user.email, async (tx) => {
+      await requireActiveTenant(tx, req, user.id);
       // 1. Verify access to document
       const docRows = await tx.$queryRaw<Array<{
         id: string;
@@ -101,7 +103,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         decision,
         dbPayload: applied[0]?.payload || null,
       };
-    });
+    }, requestedTenantId(req));
 
     if ('notFound' in result && result.notFound) return json(res, 404, { error: 'document_not_found' });
     if ('notAvailable' in result && result.notAvailable) return json(res, 409, { error: 'document_not_available' });
@@ -120,6 +122,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     });
   } catch (error) {
     if (isUnauthorized(error)) return json(res, 401, { error: 'unauthorized' });
+    if (isTenantError(error)) return json(res, error.status, { error: error.message });
     const businessError = sqlBusinessError(error);
     if (businessError) return json(res, businessError.status, { error: businessError.error });
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') return json(res, 409, { error: 'conflict' });

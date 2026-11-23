@@ -3,6 +3,7 @@ import { requireClerkUser, isUnauthorized } from '../../../../_lib/auth.js';
 import { withTracefabUserContext } from '../../../../_lib/context.js';
 import { json, methodNotAllowed } from '../../../../_lib/http.js';
 import { sqlBusinessError } from '../../../../_lib/sql-errors.js';
+import { isTenantError, requireActiveTenant, requestedTenantId } from '../../../../_lib/tenant.js';
 
 type SubmittedSupplierRow = {
   id: string;
@@ -57,17 +58,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     const { user } = await requireClerkUser(req);
-    const rows = await withTracefabUserContext(user.id, user.email, (tx) =>
-      tx.$queryRaw<SubmittedSupplierRow[]>`
+    const rows = await withTracefabUserContext(user.id, user.email, async (tx) => {
+      await requireActiveTenant(tx, req, user.id, { types: ['supplier'] });
+      return tx.$queryRaw<SubmittedSupplierRow[]>`
         SELECT *
         FROM tracefab_submit_supplier_profile(${supplierId}::uuid)
-      `,
-    );
+      `;
+    }, requestedTenantId(req));
     const row = rows[0];
     if (!row) return json(res, 404, { error: 'supplier_not_found' });
     return json(res, 200, { profile: publicProfile(row) });
   } catch (error) {
     if (isUnauthorized(error)) return json(res, 401, { error: 'unauthorized' });
+    if (isTenantError(error)) return json(res, error.status, { error: error.message });
     const businessError = sqlBusinessError(error);
     if (businessError) return json(res, businessError.status, { error: businessError.error });
     if (error instanceof Error && error.message === 'missing_clerk_secret_key') {

@@ -91,7 +91,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           }),
         ]);
         return { members, invitations, canManage: ['owner', 'admin'].includes(context.actor.role) };
-      });
+      }, organizationId);
       if (!result) return json(res, 404, { error: 'supplier_organization_not_found' });
       return json(res, 200, {
         canManage: result.canManage,
@@ -161,7 +161,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         },
       });
       return { member };
-    });
+    }, organizationId);
 
     if (!result) return json(res, 404, { error: 'supplier_organization_not_found' });
     if (req.method === 'PATCH') {
