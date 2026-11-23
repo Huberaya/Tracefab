@@ -40,6 +40,24 @@ Colonne **Criticité** :
 | `PRIVATE_STORAGE_ANTIVIRUS_TOKEN` | fonctionnelle | Jeton de l'analyseur | Idem |
 | `PRIVATE_STORAGE_PRESIGN_SECONDS` | réglage | Durée de vie des URL signées, 60 à 3 600 s | Défaut appliqué |
 | `ORGANIZATION_STORAGE_QUOTA_BYTES` | réglage | Quota de stockage par organisation | Défaut appliqué |
+| `PRIVATE_STORAGE_BACKEND` | réglage | Backend de stockage : `s3` (défaut) ou `preview-postgres` | `s3`. **Toute autre valeur fait lever une erreur au premier dépôt** — un nom mal orthographié échoue bruyamment au lieu de retomber silencieusement sur S3 |
+
+### Stockage de Preview (`preview-postgres`)
+
+Ces cinq variables n'existent que pour le stockage PostgreSQL **de TEST** décrit
+dans `docs/security/2026-11-22-lot-a-101.md`. Elles sont sans effet tant que
+`PRIVATE_STORAGE_BACKEND` vaut `s3`, et **aucune ne doit être définie en
+production**. Elles ne remplacent pas S3 : ce backend écrit des octets
+synthétiques dans une base de test séparée, et refuse de démarrer si l'une des
+conditions ci-dessous n'est pas remplie.
+
+| Variable | Criticité | Rôle | Conséquence si absente |
+|---|---|---|---|
+| `TF_PREVIEW_STORAGE_TEST_ONLY` | réglage | Doit valoir `1` : déclaration explicite qu'on est sur une Preview de test | **Refus** : le backend reste inactif, les routes de stockage répondent 404 |
+| `TF_PREVIEW_STORAGE_DB_FINGERPRINT` | réglage | Empreinte SHA-256 de l'URL de base approuvée | **Refus** : aucune base n'est touchée sans approbation explicite de sa cible |
+| `TF_PREVIEW_STORAGE_LOCAL_TEST` | réglage | `1` pour autoriser une origine locale en test hors Vercel | Refus du repli local ; l'origine de Preview reste seule autorisée |
+| `TF_PREVIEW_STORAGE_LOCAL_ORIGIN` | réglage | Origine `http://127.0.0.1:<port>` utilisée avec la variable précédente | Refus : l'origine par défaut est `http://127.0.0.1:1`, volontairement inutilisable |
+| `VERCEL` | plateforme | Fournie par Vercel. Sa présence **interdit** le repli local ci-dessus | Sans elle, hors Vercel, le repli local reste possible — c'est le seul cas où il doit l'être |
 
 ## Courrier électronique
 

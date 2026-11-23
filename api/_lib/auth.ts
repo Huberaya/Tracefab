@@ -14,6 +14,43 @@ function bearerToken(req: VercelRequest) {
 }
 
 /**
+ * Raisons pour lesquelles c'est le JETON du client qui est mauvais.
+ *
+ * `@clerk/backend` leve une erreur avec un champ `reason` tant pour un jeton
+ * forge que pour une panne d'infrastructure (JWKS injoignable, cle secrete
+ * invalide, JWK absente). Tout transformer en 401 masquerait une panne serveur
+ * reelle derriere un « non autorise » : les tableaux de bord d'incident ne
+ * verraient plus rien, et un declassement de securite passerait inapercu.
+ *
+ * Seules les raisons liees au jeton deviennent 401. Les raisons
+ * d'exploitation (`secret-key-invalid`, `jwk-remote-failed-to-load`,
+ * `jwk-remote-invalid`, `jwk-remote-missing`, `jwk-local-missing`,
+ * `jwk-failed-to-resolve`) sont RELEVEES telles quelles : les routes les
+ * classent alors en 500, journalisables et alertables.
+ *
+ * Les valeurs sont celles de `TokenVerificationErrorReason`
+ * (@clerk/backend 3.x). Une raison inconnue n'est PAS traitee comme un refus
+ * client : elle reste une exception serveur, ce qui est le sens sur.
+ */
+const CLIENT_TOKEN_VERIFICATION_REASONS = new Set([
+  'token-expired',
+  'token-invalid',
+  'token-invalid-algorithm',
+  'token-invalid-authorized-parties',
+  'token-invalid-signature',
+  'token-not-active-yet',
+  'token-iat-in-the-future',
+  'token-verification-failed',
+  'jwk-kid-mismatch',
+]);
+
+/** Exporte pour etre eprouve sans jamais accepter un jeton non verifie. */
+export function isRejectedTokenVerification(error: unknown): boolean {
+  const reason = (error as { reason?: unknown } | null)?.reason;
+  return typeof reason === 'string' && CLIENT_TOKEN_VERIFICATION_REASONS.has(reason);
+}
+
+/**
  * Provisionnement de l'utilisateur interne depuis l'identite Clerk.
  *
  * Ce point est critique pour la bascule RLS : `users` n'accepte l'INSERT que
@@ -67,10 +104,28 @@ export async function requireClerkUser(req: VercelRequest) {
   if (process.env.NODE_ENV === 'production' && authorizedParties.length === 0) {
     throw new Error('authorized_parties_not_configured');
   }
-  const claims = authorizedParties.length > 0
-    ? await verifyToken(token, { secretKey: clerkSecretKey, authorizedParties })
-    : await verifyToken(token, { secretKey: clerkSecretKey });
-  if (!claims.sub) {
+  // `verifyToken` LEVE ses erreurs : sans ce catch, un jeton forge remontait
+  // en 500 `internal_server_error` — un refus opaque, indistinguable d'une
+  // panne applicative. Le catch est volontairement etroit : seules les
+  // erreurs dont la raison designe le jeton deviennent 401. Une panne JWKS ou
+  // une cle serveur invalide reste une exception inattendue (500), pour ne
+  // jamais deguiser un incident d'exploitation en erreur client. Dans tous
+  // les cas, aucun jeton non verifie n'est accepte, et `claims.sub` reste
+  // exige avant la moindre lecture de donnees.
+  let claims: { sub?: string };
+  try {
+    claims = authorizedParties.length > 0
+      ? await verifyToken(token, { secretKey: clerkSecretKey, authorizedParties })
+      : await verifyToken(token, { secretKey: clerkSecretKey });
+  } catch (error) {
+    if (isRejectedTokenVerification(error)) {
+      const refus = new Error('unauthorized');
+      refus.name = 'UnauthorizedError';
+      throw refus;
+    }
+    throw error;
+  }
+  if (!claims?.sub) {
     const error = new Error('unauthorized');
     error.name = 'UnauthorizedError';
     throw error;
