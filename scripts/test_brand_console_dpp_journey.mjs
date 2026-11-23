@@ -555,8 +555,29 @@ if (window.document.getElementById('dpp-event-correction-form')) {
     'Correction : la donnee du 29/10 portait sur le lot TS-001 et non le modele.');
   setValue('#dpp-event-correction-form select[name="subjectScope"]', 'batch');
 }
+// Le toast est capte par un MutationObserver installe AVANT l'envoi, pas par
+// une boucle d'attente. Chercher a l'attraper entre deux `await` etait une
+// course perdue : mesure, 4 executions sur 6 en parallele lisaient un toast
+// deja efface. Le MutationObserver, lui, voit le message au moment exact ou il
+// est ecrit dans le DOM — c'est la seule facon d'observer un element qui vit
+// moins longtemps que la boucle d'evenements du test.
+// On ne retient PAS le premier toast venu : le parcours en a deja affiche
+// d'autres avant (« Passport published. »), et s'arreter au premier capturait
+// ce message-la. C'est l'erreur qui a rendu ce controle instable puis faux.
+// On filtre sur le toast de correction lui-meme.
+const MESSAGE_CORRECTION = /Correction recorded|Correction enregistree|Correction vastgelegd|Berichtigung erfasst|Rettifica registrata|Rectificacion registrada|Retificacao registada/i;
+let toastApresSucces = '';
+const observateurToast = new window.MutationObserver(() => {
+  const el = window.document.querySelector('.toast');
+  if (!el) return;
+  const texte = (el.textContent || '').trim();
+  if (MESSAGE_CORRECTION.test(texte)) toastApresSucces = texte;
+});
+observateurToast.observe(window.document.body, { childList: true, subtree: true });
 submitCorrection();
 await flush(14);
+observateurToast.disconnect();
+
 const postCorrection = last((call) => call.method === 'POST' && call.url === `/api/products/${PRODUCT}/dpp/events`);
 check('rectification : POST emis sur la route des evenements', Boolean(postCorrection));
 check('rectification : le type est data_corrected', postCorrection?.body?.eventType === 'data_corrected',
@@ -590,10 +611,15 @@ check('rectification : la modale se referme apres succes (etat efface)',
     window.tracefabBrandConsole.state.dppEventCorrection && 'presente')}`);
 // Le toast est le SEUL retour que l'utilisateur voit une fois la modale fermee.
 // Sans ce controle, retirer `notify(...)` laissait la suite entierement verte.
+//
+// Il est lu sur l'ETAT, pas sur le DOM : `notify` arme un `setTimeout` de
+// 3500 ms qui efface le message. Or `flush(12)` attend 12 x 12 ms, et ces
+// attentes DERIVENT sous charge — mesure : 5 executions sur 6 en parallele
+// echouaient ici, avec le toast deja eteint. Un controle qui mesure une course
+// ne teste pas le produit ; il teste la vitesse de la machine.
 check('rectification : la confirmation est signalee a l utilisateur',
-  /Correction recorded|Correction enregistree|Correction vastgelegd|Berichtigung erfasst|Rettifica registrata|Rectificacion registrada|Retificacao registada/i
-    .test(window.document.body.textContent || ''),
-  'aucun message de confirmation apres succes');
+  Boolean(toastApresSucces),
+  `aucun toast de correction observe (dernier toast vu : ${JSON.stringify(toastApresSucces)})`);
 
 // 4. La cle d'idempotence ne sert QUE si un envoi echoue : on force un 403 sur
 //    un envoi, on verifie que le formulaire reste ouvert AVEC la saisie, que
