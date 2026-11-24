@@ -97,16 +97,21 @@ const dixAbsentes = Object.entries(ECARTS)
   .filter(([, meta]) => meta.historique === 'ABSENTE')
   .map(([nom]) => nom)
   .sort();
-const trenteQuatreNouvelles = tousDossiers.filter((d) => d > '20261028150000_reconcile_plm_erp_sync_job_policies');
-const quaranteQuatreEnAttente = [...dixAbsentes, ...trenteQuatreNouvelles].sort();
-const cinquanteSixAppliquees = tousDossiers.filter((d) => !quaranteQuatreEnAttente.includes(d));
+const nouvelles = tousDossiers.filter((d) => d > '20261028150000_reconcile_plm_erp_sync_job_policies');
+const enAttente = [...dixAbsentes, ...nouvelles].sort();
+const cinquanteSixAppliquees = tousDossiers.filter((d) => !enAttente.includes(d));
+const totalAttendu = cinquanteSixAppliquees.length + enAttente.length;
 
-console.log('\n  0. Arithmetique de la chaine de 100 migrations');
-ok(tousDossiers.length === 100, 'le depot porte exactement 100 migrations dans prisma/migrations', `${tousDossiers.length}`);
+console.log(`\n  0. Arithmetique de la chaine de ${totalAttendu} migrations`);
+ok(tousDossiers.length >= 100 && tousDossiers.length === totalAttendu,
+  `le depot porte une chaine coherente dans prisma/migrations (${tousDossiers.length})`, `${tousDossiers.length}`);
 ok(cinquanteSixAppliquees.length === 56, '56 migrations attestees en Production constituent la base de depart', `${cinquanteSixAppliquees.length}`);
 ok(dixAbsentes.length === 10, '10 migrations historiques absentes du journal Production', `${dixAbsentes.length}`);
-ok(trenteQuatreNouvelles.length === 34, '34 migrations nouvelles posterieures au releve', `${trenteQuatreNouvelles.length}`);
-ok(quaranteQuatreEnAttente.length === 44, '44 migrations a appliquer dans l ordre lexicographique strict (56 + 44 = 100)', `${quaranteQuatreEnAttente.length}`);
+ok(nouvelles.length >= 34 && nouvelles.length === tousDossiers.length - 66,
+  `${nouvelles.length} migrations nouvelles posterieures au releve`, `${nouvelles.length}`);
+ok(enAttente.length === dixAbsentes.length + nouvelles.length,
+  `${enAttente.length} migrations a appliquer dans l ordre lexicographique strict (56 + ${enAttente.length} = ${totalAttendu})`,
+  `${enAttente.length}`);
 ok(MIGRATIONS_AVEC_WORKER_TEMPORAIRE.length === 7, '7 migrations exigent un bail temporaire tracefab_worker', `${MIGRATIONS_AVEC_WORKER_TEMPORAIRE.length}`);
 ok(RUNTIME_FUNCTION_NAMES.length === 93, 'le registre runtime canonique compte 93 fonctions', `${RUNTIME_FUNCTION_NAMES.length}`);
 
@@ -297,27 +302,27 @@ ok(Number(regAvant.registered_expected) === 84 && Number(regAvant.missing_functi
   JSON.stringify(regAvant));
 
 /* ==========================================================================
-   3. Application des 44 migrations restantes jusqu'à 100/100
+   3. Application des migrations restantes jusqu'à l'état cible complet
    ========================================================================== */
 
-console.log('\n  3. Reconciliation des 44 migrations en attente (jusqu a 100/100)');
+console.log(`\n  3. Reconciliation des ${enAttente.length} migrations en attente (jusqu a ${totalAttendu}/${totalAttendu})`);
 
 let bauxDeclares = 0;
 let bauxD6 = 0;
-for (const d of quaranteQuatreEnAttente) {
+for (const d of enAttente) {
   const res = await appliquerMigrationFidele(d);
   if (res.bailDeclare) bauxDeclares += 1;
   if (res.bailD6) bauxD6 += 1;
 }
 ok(bauxDeclares === 7 && bauxD6 >= 1,
-  'les 44 migrations s appliquent sans echec (7 baux worker declares + baux D6 auto-detectes sur fonctions worker)',
+  `les ${enAttente.length} migrations s appliquent sans echec (7 baux worker declares + baux D6 auto-detectes sur fonctions worker)`,
   `declares=${bauxDeclares}, d6=${bauxD6}`);
 
 /* ==========================================================================
-   4. Postflight complet après la 100e migration
+   4. Postflight complet après la dernière migration
    ========================================================================== */
 
-console.log('\n  4. Postflight en lecture seule apres la 100e migration');
+console.log(`\n  4. Postflight en lecture seule apres la ${totalAttendu}e migration`);
 
 await pg.exec('SET ROLE tracefab_migrator');
 const sondeApres = await lancerSonde(pg);
@@ -326,10 +331,10 @@ await pg.exec('RESET ROLE');
 
 const cat = sondeApres.rapport;
 ok(sondeApres.codeSortie === 0 && cat.verdict === 'AUCUN_ARRET_DETECTE' && cat.lecture_seule_prouvee === '25006',
-  'sonde_p107_etat_cible : AUCUN_ARRET_DETECTE apres les 100 migrations',
+  `sonde_p107_etat_cible : AUCUN_ARRET_DETECTE apres les ${totalAttendu} migrations`,
   JSON.stringify(cat.arrets));
-ok(cat.b1_historique.terminees === 100 && cat.b1_historique.en_echec === 0,
-  'B1 : 100 migrations terminees, 0 en echec', JSON.stringify(cat.b1_historique));
+ok(cat.b1_historique.terminees === totalAttendu && cat.b1_historique.en_echec === 0,
+  `B1 : ${totalAttendu} migrations terminees, 0 en echec`, JSON.stringify(cat.b1_historique));
 ok(cat.b2_migrations_p105_p106.length === 9 && cat.b2_migrations_p105_p106.every((m) => m.appliquee === true && m.en_echec === false),
   'B2 : les 9 migrations jalons P10.5 -> P12 sont toutes appliquees', JSON.stringify(cat.b2_migrations_p105_p106));
 ok(cat.b5_hygiene.definer_sans_search_path === 0 && cat.b5_hygiene.executables_par_public === 0,

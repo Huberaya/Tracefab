@@ -165,6 +165,7 @@ const DEFINITIONS: Record<string, SqlErrorDefinition> = {
   green_claims_product_not_found: { status: 404 },
   invalid_cap_verdict: { status: 400 },
   invalid_requester_email: { status: 400 },
+  nda_acceptance_required: { status: 400 },
   invalid_verdict_must_be_approved_or_rejected: { status: 400 },
   invitation_relationship_mismatch: { status: 400 },
   managed_document_fields_are_not_client_writable: { status: 409 },

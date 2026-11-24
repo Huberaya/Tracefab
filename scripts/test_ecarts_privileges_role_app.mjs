@@ -25,7 +25,7 @@ import { spawn } from 'node:child_process';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import pg from 'pg';
-import { TABLES_ECRITURE_DIRECTE } from './lib/tracefab_app_role.mjs';
+import { TABLES_ECRITURE_DIRECTE, TABLES_INSERT_SEUL_DIRECTE } from './lib/tracefab_app_role.mjs';
 
 const ICI = dirname(fileURLToPath(import.meta.url));
 const LECTEUR = resolve(ICI, 'lire-disponibilite-role-app.mjs');
@@ -54,7 +54,8 @@ const tables = (await admin.query(`
   ORDER BY 1`)).rows.map((r) => r.relname);
 
 const declares = new Set(TABLES_ECRITURE_DIRECTE);
-const temoinDeclare = TABLES_ECRITURE_DIRECTE.find((t) => tables.includes(t));
+const insertSeul = new Set(TABLES_INSERT_SEUL_DIRECTE);
+const temoinDeclare = TABLES_ECRITURE_DIRECTE.find((t) => tables.includes(t) && !insertSeul.has(t));
 const temoinHorsListe = tables.find((t) => !declares.has(t));
 
 if (!temoinDeclare || !temoinHorsListe) {

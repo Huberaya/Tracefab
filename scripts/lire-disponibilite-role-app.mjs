@@ -17,7 +17,7 @@
  */
 import process from 'node:process';
 import pg from 'pg';
-import { APP_ROLE, TABLES_ECRITURE_DIRECTE, TABLES_FERMEES_PAR_CONCEPTION } from './lib/tracefab_app_role.mjs';
+import { APP_ROLE, TABLES_ECRITURE_DIRECTE, TABLES_INSERT_SEUL_DIRECTE, TABLES_FERMEES_PAR_CONCEPTION } from './lib/tracefab_app_role.mjs';
 import { RUNTIME_FUNCTION_NAMES } from './lib/tracefab_runtime_functions.mjs';
 
 const url = process.env.DATABASE_URL;
@@ -104,6 +104,7 @@ try {
   // restee en arriere des migrations montre un ecart, et cet ecart doit etre
   // nomme, pas masque derriere un qualificatif vague.
   const declares = new Set(TABLES_ECRITURE_DIRECTE);
+  const insertSeul = new Set(TABLES_INSERT_SEUL_DIRECTE);
 
   const manquants = { SELECT: [], INSERT: [], UPDATE: [], DELETE: [] };
   const avecDml = [];
@@ -129,8 +130,9 @@ try {
 
   console.log(`     SELECT  absent sur ${manquants.SELECT.length} table(s)`);
   for (const p of ['INSERT', 'UPDATE', 'DELETE']) {
-    const attendus = manquants[p].filter((t) => !declares.has(t));
-    const inattendus = manquants[p].filter((t) => declares.has(t));
+    const attenduEnEcriture = (t) => declares.has(t) && !(insertSeul.has(t) && (p === 'UPDATE' || p === 'DELETE'));
+    const attendus = manquants[p].filter((t) => !attenduEnEcriture(t));
+    const inattendus = manquants[p].filter((t) => attenduEnEcriture(t));
     console.log(`     ${p.padEnd(7)} absent sur ${String(manquants[p].length).padStart(3)} table(s)`
       + ` — ${attendus.length} attendue(s) en lecture seule, ${inattendus.length} inattendue(s)`
       + (inattendus.length ? ' : ' + inattendus.slice(0, 6).join(', ') + (inattendus.length > 6 ? ', …' : '') : ''));
