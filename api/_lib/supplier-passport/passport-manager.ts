@@ -124,8 +124,6 @@ export async function requestPassportAccess(
 ): Promise<{
   requestId: string;
   status: string;
-  supplierOrganizationId: string;
-  isExistingBrand: boolean;
   message: string;
 }> {
   const rows = await tx.$queryRaw<Array<{ tracefab_request_passport_access: any }>>`

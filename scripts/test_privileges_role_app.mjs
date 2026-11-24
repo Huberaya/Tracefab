@@ -39,7 +39,7 @@ import pg from 'pg';
 import { requireThrowawayDb } from './lib/require-throwaway-db.mjs';
 import { creerBaseEphemere, verrouillerCluster, filetDeNettoyage } from './lib/ephemeral-db.mjs';
 import { sslDepuisUrl } from './lib/pg-ssl.mjs';
-import { APP_ROLE, TABLES_ECRITURE_DIRECTE } from './lib/tracefab_app_role.mjs';
+import { APP_ROLE, TABLES_ECRITURE_DIRECTE, TABLES_INSERT_SEUL_DIRECTE } from './lib/tracefab_app_role.mjs';
 import { API_RUNTIME_FUNCTION_NAMES, RLS_POLICY_FUNCTION_NAMES, RUNTIME_FUNCTION_NAMES } from './lib/tracefab_runtime_functions.mjs';
 
 const SORTIE_DEFAUT = 1;
@@ -462,8 +462,24 @@ try {
     `sans RLS active et forcée : ${sansRls.join(', ') || 'aucune'}`,
   );
 
-  // Chaque table approuvée pour l'écriture directe doit l'accepter.
+  // Chaque table approuvée pour l'écriture directe doit l'accepter (et les
+  // tables append-only doivent refuser UPDATE/DELETE tout en conservant INSERT).
+  const appendOnly = new Set(TABLES_INSERT_SEUL_DIRECTE);
   for (const table of TABLES_ECRITURE_DIRECTE) {
+    if (appendOnly.has(table)) {
+      const priv = (await app.query(
+        `SELECT has_table_privilege(current_user, $1, 'INSERT') AS i,
+                has_table_privilege(current_user, $1, 'UPDATE') AS u,
+                has_table_privilege(current_user, $1, 'DELETE') AS d`,
+        [`public.${table}`],
+      )).rows[0];
+      verifier(
+        `écriture directe append-only sur ${table} (INSERT oui, UPDATE/DELETE non)`,
+        Boolean(priv && priv.i && !priv.u && !priv.d),
+        JSON.stringify(priv),
+      );
+      continue;
+    }
     try {
       await app.query(`DELETE FROM ${table} WHERE false`);
       verifier(`écriture directe possible sur ${table}`, true);

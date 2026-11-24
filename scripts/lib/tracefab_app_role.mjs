@@ -102,6 +102,16 @@ export const TABLES_ECRITURE_DIRECTE = [
 ];
 
 /**
+ * Sous-ensemble des tables d'ecriture directe strictement append-only au
+ * niveau ACL : le role applicatif y conserve `INSERT` (et `SELECT`), mais
+ * `UPDATE`, `DELETE` et `TRUNCATE` lui sont revoques en defense en profondeur
+ * (en sus de l'absence de politique RLS `UPDATE`/`DELETE`).
+ */
+export const TABLES_INSERT_SEUL_DIRECTE = [
+  'audit_logs',
+];
+
+/**
  * Colonnes de `tracefab_products` que le runtime ecrit directement.
  *
  * `tracefab_products` n'est PLUS dans TABLES_ECRITURE_DIRECTE : le role
@@ -513,7 +523,13 @@ export async function ensureAppRole(db, password, { role = APP_ROLE } = {}) {
        FOREACH v_table IN ARRAY ARRAY[${TABLES_ECRITURE_DIRECTE.map((t) => `'${t}'`).join(', ')}]::text[]
        LOOP
          IF to_regclass(format('public.%I', v_table)) IS NOT NULL THEN
-           EXECUTE format('GRANT INSERT, UPDATE, DELETE ON public.%I TO %I', v_table, '${APP_ROLE}');
+           IF v_table = ANY(ARRAY[${TABLES_INSERT_SEUL_DIRECTE.map((t) => `'${t}'`).join(', ')}]::text[]) THEN
+             EXECUTE format('REVOKE UPDATE, DELETE, TRUNCATE ON public.%I FROM PUBLIC', v_table);
+             EXECUTE format('REVOKE UPDATE, DELETE, TRUNCATE ON public.%I FROM %I', v_table, '${APP_ROLE}');
+             EXECUTE format('GRANT INSERT ON public.%I TO %I', v_table, '${APP_ROLE}');
+           ELSE
+             EXECUTE format('GRANT INSERT, UPDATE, DELETE ON public.%I TO %I', v_table, '${APP_ROLE}');
+           END IF;
          END IF;
        END LOOP;
      END
