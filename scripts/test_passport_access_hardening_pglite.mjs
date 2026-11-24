@@ -93,7 +93,7 @@ for (const d of dossiers) {
   await executerMigrationPglite(db, d, sql);
 }
 
-// Octrois SELECT runtime standard post-migrations (comme bootstrap_app_role.mjs)
+// Octrois SELECT runtime standard post-migrations
 await db.exec(`
   GRANT SELECT ON ALL TABLES IN SCHEMA public TO tracefab_app;
   REVOKE ALL PRIVILEGES ON TABLE public.tracefab_identity_cles FROM tracefab_app;
